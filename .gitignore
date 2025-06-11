@@ -1,0 +1,20 @@
+# Next.js build
+.next
+out
+dist
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+
+# Dependency directories
+node_modules
+
+# Others
+.cache
+.turbo
+.env
