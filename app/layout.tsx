@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased bg-white dark:bg-black text-black dark:text-white transition-colors duration-300 overflow-x-hidden`}>
+      <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <Navbar />
         <main className="min-h-screen">
