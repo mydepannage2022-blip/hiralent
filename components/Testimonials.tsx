@@ -106,8 +106,10 @@ const Testimonials = () => {
 
       }}
               onBeforeInit={(swiper) => {
+                if (swiper.params.navigation) {
                 swiper.params.navigation.prevEl = prevRef.current;
                 swiper.params.navigation.nextEl = nextRef.current;
+                }
               }}
             >
               {testimonials.map((testimonial, index) => (
