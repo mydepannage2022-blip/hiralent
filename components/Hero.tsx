@@ -37,7 +37,7 @@ const Hero = () => {
       {/* Hero Content */}
       <motion.div
         style={{ opacity, scale, y }}
-        className="flex flex-col lg:flex-row items-center justify-center text-center lg:max-w-4xl xl:max-w-7xl w-full lg:w-4xl xl:w-7xl mx-auto pt-16 rounded-[100px] shadow-lg"
+        className="flex flex-col lg:flex-row items-center justify-center text-center lg:max-w-4xl xl:max-w-7xl w-full lg:w-4xl xl:w-7xl mx-auto pt-16 rounded-[100px]"
       >
 
 
