@@ -33,7 +33,7 @@ const Navbar = () => {
       animate={{ y: 0 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-slate-800/50 backdrop-blur-md shadow-lg max-w-7xl mx-auto mt-4 rounded-2xl'
+          ? 'bg-[#00F5D4]/20 dark:bg-transparent backdrop-blur-md shadow-lg max-w-7xl mx-auto mt-4 rounded-2xl'
           : 'bg-transparent max-w-7xl mx-auto mt-0 rounded-2xl'
       }`}
     >
@@ -61,15 +61,15 @@ const Navbar = () => {
                 href={item.href}
                 className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                   pathname === item.href
-                    ? 'text-[#00F5DA]'
-                    : 'text-white hover:text-white'
+                    ? 'gradient-text dark:text-[#00F5DA]'
+                    : 'gradient-text dark:text-white hover:text-white'
                 }`}
               >
                 {item.name}
                 {pathname === item.href && (
                   <motion.div
                     layoutId="navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00F5DA] rounded-full"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00F5DA] to-[#28196A] dark:bg-[#00F5DA] rounded-full"
                   />
                 )}
               </Link>

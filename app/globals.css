@@ -3,22 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
-
-:root {
-  --background: 0 0% 100%;
+  --background: white;
+  --background-solid: 0 0% 100%;
   --foreground: 240 10% 3.9%;
 
   --card: 0 0% 100%;
@@ -53,8 +39,10 @@
   --chart-5: 290 60% 60%;
 }
 
-[data-theme='dark'] {
+/* Dark mode - using .dark class to match Tailwind config */
+.dark {
   --background: 240 10% 3.9%;
+  --background-solid: 240 10% 3.9%;
   --foreground: 0 0% 98%;
 
   --card: 240 10% 3.9%;
@@ -94,7 +82,11 @@
     @apply border-border;
   }
   body {
-    @apply bg-white text-black dark:bg-black dark:text-white overflow-x-hidden transition-all duration-300;
+    background: var(--background);
+    color: hsl(var(--foreground));
+    overflow-x: hidden;
+    transition: all 0.5s ease;
+    min-height: 100vh;
   }
   
   html {
@@ -102,11 +94,9 @@
   }
 }
 
-
 @layer components {
   .gradient-text {
-    @apply bg-gradient-to-r from-[#00F5DA] to-[#28196A] bg-clip-text text-transparent ;
-
+    @apply bg-gradient-to-r from-[#28196A] to-[#00F5DA] bg-clip-text text-transparent;
   }
   
   .glass-effect {

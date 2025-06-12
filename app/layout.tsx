@@ -5,11 +5,10 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from 'next-themes';
 
-
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-   metadataBase: new URL('https://huzaifa-iqbal.com'),
+  metadataBase: new URL('https://huzaifa-iqbal.com'),
   title: 'AlterMind Studio - Creative Digital Experiences',
   description: 'We craft immersive digital experiences that blur the line between imagination and reality. 3D visualization, AR/VR development, and interactive web experiences.',
   keywords: 'digital agency, 3D visualization, AR/VR, interactive experiences, web development, creative studio',
@@ -27,14 +26,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased`}>
-        <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
-        <Navbar />
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <Footer />
+    <html lang="en" className={`${inter.className} scroll-smooth`} suppressHydrationWarning>
+      <body className="antialiased">
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem={false}
+          storageKey="altermind-theme"
+          disableTransitionOnChange={false}
+        >
+          <Navbar />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

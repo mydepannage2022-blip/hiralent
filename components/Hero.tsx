@@ -18,22 +18,14 @@ const Hero = () => {
     setMounted(true);
   }, []);
 
-  // if (!mounted) {
-  //   return (
-  //     <div className="h-screen bg-slate-800 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-400"></div>
-  //     </div>
-  //   );
-  // }
-
   return (
     <section className="relative h-screen w-screen overflow-hidden flex flex-col justify-center items-center py-0">
     
       {/* Gradient Overlay */}
       <div className="absolute pointer-events-none" />
-      
-      <Scene3D/>
-      
+
+      <Scene3D />
+
       {/* Hero Content */}
       <motion.div
         style={{ opacity, scale, y }}
@@ -42,22 +34,7 @@ const Hero = () => {
 
 
 
-<div className='flex flex-col items-start justify-start w-full lg:w-3/5 bg-tranparent backdrop-blur-sm p-8 rounded-[70px] gap-8 shadow-lg'>
-        {/* Animated Badge */}
-        {/* <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="mb-8"
-        >
-          <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass-effect glow-effect">
-            <Sparkles className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-medium text-blue-300">
-              Welcome to the Future
-            </span>
-          </div>
-        </motion.div> */}
-
+<div className='flex flex-col items-start justify-start w-full lg:w-3/5 bg-none dark:bg-transparent backdrop-blur-sm p-8 rounded-[70px] gap-8 shadow-lg'>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -65,29 +42,28 @@ const Hero = () => {
           
         > 
           <div className='flex items-center justify-start w-full gap-12'>
-            <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 shadow-md'>
+            <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 bg-[#00F5D4]/20 dark:bg-transparent'>
               <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2 rounded-md w-[50px]'/>
-              <h4 className='text-center text-xs lg:text-sm font-medium'>Product of the Month <br></br>
+              <h4 className='text-center text-xs lg:text-sm font-medium text-[#2C2F38]/90 dark:text-white'>Product of the Month <br></br>
               <span className='font-light'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-base lg:text-xl font-medium text-white'>
+              <h1 className='text-base lg:text-xl font-medium text-white text-[#2C2F38]/90 dark:text-white'>
                 1st
               </h1>
             </div>
-             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 shadow-md'>
+             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 bg-[#00F5D4]/20 dark:bg-transparent'>
               <img src="/images/frame.png" alt="image" className='bg-white backdrop-blur-sm p-2 rounded-md w-[50px]'/>
-              <h4 className='text-center text-xs lg:text-sm font-medium'>Product of the Month <br></br>
+              <h4 className='text-center text-xs lg:text-sm font-medium text-[#2C2F38]/90 dark:text-white'>Product of the Month <br></br>
               <span className='font-light'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-base lg:text-xl font-medium text-white'>
-                TOP PICK
+              <h1 className='text-base lg:text-xl font-medium text-white text-[#2C2F38]/90 dark:text-white'>
+                TOP PICK  
               </h1>
             </div>
           </div>
 </motion.div>
-
 
 
         {/* Main Heading */}
@@ -97,20 +73,17 @@ const Hero = () => {
           transition={{ delay: 0.7, duration: 0.8 }}
           className="text-4xl md:text-4xl lg:text-6xl font-bold leading-tight text-center lg:text-left"
         >
-          <span className="gradient-text text-[#00F5D4] text-center lg:text-left">
-          Find The <span className="text-white">Perfect <span className='text-[#00F5D4]'>Candidate </span></span>
-          </span>
-          <span className="text-white">
-            In 30 days
+          <span className=" text-center lg:text-left">
+          <span className='text-[#2C2F38]/90 dark:text-[#00F5D4]'>Find The Perfect </span> <br></br>
+          <span className='text-[#2C2F38]/90 dark:text-[#00F5D4]'>Candidate In 30 days</span>
           </span>
         </motion.h1>
-
         {/* Subtitle */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9, duration: 0.8 }}
-          className="text-base md:text-lg text-white-700 max-w-2xl leading-relaxed text-center lg:text-left"
+          className="text-base md:text-lg text-white-700 max-w-2xl leading-relaxed text-center lg:text-left text-[#2C2F38]/90 dark:text-white"
         >
 Need to hire fast? Our Talent Match AI delivers 10 highly matched, quality candidates to your roles every week, helping you find the perfect fit in just 30 days.        </motion.p>
 
@@ -121,14 +94,6 @@ Need to hire fast? Our Talent Match AI delivers 10 highly matched, quality candi
           transition={{ delay: 1.1, duration: 0.8 }}
           className="flex flex-col sm:flex-row gap-4 mb-16"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-8 py-4 bg-gradie  bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full font-semibold text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 "
-          >
-            Explore Our Work
-          </motion.button>
-          
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

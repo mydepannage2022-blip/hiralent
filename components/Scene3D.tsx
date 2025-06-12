@@ -27,10 +27,10 @@ const AIOrb = ({ scrollOffset }: { scrollOffset: number }) => {
       {/* Core Sphere */}
       <Sphere args={[3.5, 32, 32]}>
         <meshStandardMaterial
-          color="#0EF6CC"
+          color="#00F5DA"
           metalness={1}
           roughness={0.1}
-          emissive="#00fff7"
+          emissive="#00F5DA"
           emissiveIntensity={0.5}
           wireframe
         />

@@ -8,11 +8,13 @@ import AiMatching from '@/components/AiMatching';
 import Steps from '@/components/Steps';
 import Testimonials from '@/components/Testimonials';
 import { motion } from 'framer-motion';
-
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   return (
     <>
+      {/* <Navbar /> */}
         <Hero />
 
       <SecondSectionBoxes />
@@ -38,6 +40,7 @@ export default function Home() {
           </motion.button>
         </div>
       </section>
+      {/* <Footer /> */}
     </>
   );
 }
