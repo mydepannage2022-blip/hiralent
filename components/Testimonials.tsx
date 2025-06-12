@@ -5,6 +5,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { ChevronRight, ChevronLeft, Star } from "lucide-react";
 import { motion } from "framer-motion";
+import type { NavigationOptions } from 'swiper/types';
 
 const Testimonials = () => {
   const prevRef = useRef(null);
@@ -105,12 +106,11 @@ const Testimonials = () => {
       pauseOnMouseEnter: true,
 
       }}
-              onBeforeInit={(swiper) => {
-                if (swiper.params.navigation) {
-                swiper.params.navigation.prevEl = prevRef.current;
-                swiper.params.navigation.nextEl = nextRef.current;
-                }
-              }}
+       onBeforeInit={(swiper) => {
+  const navigation = swiper.params.navigation as NavigationOptions;
+  navigation.prevEl = prevRef.current;
+  navigation.nextEl = nextRef.current;
+}}
             >
               {testimonials.map((testimonial, index) => (
                 <SwiperSlide key={index}>
