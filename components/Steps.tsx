@@ -57,7 +57,7 @@ const Steps = () => {
             variants={itemVariants}
             className="text-4xl md:text-5xl font-bold mb-6 text-center lg:text-left"
           >
-            <span className="text-[#00F5DA]">Find Candidate<span className='text-white'> In 5 Easy Steps</span> </span>
+            <span className="gradient-text dark:text-[#00F5DA]">Find Candidate<span className='gradient-text dark:text-[#00F5DA]'> In 5 Easy Steps</span> </span>
           </motion.h2>
         <motion.div
           variants={containerVariants}
@@ -69,15 +69,15 @@ const Steps = () => {
             <motion.div
               key={index}
               variants={itemVariants}
-              className="text-center p-6  ring-1 ring-white/50 rounded-2xl hover:scale-105 transition-transform duration-300 w-1/4"
+              className="text-center p-6  ring-1 ring-[#2C2F38]/20 dark:ring-white/50 rounded-2xl hover:scale-105 transition-transform duration-300 w-1/4"
             >
-              <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white text-2xl font-bold">
+              <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-gradient-to-r from-[#00F5DA] to-[#28196A]  text-white text-2xl font-bold">
                 {stat.step}
               </div>
-              <div className="text-base md:text-base font-bold text-white mb-2">
+              <div className="text-base md:text-base font-bold text-[#2C2F38]/90 dark:text-white mb-2">
                 {stat.value}
               </div>
-              <div className="text-sm text-white font-light">
+              <div className="text-sm text-[#2C2F38]/70 dark:text-white/90 font-light">
                 {stat.label}
               </div>
             </motion.div>
