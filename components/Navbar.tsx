@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Cpu } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +61,7 @@ const Navbar = () => {
                 href={item.href}
                 className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                   pathname === item.href
-                    ? 'text-blue-400'
+                    ? 'text-[#00F5DA]'
                     : 'text-white hover:text-white'
                 }`}
               >
@@ -68,11 +69,12 @@ const Navbar = () => {
                 {pathname === item.href && (
                   <motion.div
                     layoutId="navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-400"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00F5DA] rounded-full"
                   />
                 )}
               </Link>
             ))}
+            <ThemeToggle />
           </div>
 
           {/* Mobile menu button */}

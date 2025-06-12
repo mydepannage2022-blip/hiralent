@@ -17,7 +17,7 @@ const Choose = () => {
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 bg-gradie  bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full font-semibold text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 "
           >
-            Get Started
+            Begin Your Free Trial
           </motion.button>
         </div>
 

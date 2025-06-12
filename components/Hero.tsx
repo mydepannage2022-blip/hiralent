@@ -58,7 +58,12 @@ const Hero = () => {
           </div>
         </motion.div> */}
 
-
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.8 }}
+          
+        > 
           <div className='flex items-center justify-start w-full gap-12'>
             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 shadow-md'>
               <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2 rounded-md w-[50px]'/>
@@ -81,6 +86,10 @@ const Hero = () => {
               </h1>
             </div>
           </div>
+</motion.div>
+
+
+
         {/* Main Heading */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
@@ -125,7 +134,7 @@ Need to hire fast? Our Talent Match AI delivers 10 highly matched, quality candi
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300  bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25"
           >
-            Get Started
+            Begin Your Free Trial
           </motion.button>
      
         </motion.div>

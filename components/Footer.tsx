@@ -43,7 +43,7 @@ const Footer = () => {
 
   return (
     <footer className="">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8 mb-8 bg-slate-800/50 rounded-3xl backdrop-blur-md shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8 mb-8 bg-transparent rounded-3xl backdrop-blur-md shadow-lg">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Brand Section */}
@@ -61,7 +61,7 @@ const Footer = () => {
               </span>
             </Link>
             
-            <p className="text-gray-400 mb-6 leading-relaxed">
+            <p className="text-white/90 mb-6 leading-relaxed font-light">
               Creating immersive digital experiences that blur the line between 
               imagination and reality.
             </p>
@@ -69,16 +69,16 @@ const Footer = () => {
             {/* Contact Info */}
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-gray-400">
-                <Mail className="h-4 w-4 text-blue-400" />
-                <span className="text-sm">hello@altermind.studio</span>
+                <Mail className="h-4 w-4 text-[#00F5DA]" />
+                <span className="text-sm text-white/90 font-light">hello@altermind.studio</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-400">
-                <Phone className="h-4 w-4 text-blue-400" />
-                <span className="text-sm">+1 (555) 123-4567</span>
+                <Phone className="h-4 w-4 text-[#00F5DA]" />
+                <span className="text-sm text-white/90 font-light">+1 (555) 123-4567</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-400">
-                <MapPin className="h-4 w-4 text-blue-400" />
-                <span className="text-sm">San Francisco, CA</span>
+                <MapPin className="h-4 w-4 text-[#00F5DA]" />
+                <span className="text-sm text-white/90 font-light">San Francisco, CA</span>
               </div>
             </div>
           </div>
@@ -94,7 +94,7 @@ const Footer = () => {
                   <li key={linkIndex}>
                     <Link
                       href={link.href}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
+                      className="text-white/90 hover:text-white transition-colors duration-200 text-sm font light"
                     >
                       {link.name}
                     </Link>
@@ -107,8 +107,8 @@ const Footer = () => {
 
         {/* Bottom Section */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="text-gray-400 text-sm mb-4 md:mb-0">
-            © 2024 AlterMind Studio. All rights reserved.
+          <div className="text-white/90 text-sm mb-4 md:mb-0 leading-relaxed font-light">
+            © 2025 AlterMind Studio. All rights reserved.
           </div>
 
           {/* Social Links */}
@@ -119,10 +119,10 @@ const Footer = () => {
                 href={social.href}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-lg glass-effect hover:bg-blue-500/20 transition-colors duration-200"
+                className="p-2 rounded-lg glass-effect hover:bg-[#00F5DA] transition-colors duration-200"
                 aria-label={social.label}
               >
-                <social.icon className="h-5 w-5 text-gray-400 hover:text-white transition-colors duration-200" />
+                <social.icon className="h-5 w-5 text-[#00F5DA] hover:text-black transition-colors duration-200" />
               </motion.a>
             ))}
           </div>

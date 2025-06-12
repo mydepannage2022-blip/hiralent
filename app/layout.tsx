@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { ThemeProvider } from 'next-themes';
+
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,13 +27,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={`${inter.className} antialiased`}>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${inter.className} antialiased bg-white dark:bg-black text-black dark:text-white transition-colors duration-300 overflow-x-hidden`}>
+        <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <Navbar />
         <main className="min-h-screen">
           {children}
         </main>
         <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );
