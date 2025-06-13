@@ -26,11 +26,11 @@ const Choose = () => {
 
         <div className='lg:w-1/2 flex justify-center flex-wrap gap-2 justify-center lg:justify-end'>
   
-          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>SE</p>
               <div className='flex flex-col justify-center items-start text-black '>
-                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-[#2C2F38] text-center lg:text-left'>Software Engineer</h4>
                 <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
@@ -42,11 +42,11 @@ const Choose = () => {
             </div>
           </div>
        
-          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>HB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-[#2C2F38] text-center lg:text-left'>Software Engineer</h4>
                 <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
@@ -59,11 +59,11 @@ const Choose = () => {
           </div>
        
        
-          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-[#2C2F38] text-center lg:text-left'>Software Engineer</h4>
                 <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
@@ -76,11 +76,11 @@ const Choose = () => {
           </div>
        
 
-          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-[#2C2F38] text-center lg:text-left'>Software Engineer</h4>
                 <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
@@ -92,7 +92,7 @@ const Choose = () => {
             </div>
           </div>
 
-             <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+             <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
@@ -108,11 +108,11 @@ const Choose = () => {
             </div>
           </div>
 
-          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-xl p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
               <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AZ</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-[#2C2F38] text-center lg:text-left'>Software Engineer</h4>
                 <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
