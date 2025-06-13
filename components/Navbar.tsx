@@ -31,20 +31,21 @@ const Navbar = () => {
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-[#00F5D4]/20 dark:bg-transparent backdrop-blur-md shadow-lg max-w-7xl mx-auto mt-4 rounded-2xl'
-          : 'bg-transparent max-w-7xl mx-auto mt-0 rounded-2xl'
-      }`}
+className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+  scrolled
+    ? 'bg-[#00F5D4]/10 dark:bg-transparent backdrop-blur-md shadow-lg max-w-7xl mx-auto mt-4 rounded-2xl sm:w-9/10'
+    : 'bg-transparent max-w-7xl mx-auto mt-0 rounded-2xl'
+}`}
+
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
             <motion.div
               whileHover={{ rotate: 180 }}
               transition={{ duration: 0.3 }}
-              className="p-2 rounded-lg bg-gradient-to-r from-[#00F5D4]/70 to-[#28196A]/70"
+              className="p-2 rounded-lg bg-gradient-to-r from-[#00F5D4] to-[#28196A]"
             >
               <Cpu className="h-6 w-6 text-white" />
             </motion.div>
@@ -54,7 +55,7 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-8 w-full ">
             {navItems.map((item) => (
               <Link
                 key={item.name}
@@ -80,7 +81,7 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 rounded-lg glass-effect"
+            className="md:hidden p-2 rounded-lg"
           >
             <AnimatePresence mode="wait">
               {isOpen ? (
@@ -116,7 +117,7 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden glass-effect border-t border-white/10"
+            className="md:hidden border-t border-white/10"
           >
             <div className="px-4 py-4 space-y-2">
               {navItems.map((item, index) => (
@@ -131,8 +132,8 @@ const Navbar = () => {
                     onClick={() => setIsOpen(false)}
                     className={`block px-3 py-2 rounded-lg text-base font-medium transition-colors duration-200 ${
                       pathname === item.href
-                        ? 'text-blue-400 bg-blue-500/10'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
+                        ? 'text-[#2C2F38] dark:text-[#00F5DA] font-bold'
+                        : 'text-[#2C2F38] hover:text-white hover:bg-white/5'
                     }`}
                   >
                     {item.name}

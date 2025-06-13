@@ -24,17 +24,17 @@ const Hero = () => {
       {/* Gradient Overlay */}
       <div className="absolute pointer-events-none" />
 
-      <Scene3D />
+      <Scene3D/>
 
       {/* Hero Content */}
       <motion.div
         style={{ opacity, scale, y }}
-        className="flex flex-col lg:flex-row items-center justify-center text-center lg:max-w-4xl xl:max-w-7xl w-full lg:w-4xl xl:w-7xl mx-auto pt-16 rounded-[100px]"
+        className="flex flex-col lg:flex-row items-center justify-start text-center lg:max-w-4xl xl:max-w-7xl w-full lg:w-4xl xl:w-7xl mx-auto pt-16 rounded-[100px]"
       >
 
 
 
-<div className='flex flex-col items-start justify-start w-full lg:w-3/5 bg-none dark:bg-transparent backdrop-blur-sm p-8 rounded-[70px] gap-8 shadow-lg'>
+<div className='flex flex-col items-center lg:items-start justify-start w-full lg:w-2/4 bg-none dark:bg-transparent dark:backdrop-blur-sm p-8 rounded-[70px] gap-8 dark:shadow-lg'>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -42,23 +42,23 @@ const Hero = () => {
           
         > 
           <div className='flex items-center justify-start w-full gap-12'>
-            <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 bg-[#00F5D4]/20 dark:bg-transparent'>
-              <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2 rounded-md w-[50px]'/>
-              <h4 className='text-center text-xs lg:text-sm font-medium text-[#2C2F38]/90 dark:text-white'>Product of the Month <br></br>
-              <span className='font-light'>PRODUCT HUNT</span>
+            <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl dark:rounded-xl p-3 gap-2 bg-gradient-to-b from-[#00F5DA] to-[#28196A] dark:bg-none shadow-xl'>
+              <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-[5px] dark:rounded-md w-[30px] md:w-[50px]'/>
+              <h4 className='text-center text-[10px] lg:text-sm font-medium text-white/90 dark:text-white'>Product of the Month <br></br>
+              <span className='font-light sm:text-[10px] md:text-[12px] lg:text-sm'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-base lg:text-xl font-medium text-white text-[#2C2F38]/90 dark:text-white'>
+              <h1 className='text-sm  md:text-base lg:text-xl font-medium text-white text-white/90 dark:text-white'>
                 1st
               </h1>
             </div>
-             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl p-3 gap-2 bg-[#00F5D4]/20 dark:bg-transparent'>
-              <img src="/images/frame.png" alt="image" className='bg-white backdrop-blur-sm p-2 rounded-md w-[50px]'/>
-              <h4 className='text-center text-xs lg:text-sm font-medium text-[#2C2F38]/90 dark:text-white'>Product of the Month <br></br>
-              <span className='font-light'>PRODUCT HUNT</span>
+             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl dark:rounded-xl p-3 gap-2 bg-gradient-to-b from-[#00F5DA] to-[#28196A] dark:bg-none shadow-xl'>
+              <img src="/images/frame.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-[5px] dark:rounded-md w-[30px] md:w-[50px]'/>
+              <h4 className='text-center text-[10px] lg:text-sm font-medium text-white/90 dark:text-white'>Product of the Month <br></br>
+              <span className='font-light sm:text-[10px] md:text-[12px] lg:text-sm'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-base lg:text-xl font-medium text-white text-[#2C2F38]/90 dark:text-white'>
+              <h1 className='text-sm  md:text-base lg:text-xl font-medium text-white text-white/90 dark:text-white'>
                 TOP PICK  
               </h1>
             </div>
@@ -71,11 +71,11 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.8 }}
-          className="text-4xl md:text-4xl lg:text-6xl font-bold leading-tight text-center lg:text-left"
+          className="text-2xl md:text-4xl lg:text-6xl font-bold leading-tight text-center lg:text-left"
         >
-          <span className=" text-center lg:text-left">
-          <span className='text-[#2C2F38]/90 dark:text-[#00F5D4]'>Find The Perfect </span> <br></br>
-          <span className='text-[#2C2F38]/90 dark:text-[#00F5D4]'>Candidate In 30 days</span>
+          <span className="text-center lg:text-left font-light">Find The 
+          <span className='text-[#2C2F38] dark:text-[#00F5D4] font-bold'><br></br>Perfect Candidate </span>
+          <span className='text-[#2C2F38] dark:text-[#00F5D4]'><br></br> In 30 days</span>
           </span>
         </motion.h1>
         {/* Subtitle */}
@@ -83,7 +83,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9, duration: 0.8 }}
-          className="text-base md:text-lg text-white-700 max-w-2xl leading-relaxed text-center lg:text-left text-[#2C2F38]/90 dark:text-white"
+          className="text-sm md:text-lg text-white-700 max-w-2xl leading-relaxed text-center lg:text-left text-[#2C2F38]/90 dark:text-white"
         >
 Need to hire fast? Our Talent Match AI delivers 10 highly matched, quality candidates to your roles every week, helping you find the perfect fit in just 30 days.        </motion.p>
 
@@ -97,7 +97,7 @@ Need to hire fast? Our Talent Match AI delivers 10 highly matched, quality candi
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300  bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25"
+            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300 bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25 shadow-2xl text-sm md:text-base"
           >
             Begin Your Free Trial
           </motion.button>
