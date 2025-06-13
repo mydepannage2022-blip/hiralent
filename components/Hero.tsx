@@ -43,22 +43,22 @@ const Hero = () => {
         > 
           <div className='flex items-center justify-start w-full gap-12'>
             <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl dark:rounded-xl p-3 gap-2 bg-gradient-to-b from-[#00F5DA] to-[#28196A] dark:bg-none shadow-xl'>
-              <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-[5px] dark:rounded-md w-[30px] md:w-[50px]'/>
+              <img src="/images/confetti-1.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-xl dark:rounded-xl w-[30px] md:w-[50px]'/>
               <h4 className='text-center text-[10px] lg:text-sm font-medium text-white/90 dark:text-white'>Product of the Month <br></br>
               <span className='font-light sm:text-[10px] md:text-[12px] lg:text-sm'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-sm  md:text-base lg:text-xl font-medium text-white text-white/90 dark:text-white'>
+              <h1 className='text-sm lg:text-base xl:text-xl font-medium text-white text-white/90 dark:text-white'>
                 1st
               </h1>
             </div>
              <div className='flex flex-col items-center justify-center ring-1 ring-white/70 backdrop-blur-xs rounded-xl dark:rounded-xl p-3 gap-2 bg-gradient-to-b from-[#00F5DA] to-[#28196A] dark:bg-none shadow-xl'>
-              <img src="/images/frame.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-[5px] dark:rounded-md w-[30px] md:w-[50px]'/>
+              <img src="/images/frame.png" alt="image" className='bg-white backdrop-blur-sm p-2  rounded-xl dark:rounded-xl w-[30px] md:w-[50px]'/>
               <h4 className='text-center text-[10px] lg:text-sm font-medium text-white/90 dark:text-white'>Product of the Month <br></br>
               <span className='font-light sm:text-[10px] md:text-[12px] lg:text-sm'>PRODUCT HUNT</span>
 
               </h4>
-              <h1 className='text-sm  md:text-base lg:text-xl font-medium text-white text-white/90 dark:text-white'>
+              <h1 className='text-sm lg:text-base xl:text-xl font-medium text-white text-white/90 dark:text-white'>
                 TOP PICK  
               </h1>
             </div>
@@ -71,7 +71,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.8 }}
-          className="text-2xl md:text-4xl lg:text-6xl font-bold leading-tight text-center lg:text-left"
+          className="text-2xl md:text-4xl  xl:text-6xl font-bold leading-tight text-center lg:text-left"
         >
           <span className="text-center lg:text-left font-light">Find The 
           <span className='text-[#2C2F38] dark:text-[#00F5D4] font-bold'><br></br>Perfect Candidate </span>

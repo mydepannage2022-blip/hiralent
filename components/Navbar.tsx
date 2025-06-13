@@ -39,13 +39,13 @@ className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
 
     >
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex max-w-7xl justify-between items-center py-4">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
             <motion.div
               whileHover={{ rotate: 180 }}
               transition={{ duration: 0.3 }}
-              className="p-2 rounded-lg bg-gradient-to-r from-[#00F5D4] to-[#28196A]"
+              className="p-2 rounded-xl bg-gradient-to-r from-[#00F5D4] to-[#28196A]"
             >
               <Cpu className="h-6 w-6 text-white" />
             </motion.div>
@@ -55,22 +55,22 @@ className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8 w-full ">
+          <div className="hidden md:flex justify-end items-center space-x-8 w-full ">
             {navItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                   pathname === item.href
-                    ? 'gradient-text dark:text-[#00F5DA]'
-                    : 'gradient-text dark:text-white hover:text-white'
+                    ? 'text-[#28196A] dark:text-[#00F5DA]'
+                    : 'text-[#28196A] dark:text-white hover:text-white'
                 }`}
               >
                 {item.name}
                 {pathname === item.href && (
                   <motion.div
                     layoutId="navbar-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00F5DA] to-[#28196A] dark:bg-[#00F5DA] rounded-full"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#28196A] dark:bg-[#00F5DA] rounded-full"
                   />
                 )}
               </Link>

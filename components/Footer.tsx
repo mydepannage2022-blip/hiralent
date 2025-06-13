@@ -119,10 +119,10 @@ const Footer = () => {
                 href={social.href}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-xl dark:rounded-lg glass-effect bg-[#00F5DA] transition-colors duration-200"
+                className="p-2 rounded-xl dark:rounded-xl glass-effect bg-[#00F5DA] transition-colors duration-200"
                 aria-label={social.label}
               >
-                <social.icon className="h-5 w-5 text-[#28196A] dark:text-[#00F5DA] hover:text-[#28196A] transition-colors duration-200" />
+                <social.icon className="h-5 w-5 text-[#28196A] dark:text-[#28196A] hover:text-[#28196A] transition-colors duration-200" />
               </motion.a>
             ))}
           </div>

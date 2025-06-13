@@ -42,7 +42,7 @@ const Steps = () => {
     <section ref={ref} className="relative py-10 lg:py-20 px-4 z-9999999999999999999">
 
 
-      <div className="max-w-7xl mx-auto">
+      <div className="lg:max-w-4xl xl:max-w-7xl mx-auto">
   
 
         <motion.div
@@ -54,7 +54,7 @@ const Steps = () => {
           dark:shadow-lg pb-12 flex flex-col lg:flex-row py-8 gap-6 lg:gap-8"
         >
 
-       <div className='w-full lg:w-1/2 flex flex-col gap-2 justify-center items-center'>      
+       <div className='w-full lg:w-1/2 flex flex-col gap-2 justify-center items-center lg:items-start'>      
           <motion.h2
             variants={itemVariants}
             className="text-2xl md:text-5xl font-bold text-center lg:text-left"
@@ -79,7 +79,7 @@ const Steps = () => {
             <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300 bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25 shadow-2xl w-2/3 lg:w-2/5 text-xs lg:text-base"
+            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300 bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25 shadow-2xl w-2/3 xl:w-2/5 text-xs lg:text-base"
           >
             Begin Your Free Trial
           </motion.button>
@@ -90,21 +90,21 @@ const Steps = () => {
           variants={containerVariants}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
-          className="flex justify-center items-center gap-8 flex-wrap w-full lg:w-1/2"
+          className="flex justify-center items-center lg:gap-4 xl:gap-8 flex-wrap w-full lg:w-1/2"
         >
           {stats.map((stat, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
-              className="text-center p-6 ring-1 ring-[#2C2F38]/0 dark:ring-white/50 rounded-2xl hover:scale-105 transition-transform duration-300 w-full lg:w-1/4 shadow-lg bg-white/70 dark:bg-transparent backdrop-blur-sm shadow-2xl"
+              className="text-center p-6 ring-1 ring-[#2C2F38]/0 dark:ring-white/50 rounded-2xl hover:scale-105 transition-transform duration-300 w-full lg:w-1/3 xl:w-1/4 shadow-lg bg-white/70 dark:bg-transparent backdrop-blur-sm shadow-2xl"
             >
-              <div className="inline-flex items-center justify-center w-6 h-6 lg:w-12 lg:h-12 mb-4 rounded-full bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white text-base lg:text-2xl font-bold">
+              <div className="inline-flex items-center justify-center w-8 h-8 xl:w-12 xl:h-12 mb-4 rounded-full bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white text-base xl:text-2xl font-bold">
                 {stat.step}
               </div>
-              <div className="text-sm md:text-sm font-bold text-[#2C2F38]/90 dark:text-white mb-2">
+              <div className="text-xs xl:text-sm font-bold text-[#2C2F38]/90 dark:text-white mb-2">
                 {stat.value}
               </div>
-              <div className="text-xs lg:text-sm text-[#2C2F38]/70 dark:text-white/90 font-light">
+              <div className="text-xs xl:sm text-[#2C2F38]/70 dark:text-white/90 font-light">
                 {stat.label}
               </div>
             </motion.div>

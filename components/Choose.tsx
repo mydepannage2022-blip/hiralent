@@ -6,11 +6,11 @@ const Choose = () => {
   return (
     <div className='w-full flex justify-center items-center'>
       
-      <div className='w-5/6 lg:w-1/2 lg:max-w-4xl xl:max-w-7xl lg:w-4xl xl:w-7xl flex justify-center items-center flex flex-col lg:flex-row bg-tranparent pb-12 lg:pt-[150px] gap-16'>
+      <div className='w-5/6 lg:max-w-4xl xl:max-w-7xl lg:w-4xl xl:w-7xl flex justify-center items-center flex flex-col lg:flex-row bg-tranparent pb-12 lg:pt-[150px] gap-16'>
       
       
       
-        <div className='flex flex-col items-center lg:items-start justify-center w-full w-1/2 gap-8 bg-none dark:bg-tranparent dark:backdrop-blur-sm py-0 pt-8 lg:py-8 pr-0 lg:pr-8 rounded-3xl'>
+        <div className='w-full lg:w-1/2 flex flex-col items-center lg:items-start justify-center w-full w-1/2 gap-8 bg-none dark:bg-tranparent dark:backdrop-blur-sm py-0 pt-8 lg:py-8 pr-0 lg:pr-8 rounded-3xl'>
           <h1 className='text-2xl lg:text-5xl font-bold gradient-text dark:text-white text-center lg:text-left'>Why Choose <span className='gradient-text dark:text-[#00F5DA]'>Talenta</span></h1>
           <h4 className='text-base lg:text-lg font-medium text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Access The <span className='gradient-text dark:text-[#00F5DA]'>Fastest</span><br></br>
           <span className='gradient-text dark:text-[#00F5DA]'>Growing, Diverse </span>Telant Pool 
@@ -24,102 +24,102 @@ const Choose = () => {
           </motion.button>
         </div>
 
-        <div className='w-5/6 lg:w-1/2 flex justify-center flex-wrap gap-3 justify-center lg:justify-end'>
+        <div className='lg:w-1/2 flex justify-center flex-wrap gap-2 justify-center lg:justify-end'>
   
-          <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>SE</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>SE</p>
               <div className='flex flex-col justify-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>
        
-          <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>HB</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>HB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>
        
        
-          <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>AB</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>
        
 
-          <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>AB</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>
 
-             <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+             <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>AB</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AB</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs lg:textext-sm xl:t-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] lg:textext-xs xl:t-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>
 
-          <div className='w-[105px] md:w-1/2 lg:w-2/3 flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
+          <div className='w-[105px] md:w-1/2 lg:w-[47%] flex flex-col shadow-2xl rounded-xl dark:rounded-lg p-4 bg-white gap-3 cursor-pointer'>
             <div className='flex flex-col lg:flex-row justify-start items-center gap-3'>
-              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 lg:p-3 text-white text-xs lg:text-2xl text-center lg:text-left'>AZ</p>
+              <p className=' bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full p-2 xl:p-3 text-white text-xs xl:text-1xl text-center lg:text-left'>AZ</p>
               <div className='flex flex-col jusitfy-center items-start text-black '>
-                <h4 className='text-xs lg:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
-                <p className='text-[10px] lg:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
+                <h4 className='text-xs xl:text-base font-bold text-[#2C2F38]/90 dark:text-white text-center lg:text-left'>Software Engineer</h4>
+                <p className='text-[10px] xl:text-sm text-gray-500 text-center lg:text-left'>Hardcore Tech, Stanford</p>
               </div>
             </div>
             <div className='w-full flex justify-center items-center flex-wrap gap-1 md:gap-2 lg:gap-3 text-xs lg:text-sm'>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>AWS</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>Python</p>
-              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px]'>React</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>AWS</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>Python</p>
+              <p className='bg-[#00F5DA] rounded-full text-gray-600 p-[2px] lg:p-2 text-[6px] lg:text-[8px] xl:text-xs '>React</p>
             
             </div>
           </div>

@@ -24,7 +24,7 @@ export default function Home() {
       <Testimonials />
       {/* Additional Content Section */}
       <section className="mb-20 ">
-        <div className="max-w-7xl mx-auto text-center bg-white/70 dark:bg-transparent backdrop-blur-sm py-20 px-4 rounded-3xl">
+        <div className="lg:max-w-4xl xl:max-w-7xl mx-auto text-center bg-white/70 dark:bg-transparent backdrop-blur-sm py-20 px-4 rounded-3xl">
           <h2 className="text-4xl md:text-5xl font-bold mb-8">
             <span className="gradient-text dark:text-[#00F5DA]">Ready to Create?</span>
           </h2>
