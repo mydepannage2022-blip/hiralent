@@ -9,12 +9,12 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://huzaifa-iqbal.com'),
-  title: 'AlterMind Studio - Creative Digital Experiences',
+  title: 'Talenta recruite the best talent from whole world',
   description: 'We craft immersive digital experiences that blur the line between imagination and reality. 3D visualization, AR/VR development, and interactive web experiences.',
   keywords: 'digital agency, 3D visualization, AR/VR, interactive experiences, web development, creative studio',
   authors: [{ name: 'AlterMind Studio' }],
   openGraph: {
-    title: 'AlterMind Studio - Creative Digital Experiences',
+    title: 'Talenta recruite the best talent from whole world',
     description: 'Crafting immersive digital experiences with cutting-edge technology',
     type: 'website',
   },

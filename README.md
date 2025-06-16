@@ -1,4 +1,4 @@
-# AlterMind Studio – End-to-End Project Overview
+# Talenta – End-to-End Project Overview
 
 ## Table of Contents
 - [Project Structure](#project-structure)
