@@ -59,7 +59,7 @@ const Steps = () => {
             variants={itemVariants}
             className="text-2xl md:text-5xl font-bold text-center lg:text-left"
           >
-            <span className="gradient-text dark:text-[#00F5DA]">Find Candidate<span className='gradient-text dark:text-[#00F5DA]'> In 5 <br></br>Easy Steps</span> </span>
+            <span className="text-[#1B1B1B] dark:text-[#00F5DA]">Find Candidate<span className='text-[#1B1B1B] dark:text-[#00F5DA]'> In 5 <br></br>Easy Steps</span> </span>
           </motion.h2>
          
           <motion.h3
@@ -79,7 +79,7 @@ const Steps = () => {
             <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300 bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25 shadow-2xl w-2/3 xl:w-2/5 text-xs lg:text-base"
+            className="px-8 py-4 rounded-full font-semibold text-white transition-all duration-300 bg-[#1B1B1B] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] hover:shadow-blue-500/25 shadow-2xl w-2/3 xl:w-2/5 text-xs lg:text-base"
           >
             Begin Your Free Trial
           </motion.button>

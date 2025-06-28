@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+ import React, { useRef, useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -62,10 +62,10 @@ const Testimonials = () => {
 
   return (
     <div className="w-full flex justify-center items-center bg-transparent py-12 lg:pb-[150px]">
-      <div className="w-full lg:max-w-4xl xl:max-w-7xl px-4 flex flex-col lg:flex-row justify-between items-center gap-10">
+      <div className="w-full lg:max-w-4xl xl:max-w-7xl px-4 flex flex-row justify-between items-center gap-10">
         {/* Left content */}
         <div className="flex flex-col items-center lg:items-start gap-6 w-full lg:w-1/2 text-center lg:text-left">
-          <h1 className="text-2xl lg:text-5xl gradient-text dark:text-white font-bold">
+          <h1 className="text-2xl lg:text-5xl text-[#1B1B1B] dark:text-white font-bold">
             What our <span className="dark:text-[#00F5DA]">Client says</span>
           </h1>
           <p className="text-sm lg:text-base font-light">
@@ -74,16 +74,16 @@ const Testimonials = () => {
           </p>
 
           {/* Navigation Buttons */}
-          <div className="flex jusitfy-center items-center gap-5 mt-4 hidden lg:block">
+          <div className="flex jusitfy-center items-center gap-4 mt-4 hidden lg:block">
             <button
               ref={prevRef}
-              className="bg-[#28196A] dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white px-4 py-2 rounded dark:hover:bg-[#00dbc0] transition"
+              className="bg-[#1B1B1B] dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white p-2 rounded-full dark:hover:bg-[#00dbc0] mr-3"
             >
               <ChevronLeft />
             </button>
             <button
               ref={nextRef}
-              className="bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] text-white px-4 py-2 rounded dark:hover:bg-[#00dbc0] transition"
+              className="bg-[#1B1B1B] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] text-white p-2 rounded-full dark:hover:bg-[#00dbc0]"
             >
               <ChevronRight />
             </button>
@@ -92,7 +92,7 @@ const Testimonials = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-8 py-4 bg-[#28196A]  dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full font-semibold text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 "
+            className="px-8 py-4 bg-[#1B1B1B]  dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] rounded-full font-semibold text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 "
           >
             Begin Your Free Trial
           </motion.button>
@@ -153,16 +153,16 @@ const Testimonials = () => {
             </Swiper>
             
           )}
-          <div className="flex gap-4 mt-4 sm:block lg:hidden">
+          <div className="flex gap-4 mt-4 sm:block lg:hidden "> 
             <button
               ref={prevRef}
-              className="bg-[#28196A] dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white px-4 py-2 rounded dark:hover:bg-[#00dbc0] transition"
+              className="bg-[#1B1B1B] dark:bg-gradient-to-r from-[#00F5DA] to-[#28196A] text-white p-2 rounded-full dark:hover:bg-[#00dbc0]"
             >
               <ChevronLeft />
             </button>
             <button
               ref={nextRef}
-              className="bg-[#28196A] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] text-white px-4 py-2 rounded dark:hover:bg-[#00dbc0] transition"
+              className="bg-[#1B1B1B] dark:bg-gradient-to-r from-[#28196A] to-[#00F5DA] text-white p-2 rounded-full dark:hover:bg-[#00dbc0]"
             >
               <ChevronRight />
             </button>

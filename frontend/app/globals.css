@@ -1,9 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,100..700;1,100..700&display=swap');
+
+
+
+body {
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+
 
 :root {
-  --background: #ffffff;
+  --background: #FFFBF4;
   --background-solid: 0 0% 100%;
   --foreground: 240 10% 3.9%;
 

@@ -28,13 +28,14 @@ const Navbar = () => {
   ];
 
   return (
+    // <div className='w-[100vw] bg-[#FFFBF4]'>
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#FFFBF4] ${
   scrolled
-    ? 'bg-[#00F5D4]/10 dark:bg-transparent backdrop-blur-md shadow-lg max-w-7xl mx-auto mt-4 rounded-2xl sm:w-9/10'
-    : 'bg-transparent max-w-7xl mx-auto mt-0 rounded-2xl'
+    ? 'bg-[#FFFBF4] dark:bg-transparent backdrop-blur-md shadow-lg max-w-[100vw] mx-auto rounded-none sm:w-9/10'
+    : 'dark:bg-transparent max-w-[100vw] mx-auto mt-0 rounded-2xl bg-[#FFFBF4] rounded-none'
 }`}
 
     >
@@ -45,7 +46,7 @@ className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
             <motion.div
               whileHover={{ rotate: 180 }}
               transition={{ duration: 0.3 }}
-              className="p-2 rounded-xl bg-gradient-to-r from-[#00F5D4] to-[#28196A]"
+              className="p-2 rounded-xl bg-[#28196A] dark:bg-gradient-to-r from-[#00F5D4] to-[#28196A]"
             >
               <Cpu className="h-6 w-6 text-white" />
             </motion.div>
@@ -149,6 +150,7 @@ className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         )}
       </AnimatePresence>
     </motion.nav>
+
   );
 };
 

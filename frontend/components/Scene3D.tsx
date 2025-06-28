@@ -80,7 +80,7 @@ const Scene3D = () => {
   }, []);
 
   return (
-    <div className="fixed hidden lg:block top-0 right-0 h-screen sm:w-[100vw] lg:w-[50vw] xl:w-[65vw] -z-10">
+    <div className="fixed hidden lg:block top-0 right-0 h-screen sm:w-[100vw] lg:w-[50vw] xl:w-[65vw] -z-9999999999999999999999999999999999tes">
       <Canvas dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
         <PerspectiveCamera makeDefault position={[0, 0, 10]} fov={50} />
         <ambientLight intensity={0.3} />
