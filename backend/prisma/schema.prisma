@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agency {
+  agency_id             String   @id @default(uuid())
+  name                  String
+  billing_contact_email String
+  owner_user_id         String
+  status                String
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  users        User[]
+  jobs         RecruiterJob[]
+  subscription AgencySubscription?
+  webhooks     WebhookEndpoint[]
+}
+
+model User {
+  user_id           String    @id @default(uuid())
+  agency_id         String?
+  email             String    @unique
+  password_hash     String
+  full_name         String
+  role              String
+  is_email_verified Boolean
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  last_login_at     DateTime?
+
+  agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile    CandidateProfile?
+  recruiterProfile    RecruiterProfile?
+  auditLogs           AdminAuditLog[]
+  jobsPosted          RecruiterJob[]
+  jobApplications     JobApplication[]
+  assessments         SkillAssessment[]
+  aiInterviews        AIInterviewResult[]
+  notifications       Notification[]
+  progressUpdates     CandidateProgressTracker[]
+  progressUpdatesByMe CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+}
+
+model CandidateProfile {
+  candidate_id        String   @id
+  resume_url          String?
+  video_intro_url     String?
+  skills              String?
+  education           String?
+  experience          String?
+  preferred_locations String?
+  languages           String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user User @relation(fields: [candidate_id], references: [user_id])
+}
+
+model RecruiterProfile {
+  recruiter_id     String   @id
+  job_title        String?
+  contact_number   String?
+  linkedin_profile String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user User @relation(fields: [recruiter_id], references: [user_id])
+}
+
+model AdminAuditLog {
+  log_id       String   @id @default(uuid())
+  admin_id     String
+  action_type  String
+  target_table String
+  target_id    String
+  description  String?
+  created_at   DateTime @default(now())
+
+  admin User @relation(fields: [admin_id], references: [user_id])
+}
+
+model RolePermission {
+  permission_id String   @id @default(uuid())
+  role_name     String
+  module        String
+  access_level  String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+}
+
+model RecruiterJob {
+  job_id          String   @id @default(uuid())
+  recruiter_id    String
+  agency_id       String
+  title           String
+  location        String
+  description     String
+  salary_range    String?
+  required_skills String?
+  status          String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  recruiter        User                       @relation(fields: [recruiter_id], references: [user_id])
+  agency           Agency                     @relation(fields: [agency_id], references: [agency_id])
+  applications     JobApplication[]
+  progressTrackers CandidateProgressTracker[]
+  assessments      SkillAssessment[]
+}
+
+model JobApplication {
+  application_id String   @id @default(uuid())
+  candidate_id   String
+  job_id         String
+  status         String
+  cover_letter   String?
+  applied_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  candidate User               @relation(fields: [candidate_id], references: [user_id])
+  job       RecruiterJob       @relation(fields: [job_id], references: [job_id])
+  interview AIInterviewResult?
+}
+
+model CandidateProgressTracker {
+  progress_id  String   @id @default(uuid())
+  candidate_id String
+  job_id       String
+  stage        String
+  updated_by   String
+  notes        String?
+  updated_at   DateTime @default(now())
+
+  candidate User         @relation(fields: [candidate_id], references: [user_id])
+  updatedBy User         @relation("ProgressUpdatedBy", fields: [updated_by], references: [user_id])
+  job       RecruiterJob @relation(fields: [job_id], references: [job_id])
+}
+
+model AIInterviewResult {
+  interview_id   String   @id @default(uuid())
+  application_id String   @unique
+  interview_type String
+  score          String?
+  video_url      String?
+  feedback       String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  application  JobApplication @relation(fields: [application_id], references: [application_id])
+  candidate    User           @relation(fields: [candidate_id], references: [user_id])
+  candidate_id String
+}
+
+model SkillAssessment {
+  assessment_id String    @id @default(uuid())
+  candidate_id  String
+  job_id        String
+  provider      String
+  score         String?
+  status        String
+  completed_at  DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  candidate User         @relation(fields: [candidate_id], references: [user_id])
+  job       RecruiterJob @relation(fields: [job_id], references: [job_id])
+}
+
+model Notification {
+  notification_id String   @id @default(uuid())
+  user_id         String
+  type            String
+  message         String
+  is_read         Boolean  @default(false)
+  sent_via        String
+  created_at      DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id])
+}
+
+model SubscriptionPlan {
+  plan_id                  String   @id @default(uuid())
+  name                     String
+  price_monthly_usd        Decimal
+  price_annually_usd       Decimal
+  job_post_limit           Int
+  ai_interview_limit       Int
+  features_included        String
+  is_publicly_available    Boolean
+  stripe_price_id_monthly  String
+  stripe_price_id_annually String
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+
+  agencySubscriptions AgencySubscription[]
+}
+
+model AgencySubscription {
+  agency_subscription_id String    @id @default(uuid())
+  agency_id              String    @unique
+  plan_id                String
+  stripe_subscription_id String
+  status                 String
+  current_period_start   DateTime
+  current_period_end     DateTime
+  trial_ends_at          DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  agency Agency           @relation(fields: [agency_id], references: [agency_id])
+  plan   SubscriptionPlan @relation(fields: [plan_id], references: [plan_id])
+}
+
+model WebhookEndpoint {
+  webhook_id                  String    @id @default(uuid())
+  agency_id                   String
+  url                         String
+  secret_key                  String
+  subscribed_event_types      String
+  status                      String
+  last_successful_delivery_at DateTime?
+  last_failed_delivery_at     DateTime?
+  created_at                  DateTime  @default(now())
+  updated_at                  DateTime  @updatedAt
+
+  agency Agency @relation(fields: [agency_id], references: [agency_id])
+}

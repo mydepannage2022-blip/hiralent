@@ -5,7 +5,12 @@ dotenv.config();
 
 const app = express();
 
+app.use(express.json()); // for JSON request body
+
 // routes
+import authRoutes from './routes/auth.routes';
+app.use('/auth', authRoutes);
+
 app.get('/', (req: Request, res: Response) => {
   res.send("backend running successfully");
 });
