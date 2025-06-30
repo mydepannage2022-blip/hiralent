@@ -12,7 +12,8 @@ import {
 } from "../types/auth.types";
 
 export const signup = async (input: SignupInput) => {
-  const { email, password, full_name, role, agency_id } = input;
+  const { email, password, full_name, role } = input;
+
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) throw new Error("Email already exists");
 
@@ -23,24 +24,29 @@ export const signup = async (input: SignupInput) => {
       password_hash,
       full_name,
       role,
-      agency_id,
+      agency_id: null, // ✅ Default is null
       is_email_verified: false,
     },
   });
 
-  const token = generateToken({ user_id: user.user_id, role: user.role, agency_id: user.agency_id });
-  await sendVerificationEmail(user.email, user.user_id); // helper below
+  const token = generateToken({ user_id: user.user_id, role: user.role });
+  await sendVerificationEmail(user.email, user.user_id);
   return { user, token };
 };
 
 export const login = async ({ email, password }: LoginInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.is_email_verified) throw new Error("Invalid email or unverified account");
+  if (!user) throw new Error("User not found");
 
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) throw new Error("Invalid credentials");
 
-  const token = generateToken({ user_id: user.user_id, role: user.role, agency_id: user.agency_id });
+  const token = generateToken({
+    user_id: user.user_id,
+    role: user.role,
+    agency_id: user.agency_id,
+  });
+
   return { user, token };
 };
 
