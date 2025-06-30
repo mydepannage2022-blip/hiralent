@@ -1,10 +1,18 @@
-import { Router } from "express";
-import { signupController, loginController, oauthController } from "../controller/auth.controller";
+import express from "express";
+import {
+  signupController,
+  loginController,
+  verifyEmailController,
+  forgotPasswordController,
+  resetPasswordController,
+} from "../controller/auth.controller";
 
-const router = Router();
+const router = express.Router();
 
 router.post("/signup", signupController);
 router.post("/login", loginController);
-router.post("/oauth", oauthController); // for Google/Facebook OAuth
+router.get("/verify-email", verifyEmailController);
+router.post("/forgot-password", forgotPasswordController);
+router.post("/reset-password", resetPasswordController);
 
 export default router;

@@ -1,30 +1,18 @@
 import prisma from "../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { verifyFirebaseToken } from "../utils/firebase";
+import { sendEmail } from "../utils/email.util";
 import { generateToken } from "../utils/jwt.util";
+import {
+  SignupInput,
+  LoginInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  VerifyEmailInput,
+} from "../types/auth.types";
 
-// Define interface for signup input
-interface SignupInput {
-  email: string;
-  password: string;
-  full_name: string;
-  role: string;
-  agency_id?: string;
-}
-
-// Define interface for login input
-interface LoginInput {
-  email: string;
-  password: string;
-}
-
-// Define interface for OAuth input
-interface OAuthInput {
-  firebase_token: string;
-}
-
-export const signup = async ({ email, password, full_name, role, agency_id }: SignupInput) => {
+export const signup = async (input: SignupInput) => {
+  const { email, password, full_name, role, agency_id } = input;
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) throw new Error("Email already exists");
 
@@ -41,6 +29,7 @@ export const signup = async ({ email, password, full_name, role, agency_id }: Si
   });
 
   const token = generateToken({ user_id: user.user_id, role: user.role, agency_id: user.agency_id });
+  await sendVerificationEmail(user.email, user.user_id); // helper below
   return { user, token };
 };
 
@@ -55,24 +44,44 @@ export const login = async ({ email, password }: LoginInput) => {
   return { user, token };
 };
 
-export const handleOAuth = async ({ firebase_token }: OAuthInput) => {
-  const decoded = await verifyFirebaseToken(firebase_token); // decode using Firebase Admin SDK
+export const sendVerificationEmail = async (email: string, userId: string) => {
+  const token = generateToken({ userId }, "15m");
+  const link = `https://yourdomain.com/verify-email?token=${token}`;
+  await sendEmail({
+    to: email,
+    subject: "Verify your email",
+    html: `Click <a href="${link}">here</a> to verify your account.`,
+  });
+};
 
-if (!decoded.email) {
-  throw new Error("OAuth token does not contain a valid email");
-}
+export const verifyEmail = async ({ token }: VerifyEmailInput) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+  const user = await prisma.user.update({
+    where: { user_id: decoded.userId },
+    data: { is_email_verified: true },
+  });
+  return user;
+};
 
-const user = await prisma.user.upsert({
-  where: { email: decoded.email },
-  update: {},
-  create: {
-    email: decoded.email,
-    full_name: decoded.name ?? "OAuth User",
-    is_email_verified: true,
-    password_hash: "oauth",
-    role: "candidate",
-  },
-});
-  const token = generateToken({ user_id: user.user_id, role: user.role, agency_id: user.agency_id });
-  return { user, token };
+export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("User not found");
+
+  const token = generateToken({ userId: user.user_id }, "15m");
+  const link = `https://yourdomain.com/reset-password?token=${token}`;
+  await sendEmail({
+    to: email,
+    subject: "Reset your password",
+    html: `Click <a href="${link}">here</a> to reset your password.`,
+  });
+};
+
+export const resetPassword = async ({ token, newPassword }: ResetPasswordInput) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+  const hash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { user_id: decoded.userId },
+    data: { password_hash: hash },
+  });
+  return { success: true };
 };
