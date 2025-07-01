@@ -88,11 +88,18 @@ model AdminAuditLog {
 
 model RolePermission {
   permission_id String   @id @default(uuid())
-  role_name     String
-  module        String
-  access_level  String
+  role_name     String   // e.g. "admin", "candidate", "recruiter"
+  module        String   // e.g. "job_posting", "audit_logs", "subscriptions"
+  access_level  AccessLevel
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
+}
+
+enum AccessLevel {
+  none
+  read
+  write
+  manage
 }
 
 model RecruiterJob {
