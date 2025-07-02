@@ -2,7 +2,7 @@ export interface SignupInput {
   email: string;
   password: string;
   full_name: string;
-  role: "candidate" | "recruiter" | "admin";
+  role: "candidate" | "recruiter" | "admin" | "agency";
   agency_id?: string;
 }
 

@@ -6,13 +6,21 @@ import {
   forgotPasswordController,
   resetPasswordController,
 } from "../controller/auth.controller";
+import { validateBody } from "../middlewares/validateBody.middleware";
+import { limiter } from "../middlewares/rateLimiter.middleware";
+import {
+  SignupSchema,
+  LoginSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+} from "../validation/auth.schema"; // Assuming Zod/Joi schema files
 
 const router = express.Router();
 
-router.post("/signup", signupController);
-router.post("/login", loginController);
+router.post("/signup", validateBody(SignupSchema), signupController);
+router.post("/login", validateBody(LoginSchema), loginController);
 router.get("/verify-email", verifyEmailController);
-router.post("/forgot-password", forgotPasswordController);
-router.post("/reset-password", resetPasswordController);
+router.post("/forgot-password", limiter, validateBody(ForgotPasswordSchema), forgotPasswordController);
+router.post("/reset-password", validateBody(ResetPasswordSchema), resetPasswordController);
 
 export default router;
