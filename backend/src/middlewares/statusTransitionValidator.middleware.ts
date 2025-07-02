@@ -6,15 +6,23 @@ const validTransitions = {
   interviewing: ["hired", "rejected"],
 };
 
-export const statusTransitionValidator = async (req: Request, res: Response, next: NextFunction) => {
+export const statusTransitionValidator = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
   const { previousStatus, newStatus } = req.body;
 
-  const allowedNextStatuses = (validTransitions as Record<string, string[]>)[previousStatus];
+  const allowedNextStatuses =
+    (validTransitions as Record<string, string[]>)[previousStatus];
 
   if (!allowedNextStatuses?.includes(newStatus)) {
-    return res
+    res
       .status(400)
-      .json({ message: `Invalid status transition: ${previousStatus} → ${newStatus}` });
+      .json({
+        message: `Invalid status transition: ${previousStatus} → ${newStatus}`,
+      });
+    return; // ✅ return void
   }
 
   next();
