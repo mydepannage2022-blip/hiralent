@@ -1,6 +1,4 @@
 import "express";
-
-// Shared user payload (from JWT)
 interface AuthUser {
   user_id: string;
   role: "candidate" | "recruiter" | "admin" | "superadmin" | "agency" | string;
@@ -10,9 +8,14 @@ interface AuthUser {
 
 declare module "express-serve-static-core" {
   interface Request {
-    user?: AuthUser; // available after checkAuth middleware
+    user?: AuthUser;
+    validatedBody?: any;
+    sanitizedHTML?: string;
 
-    // If you're injecting parsed data in middlewares, you can extend:
-    validatedBody?: any; // or a generic type if you use Zod/Joi validation
+    /** ✅ multer's file type */
+    file?: Express.Multer.File;
+
+    /** ✅ optional: if you ever allow multiple file uploads */
+    files?: Express.Multer.File[];
   }
 }
