@@ -8,19 +8,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// new schema
 model Agency {
-  agency_id             String   @id @default(uuid())
+  agency_id             String    @id @default(uuid())
   name                  String
+  website               String? // NEW
   billing_contact_email String
   owner_user_id         String
+  logo_url              String? // NEW
   status                String
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  approved_by           String? // NEW
+  approved_at           DateTime? // NEW
+  approval_notes        String? // NEW
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
 
-  users        User[]
-  jobs         RecruiterJob[]
-  subscription AgencySubscription?
-  webhooks     WebhookEndpoint[]
+  users                User[]
+  jobs                 RecruiterJob[]
+  subscription         AgencySubscription?
+  webhooks             WebhookEndpoint[]
+  recruiterInvitations RecruiterInvitation[]
 }
 
 model User {
@@ -31,21 +38,28 @@ model User {
   full_name         String
   role              String
   is_email_verified Boolean
+  phone_number      String? // NEW
+  position          String? // NEW
+  linkedin_url      String? // NEW
+  company_role      String? // NEW
+  branding_notes    String? // NEW
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
 
-  agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
-  candidateProfile    CandidateProfile?
-  recruiterProfile    RecruiterProfile?
-  auditLogs           AdminAuditLog[]
-  jobsPosted          RecruiterJob[]
-  jobApplications     JobApplication[]
-  assessments         SkillAssessment[]
-  aiInterviews        AIInterviewResult[]
-  notifications       Notification[]
-  progressUpdates     CandidateProgressTracker[]
-  progressUpdatesByMe CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+  agency                   Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile         CandidateProfile?
+  recruiterProfile         RecruiterProfile?
+  agencyAdminProfile       AgencyAdminProfile?
+  auditLogs                AdminAuditLog[]
+  jobsPosted               RecruiterJob[]
+  jobApplications          JobApplication[]
+  assessments              SkillAssessment[]
+  aiInterviews             AIInterviewResult[]
+  notifications            Notification[]
+  progressUpdates          CandidateProgressTracker[]
+  progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+  recruiterInvitationsSent RecruiterInvitation[]      @relation("RecruiterInvites")
 }
 
 model CandidateProfile {
@@ -74,6 +88,19 @@ model RecruiterProfile {
   user User @relation(fields: [recruiter_id], references: [user_id])
 }
 
+model AgencyAdminProfile {
+  admin_id       String   @id
+  phone_number   String?
+  position       String?
+  linkedin_url   String?
+  company_role   String?
+  branding_notes String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user User @relation(fields: [admin_id], references: [user_id])
+}
+
 model AdminAuditLog {
   log_id       String   @id @default(uuid())
   admin_id     String
@@ -87,12 +114,12 @@ model AdminAuditLog {
 }
 
 model RolePermission {
-  permission_id String   @id @default(uuid())
-  role_name     String   // e.g. "admin", "candidate", "recruiter"
-  module        String   // e.g. "job_posting", "audit_logs", "subscriptions"
+  permission_id String      @id @default(uuid())
+  role_name     String
+  module        String
   access_level  AccessLevel
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
 }
 
 enum AccessLevel {
@@ -238,4 +265,20 @@ model WebhookEndpoint {
   updated_at                  DateTime  @updatedAt
 
   agency Agency @relation(fields: [agency_id], references: [agency_id])
+}
+
+model RecruiterInvitation {
+  invitation_id String   @id @default(uuid())
+  agency_id     String
+  inviter_id    String
+  email         String
+  full_name     String
+  position      String?
+  status        String
+  expires_at    DateTime
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  agency  Agency @relation(fields: [agency_id], references: [agency_id])
+  inviter User   @relation("RecruiterInvites", fields: [inviter_id], references: [user_id])
 }

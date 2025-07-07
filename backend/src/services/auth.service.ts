@@ -24,7 +24,7 @@ export const signup = async (input: SignupInput) => {
       password_hash,
       full_name,
       role,
-      agency_id: null, // ✅ Default is null
+      agency_id: null, 
       is_email_verified: false,
     },
   });

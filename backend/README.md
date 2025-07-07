@@ -1,134 +1,40 @@
-# Talenta – Full Stack AI-Ready Project Documentation
+# Talenta – Backend (Express + TypeScript + Prisma + MongoDB) – Complete Documentation
 
-A comprehensive, modern full-stack web application using Next.js (frontend) and Express.js with TypeScript (backend). This README is designed for AI model training and deep project understanding, covering every detail of the codebase, especially the backend, including all modules, middlewares, utilities, types, services, and recent updates.
-
----
-
-## Table of Contents
-
-- [Project Headline](#project-headline)
-- [Project Summary](#project-summary)
-- [Project Structure](#project-structure)
-- [Tech Stack](#tech-stack)
-- [Setup Instructions](#setup-instructions)
-- [Backend: End-to-End Details](#backend-end-to-end-details)
-  - [Environment Variables](#environment-variables)
-  - [Database Layer](#database-layer)
-  - [Middlewares](#middlewares)
-  - [Utils](#utils)
-  - [Validation](#validation)
-  - [Types](#types)
-  - [Controllers](#controllers)
-  - [Services](#services)
-  - [Routes](#routes)
-  - [Models](#models)
-  - [Implemented Features](#implemented-features)
-  - [Minor Details & Best Practices](#minor-details--best-practices)
-- [Frontend (WIP)](#frontend-wip)
-- [Contact](#contact)
-- [Notes](#notes)
+This section documents the **entire backend** of the Talenta project, including all implemented features, folder structure, middlewares, utilities, services, controllers, routes, models, and database integrations. Every detail is included for AI model training and deep developer onboarding.
 
 ---
 
-## Project Headline
-
-**Talenta:**  
-A robust, scalable, and interactive full-stack platform built for modern web experiences, leveraging TypeScript on both backend and frontend, with a focus on modularity, maintainability, and AI-readiness.
-
----
-
-## Project Summary
-
-Talenta is a full-stack web application that combines a TypeScript-powered Express.js backend with a Next.js frontend. The project delivers a visually rich, highly interactive, and scalable platform, with a clean separation of concerns and best practices for code quality, security, and extensibility. The codebase is structured for easy onboarding, rapid development, and future AI integrations.
-
----
-
-## Project Structure
+## Backend Structure
 
 ```
-talenta/
+backend/
 │
-├── backend/
-│   ├── .env
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── nodemon.json
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   └── src/
-│       ├── app.ts
-│       ├── server.ts
-│       ├── controller/
-│       ├── generated/
-│       ├── lib/
-│       ├── middlewares/
-│       ├── models/
-│       ├── routes/
-│       ├── services/
-│       ├── types/
-│       ├── utils/
-│       └── validation/
-│
-└── frontend/
-    ├── app/
-    ├── components/
-    ├── hooks/
-    ├── lib/
-    ├── public/
-    ├── styles/
-    ├── .eslintrc.json
-    ├── next.config.js
-    ├── package.json
-    ├── tailwind.config.ts
-    ├── tsconfig.json
-    └── README.md
+├── .env                  # Environment variables (DB, JWT, SMTP, etc.)
+├── package.json
+├── tsconfig.json
+├── nodemon.json
+├── config/
+│   └── firebase-adminsdk.json
+├── prisma/
+│   ├── schema.prisma     # Prisma ORM schema (PostgreSQL)
+│   └── migrations/      # Prisma migrations
+└── src/
+    ├── app.ts           # Express app setup
+    ├── server.ts        # Server entry point
+    ├── controller/      # All route controllers
+    ├── generated/       # Prisma generated client
+    ├── lib/             # DB clients (prisma.ts, mongo.ts)
+    ├── middlewares/     # All Express middlewares
+    ├── routes/          # All Express routers
+    ├── services/        # Business logic/services
+    ├── types/           # Custom TypeScript types/interfaces
+    ├── utils/           # Utility/helper functions
+    └── validation/      # Zod schemas for validation
 ```
 
 ---
 
-## Tech Stack
-
-- **Backend:** Node.js, Express.js, TypeScript, Prisma (PostgreSQL), MongoDB, dotenv, nodemon
-- **Frontend:** Next.js (React, TypeScript), Tailwind CSS, Framer Motion, Lucide Icons, Three.js
-- **UI/UX:** Tailwind CSS, Radix UI, Swiper.js (testimonials)
-- **Quality:** ESLint, Prettier, TypeScript strict mode
-- **Other:** Environment variables, modular file structure, RESTful API
-
----
-
-## Setup Instructions
-
-### Backend
-
-1. **Install dependencies:**
-   ```sh
-   cd backend
-   npm install
-   ```
-2. **Configure environment:**
-   - Copy `.env.example` to `.env` and set your variables (see [Environment Variables](#environment-variables)).
-3. **Run the server in development:**
-   ```sh
-   npm run dev
-   ```
-   (Uses `nodemon` and `ts-node` for hot-reloading TypeScript)
-4. **Build and run for production:**
-   ```sh
-   npm run build
-   npm start
-   ```
-   The backend runs on `http://localhost:3001` (or as set in `.env`).
-
-### Frontend
-
-> **Note:** Frontend is under active development and will be documented in detail after backend stabilization.
-
----
-
-## Backend: End-to-End Details
-
-### Environment Variables
+## Environment Variables (`.env`)
 
 - `PORT` – Express server port
 - `DATABASE_URL` – PostgreSQL connection string (for Prisma)
@@ -139,20 +45,21 @@ talenta/
 
 ---
 
-### Database Layer
+## Database Layer
 
-#### Prisma (PostgreSQL)
+### Prisma (PostgreSQL)
+- **Location:** `prisma/schema.prisma`
 - **Models:** Agency, User, CandidateProfile, RecruiterProfile, AgencyAdminProfile, RecruiterJob, JobApplication, CandidateProgressTracker, AIInterviewResult, SkillAssessment, Notification, SubscriptionPlan, AgencySubscription, WebhookEndpoint, AdminAuditLog, etc.
 - **Usage:** All main business data (users, jobs, agencies, applications, etc.) is stored in PostgreSQL and accessed via Prisma ORM (`src/lib/prisma.ts`).
 
-#### MongoDB
+### MongoDB
 - **Location:** `src/lib/mongo.ts`
 - **Usage:** Used for storing file metadata (e.g., CV uploads) and other unstructured data.
 - **Connection:** Uses `MONGO_URI` and exports a connected DB instance.
 
 ---
 
-### Middlewares
+## Middlewares (`src/middlewares/`)
 
 | File                                 | Purpose & Details                                                                                   |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------|
@@ -170,7 +77,7 @@ talenta/
 
 ---
 
-### Utils
+## Utilities (`src/utils/`)
 
 | File                        | Purpose & Details                                                                                 |
 |-----------------------------|---------------------------------------------------------------------------------------------------|
@@ -184,7 +91,7 @@ talenta/
 
 ---
 
-### Validation
+## Validation (`src/validation/`)
 
 - **Zod schemas** for validating request bodies, e.g.:
   - `user.schema.ts` – User profile creation/update
@@ -193,15 +100,7 @@ talenta/
 
 ---
 
-### Types
-
-- **Custom TypeScript Types:**  
-  - User, AuthPayload, APIResponse, Agency-related types, etc.
-  - Used for strong typing in controllers, middlewares, and models.
-
----
-
-### Controllers
+## Controllers (`src/controller/`)
 
 | File                        | Purpose & Details                                                                                 |
 |-----------------------------|---------------------------------------------------------------------------------------------------|
@@ -214,7 +113,7 @@ talenta/
 
 ---
 
-### Services
+## Services (`src/services/`)
 
 - **Business logic** for each domain, e.g.:
   - `agencyAuth.service.ts` – All agency onboarding, approval, recruiter invitation, admin profile logic.
@@ -224,7 +123,7 @@ talenta/
 
 ---
 
-### Routes
+## Routes (`src/routes/`)
 
 - **Express routers** for each domain, e.g.:
   - `auth.routes.ts` – `/api/v1/auth`
@@ -236,18 +135,7 @@ talenta/
 
 ---
 
-### Models
-
-- **User Model:**  
-  - PostgreSQL schema for user (name, email, password hash, roles, etc.) via Prisma.
-- **Agency Model:**  
-  - PostgreSQL schema for agency (name, status, owner, etc.).
-- **Other Models:**  
-  - As needed for jobs, applications, admin profiles, etc.
-
----
-
-### Implemented Features
+## Notable Implemented Features
 
 - **JWT Authentication:** All protected routes require a valid JWT in the `Authorization` header.
 - **Role-Based Access Control:** Only users with the correct role can access certain endpoints (e.g., only recruiters can post jobs).
@@ -280,7 +168,27 @@ talenta/
 
 ---
 
-### Minor Details & Best Practices
+## Example: Agency Onboarding Flow
+
+1. **User creates agency:**  
+   - `POST /api/v1/agency`  
+   - Agency is created with status "pending".
+   - All super admins are notified via email.
+
+2. **Super admin approves agency:**  
+   - `PATCH /api/v1/agency/:id/approve`  
+   - Agency status set to "active", owner notified via email.
+
+3. **Agency admin invites recruiter:**  
+   - `POST /api/v1/agency/invite-recruiter`  
+   - Invitation email sent with secure token.
+
+4. **Recruiter accepts invitation:**  
+   - Follows link, signs up, joins agency.
+
+---
+
+## Minor Details & Best Practices
 
 - **TypeScript everywhere:** All backend code is strictly typed.
 - **Environment variables:** All secrets/configs are loaded from `.env`.
@@ -295,10 +203,12 @@ talenta/
 
 ---
 
-## Frontend (WIP)
+## How to Extend
 
-> The frontend (Next.js, React, Tailwind, etc.) is under active development.  
-> Full documentation will be added after backend stabilization.
+- Add new models to `prisma/schema.prisma` and run `npx prisma migrate dev`.
+- Add new routes/controllers/services as needed, following the existing structure.
+- Add new middlewares for additional security or business logic.
+- Use Zod for all new validation needs.
 
 ---
 
@@ -310,9 +220,4 @@ Email: [your-email@example.com]
 
 ---
 
-## Notes
-
-- Node.js (v18+) and npm must be installed.
-- Update dependencies regularly for security and new features.
-- For any issues, check logs in the terminal or browser console.
-- This README is designed for both developer onboarding and AI model training—every detail is included for maximum
+**This backend is fully up-to-date as of July 2025. For frontend documentation, see the next section when available.**

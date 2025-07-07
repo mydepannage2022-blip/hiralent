@@ -1,6 +1,6 @@
 import { MongoClient } from "mongodb";
 
-const uri = process.env.MONGO_URI!;
+const uri = `${process.env.MONGO_URI!}/talenta`;
 const client = new MongoClient(uri);
 
 export const mongo = client.db(); // 👈 export the DB instance
