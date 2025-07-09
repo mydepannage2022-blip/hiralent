@@ -60,6 +60,15 @@ model User {
   progressUpdates          CandidateProgressTracker[]
   progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
   recruiterInvitationsSent RecruiterInvitation[]      @relation("RecruiterInvites")
+  
+  // Candidate Flow Phase 1 Relations
+  candidateDocuments       CandidateDocument[]        @relation("CandidateDocuments")
+  candidateSkills          CandidateSkill[]          @relation("CandidateSkills")
+  skillExtractions         SkillExtraction[]         @relation("SkillExtractions")
+  careerPredictions        CareerPrediction[]        @relation("CareerPredictions")
+  jobRecommendations       JobRecommendation[]       @relation("JobRecommendations")
+  candidateVector          CandidateVector?          @relation("CandidateVector")
+  profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
 }
 
 model CandidateProfile {
@@ -147,6 +156,8 @@ model RecruiterJob {
   applications     JobApplication[]
   progressTrackers CandidateProgressTracker[]
   assessments      SkillAssessment[]
+  jobRecommendations JobRecommendation[]      @relation("JobRecommendations")
+  jobVector        JobVector?                 @relation("JobVector")
 }
 
 model JobApplication {
@@ -281,4 +292,148 @@ model RecruiterInvitation {
 
   agency  Agency @relation(fields: [agency_id], references: [agency_id])
   inviter User   @relation("RecruiterInvites", fields: [inviter_id], references: [user_id])
+}
+
+// ========== CANDIDATE FLOW PHASE 1 MODELS ==========
+
+// Model for storing uploaded documents (CVs, resumes)
+model CandidateDocument {
+  document_id      String   @id @default(uuid())
+  candidate_id     String
+  file_name        String
+  file_path        String
+  file_type        String   // pdf, docx, etc.
+  file_size        Int
+  upload_status    String   // uploaded, processing, processed, failed
+  extraction_status String? // pending, completed, failed
+  processed_text   String?  // extracted text from document
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  candidate        User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id])
+  skillExtractions SkillExtraction[]
+  candidateSkills  CandidateSkill[]  @relation("SkillsFromDocument")
+}
+
+// Model for AI-extracted skills from documents
+model CandidateSkill {
+  skill_id       String   @id @default(uuid())
+  candidate_id   String
+  skill_name     String
+  skill_category String?  // technical, soft, language, etc.
+  proficiency    String?  // beginner, intermediate, advanced, expert
+  years_experience Int?
+  confidence_score Float?  // AI confidence in extraction (0-1)
+  source_type    String   // cv_extraction, manual_input, assessment
+  source_document_id String?
+  is_verified    Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  candidate User @relation("CandidateSkills", fields: [candidate_id], references: [user_id])
+  sourceDocument CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id])
+}
+
+// Model for tracking skill extraction process
+model SkillExtraction {
+  extraction_id    String   @id @default(uuid())
+  document_id      String
+  candidate_id     String
+  status           String   // pending, processing, completed, failed
+  ai_provider      String   // openai, anthropic, etc.
+  prompt_used      String?
+  raw_response     String?  // raw AI response
+  extracted_skills Json?    // structured skills data
+  processing_time  Int?     // time taken in ms
+  error_message    String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  document  CandidateDocument @relation(fields: [document_id], references: [document_id])
+  candidate User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id])
+}
+
+// Model for AI career predictions
+model CareerPrediction {
+  prediction_id       String   @id @default(uuid())
+  candidate_id        String
+  current_role        String?
+  predicted_roles     Json     // array of predicted job roles with scores
+  career_path         Json     // suggested career progression
+  skill_gaps          Json     // skills needed for career growth
+  salary_prediction   Json     // salary ranges for predicted roles
+  confidence_score    Float    // overall confidence (0-1)
+  ai_model_version    String
+  input_data_summary  String?  // summary of data used for prediction
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  candidate User @relation("CareerPredictions", fields: [candidate_id], references: [user_id])
+}
+
+// Model for job recommendations and matching
+model JobRecommendation {
+  recommendation_id String   @id @default(uuid())
+  candidate_id      String
+  job_id            String
+  match_score       Float    // 0-1 matching score
+  skill_match       Json     // detailed skill matching analysis
+  salary_match      Float?   // how well salary expectations match
+  location_match    Float?   // location preference match
+  experience_match  Float?   // experience level match
+  ai_reasoning      String?  // explanation of the recommendation
+  is_viewed         Boolean  @default(false)
+  is_applied        Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  candidate User         @relation("JobRecommendations", fields: [candidate_id], references: [user_id])
+  job       RecruiterJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+}
+
+// Model for storing candidate profile vectors for matching
+model CandidateVector {
+  vector_id         String   @id @default(uuid())
+  candidate_id      String   @unique
+  skill_vector      Json     // vector representation of skills
+  experience_vector Json     // vector representation of experience
+  education_vector  Json     // vector representation of education
+  combined_vector   Json     // combined vector for overall matching
+  vector_version    String   // version of vectorization algorithm
+  last_updated      DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  candidate User @relation("CandidateVector", fields: [candidate_id], references: [user_id])
+}
+
+// Model for job vectors for matching
+model JobVector {
+  vector_id          String   @id @default(uuid())
+  job_id             String   @unique
+  requirements_vector Json    // vector representation of job requirements
+  skills_vector      Json     // vector representation of required skills
+  combined_vector    Json     // combined vector for matching
+  vector_version     String   // version of vectorization algorithm
+  last_updated       DateTime @default(now())
+  created_at         DateTime @default(now())
+
+  job RecruiterJob @relation("JobVector", fields: [job_id], references: [job_id])
+}
+
+// Model for tracking profile completeness
+model ProfileCompleteness {
+  completeness_id   String   @id @default(uuid())
+  candidate_id      String   @unique
+  overall_score     Float    // 0-100 overall completeness score
+  basic_info_score  Float    // basic profile information score
+  skills_score      Float    // skills section score
+  experience_score  Float    // experience section score
+  education_score   Float    // education section score
+  document_score    Float    // uploaded documents score
+  missing_fields    Json     // array of missing required fields
+  suggestions       Json     // suggestions for improving profile
+  last_calculated   DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  candidate User @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id])
 }
