@@ -571,8 +571,24 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
         phone: candidate.phone_number || undefined
       },
       skills: candidate.candidateSkills,
-      profile_completeness: candidate.profileCompleteness || undefined,
-      career_prediction: candidate.careerPredictions[0] || undefined,
+      profile_completeness: candidate.profileCompleteness ? {
+        overall_score: candidate.profileCompleteness.overall_score,
+        basic_info_score: candidate.profileCompleteness.basic_info_score,
+        skills_score: candidate.profileCompleteness.skills_score,
+        experience_score: candidate.profileCompleteness.experience_score,
+        education_score: candidate.profileCompleteness.education_score,
+        document_score: candidate.profileCompleteness.document_score,
+        missing_fields: candidate.profileCompleteness.missing_fields as string[],
+        suggestions: candidate.profileCompleteness.suggestions as string[]
+      } : undefined,
+      career_prediction: candidate.careerPredictions[0] ? {
+        current_role: candidate.careerPredictions[0].current_role || '',
+        predicted_roles: JSON.parse(candidate.careerPredictions[0].predicted_roles as string),
+        career_path: JSON.parse(candidate.careerPredictions[0].career_path as string),
+        skill_gaps: JSON.parse(candidate.careerPredictions[0].skill_gaps as string),
+        salary_prediction: JSON.parse(candidate.careerPredictions[0].salary_prediction as string),
+        confidence_score: candidate.careerPredictions[0].confidence_score
+      } : undefined,
       documents: candidate.candidateDocuments.map(doc => ({
         id: doc.document_id,
         name: doc.file_name,

@@ -1,12 +1,17 @@
 {
   "typeRoots": ["./types", "./node_modules/@types"],
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2020",
     "module": "CommonJS",
+    "lib": ["ES2020"],
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

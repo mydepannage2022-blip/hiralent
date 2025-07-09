@@ -233,8 +233,8 @@ model Notification {
 model SubscriptionPlan {
   plan_id                  String   @id @default(uuid())
   name                     String
-  price_monthly_usd        Decimal
-  price_annually_usd       Decimal
+  price_monthly_usd      Decimal
+  price_annually_usd     Decimal
   job_post_limit           Int
   ai_interview_limit       Int
   features_included        String
