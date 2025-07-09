@@ -46,9 +46,15 @@ model User {
   progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
   auditLogs                AdminAuditLog[]
   recruiterInvitationsSent RecruiterInvitation[]      @relation("RecruiterInvites")
-  relocationCasesAssigned  RelocationCase[]           @relation("AssignedAgent")
-  relocationCasesCreated   RelocationCase[]           @relation("CreatedBy")
-  candidateRelocations     RelocationCase[]           @relation("CandidateRelocation")
+  
+  // Candidate Flow Phase 1 Relations
+  candidateDocuments       CandidateDocument[]        @relation("CandidateDocuments")
+  candidateSkills          CandidateSkill[]          @relation("CandidateSkills")
+  skillExtractions         SkillExtraction[]         @relation("SkillExtractions")
+  careerPredictions        CareerPrediction[]        @relation("CareerPredictions")
+  jobRecommendations       JobRecommendation[]       @relation("JobRecommendations")
+  candidateVector          CandidateVector?          @relation("CandidateVector")
+  profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
 }
 
 // =============================================================================
@@ -301,6 +307,8 @@ model RecruiterJob {
   applications     JobApplication[]
   progressTrackers CandidateProgressTracker[]
   assessments      SkillAssessment[]
+  jobRecommendations JobRecommendation[]      @relation("JobRecommendations")
+  jobVector        JobVector?                 @relation("JobVector")
 }
 
 model JobApplication {
