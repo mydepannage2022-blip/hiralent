@@ -1,5 +1,6 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import dotenv from 'dotenv';
+import { VectorMetadata, PineconeMatch } from '../types/candidate.types';
 
 dotenv.config();
 
@@ -67,8 +68,8 @@ export async function getPineconeIndex() {
 export async function storeCandidateVector(
   candidateId: string,
   vector: number[],
-  metadata: Record<string, any>
-) {
+  metadata: VectorMetadata
+): Promise<void> {
   try {
     const index = await getPineconeIndex();
     
@@ -96,7 +97,7 @@ export async function storeJobVector(
   jobId: string,
   vector: number[],
   metadata: Record<string, any>
-) {
+): Promise<void> {
   try {
     const index = await getPineconeIndex();
     
@@ -123,7 +124,7 @@ export async function storeJobVector(
 export async function findSimilarCandidates(
   jobVector: number[],
   topK: number = 10
-) {
+): Promise<PineconeMatch[]> {
   try {
     const index = await getPineconeIndex();
     
@@ -134,7 +135,7 @@ export async function findSimilarCandidates(
       includeMetadata: true
     });
     
-    return queryResponse.matches || [];
+    return (queryResponse.matches || []) as PineconeMatch[];
   } catch (error) {
     console.error('Error finding similar candidates:', error);
     throw new Error('Failed to find similar candidates');
@@ -145,7 +146,7 @@ export async function findSimilarCandidates(
 export async function findSimilarJobs(
   candidateVector: number[],
   topK: number = 20
-) {
+): Promise<PineconeMatch[]> {
   try {
     const index = await getPineconeIndex();
     
@@ -156,7 +157,7 @@ export async function findSimilarJobs(
       includeMetadata: true
     });
     
-    return queryResponse.matches || [];
+    return (queryResponse.matches || []) as PineconeMatch[];
   } catch (error) {
     console.error('Error finding similar jobs:', error);
     throw new Error('Failed to find similar jobs');
@@ -167,8 +168,8 @@ export async function findSimilarJobs(
 export async function updateCandidateVector(
   candidateId: string,
   vector: number[],
-  metadata: Record<string, any>
-) {
+  metadata: VectorMetadata
+): Promise<void> {
   try {
     await storeCandidateVector(candidateId, vector, metadata);
   } catch (error) {
@@ -178,7 +179,7 @@ export async function updateCandidateVector(
 }
 
 // Delete candidate vector
-export async function deleteCandidateVector(candidateId: string) {
+export async function deleteCandidateVector(candidateId: string): Promise<void> {
   try {
     const index = await getPineconeIndex();
     
@@ -191,7 +192,7 @@ export async function deleteCandidateVector(candidateId: string) {
 }
 
 // Delete job vector
-export async function deleteJobVector(jobId: string) {
+export async function deleteJobVector(jobId: string): Promise<void> {
   try {
     const index = await getPineconeIndex();
     

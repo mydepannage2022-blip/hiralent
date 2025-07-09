@@ -1,5 +1,26 @@
 import { Request, Response } from 'express';
 import * as candidateService from '../services/candidate.service';
+import { AuthUser } from '../types/express';
+import { 
+  APIResponse, 
+  CVUploadResponse, 
+  CandidateProfileSummary, 
+  ProfileCompletenessScore,
+  CareerPredictionResult,
+  JobRecommendation,
+  HealthCheckResponse
+} from '../types/candidate.types';
+
+// Extend Request interface for better type safety
+interface AuthenticatedRequest extends Request {
+  user: AuthUser; // Make user required for authenticated routes
+  params: {
+    candidateId?: string;
+  };
+  query: {
+    limit?: string;
+  };
+}
 
 // Upload CV/Resume - Week 1 API
 export const uploadCVController = async (req: Request, res: Response): Promise<void> => {
@@ -8,7 +29,7 @@ export const uploadCVController = async (req: Request, res: Response): Promise<v
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -16,7 +37,7 @@ export const uploadCVController = async (req: Request, res: Response): Promise<v
       res.status(400).json({
         success: false,
         message: 'No file uploaded'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -26,14 +47,14 @@ export const uploadCVController = async (req: Request, res: Response): Promise<v
       success: true,
       data: result,
       message: 'CV uploaded and processing started'
-    });
+    } as APIResponse<CVUploadResponse>);
   } catch (error) {
     console.error('Error uploading CV:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to upload CV',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -44,7 +65,7 @@ export const getProfileSummaryController = async (req: Request, res: Response): 
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -55,14 +76,14 @@ export const getProfileSummaryController = async (req: Request, res: Response): 
       success: true,
       data: summary,
       message: 'Profile summary retrieved successfully'
-    });
+    } as APIResponse<CandidateProfileSummary>);
   } catch (error) {
     console.error('Error getting profile summary:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get profile summary',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -73,7 +94,7 @@ export const getProfileCompletenessController = async (req: Request, res: Respon
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -84,14 +105,14 @@ export const getProfileCompletenessController = async (req: Request, res: Respon
       success: true,
       data: completeness,
       message: 'Profile completeness calculated successfully'
-    });
+    } as APIResponse<ProfileCompletenessScore>);
   } catch (error) {
     console.error('Error calculating profile completeness:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to calculate profile completeness',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -102,7 +123,7 @@ export const generateCareerPredictionController = async (req: Request, res: Resp
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -113,14 +134,14 @@ export const generateCareerPredictionController = async (req: Request, res: Resp
       success: true,
       data: prediction,
       message: 'Career prediction generated successfully'
-    });
+    } as APIResponse<CareerPredictionResult>);
   } catch (error) {
     console.error('Error generating career prediction:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to generate career prediction',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -131,7 +152,7 @@ export const getJobRecommendationsController = async (req: Request, res: Respons
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -147,14 +168,14 @@ export const getJobRecommendationsController = async (req: Request, res: Respons
         total: recommendations.length,
         limit
       }
-    });
+    } as APIResponse<JobRecommendation[]>);
   } catch (error) {
     console.error('Error getting job recommendations:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get job recommendations',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -165,7 +186,7 @@ export const updateCandidateVectorController = async (req: Request, res: Respons
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -176,14 +197,14 @@ export const updateCandidateVectorController = async (req: Request, res: Respons
       success: true,
       data: result,
       message: 'Candidate vector updated successfully'
-    });
+    } as APIResponse);
   } catch (error) {
     console.error('Error updating candidate vector:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update candidate vector',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -194,7 +215,7 @@ export const getExtractedSkillsController = async (req: Request, res: Response):
       res.status(401).json({
         success: false,
         message: 'Authentication required'
-      });
+      } as APIResponse);
       return;
     }
 
@@ -210,14 +231,14 @@ export const getExtractedSkillsController = async (req: Request, res: Response):
         total: summary.skills.length
       },
       message: 'Extracted skills retrieved successfully'
-    });
+    } as APIResponse);
   } catch (error) {
     console.error('Error getting extracted skills:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get extracted skills',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };
 
@@ -233,12 +254,12 @@ export const healthCheckController = async (req: Request, res: Response): Promis
         ai_services: 'available',
         vector_db: 'available'
       }
-    });
+    } as HealthCheckResponse);
   } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Health check failed',
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    } as APIResponse);
   }
 };

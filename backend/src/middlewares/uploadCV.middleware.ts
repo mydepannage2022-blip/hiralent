@@ -1,8 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { Request } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { validateDocument } from '../utils/documentParser.util';
+import { APIResponse } from '../types/candidate.types';
 
 // Ensure upload directory exists
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
@@ -56,33 +57,37 @@ const upload = multer({
 export const uploadCVMiddleware = upload.single('cv');
 
 // Error handling middleware for multer
-export const handleUploadError = (err: any, req: Request, res: any, next: any) => {
+export const handleUploadError = (err: any, req: Request, res: Response, next: NextFunction): void => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'File too large. Maximum size is 10MB.'
-      });
+      } as APIResponse);
+      return;
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Too many files. Only one file allowed.'
-      });
+      } as APIResponse);
+      return;
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Unexpected field name. Use "cv" as field name.'
-      });
+      } as APIResponse);
+      return;
     }
   }
   
-  if (err.message.includes('Invalid file')) {
-    return res.status(400).json({
+  if (err && err.message && err.message.includes('Invalid file')) {
+    res.status(400).json({
       success: false,
       message: err.message
-    });
+    } as APIResponse);
+    return;
   }
   
   next(err);

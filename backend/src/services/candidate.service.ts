@@ -2,13 +2,22 @@ import { PrismaClient } from '../generated/prisma';
 import { extractSkillsFromText, predictCareerPath, createEmbedding, generateJobMatchReasoning } from '../lib/openai';
 import { storeCandidateVector, findSimilarJobs, storeJobVector } from '../lib/pinecone';
 import { parseDocument, preprocessText, extractContactInfo } from '../utils/documentParser.util';
+import { 
+  CVUploadResponse,
+  AIExtractionResult,
+  CareerPredictionResult,
+  JobRecommendation,
+  ProfileCompletenessScore,
+  CandidateProfileSummary,
+  CandidateServiceError
+} from '../types/candidate.types';
 import fs from 'fs';
 import path from 'path';
 
 const prisma = new PrismaClient();
 
 // Upload and process CV/Resume
-export const uploadAndProcessCV = async (candidateId: string, file: Express.Multer.File) => {
+export const uploadAndProcessCV = async (candidateId: string, file: Express.Multer.File): Promise<CVUploadResponse> => {
   try {
     // Save document metadata
     const document = await prisma.candidateDocument.create({
@@ -33,12 +42,15 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
     };
   } catch (error) {
     console.error('Error uploading CV:', error);
-    throw new Error('Failed to upload CV');
+    const serviceError: CandidateServiceError = new Error('Failed to upload CV');
+    serviceError.code = 'UPLOAD_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };
 
 // Process document in background
-const processDocumentAsync = async (documentId: string, candidateId: string) => {
+const processDocumentAsync = async (documentId: string, candidateId: string): Promise<void> => {
   try {
     // Update status to processing
     await prisma.candidateDocument.update({
@@ -80,7 +92,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string) => 
 
     // Extract skills using AI
     const startTime = Date.now();
-    const extractedData = await extractSkillsFromText(processedText);
+    const extractedData: AIExtractionResult = await extractSkillsFromText(processedText);
     const processingTime = Date.now() - startTime;
 
     // Update skill extraction record
@@ -142,7 +154,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string) => 
 };
 
 // Update candidate profile with extracted data
-const updateCandidateProfile = async (candidateId: string, extractedData: any) => {
+const updateCandidateProfile = async (candidateId: string, extractedData: AIExtractionResult): Promise<void> => {
   try {
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }
@@ -173,7 +185,7 @@ const updateCandidateProfile = async (candidateId: string, extractedData: any) =
 };
 
 // Generate AI career prediction
-export const generateCareerPrediction = async (candidateId: string) => {
+export const generateCareerPrediction = async (candidateId: string): Promise<CareerPredictionResult> => {
   try {
     // Get candidate data
     const candidate = await prisma.user.findUnique({
@@ -192,16 +204,16 @@ export const generateCareerPrediction = async (candidateId: string) => {
     const candidateData = {
       skills: candidate.candidateSkills.map(s => ({
         name: s.skill_name,
-        category: s.skill_category,
-        proficiency: s.proficiency,
-        years_experience: s.years_experience
+        category: s.skill_category || 'technical',
+        proficiency: s.proficiency || 'intermediate',
+        years_experience: s.years_experience || 0
       })),
       education: candidate.candidateProfile?.education ? JSON.parse(candidate.candidateProfile.education) : [],
       experience: candidate.candidateProfile?.experience ? JSON.parse(candidate.candidateProfile.experience) : []
     };
 
     // Generate prediction using AI
-    const prediction = await predictCareerPath(candidateData);
+    const prediction: CareerPredictionResult = await predictCareerPath(candidateData);
 
     // Save prediction
     await prisma.careerPrediction.create({
@@ -221,12 +233,15 @@ export const generateCareerPrediction = async (candidateId: string) => {
     return prediction;
   } catch (error) {
     console.error('Error generating career prediction:', error);
-    throw new Error('Failed to generate career prediction');
+    const serviceError: CandidateServiceError = new Error('Failed to generate career prediction');
+    serviceError.code = 'PREDICTION_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };
 
 // Create/update candidate vector for job matching
-export const updateCandidateVector = async (candidateId: string) => {
+export const updateCandidateVector = async (candidateId: string): Promise<{ success: boolean }> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
@@ -302,12 +317,15 @@ export const updateCandidateVector = async (candidateId: string) => {
     return { success: true };
   } catch (error) {
     console.error('Error updating candidate vector:', error);
-    throw new Error('Failed to update candidate vector');
+    const serviceError: CandidateServiceError = new Error('Failed to update candidate vector');
+    serviceError.code = 'VECTOR_UPDATE_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };
 
 // Get job recommendations for candidate
-export const getJobRecommendations = async (candidateId: string, limit: number = 20) => {
+export const getJobRecommendations = async (candidateId: string, limit: number = 20): Promise<JobRecommendation[]> => {
   try {
     // Get candidate vector
     const candidateVector = await prisma.candidateVector.findUnique({
@@ -331,7 +349,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
     });
 
     // Process each job recommendation
-    const recommendations = [];
+    const recommendations: JobRecommendation[] = [];
     for (const match of similarJobs) {
       const jobId = match.metadata?.jobId;
       if (!jobId) continue;
@@ -382,8 +400,8 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
         title: job.title,
         company: job.agency.name,
         location: job.location,
-        salary_range: job.salary_range,
-        match_score: match.score,
+        salary_range: job.salary_range || undefined,
+        match_score: match.score || 0,
         match_reasoning: matchReasoning,
         created_at: job.created_at
       });
@@ -392,12 +410,15 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
     return recommendations;
   } catch (error) {
     console.error('Error getting job recommendations:', error);
-    throw new Error('Failed to get job recommendations');
+    const serviceError: CandidateServiceError = new Error('Failed to get job recommendations');
+    serviceError.code = 'RECOMMENDATIONS_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };
 
 // Calculate profile completeness
-export const calculateProfileCompleteness = async (candidateId: string) => {
+export const calculateProfileCompleteness = async (candidateId: string): Promise<ProfileCompletenessScore> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
@@ -413,9 +434,8 @@ export const calculateProfileCompleteness = async (candidateId: string) => {
     }
 
     let totalScore = 0;
-    const maxScore = 100;
-    const missingFields = [];
-    const suggestions = [];
+    const missingFields: string[] = [];
+    const suggestions: string[] = [];
 
     // Basic info score (20 points)
     let basicInfoScore = 0;
@@ -484,7 +504,7 @@ export const calculateProfileCompleteness = async (candidateId: string) => {
     }
 
     // Save completeness data
-    const completenessData = {
+    const completenessData: ProfileCompletenessScore = {
       overall_score: Math.round(totalScore),
       basic_info_score: basicInfoScore,
       skills_score: skillsScore,
@@ -516,12 +536,15 @@ export const calculateProfileCompleteness = async (candidateId: string) => {
     return completenessData;
   } catch (error) {
     console.error('Error calculating profile completeness:', error);
-    throw new Error('Failed to calculate profile completeness');
+    const serviceError: CandidateServiceError = new Error('Failed to calculate profile completeness');
+    serviceError.code = 'COMPLETENESS_CALCULATION_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };
 
 // Get candidate profile summary
-export const getProfileSummary = async (candidateId: string) => {
+export const getProfileSummary = async (candidateId: string): Promise<CandidateProfileSummary> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
@@ -545,20 +568,23 @@ export const getProfileSummary = async (candidateId: string) => {
       basic_info: {
         name: candidate.full_name,
         email: candidate.email,
-        phone: candidate.phone_number
+        phone: candidate.phone_number || undefined
       },
       skills: candidate.candidateSkills,
-      profile_completeness: candidate.profileCompleteness,
-      career_prediction: candidate.careerPredictions[0] || null,
+      profile_completeness: candidate.profileCompleteness || undefined,
+      career_prediction: candidate.careerPredictions[0] || undefined,
       documents: candidate.candidateDocuments.map(doc => ({
         id: doc.document_id,
         name: doc.file_name,
         upload_status: doc.upload_status,
-        extraction_status: doc.extraction_status
+        extraction_status: doc.extraction_status || undefined
       }))
     };
   } catch (error) {
     console.error('Error getting profile summary:', error);
-    throw new Error('Failed to get profile summary');
+    const serviceError: CandidateServiceError = new Error('Failed to get profile summary');
+    serviceError.code = 'PROFILE_SUMMARY_FAILED';
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };

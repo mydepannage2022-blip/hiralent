@@ -1,5 +1,13 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { 
+  AIExtractionResult, 
+  CareerPredictionResult, 
+  JobMatchReasoning,
+  OpenAISkillExtractionPrompt,
+  OpenAICareerPredictionPrompt,
+  OpenAIJobMatchPrompt 
+} from '../types/candidate.types';
 
 dotenv.config();
 
@@ -14,7 +22,7 @@ const openai = new OpenAI({
 export { openai };
 
 // Helper function to extract skills from CV text
-export async function extractSkillsFromText(text: string) {
+export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -62,7 +70,8 @@ export async function extractSkillsFromText(text: string) {
       temperature: 0.3,
     });
 
-    return JSON.parse(response.choices[0].message.content || '{}');
+    const result = JSON.parse(response.choices[0].message.content || '{}') as AIExtractionResult;
+    return result;
   } catch (error) {
     console.error('Error extracting skills from text:', error);
     throw new Error('Failed to extract skills from CV text');
@@ -70,7 +79,7 @@ export async function extractSkillsFromText(text: string) {
 }
 
 // Helper function to predict career path
-export async function predictCareerPath(candidateData: any) {
+export async function predictCareerPath(candidateData: OpenAICareerPredictionPrompt['candidateData']): Promise<CareerPredictionResult> {
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -105,7 +114,8 @@ export async function predictCareerPath(candidateData: any) {
             "salary_prediction": {
               "current_range": {"min": 50000, "max": 70000},
               "growth_potential": {"min": 80000, "max": 120000}
-            }
+            },
+            "confidence_score": 0.85
           }`
         },
         {
@@ -117,7 +127,8 @@ export async function predictCareerPath(candidateData: any) {
       temperature: 0.4,
     });
 
-    return JSON.parse(response.choices[0].message.content || '{}');
+    const result = JSON.parse(response.choices[0].message.content || '{}') as CareerPredictionResult;
+    return result;
   } catch (error) {
     console.error('Error predicting career path:', error);
     throw new Error('Failed to predict career path');
@@ -125,7 +136,7 @@ export async function predictCareerPath(candidateData: any) {
 }
 
 // Helper function to generate job match reasoning
-export async function generateJobMatchReasoning(candidateSkills: any[], jobRequirements: any) {
+export async function generateJobMatchReasoning(candidateSkills: any[], jobRequirements: any): Promise<JobMatchReasoning> {
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -153,7 +164,8 @@ export async function generateJobMatchReasoning(candidateSkills: any[], jobRequi
       temperature: 0.3,
     });
 
-    return JSON.parse(response.choices[0].message.content || '{}');
+    const result = JSON.parse(response.choices[0].message.content || '{}') as JobMatchReasoning;
+    return result;
   } catch (error) {
     console.error('Error generating job match reasoning:', error);
     throw new Error('Failed to generate job match reasoning');
@@ -161,7 +173,7 @@ export async function generateJobMatchReasoning(candidateSkills: any[], jobRequi
 }
 
 // Helper function to create embeddings for vector matching
-export async function createEmbedding(text: string) {
+export async function createEmbedding(text: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
