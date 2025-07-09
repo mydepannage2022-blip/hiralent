@@ -1,73 +1,82 @@
-// src/routes/agency.routes.ts
-
 import { Router } from 'express';
-import { AgencyController } from '../controller/agency.controller';
+import {
+  getDashboardController,
+  updateAgencyController,
+  getTeamController,
+  getSubscriptionController,
+  getAgencyByIdController
+} from '../controller/agency.controller';
+
 import { checkAuth } from '../middlewares/checkAuth.middleware';
 import { checkRole } from '../middlewares/checkRole.middleware';
 import { isEmailVerified } from '../middlewares/isEmailVerified.middleware';
 import { validateBody } from '../middlewares/validateBody.middleware';
-import { 
-  updateAgencySchema, 
-  teamQuerySchema 
+import {
+  updateAgencySchema,
+  teamQuerySchema
 } from '../validation/agency.schema';
 
 const router = Router();
-const agencyController = new AgencyController();
 
-// Get agency dashboard (agency admin/recruiter)
+/**
+ * 📊 Get agency dashboard
+ * Roles allowed: agency_admin, recruiter
+ */
 router.get(
   '/dashboard',
-  [
-    checkAuth,
-    checkRole(['agency_admin', 'recruiter']),
-    isEmailVerified
-  ],
-  agencyController.getDashboard
+  checkAuth,
+  checkRole('agency_admin', 'recruiter'),
+  isEmailVerified,
+  getDashboardController
 );
 
-// Update agency information (agency admin only)
+/**
+ * 🛠️ Update agency information
+ * Roles allowed: agency_admin
+ */
 router.patch(
   '/update',
-  [
-    checkAuth,
-    checkRole(['agency_admin']),
-    isEmailVerified,
-    validateBody(updateAgencySchema)
-  ],
-  agencyController.updateAgency
+  checkAuth,
+  checkRole('agency_admin'),
+  isEmailVerified,
+  validateBody(updateAgencySchema),
+  updateAgencyController
 );
 
-// Get agency team (agency admin/recruiter)
+/**
+ * 👥 Get agency team list
+ * Roles allowed: agency_admin, recruiter
+ */
 router.get(
   '/team',
-  [
-    checkAuth,
-    checkRole(['agency_admin', 'recruiter']),
-    isEmailVerified
-  ],
-  agencyController.getTeam
+  checkAuth,
+  checkRole('agency_admin', 'recruiter'),
+  isEmailVerified,
+  getTeamController
 );
 
-// Get agency subscription info (agency admin only)
+/**
+ * 💳 Get agency subscription info
+ * Roles allowed: agency_admin
+ */
 router.get(
   '/subscription',
-  [
-    checkAuth,
-    checkRole(['agency_admin']),
-    isEmailVerified
-  ],
-  agencyController.getSubscription
+  checkAuth,
+  checkRole('agency_admin'),
+  isEmailVerified,
+  getSubscriptionController
 );
 
-// Get agency by ID (super admin or agency members)
+/**
+ * 🔍 Get agency by ID
+ * Roles allowed: super_admin, agency_admin, recruiter
+ */
 router.get(
   '/:agencyId',
-  [
-    checkAuth,
-    checkRole(['super_admin', 'agency_admin', 'recruiter']),
-    isEmailVerified
-  ],
-  agencyController.getAgencyById
+  checkAuth,
+  checkRole('super_admin', 'agency_admin', 'recruiter'),
+  isEmailVerified,
+  getAgencyByIdController
 );
 
 export default router;
