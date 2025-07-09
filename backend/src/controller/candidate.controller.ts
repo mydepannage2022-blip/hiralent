@@ -66,7 +66,7 @@ export class CandidateController {
   }
 
   // Get profile completeness - Week 1 API
-  async getProfileCompleteness(req: AuthenticatedRequest, res: Response) {
+  async getProfileCompleteness(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -94,7 +94,7 @@ export class CandidateController {
   }
 
   // Generate career prediction - Week 1 API
-  async generateCareerPrediction(req: AuthenticatedRequest, res: Response) {
+  async generateCareerPrediction(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -122,7 +122,7 @@ export class CandidateController {
   }
 
   // Get job recommendations - Week 2 API
-  async getJobRecommendations(req: AuthenticatedRequest, res: Response) {
+  async getJobRecommendations(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -155,7 +155,7 @@ export class CandidateController {
   }
 
   // Update candidate vector - Week 2 API
-  async updateCandidateVector(req: AuthenticatedRequest, res: Response) {
+  async updateCandidateVector(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -183,7 +183,7 @@ export class CandidateController {
   }
 
   // Get extracted skills from documents
-  async getExtractedSkills(req: AuthenticatedRequest, res: Response) {
+  async getExtractedSkills(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
