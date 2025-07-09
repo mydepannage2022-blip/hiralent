@@ -95,16 +95,16 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
     const extractedData: AIExtractionResult = await extractSkillsFromText(processedText);
     const processingTime = Date.now() - startTime;
 
-    // Update skill extraction record
-    await prisma.skillExtraction.update({
-      where: { extraction_id: skillExtraction.extraction_id },
-      data: {
-        status: 'completed',
-        raw_response: JSON.stringify(extractedData),
-        extracted_skills: extractedData,
-        processing_time: processingTime
-      }
-    });
+          // Update skill extraction record
+      await prisma.skillExtraction.update({
+        where: { extraction_id: skillExtraction.extraction_id },
+        data: {
+          status: 'completed',
+          raw_response: JSON.stringify(extractedData),
+          extracted_skills: JSON.stringify(extractedData),
+          processing_time: processingTime
+        }
+      });
 
     // Save extracted skills
     if (extractedData.skills && Array.isArray(extractedData.skills)) {
@@ -204,8 +204,8 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
     const candidateData = {
       skills: candidate.candidateSkills.map(s => ({
         name: s.skill_name,
-        category: s.skill_category || 'technical',
-        proficiency: s.proficiency || 'intermediate',
+        category: (s.skill_category as 'technical' | 'soft' | 'language' | 'certification') || 'technical',
+        proficiency: (s.proficiency as 'beginner' | 'intermediate' | 'advanced' | 'expert') || 'intermediate',
         years_experience: s.years_experience || 0
       })),
       education: candidate.candidateProfile?.education ? JSON.parse(candidate.candidateProfile.education) : [],
@@ -220,10 +220,10 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
       data: {
         candidate_id: candidateId,
         current_role: prediction.current_role,
-        predicted_roles: prediction.predicted_roles,
-        career_path: prediction.career_path,
-        skill_gaps: prediction.skill_gaps,
-        salary_prediction: prediction.salary_prediction,
+        predicted_roles: JSON.stringify(prediction.predicted_roles),
+        career_path: JSON.stringify(prediction.career_path),
+        skill_gaps: JSON.stringify(prediction.skill_gaps),
+        salary_prediction: JSON.stringify(prediction.salary_prediction),
         confidence_score: prediction.confidence_score || 0.7,
         ai_model_version: 'gpt-4o-mini-v1',
         input_data_summary: `Skills: ${candidateData.skills.length}, Experience: ${candidateData.experience.length}`
@@ -389,7 +389,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
             candidate_id: candidateId,
             job_id: jobId,
             match_score: match.score || 0,
-            skill_match: matchReasoning,
+            skill_match: JSON.stringify(matchReasoning),
             ai_reasoning: matchReasoning.reasoning
           }
         });
