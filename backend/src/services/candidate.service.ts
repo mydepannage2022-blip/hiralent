@@ -13,8 +13,10 @@ import {
 } from '../types/candidate.types';
 import fs from 'fs';
 import path from 'path';
+import { any } from 'zod';
 
 const prisma = new PrismaClient();
+
 
 // Upload and process CV/Resume
 export const uploadAndProcessCV = async (candidateId: string, file: Express.Multer.File): Promise<CVUploadResponse> => {
@@ -38,6 +40,13 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
     return {
       success: true,
       document_id: document.document_id,
+      document: {
+        name: document.file_name,
+        upload_status: document.upload_status,
+        extraction_status: document.extraction_status,
+        candidate_id: candidateId,
+        whole_document: fs.readFileSync(document.file_path, 'utf-8')
+      },
       message: 'CV uploaded successfully. Processing in background.'
     };
   } catch (error) {
@@ -70,7 +79,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
     // Parse document text
     const parsedDoc = await parseDocument(document.file_path, document.file_type);
     const processedText = preprocessText(parsedDoc.text);
-
+    console.log('Processed Text:', processedText);
     // Update document with extracted text
     await prisma.candidateDocument.update({
       where: { document_id: documentId },
@@ -89,7 +98,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
         ai_provider: 'openai'
       }
     });
-
+    console.log('Skill Extraction Record:', skillExtraction);
     // Extract skills using AI
     const startTime = Date.now();
     const extractedData: AIExtractionResult = await extractSkillsFromText(processedText);
@@ -123,7 +132,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
         });
       }
     }
-
+    console.log('Extracted Skills:', extractedData.skills);
     // Update candidate profile with extracted data
     await updateCandidateProfile(candidateId, extractedData);
 
@@ -225,7 +234,7 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
         skill_gaps: JSON.stringify(prediction.skill_gaps),
         salary_prediction: JSON.stringify(prediction.salary_prediction),
         confidence_score: prediction.confidence_score || 0.7,
-        ai_model_version: 'gpt-4o-mini-v1',
+        ai_model_version: 'gemini-0.5',
         input_data_summary: `Skills: ${candidateData.skills.length}, Experience: ${candidateData.experience.length}`
       }
     });

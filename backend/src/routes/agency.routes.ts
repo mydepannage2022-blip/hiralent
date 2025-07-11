@@ -19,7 +19,7 @@ router.get(
   '/dashboard',
   [
     checkAuth,
-    checkRole(['agency_admin', 'recruiter']),
+    checkRole('agency_admin', 'recruiter'),
     isEmailVerified
   ],
   agencyController.getDashboard
@@ -30,7 +30,7 @@ router.patch(
   '/update',
   [
     checkAuth,
-    checkRole(['agency_admin']),
+    checkRole('agency_admin'),
     isEmailVerified,
     validateBody(updateAgencySchema)
   ],
@@ -42,7 +42,7 @@ router.get(
   '/team',
   [
     checkAuth,
-    checkRole(['agency_admin', 'recruiter']),
+    checkRole('agency_admin', 'recruiter'),
     isEmailVerified
   ],
   agencyController.getTeam
@@ -53,7 +53,7 @@ router.get(
   '/subscription',
   [
     checkAuth,
-    checkRole(['agency_admin']),
+    checkRole('agency_admin'),
     isEmailVerified
   ],
   agencyController.getSubscription
@@ -64,7 +64,7 @@ router.get(
   '/:agencyId',
   [
     checkAuth,
-    checkRole(['super_admin', 'agency_admin', 'recruiter']),
+    checkRole('super_admin', 'agency_admin', 'recruiter'),
     isEmailVerified
   ],
   agencyController.getAgencyById

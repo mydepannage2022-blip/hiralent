@@ -23,7 +23,7 @@ const router = express.Router();
 router.post(
   "/create-agency",
   checkAuth,
-  checkRole(["agency_admin"]),
+  checkRole("agency_admin"),
   isEmailVerified,
   validateBody(createAgencySchema),
   createAgencyController
@@ -32,14 +32,14 @@ router.post(
 router.patch(
   "/:agencyId/approve",
   checkAuth,
-  checkRole(["super_admin"]),
+  checkRole("super_admin"),
   approveAgencyController
 );
 
 router.post(
   "/invite-recruiter",
   checkAuth,
-  checkRole(["agency_admin"]),
+  checkRole("agency_admin"),
   isEmailVerified,
   validateBody(inviteRecruiterSchema),
   inviteRecruiterController
@@ -48,7 +48,7 @@ router.post(
 router.post(
   "/profile",
   checkAuth,
-  checkRole(["agency_admin"]),
+  checkRole("agency_admin"),
   validateBody(adminProfileSchema),
   createAdminProfileController
 );
@@ -56,7 +56,7 @@ router.post(
 router.get(
   "/me",
   checkAuth,
-  checkRole(["agency_admin"]),
+  checkRole("agency_admin"),
   agencyAuthMeController
 );
 

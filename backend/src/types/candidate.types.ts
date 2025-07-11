@@ -150,6 +150,7 @@ export interface CandidateProfileSummary {
   profile_completeness?: ProfileCompletenessScore;
   career_prediction?: CareerPredictionResult;
   documents: CandidateDocumentInfo[];
+
 }
 
 // API Response types
@@ -169,8 +170,14 @@ export interface CVUploadResponse {
   success: boolean;
   document_id: string;
   message: string;
+  document: {
+    name: string;
+    upload_status: string;
+    extraction_status: string | null;
+    candidate_id: string;
+    whole_document?: string; // Optional, if you want to return the whole document content
+  };
 }
-
 // Vector database types
 export interface VectorMetadata {
   skills_count: number;
