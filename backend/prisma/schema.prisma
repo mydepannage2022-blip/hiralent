@@ -204,18 +204,80 @@ model AIInterviewResult {
 }
 
 model SkillAssessment {
-  assessment_id String    @id @default(uuid())
-  candidate_id  String
-  job_id        String
-  provider      String
-  score         String?
-  status        String
-  completed_at  DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  assessment_id        String           @id @default(uuid())
+  candidate_id         String
+  job_id               String?
+  provider             String
+  score                String?
+  status               AssessmentStatus @default(PENDING)
+  completed_at         DateTime?
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
 
-  candidate User         @relation(fields: [candidate_id], references: [user_id])
-  job       RecruiterJob @relation(fields: [job_id], references: [job_id])
+  // New fields for AI Skill Assessment
+  assessment_type      AssessmentType   @default(COMPREHENSIVE)
+  skill_category       String           // e.g., "JavaScript", "Data Analysis"
+  difficulty           DifficultyLevel  @default(BEGINNER)
+  total_questions      Int              @default(20)
+  time_limit           Int              @default(30) // minutes
+  current_question     Int              @default(0)
+  started_at           DateTime?
+  questions            Json             // AI-generated questions array
+  answers              Json             // User answers with timestamps
+  overall_score        Float?
+  skill_level_result   String?          // "Beginner", "Intermediate", "Advanced"
+  strengths            String[]         // AI-identified strengths
+  weaknesses           String[]         // AI-identified weaknesses
+  recommendations      String[]         // AI-generated learning recommendations
+  ai_analysis          Json?
+  confidence_score     Float?
+
+  // Relations
+  candidate            User             @relation(fields: [candidate_id], references: [user_id])
+  job                  RecruiterJob?    @relation(fields: [job_id], references: [job_id])
+  results              AssessmentResult[]
+
+  @@map("skill_assessments")
+}
+
+model AssessmentResult {
+  result_id         String           @id @default(uuid())
+  assessment_id     String
+  question_id       String
+  question_text     String
+  question_type     QuestionType
+  expected_answer   String?
+  user_answer       String
+  is_correct        Boolean?
+  partial_score     Float?
+  time_taken        Int              // seconds
+  ai_evaluation     Json?
+  feedback          String?
+  answered_at       DateTime         @default(now())
+
+  assessment        SkillAssessment  @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+
+  @@map("assessment_results")
+}
+
+model QuestionBank {
+  question_id      String         @id @default(uuid())
+  question_text    String
+  question_type    QuestionType
+  skill_category   String
+  difficulty       DifficultyLevel
+  options          Json?
+  correct_answer   String?
+  explanation      String?
+  ai_generated     Boolean        @default(false)
+  generated_by     String?
+  times_used       Int            @default(0)
+  avg_score        Float?
+  difficulty_index Float?
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+
+  @@map("question_bank")
 }
 
 model Notification {
@@ -436,4 +498,36 @@ model ProfileCompleteness {
   created_at        DateTime @default(now())
 
   candidate User @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id])
+}
+
+// Enums for assessment
+
+enum AssessmentType {
+  QUICK_CHECK
+  COMPREHENSIVE
+  CERTIFICATION
+  COMPANY_SPECIFIC
+}
+
+enum AssessmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum QuestionType {
+  MCQ
+  CODING
+  ESSAY
+  TRUE_FALSE
+  SCENARIO
 }
