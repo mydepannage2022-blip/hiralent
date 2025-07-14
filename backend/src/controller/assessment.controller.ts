@@ -30,7 +30,19 @@ export const startAssessmentController = async (req: Request, res: Response) => 
 
 // Get the next question
 export const getQuestionController = async (req: Request, res: Response) => {
-  // TODO: Validate input, call assessmentService.getNextQuestion, return response
+  try {
+    const assessmentId = req.params.assessmentId;
+    if (!assessmentId) {
+      return res.status(400).json({ success: false, error: 'Missing assessmentId' });
+    }
+    const question = await assessmentService.getNextQuestion(assessmentId);
+    if (!question) {
+      return res.status(404).json({ success: false, error: 'No more questions or assessment complete' });
+    }
+    return res.json({ success: true, data: question });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Submit an answer

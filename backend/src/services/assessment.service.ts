@@ -88,8 +88,34 @@ export class AssessmentService {
 
   // Get the next (adaptive) question
   async getNextQuestion(assessmentId: string): Promise<Question> {
-    // TODO: Fetch assessment, determine next question, possibly adjust difficulty
-    return null as any;
+    // Fetch assessment
+    const assessment = await prisma.skillAssessment.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') {
+      throw new Error('Assessment is not active');
+    }
+    const questions = assessment.questions as Question[];
+    const idx = assessment.current_question;
+    if (!questions || idx >= questions.length) {
+      // No more questions
+      return null as any;
+    }
+    // TODO: Adaptive logic (adjust difficulty based on previous answers)
+    const q = questions[idx];
+    return {
+      questionId: q.questionId || `q${idx + 1}`,
+      questionText: q.questionText,
+      type: q.type,
+      options: q.options || [],
+      difficulty: q.difficulty,
+      timeLimit: q.timeLimit || 90,
+      aiGenerated: true,
+      adaptedReason: '', // TODO: Add reason if adaptive
+    };
   }
 
   // Submit and evaluate an answer
