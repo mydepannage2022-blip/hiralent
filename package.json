@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "@prisma/client": "^6.11.1",
-    "@types/express": "^5.0.3",
-    "express": "^5.1.0",
-    "zod": "^4.0.5"
-  }
-}
