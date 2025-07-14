@@ -18,10 +18,12 @@ export const startAssessmentController = async (req: Request, res: Response) => 
     if (!candidateId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    // Call service
+    // Call service with all required fields explicitly
     const result = await assessmentService.startAssessment({
-      ...parsed.data,
       candidateId,
+      skillCategory: parsed.data.skillCategory,
+      assessmentType: parsed.data.assessmentType,
+      difficulty: parsed.data.difficulty,
     });
     return res.json(result);
   } catch (err: any) {
@@ -58,10 +60,12 @@ export const submitAnswerController = async (req: Request, res: Response) => {
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
-    // Call service
+    // Call service with all required fields explicitly
     const result = await assessmentService.submitAnswer({
       assessmentId,
-      ...parsed.data,
+      questionId: parsed.data.questionId,
+      answer: parsed.data.answer,
+      timeTaken: parsed.data.timeTaken,
     });
     return res.json(result);
   } catch (err: any) {
