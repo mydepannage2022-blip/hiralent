@@ -14,7 +14,7 @@ import * as aiAssessment from './aiAssessment.service';
 export const startAssessment = async (params: StartAssessmentParams): Promise<any> => {
   const { candidateId, skillCategory, assessmentType, difficulty } = params;
   const candidateProfile = await prisma.candidateProfile.findUnique({
-    where: { candidate_id: candidateId },
+    where: { candidateId: candidateId },
   });
   if (!candidateProfile) throw new Error('Candidate profile not found');
   const aiProfile = {
@@ -34,7 +34,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
       candidate_id: candidateId,
       assessment_type: assessmentType,
       skill_category: skillCategory,
-      difficulty,
+      difficulty: difficulty,
       total_questions: questionCount,
       time_limit: 30,
       status: 'PENDING',
@@ -167,7 +167,7 @@ export const getProgress = async (assessmentId: string): Promise<any> => {
     success: true,
     data: {
       assessmentId: assessment.assessment_id,
-      currentQuestion,
+      currentQuestion: assessment.current_question,
       totalQuestions,
       progressPercentage,
       currentScore,
@@ -183,7 +183,7 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status === 'COMPLETED') {
-    return { success: true, data: { assessmentId, status: 'COMPLETED' } };
+    return { success: true, data: { assessmentId: assessment.assessment_id, status: 'COMPLETED' } };
   }
   const results = Array.isArray(assessment.answers) ? assessment.answers : [];
   const report = await aiAssessment.generateReport({
@@ -248,8 +248,8 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
       strengths: assessment.strengths || [],
       weaknesses: assessment.weaknesses || [],
       recommendations: assessment.recommendations || [],
-      questionBreakdown,
       aiAnalysis,
+      questionBreakdown,
     },
   };
 };
