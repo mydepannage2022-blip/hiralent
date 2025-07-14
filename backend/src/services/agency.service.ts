@@ -1,6 +1,6 @@
 // src/services/agency.service.ts
 
-import { prisma } from '../lib/prisma';
+import prisma from '../lib/prisma';
 import { 
   UpdateAgencyInput, 
   AgencyDashboardResponse,

@@ -514,6 +514,8 @@ model Notification {
 model SubscriptionPlan {
   plan_id                  String   @id @default(uuid())
   name                     String
+  price_monthly_usd      Decimal
+  price_annually_usd     Decimal
   target_entity            String   // company, agency
   price_monthly_usd        Decimal
   price_annually_usd       Decimal

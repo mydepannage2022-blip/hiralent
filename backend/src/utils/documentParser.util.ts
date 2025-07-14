@@ -2,20 +2,10 @@ import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
-
-export interface ParsedDocument {
-  text: string;
-  metadata: {
-    pages?: number;
-    title?: string;
-    author?: string;
-    wordCount: number;
-    fileSize: number;
-  };
-}
+import { ParsedDocumentResult, DocumentValidationResult } from '../types/candidate.types';
 
 // Parse PDF files
-export async function parsePDF(filePath: string): Promise<ParsedDocument> {
+export async function parsePDF(filePath: string): Promise<ParsedDocumentResult> {
   try {
     const dataBuffer = fs.readFileSync(filePath);
     const data = await pdf(dataBuffer);
@@ -37,7 +27,7 @@ export async function parsePDF(filePath: string): Promise<ParsedDocument> {
 }
 
 // Parse Word documents (.docx)
-export async function parseWord(filePath: string): Promise<ParsedDocument> {
+export async function parseWord(filePath: string): Promise<ParsedDocumentResult> {
   try {
     const dataBuffer = fs.readFileSync(filePath);
     const result = await mammoth.extractRawText({ buffer: dataBuffer });
@@ -58,7 +48,7 @@ export async function parseWord(filePath: string): Promise<ParsedDocument> {
 }
 
 // Main document parser function
-export async function parseDocument(filePath: string, fileType: string): Promise<ParsedDocument> {
+export async function parseDocument(filePath: string, fileType: string): Promise<ParsedDocumentResult> {
   const extension = path.extname(filePath).toLowerCase();
   
   switch (extension) {
@@ -75,7 +65,7 @@ export async function parseDocument(filePath: string, fileType: string): Promise
 }
 
 // Validate document format and size
-export function validateDocument(file: Express.Multer.File): { isValid: boolean; error?: string } {
+export function validateDocument(file: Express.Multer.File): DocumentValidationResult {
   const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
   const maxSize = 10 * 1024 * 1024; // 10MB
   
@@ -107,7 +97,7 @@ export function preprocessText(text: string): string {
 }
 
 // Extract contact information from text
-export function extractContactInfo(text: string) {
+export function extractContactInfo(text: string): { email?: string; phone?: string; linkedin?: string } {
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const phoneRegex = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b|\b\(\d{3}\)\s*\d{3}[-.]?\d{4}\b/;
   const linkedinRegex = /linkedin\.com\/in\/[\w-]+/i;
