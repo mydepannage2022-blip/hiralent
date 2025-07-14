@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import {
   StartAssessmentParams,
   Question,
@@ -10,8 +10,6 @@ import {
   QuestionType,
 } from '../types/assessment.types';
 import * as aiAssessment from './aiAssessment.service';
-
-const prisma = new PrismaClient();
 
 export const startAssessment = async (params: StartAssessmentParams): Promise<any> => {
   const { candidateId, skillCategory, assessmentType, difficulty } = params;
@@ -41,8 +39,8 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
       time_limit: 30,
       status: 'PENDING',
       current_question: 0,
-      questions: questions,
-      answers: [],
+      questions: questions as any,
+      answers: [] as any,
     },
   });
   const firstQuestion = questions[0] ? {
@@ -70,7 +68,7 @@ export const getNextQuestion = async (assessmentId: string): Promise<Question> =
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') throw new Error('Assessment is not active');
-  const questions = assessment.questions as Question[];
+  const questions = Array.isArray(assessment.questions) ? assessment.questions as Question[] : [];
   const idx = assessment.current_question;
   if (!questions || idx >= questions.length) return null as any;
   const q = questions[idx];
@@ -93,7 +91,7 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') throw new Error('Assessment is not active');
-  const questions = assessment.questions as Question[];
+  const questions = Array.isArray(assessment.questions) ? assessment.questions as Question[] : [];
   const idx = assessment.current_question;
   if (!questions || idx >= questions.length) throw new Error('No more questions');
   const currentQ = questions[idx];
@@ -105,7 +103,7 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
     questionType: currentQ.type,
     skillCategory: assessment.skill_category,
   });
-  const answers = Array.isArray(assessment.answers) ? [...assessment.answers] : [];
+  const answers = Array.isArray(assessment.answers) ? [...(assessment.answers as any[])] : [];
   answers.push({
     questionId,
     userAnswer: answer,
@@ -116,7 +114,7 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
   const updated = await prisma.skillAssessment.update({
     where: { assessment_id: assessmentId },
     data: {
-      answers,
+      answers: answers as any,
       current_question: idx + 1,
       status: idx + 1 >= questions.length ? 'COMPLETED' : 'IN_PROGRESS',
     },
@@ -157,7 +155,7 @@ export const getProgress = async (assessmentId: string): Promise<any> => {
     const elapsed = (Date.now() - new Date(assessment.started_at).getTime()) / 1000;
     timeRemaining = Math.max(0, assessment.time_limit * 60 - elapsed);
   }
-  const questions = assessment.questions as Question[];
+  const questions = Array.isArray(assessment.questions) ? assessment.questions as Question[] : [];
   const difficultyCurve = questions.slice(0, currentQuestion).map(q => q.difficulty || 'BEGINNER');
   return {
     success: true,
@@ -222,7 +220,7 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
     where: { assessment_id: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
-  const questions = assessment.questions as Question[];
+  const questions = Array.isArray(assessment.questions) ? assessment.questions as Question[] : [];
   const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
   const aiAnalysis = assessment.ai_analysis || {};
   const questionBreakdown = answers.map((a: any, idx: number) => ({
