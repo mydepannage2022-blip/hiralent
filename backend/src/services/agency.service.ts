@@ -252,16 +252,13 @@ export const getSubscription = async (agency_id: string): Promise<AgencySubscrip
         // plan_type: subscription.plan.type, // REMOVED: not in schema
         job_posting_limit: subscription.plan.job_post_limit, // FIXED: job_post_limit
         // recruiter_limit: subscription.plan.recruiter_limit, // REMOVED: not in schema
-        price_per_month: subscription.plan.price_monthly_usd // FIXED: price_monthly_usd
+        price_per_month: (subscription.plan.price_monthly_usd as any).toNumber ? (subscription.plan.price_monthly_usd as any).toNumber() : Number(subscription.plan.price_monthly_usd) // FIXED: Decimal to number
       },
       usage: {
         jobs_posted: jobsPosted,
         recruiters_active: recruitersActive
       },
-      billing: {
-        // next_billing_date: subscription.next_billing_date, // REMOVED: not in schema
-        // payment_status: subscription.payment_status // REMOVED: not in schema
-      }
+      // billing: {}, // REMOVED: not in schema
     };
 
   } catch (error) {

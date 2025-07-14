@@ -33,7 +33,7 @@ export interface AgencyTeamResponse {
     full_name: string;
     email: string;
     position?: string;
-    status: string;
+    status?: string; // Made optional to match Recruiter and DB result
     joined_at: Date;
     last_active?: Date;
   }>;
@@ -44,19 +44,19 @@ export interface AgencyTeamResponse {
 export interface AgencySubscriptionResponse {
   plan: {
     plan_name: string;
-    plan_type: string;
+    plan_type?: string; // Made optional
     job_posting_limit: number;
-    recruiter_limit: number;
+    recruiter_limit?: number; // Made optional
     price_per_month: number;
   };
   usage: {
     jobs_posted: number;
     recruiters_active: number;
   };
-  billing: {
-    next_billing_date: Date;
-    payment_status: string;
-  };
+  // billing?: {
+  //   next_billing_date: Date;
+  //   payment_status: string;
+  // };
 }
 
 export interface Recruiter {
