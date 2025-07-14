@@ -53,9 +53,9 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
   return {
     success: true,
     data: {
-      assessmentId: assessment.assessment_id,
-      totalQuestions: assessment.total_questions,
-      timeLimit: assessment.time_limit,
+      assessmentId: assessment.assessmentId,
+      totalQuestions: assessment.totalQuestions,
+      timeLimit: assessment.timeLimit,
       status: assessment.status,
       firstQuestion,
     },
@@ -64,14 +64,14 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
 
 export const getNextQuestion = async (assessmentId: string): Promise<Question> => {
   const assessment = await prisma.skillAssessment.findUnique({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') throw new Error('Assessment is not active');
   const questions = Array.isArray(assessment.questions)
     ? (assessment.questions as unknown as Question[])
     : [];
-  const idx = assessment.current_question;
+  const idx = assessment.currentQuestion;
   if (!questions || idx >= questions.length) return null as any;
   const q = questions[idx];
   return {
@@ -89,14 +89,14 @@ export const getNextQuestion = async (assessmentId: string): Promise<Question> =
 export const submitAnswer = async (params: { assessmentId: string; questionId: string; answer: string; timeTaken: number }): Promise<any> => {
   const { assessmentId, questionId, answer, timeTaken } = params;
   const assessment = await prisma.skillAssessment.findUnique({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') throw new Error('Assessment is not active');
   const questions = Array.isArray(assessment.questions)
     ? (assessment.questions as unknown as Question[])
     : [];
-  const idx = assessment.current_question;
+  const idx = assessment.currentQuestion;
   if (!questions || idx >= questions.length) throw new Error('No more questions');
   const currentQ = questions[idx];
   if (currentQ.questionId !== questionId && `q${idx + 1}` !== questionId) throw new Error('Invalid questionId or out of sequence');
@@ -105,7 +105,7 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
     userAnswer: answer,
     expectedAnswer: currentQ.correctAnswer,
     questionType: currentQ.type,
-    skillCategory: assessment.skill_category,
+    skillCategory: assessment.skillCategory,
   });
   const answers = Array.isArray(assessment.answers) ? [...(assessment.answers as any[])] : [];
   answers.push({
@@ -116,10 +116,10 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
     answeredAt: new Date().toISOString(),
   });
   const updated = await prisma.skillAssessment.update({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
     data: {
       answers: answers as any,
-      current_question: idx + 1,
+      currentQuestion: idx + 1,
       status: idx + 1 >= questions.length ? 'COMPLETED' : 'IN_PROGRESS',
     },
   });
@@ -145,19 +145,19 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
 
 export const getProgress = async (assessmentId: string): Promise<any> => {
   const assessment = await prisma.skillAssessment.findUnique({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
-  const totalQuestions = assessment.total_questions;
-  const currentQuestion = assessment.current_question;
+  const totalQuestions = assessment.totalQuestions;
+  const currentQuestion = assessment.currentQuestion;
   const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
   const progressPercentage = Math.round((currentQuestion / totalQuestions) * 100);
   const scores = answers.map((a: any) => a.aiEvaluation?.score || 0);
   const currentScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   let timeRemaining = null;
-  if (assessment.started_at && assessment.time_limit) {
-    const elapsed = (Date.now() - new Date(assessment.started_at).getTime()) / 1000;
-    timeRemaining = Math.max(0, assessment.time_limit * 60 - elapsed);
+  if (assessment.startedAt && assessment.timeLimit) {
+    const elapsed = (Date.now() - new Date(assessment.startedAt).getTime()) / 1000;
+    timeRemaining = Math.max(0, assessment.timeLimit * 60 - elapsed);
   }
   const questions = Array.isArray(assessment.questions)
     ? (assessment.questions as unknown as Question[])
@@ -166,8 +166,8 @@ export const getProgress = async (assessmentId: string): Promise<any> => {
   return {
     success: true,
     data: {
-      assessmentId: assessment.assessment_id,
-      currentQuestion: assessment.current_question,
+      assessmentId: assessment.assessmentId,
+      currentQuestion: assessment.currentQuestion,
       totalQuestions,
       progressPercentage,
       currentScore,
@@ -179,11 +179,11 @@ export const getProgress = async (assessmentId: string): Promise<any> => {
 
 export const completeAssessment = async (assessmentId: string): Promise<any> => {
   const assessment = await prisma.skillAssessment.findUnique({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
   if (assessment.status === 'COMPLETED') {
-    return { success: true, data: { assessmentId: assessment.assessment_id, status: 'COMPLETED' } };
+    return { success: true, data: { assessmentId: assessment.assessmentId, status: 'COMPLETED' } };
   }
   const results = Array.isArray(assessment.answers) ? assessment.answers : [];
   const report = await aiAssessment.generateReport({
@@ -192,30 +192,30 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
     totalTime: null,
   });
   const updated = await prisma.skillAssessment.update({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
     data: {
       status: 'COMPLETED',
-      completed_at: new Date(),
-      overall_score: report?.overallScore || null,
-      skill_level_result: report?.skillLevel || null,
+      completedAt: new Date(),
+      overallScore: report?.overallScore || null,
+      skillLevelResult: report?.skillLevel || null,
       strengths: report?.strengths || [],
       weaknesses: report?.weaknesses || [],
       recommendations: report?.recommendations || [],
-      ai_analysis: report || {},
-      confidence_score: report?.confidenceScore || null,
+      aiAnalysis: report || {},
+      confidenceScore: report?.confidenceScore || null,
     },
   });
   return {
     success: true,
     data: {
-      assessmentId: updated.assessment_id,
+      assessmentId: updated.assessmentId,
       status: updated.status,
-      overallScore: updated.overall_score,
-      skillLevel: updated.skill_level_result,
-      completedAt: updated.completed_at,
+      overallScore: updated.overallScore,
+      skillLevel: updated.skillLevelResult,
+      completedAt: updated.completedAt,
       nextSteps: {
         jobMatching: '/api/v1/candidates/match-jobs',
-        detailedResults: `/api/v1/candidates/assessment/${updated.assessment_id}/results`,
+        detailedResults: `/api/v1/candidates/assessment/${updated.assessmentId}/results`,
       },
     },
   };
@@ -223,14 +223,14 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
 
 export const getAssessmentResults = async (assessmentId: string): Promise<any> => {
   const assessment = await prisma.skillAssessment.findUnique({
-    where: { assessment_id: assessmentId },
+    where: { assessmentId: assessmentId },
   });
   if (!assessment) throw new Error('Assessment not found');
   const questions = Array.isArray(assessment.questions)
     ? (assessment.questions as unknown as Question[])
     : [];
   const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
-  const aiAnalysis = assessment.ai_analysis || {};
+  const aiAnalysis = assessment.aiAnalysis || {};
   const questionBreakdown = answers.map((a: any, idx: number) => ({
     questionId: a.questionId || `q${idx + 1}`,
     score: a.aiEvaluation?.score || 0,
@@ -241,10 +241,10 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
   return {
     success: true,
     data: {
-      assessmentId: assessment.assessment_id,
-      skillCategory: assessment.skill_category,
-      overallScore: assessment.overall_score,
-      skillLevel: assessment.skill_level_result,
+      assessmentId: assessment.assessmentId,
+      skillCategory: assessment.skillCategory,
+      overallScore: assessment.overallScore,
+      skillLevel: assessment.skillLevelResult,
       strengths: assessment.strengths || [],
       weaknesses: assessment.weaknesses || [],
       recommendations: assessment.recommendations || [],
@@ -256,37 +256,37 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
 
 export const getAssessmentHistory = async (candidateId: string): Promise<any> => {
   const assessments = await prisma.skillAssessment.findMany({
-    where: { candidate_id: candidateId, status: 'COMPLETED' },
-    orderBy: { completed_at: 'desc' },
+    where: { candidateId: candidateId, status: 'COMPLETED' },
+    orderBy: { completedAt: 'desc' },
   });
   const history = assessments.map((a, idx) => {
     let improvement = undefined;
     if (idx < assessments.length - 1) {
-      const diff = (a.overall_score || 0) - (assessments[idx + 1].overall_score || 0);
+      const diff = (a.overallScore || 0) - (assessments[idx + 1].overallScore || 0);
       improvement = diff > 0 ? `+${diff} points from last attempt` : `${diff} points from last attempt`;
     }
     return {
-      assessmentId: a.assessment_id,
-      skillCategory: a.skill_category,
-      overallScore: a.overall_score,
-      skillLevel: a.skill_level_result,
-      completedAt: a.completed_at,
+      assessmentId: a.assessmentId,
+      skillCategory: a.skillCategory,
+      overallScore: a.overallScore,
+      skillLevel: a.skillLevelResult,
+      completedAt: a.completedAt,
       improvement,
     };
   });
   const skillProgress: Record<string, any> = {};
   for (const a of assessments) {
-    const cat = a.skill_category;
+    const cat = a.skillCategory;
     if (!skillProgress[cat]) {
       skillProgress[cat] = {
-        currentLevel: a.skill_level_result,
+        currentLevel: a.skillLevelResult,
         trend: 'STABLE',
-        lastScore: a.overall_score,
+        lastScore: a.overallScore,
         previousScore: undefined,
       };
     } else {
-      skillProgress[cat].previousScore = a.overall_score;
-      skillProgress[cat].trend = (a.overall_score || 0) > (skillProgress[cat].lastScore || 0) ? 'IMPROVING' : 'DECLINING';
+      skillProgress[cat].previousScore = a.overallScore;
+      skillProgress[cat].trend = (a.overallScore || 0) > (skillProgress[cat].lastScore || 0) ? 'IMPROVING' : 'DECLINING';
     }
   }
   return {
