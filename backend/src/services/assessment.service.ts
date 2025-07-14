@@ -119,9 +119,72 @@ export class AssessmentService {
   }
 
   // Submit and evaluate an answer
-  async submitAnswer(params: any): Promise<any> {
-    // TODO: Store answer, evaluate via AI, update assessment progress, return feedback and next question
-    return null;
+  async submitAnswer(params: { assessmentId: string; questionId: string; answer: string; timeTaken: number }): Promise<any> {
+    const { assessmentId, questionId, answer, timeTaken } = params;
+    // Fetch assessment
+    const assessment = await prisma.skillAssessment.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    if (assessment.status !== 'IN_PROGRESS' && assessment.status !== 'PENDING') {
+      throw new Error('Assessment is not active');
+    }
+    const questions = assessment.questions as Question[];
+    const idx = assessment.current_question;
+    if (!questions || idx >= questions.length) {
+      throw new Error('No more questions');
+    }
+    const currentQ = questions[idx];
+    if (currentQ.questionId !== questionId && `q${idx + 1}` !== questionId) {
+      throw new Error('Invalid questionId or out of sequence');
+    }
+    // Evaluate answer with AI
+    const aiEval = await this.ai.evaluateAnswer({
+      question: currentQ.questionText,
+      userAnswer: answer,
+      expectedAnswer: currentQ.correctAnswer,
+      questionType: currentQ.type,
+      skillCategory: assessment.skill_category,
+    });
+    // Store answer in answers array
+    const answers = Array.isArray(assessment.answers) ? [...assessment.answers] : [];
+    answers.push({
+      questionId,
+      userAnswer: answer,
+      timeTaken,
+      aiEvaluation: aiEval,
+      answeredAt: new Date().toISOString(),
+    });
+    // Update assessment: increment current_question, update answers
+    const updated = await prisma.skillAssessment.update({
+      where: { assessment_id: assessmentId },
+      data: {
+        answers,
+        current_question: idx + 1,
+        status: idx + 1 >= questions.length ? 'COMPLETED' : 'IN_PROGRESS',
+      },
+    });
+    // Prepare next question or signal completion
+    const nextQ = questions[idx + 1];
+    return {
+      success: true,
+      data: {
+        isCorrect: aiEval.isCorrect,
+        score: aiEval.score,
+        feedback: aiEval.feedback,
+        nextQuestion: nextQ
+          ? {
+              questionId: nextQ.questionId || `q${idx + 2}`,
+              questionText: nextQ.questionText,
+              type: nextQ.type,
+              timeLimit: nextQ.timeLimit || 90,
+            }
+          : null,
+        completed: !nextQ,
+      },
+    };
   }
 
   // Complete the assessment

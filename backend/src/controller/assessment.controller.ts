@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AssessmentService } from '../services/assessment.service';
 import { startAssessmentSchema } from '../validation/assessment.validation';
+import { submitAnswerSchema } from '../validation/assessment.validation';
 
 const assessmentService = new AssessmentService();
 
@@ -47,7 +48,25 @@ export const getQuestionController = async (req: Request, res: Response) => {
 
 // Submit an answer
 export const submitAnswerController = async (req: Request, res: Response) => {
-  // TODO: Validate input, call assessmentService.submitAnswer, return response
+  try {
+    // Validate input
+    const parsed = submitAnswerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.errors });
+    }
+    const assessmentId = req.params.assessmentId;
+    if (!assessmentId) {
+      return res.status(400).json({ success: false, error: 'Missing assessmentId' });
+    }
+    // Call service
+    const result = await assessmentService.submitAnswer({
+      assessmentId,
+      ...parsed.data,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Get assessment progress
