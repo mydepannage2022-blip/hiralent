@@ -1,9 +1,16 @@
 import { Request, Response } from 'express';
-import { AssessmentService } from '../services/assessment.service';
+import {
+  startAssessment,
+  getNextQuestion,
+  submitAnswer,
+  getProgress,
+  completeAssessment,
+  getAssessmentResults,
+  getAssessmentHistory,
+  getRecommendations
+} from '../services/assessment.service';
 import { startAssessmentSchema } from '../validation/assessment.validation';
 import { submitAnswerSchema } from '../validation/assessment.validation';
-
-const assessmentService = new AssessmentService();
 
 // Start a new assessment
 export const startAssessmentController = async (req: Request, res: Response) => {
@@ -19,7 +26,7 @@ export const startAssessmentController = async (req: Request, res: Response) => 
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
     // Call service with all required fields explicitly
-    const result = await assessmentService.startAssessment({
+    const result = await startAssessment({
       candidateId,
       skillCategory: parsed.data.skillCategory,
       assessmentType: parsed.data.assessmentType,
@@ -38,7 +45,7 @@ export const getQuestionController = async (req: Request, res: Response) => {
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
-    const question = await assessmentService.getNextQuestion(assessmentId);
+    const question = await getNextQuestion(assessmentId);
     if (!question) {
       return res.status(404).json({ success: false, error: 'No more questions or assessment complete' });
     }
@@ -61,7 +68,7 @@ export const submitAnswerController = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
     // Call service with all required fields explicitly
-    const result = await assessmentService.submitAnswer({
+    const result = await submitAnswer({
       assessmentId,
       questionId: parsed.data.questionId,
       answer: parsed.data.answer,
@@ -80,7 +87,7 @@ export const getProgressController = async (req: Request, res: Response) => {
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
-    const result = await assessmentService.getProgress(assessmentId);
+    const result = await getProgress(assessmentId);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
@@ -94,7 +101,7 @@ export const completeAssessmentController = async (req: Request, res: Response) 
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
-    const result = await assessmentService.completeAssessment(assessmentId);
+    const result = await completeAssessment(assessmentId);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
@@ -108,7 +115,7 @@ export const getResultsController = async (req: Request, res: Response) => {
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }
-    const result = await assessmentService.getAssessmentResults(assessmentId);
+    const result = await getAssessmentResults(assessmentId);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
@@ -122,7 +129,7 @@ export const getHistoryController = async (req: Request, res: Response) => {
     if (!candidateId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    const result = await assessmentService.getAssessmentHistory(candidateId);
+    const result = await getAssessmentHistory(candidateId);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
@@ -136,7 +143,7 @@ export const getRecommendationsController = async (req: Request, res: Response) 
     if (!candidateId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    const result = await assessmentService.getRecommendations(candidateId);
+    const result = await getRecommendations(candidateId);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
