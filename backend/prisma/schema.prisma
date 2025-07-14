@@ -8,35 +8,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =============================================================================
-// CORE USER ENTITY
-// =============================================================================
+// new schema
+model Agency {
+  agency_id             String    @id @default(uuid())
+  name                  String
+  website               String? // NEW
+  billing_contact_email String
+  owner_user_id         String
+  logo_url              String? // NEW
+  status                String
+  approved_by           String? // NEW
+  approved_at           DateTime? // NEW
+  approval_notes        String? // NEW
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  users                User[]
+  jobs                 RecruiterJob[]
+  subscription         AgencySubscription?
+  webhooks             WebhookEndpoint[]
+  recruiterInvitations RecruiterInvitation[]
+}
+
 model User {
   user_id           String    @id @default(uuid())
+  agency_id         String?
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String    // candidate, recruiter, company_admin, agency_admin, agency_agent, moderator, super_admin
-  is_email_verified Boolean   @default(false)
-  phone_number      String?
-  position          String?
-  linkedin_url      String?
-  profile_picture   String?
-  status            String    @default("active") // active, suspended, pending_verification
+  role              String
+  is_email_verified Boolean
+  phone_number      String? // NEW
+  position          String? // NEW
+  linkedin_url      String? // NEW
+  company_role      String? // NEW
+  branding_notes    String? // NEW
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
 
-  // Profile Relations (One-to-One)
-  candidateProfile    CandidateProfile?
-  recruiterProfile    RecruiterProfile?
-  companyAdminProfile CompanyAdminProfile?
-  agencyAdminProfile  AgencyAdminProfile?
-  agencyAgentProfile  AgencyAgentProfile?
-  moderatorProfile    ModeratorProfile?
-  superAdminProfile   SuperAdminProfile?
-
-  // Activity Relations
+  agency                   Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile         CandidateProfile?
+  recruiterProfile         RecruiterProfile?
+  agencyAdminProfile       AgencyAdminProfile?
+  auditLogs                AdminAuditLog[]
   jobsPosted               RecruiterJob[]
   jobApplications          JobApplication[]
   assessments              SkillAssessment[]
@@ -44,7 +59,6 @@ model User {
   notifications            Notification[]
   progressUpdates          CandidateProgressTracker[]
   progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
-  auditLogs                AdminAuditLog[]
   recruiterInvitationsSent RecruiterInvitation[]      @relation("RecruiterInvites")
   
   // Candidate Flow Phase 1 Relations
@@ -57,253 +71,88 @@ model User {
   profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
 }
 
-// =============================================================================
-// CANDIDATE PROFILE
-// =============================================================================
 model CandidateProfile {
   candidate_id        String   @id
   resume_url          String?
   video_intro_url     String?
-  skills              String?  // JSON or comma-separated
+  skills              String?
   education           String?
   experience          String?
   preferred_locations String?
   languages           String?
-  salary_expectation  String?
-  availability_date   DateTime?
-  relocation_willing  Boolean  @default(false)
-  visa_status         String?
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
   user User @relation(fields: [candidate_id], references: [user_id])
 }
 
-// =============================================================================
-// RECRUITER PROFILE
-// =============================================================================
 model RecruiterProfile {
-  recruiter_id      String   @id
-  company_id        String?  // Can be null if independent recruiter
-  contact_number    String?
-  linkedin_profile  String?
-  specialization    String?  // What type of roles they specialize in
-  experience_years  Int?     // Years of recruiting experience
-  hiring_regions    String?  // JSON array of regions they hire for
-  verified_recruiter Boolean @default(false)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  recruiter_id     String   @id
+  job_title        String?
+  contact_number   String?
+  linkedin_profile String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
-  user    User     @relation(fields: [recruiter_id], references: [user_id])
-  company Company? @relation(fields: [company_id], references: [company_id])
-}
-
-// =============================================================================
-// COMPANY ENTITY & ADMIN
-// =============================================================================
-model Company {
-  company_id            String    @id @default(uuid())
-  name                  String
-  website               String?
-  description           String?
-  industry              String?
-  company_size          String?   // 1-10, 11-50, 51-200, 201-500, 500+
-  founded_year          Int?
-  headquarters_location String?
-  logo_url              String?
-  banner_url            String?
-  contact_email         String
-  contact_phone         String?
-  linkedin_url          String?
-  twitter_url           String?
-  facebook_url          String?
-  instagram_url         String?
-  
-  // Address Information
-  address_line1         String?
-  address_line2         String?
-  city                  String?
-  state                 String?
-  country               String?
-  postal_code           String?
-  
-  // Business Information
-  tax_id                String?
-  registration_number   String?
-  business_license      String?
-  
-  // Platform Status
-  status                String    @default("active") // active, suspended, pending_approval
-  is_verified           Boolean   @default(false)
-  verification_documents String?  // JSON array of document URLs
-  approved_by           String?
-  approved_at           DateTime?
-  approval_notes        String?
-  
-  // Hiring Configuration
-  hiring_regions        String?   // JSON array of regions they hire from
-  visa_sponsorship      Boolean   @default(false)
-  relocation_support    Boolean   @default(false)
-  remote_work_policy    String?   // remote, hybrid, onsite
-  
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
-
-  // Relations
-  recruiters           RecruiterProfile[]
-  companyAdmins        CompanyAdminProfile[]
-  jobs                 RecruiterJob[]
-  subscription         CompanySubscription?
-  webhooks             WebhookEndpoint[]
-  recruiterInvitations RecruiterInvitation[]
-  relocationCases      RelocationCase[]
-}
-
-model CompanyAdminProfile {
-  admin_id       String   @id
-  company_id     String
-  phone_number   String?
-  position       String?
-  department     String?
-  linkedin_url   String?
-  permissions    String?  // JSON string of specific permissions
-  is_primary     Boolean  @default(false) // Primary admin who created the company
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  user    User    @relation(fields: [admin_id], references: [user_id])
-  company Company @relation(fields: [company_id], references: [company_id])
-}
-
-// =============================================================================
-// AGENCY ENTITY & PROFILES (External Partner)
-// =============================================================================
-model Agency {
-  agency_id             String    @id @default(uuid())
-  name                  String
-  website               String?
-  description           String?
-  services_offered      String?   // JSON array: visa, housing, documents, etc.
-  countries_served      String?   // JSON array of countries
-  languages_supported   String?   // JSON array of languages
-  
-  // Contact Information
-  contact_email         String
-  contact_phone         String?
-  address_line1         String?
-  address_line2         String?
-  city                  String?
-  state                 String?
-  country               String?
-  postal_code           String?
-  
-  // Business Information
-  license_number        String?
-  certifications        String?   // JSON array of certifications
-  insurance_info        String?
-  
-  // Platform Status
-  status                String    @default("pending") // pending, active, suspended
-  is_verified           Boolean   @default(false)
-  verification_documents String?  // JSON array of document URLs
-  approved_by           String?
-  approved_at           DateTime?
-  approval_notes        String?
-  
-  // Performance Metrics
-  success_rate          Decimal?  @default(0.0)
-  average_processing_time Int?    // in days
-  rating                Decimal?  @default(0.0)
-  
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
-
-  // Relations
-  agencyAdmins         AgencyAdminProfile[]
-  agencyAgents         AgencyAgentProfile[]
-  subscription         AgencySubscription?
-  webhooks             WebhookEndpoint[]
-  relocationCases      RelocationCase[]
+  user User @relation(fields: [recruiter_id], references: [user_id])
 }
 
 model AgencyAdminProfile {
   admin_id       String   @id
-  agency_id      String
   phone_number   String?
   position       String?
   linkedin_url   String?
-  permissions    String?  // JSON string of specific permissions
-  is_primary     Boolean  @default(false) // Primary admin who created the agency
+  company_role   String?
+  branding_notes String?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  user   User   @relation(fields: [admin_id], references: [user_id])
-  agency Agency @relation(fields: [agency_id], references: [agency_id])
+  user User @relation(fields: [admin_id], references: [user_id])
 }
 
-model AgencyAgentProfile {
-  agent_id       String   @id
-  agency_id      String
-  phone_number   String?
-  position       String?
-  specialization String?  // visa, housing, documents, etc.
-  linkedin_url   String?
-  languages      String?  // JSON array of languages spoken
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+model AdminAuditLog {
+  log_id       String   @id @default(uuid())
+  admin_id     String
+  action_type  String
+  target_table String
+  target_id    String
+  description  String?
+  created_at   DateTime @default(now())
 
-  user   User   @relation(fields: [agent_id], references: [user_id])
-  agency Agency @relation(fields: [agency_id], references: [agency_id])
+  admin User @relation(fields: [admin_id], references: [user_id])
 }
 
-// =============================================================================
-// PLATFORM TEAM PROFILES
-// =============================================================================
-model ModeratorProfile {
-  moderator_id   String   @id
-  phone_number   String?
-  specialization String?  // content, documents, user_verification, etc.
-  permissions    String?  // JSON string of specific permissions
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  user User @relation(fields: [moderator_id], references: [user_id])
+model RolePermission {
+  permission_id String      @id @default(uuid())
+  role_name     String
+  module        String
+  access_level  AccessLevel
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
 }
 
-model SuperAdminProfile {
-  super_admin_id String   @id
-  phone_number   String?
-  permissions    String?  // JSON string of all permissions
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  user User @relation(fields: [super_admin_id], references: [user_id])
+enum AccessLevel {
+  none
+  read
+  write
+  manage
 }
 
-// =============================================================================
-// JOB MANAGEMENT
-// =============================================================================
 model RecruiterJob {
-  job_id           String   @id @default(uuid())
-  recruiter_id     String
-  company_id       String
-  title            String
-  location         String
-  description      String
-  salary_range     String?
-  required_skills  String?  // JSON array
-  employment_type  String?  // full-time, part-time, contract, etc.
-  experience_level String?  // entry, mid, senior, etc.
-  visa_sponsorship Boolean  @default(false)
-  relocation_support Boolean @default(false)
-  remote_work_option String? // remote, hybrid, onsite
-  status           String   @default("draft") // draft, active, paused, closed
-  expires_at       DateTime?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  job_id          String   @id @default(uuid())
+  recruiter_id    String
+  agency_id       String
+  title           String
+  location        String
+  description     String
+  salary_range    String?
+  required_skills String?
+  status          String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   recruiter        User                       @relation(fields: [recruiter_id], references: [user_id])
-  company          Company                    @relation(fields: [company_id], references: [company_id])
+  agency           Agency                     @relation(fields: [agency_id], references: [agency_id])
   applications     JobApplication[]
   progressTrackers CandidateProgressTracker[]
   assessments      SkillAssessment[]
@@ -315,10 +164,8 @@ model JobApplication {
   application_id String   @id @default(uuid())
   candidate_id   String
   job_id         String
-  status         String   @default("applied") // applied, screening, interviewed, offered, rejected, hired
+  status         String
   cover_letter   String?
-  expected_salary String?
-  available_date DateTime?
   applied_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
@@ -331,7 +178,7 @@ model CandidateProgressTracker {
   progress_id  String   @id @default(uuid())
   candidate_id String
   job_id       String
-  stage        String   // applied, screening, test, interview, offered, hired, rejected
+  stage        String
   updated_by   String
   notes        String?
   updated_at   DateTime @default(now())
@@ -341,18 +188,28 @@ model CandidateProgressTracker {
   job       RecruiterJob @relation(fields: [job_id], references: [job_id])
 }
 
-// =============================================================================
-// ASSESSMENT & INTERVIEW
-// =============================================================================
+model AIInterviewResult {
+  interview_id   String   @id @default(uuid())
+  application_id String   @unique
+  interview_type String
+  score          String?
+  video_url      String?
+  feedback       String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  application  JobApplication @relation(fields: [application_id], references: [application_id])
+  candidate    User           @relation(fields: [candidate_id], references: [user_id])
+  candidate_id String
+}
+
 model SkillAssessment {
   assessment_id String    @id @default(uuid())
   candidate_id  String
   job_id        String
-  provider      String    // internal, codility, hackerrank, etc.
-  assessment_type String  // coding, technical, behavioral, etc.
+  provider      String
   score         String?
-  max_score     String?
-  status        String    @default("pending") // pending, in_progress, completed, failed
+  status        String
   completed_at  DateTime?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
@@ -361,193 +218,33 @@ model SkillAssessment {
   job       RecruiterJob @relation(fields: [job_id], references: [job_id])
 }
 
-model AIInterviewResult {
-  interview_id   String   @id @default(uuid())
-  application_id String   @unique
-  candidate_id   String
-  interview_type String   // video, audio, text-based
-  questions      String?  // JSON array of questions asked
-  responses      String?  // JSON array of responses
-  score          String?
-  max_score      String?
-  video_url      String?
-  feedback       String?
-  ai_analysis    String?  // JSON object with detailed AI analysis
-  status         String   @default("pending") // pending, in_progress, completed, failed
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  application JobApplication @relation(fields: [application_id], references: [application_id])
-  candidate   User           @relation(fields: [candidate_id], references: [user_id])
-}
-
-// =============================================================================
-// RELOCATION MANAGEMENT
-// =============================================================================
-model RelocationCase {
-  case_id         String    @id @default(uuid())
-  candidate_id    String
-  company_id      String
-  agency_id       String?   // Assigned agency
-  assigned_agent  String?   // Specific agent assigned
-  created_by      String    // Who initiated the relocation
-  
-  // Case Details
-  from_country    String
-  to_country      String
-  from_city       String?
-  to_city         String?
-  visa_type       String?
-  urgency_level   String    @default("normal") // low, normal, high, urgent
-  
-  // Services Required
-  visa_assistance Boolean   @default(false)
-  housing_assistance Boolean @default(false)
-  document_assistance Boolean @default(false)
-  airport_pickup  Boolean   @default(false)
-  bank_setup      Boolean   @default(false)
-  
-  // Status & Timeline
-  status          String    @default("pending") // pending, in_progress, completed, cancelled
-  estimated_completion DateTime?
-  actual_completion DateTime?
-  
-  // Communication
-  notes           String?
-  internal_notes  String?   // For agency use only
-  
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-
-  candidate      User     @relation("CandidateRelocation", fields: [candidate_id], references: [user_id])
-  company        Company  @relation(fields: [company_id], references: [company_id])
-  agency         Agency?  @relation(fields: [agency_id], references: [agency_id])
-  assignedAgent  User?    @relation("AssignedAgent", fields: [assigned_agent], references: [user_id])
-  createdBy      User     @relation("CreatedBy", fields: [created_by], references: [user_id])
-  
-  // Relations
-  documents      RelocationDocument[]
-  statusUpdates  RelocationStatusUpdate[]
-}
-
-model RelocationDocument {
-  document_id   String   @id @default(uuid())
-  case_id       String
-  document_type String   // visa, passport, housing_contract, etc.
-  file_url      String
-  file_name     String
-  uploaded_by   String
-  status        String   @default("pending") // pending, approved, rejected
-  notes         String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  relocationCase RelocationCase @relation(fields: [case_id], references: [case_id])
-}
-
-model RelocationStatusUpdate {
-  update_id   String   @id @default(uuid())
-  case_id     String
-  updated_by  String
-  status      String
-  message     String
-  is_visible_to_candidate Boolean @default(true)
-  created_at  DateTime @default(now())
-
-  relocationCase RelocationCase @relation(fields: [case_id], references: [case_id])
-}
-
-// =============================================================================
-// SYSTEM MANAGEMENT
-// =============================================================================
-model AdminAuditLog {
-  log_id       String   @id @default(uuid())
-  admin_id     String
-  action_type  String   // create, update, delete, approve, reject, etc.
-  target_table String
-  target_id    String
-  old_values   String?  // JSON of old values
-  new_values   String?  // JSON of new values
-  description  String?
-  ip_address   String?
-  user_agent   String?
-  created_at   DateTime @default(now())
-
-  admin User @relation(fields: [admin_id], references: [user_id])
-}
-
-model RolePermission {
-  permission_id String      @id @default(uuid())
-  role_name     String
-  module        String      // jobs, users, companies, agencies, etc.
-  access_level  AccessLevel
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
-
-  @@unique([role_name, module])
-}
-
-enum AccessLevel {
-  none
-  read
-  write
-  manage
-}
-
 model Notification {
   notification_id String   @id @default(uuid())
   user_id         String
-  type            String   // job_application, interview_scheduled, relocation_update, etc.
-  title           String
+  type            String
   message         String
-  data            String?  // JSON object with additional data
   is_read         Boolean  @default(false)
-  sent_via        String   // email, sms, push, in_app
+  sent_via        String
   created_at      DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [user_id])
 }
 
-// =============================================================================
-// SUBSCRIPTION & BILLING
-// =============================================================================
 model SubscriptionPlan {
   plan_id                  String   @id @default(uuid())
   name                     String
   price_monthly_usd      Decimal
   price_annually_usd     Decimal
-  target_entity            String   // company, agency
-  price_monthly_usd        Decimal
-  price_annually_usd       Decimal
   job_post_limit           Int
   ai_interview_limit       Int
-  relocation_cases_limit   Int?     // For agencies
-  features_included        String   // JSON array
-  is_publicly_available    Boolean  @default(true)
+  features_included        String
+  is_publicly_available    Boolean
   stripe_price_id_monthly  String
   stripe_price_id_annually String
   created_at               DateTime @default(now())
   updated_at               DateTime @updatedAt
 
-  companySubscriptions CompanySubscription[]
-  agencySubscriptions  AgencySubscription[]
-}
-
-model CompanySubscription {
-  company_subscription_id String    @id @default(uuid())
-  company_id              String    @unique
-  plan_id                 String
-  stripe_subscription_id  String
-  stripe_customer_id      String
-  status                  String    // active, cancelled, past_due, etc.
-  current_period_start    DateTime
-  current_period_end      DateTime
-  trial_ends_at           DateTime?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-
-  company Company          @relation(fields: [company_id], references: [company_id])
-  plan    SubscriptionPlan @relation(fields: [plan_id], references: [plan_id])
+  agencySubscriptions AgencySubscription[]
 }
 
 model AgencySubscription {
@@ -555,8 +252,7 @@ model AgencySubscription {
   agency_id              String    @unique
   plan_id                String
   stripe_subscription_id String
-  stripe_customer_id     String
-  status                 String    // active, cancelled, past_due, etc.
+  status                 String
   current_period_start   DateTime
   current_period_end     DateTime
   trial_ends_at          DateTime?
@@ -567,41 +263,177 @@ model AgencySubscription {
   plan   SubscriptionPlan @relation(fields: [plan_id], references: [plan_id])
 }
 
-// =============================================================================
-// INTEGRATIONS
-// =============================================================================
 model WebhookEndpoint {
   webhook_id                  String    @id @default(uuid())
-  company_id                  String?   // For company webhooks
-  agency_id                   String?   // For agency webhooks
+  agency_id                   String
   url                         String
   secret_key                  String
-  subscribed_event_types      String    // JSON array of event types
-  status                      String    @default("active") // active, disabled, failed
+  subscribed_event_types      String
+  status                      String
   last_successful_delivery_at DateTime?
   last_failed_delivery_at     DateTime?
-  failure_count               Int       @default(0)
   created_at                  DateTime  @default(now())
   updated_at                  DateTime  @updatedAt
 
-  company Company? @relation(fields: [company_id], references: [company_id])
-  agency  Agency?  @relation(fields: [agency_id], references: [agency_id])
+  agency Agency @relation(fields: [agency_id], references: [agency_id])
 }
 
 model RecruiterInvitation {
   invitation_id String   @id @default(uuid())
-  company_id    String
+  agency_id     String
   inviter_id    String
   email         String
   full_name     String
   position      String?
-  role          String   @default("recruiter") // recruiter, company_admin
-  status        String   @default("pending") // pending, accepted, expired, cancelled
+  status        String
   expires_at    DateTime
-  accepted_at   DateTime?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  company Company @relation(fields: [company_id], references: [company_id])
-  inviter User    @relation("RecruiterInvites", fields: [inviter_id], references: [user_id])
+  agency  Agency @relation(fields: [agency_id], references: [agency_id])
+  inviter User   @relation("RecruiterInvites", fields: [inviter_id], references: [user_id])
+}
+
+// ========== CANDIDATE FLOW PHASE 1 MODELS ==========
+
+// Model for storing uploaded documents (CVs, resumes)
+model CandidateDocument {
+  document_id      String   @id @default(uuid())
+  candidate_id     String
+  file_name        String
+  file_path        String
+  file_type        String   // pdf, docx, etc.
+  file_size        Int
+  upload_status    String   // uploaded, processing, processed, failed
+  extraction_status String? // pending, completed, failed
+  processed_text   String?  // extracted text from document
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  candidate        User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id])
+  skillExtractions SkillExtraction[]
+  candidateSkills  CandidateSkill[]  @relation("SkillsFromDocument")
+}
+
+// Model for AI-extracted skills from documents
+model CandidateSkill {
+  skill_id       String   @id @default(uuid())
+  candidate_id   String
+  skill_name     String
+  skill_category String?  // technical, soft, language, etc.
+  proficiency    String?  // beginner, intermediate, advanced, expert
+  years_experience Int?
+  confidence_score Float?  // AI confidence in extraction (0-1)
+  source_type    String   // cv_extraction, manual_input, assessment
+  source_document_id String?
+  is_verified    Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  candidate User @relation("CandidateSkills", fields: [candidate_id], references: [user_id])
+  sourceDocument CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id])
+}
+
+// Model for tracking skill extraction process
+model SkillExtraction {
+  extraction_id    String   @id @default(uuid())
+  document_id      String
+  candidate_id     String
+  status           String   // pending, processing, completed, failed
+  ai_provider      String   // openai, anthropic, etc.
+  prompt_used      String?
+  raw_response     String?  // raw AI response
+  extracted_skills Json?    // structured skills data
+  processing_time  Int?     // time taken in ms
+  error_message    String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  document  CandidateDocument @relation(fields: [document_id], references: [document_id])
+  candidate User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id])
+}
+
+// Model for AI career predictions
+model CareerPrediction {
+  prediction_id       String   @id @default(uuid())
+  candidate_id        String
+  current_role        String?
+  predicted_roles     Json     // array of predicted job roles with scores
+  career_path         Json     // suggested career progression
+  skill_gaps          Json     // skills needed for career growth
+  salary_prediction   Json     // salary ranges for predicted roles
+  confidence_score    Float    // overall confidence (0-1)
+  ai_model_version    String
+  input_data_summary  String?  // summary of data used for prediction
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  candidate User @relation("CareerPredictions", fields: [candidate_id], references: [user_id])
+}
+
+// Model for job recommendations and matching
+model JobRecommendation {
+  recommendation_id String   @id @default(uuid())
+  candidate_id      String
+  job_id            String
+  match_score       Float    // 0-1 matching score
+  skill_match       Json     // detailed skill matching analysis
+  salary_match      Float?   // how well salary expectations match
+  location_match    Float?   // location preference match
+  experience_match  Float?   // experience level match
+  ai_reasoning      String?  // explanation of the recommendation
+  is_viewed         Boolean  @default(false)
+  is_applied        Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  candidate User         @relation("JobRecommendations", fields: [candidate_id], references: [user_id])
+  job       RecruiterJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+}
+
+// Model for storing candidate profile vectors for matching
+model CandidateVector {
+  vector_id         String   @id @default(uuid())
+  candidate_id      String   @unique
+  skill_vector      Json     // vector representation of skills
+  experience_vector Json     // vector representation of experience
+  education_vector  Json     // vector representation of education
+  combined_vector   Json     // combined vector for overall matching
+  vector_version    String   // version of vectorization algorithm
+  last_updated      DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  candidate User @relation("CandidateVector", fields: [candidate_id], references: [user_id])
+}
+
+// Model for job vectors for matching
+model JobVector {
+  vector_id          String   @id @default(uuid())
+  job_id             String   @unique
+  requirements_vector Json    // vector representation of job requirements
+  skills_vector      Json     // vector representation of required skills
+  combined_vector    Json     // combined vector for matching
+  vector_version     String   // version of vectorization algorithm
+  last_updated       DateTime @default(now())
+  created_at         DateTime @default(now())
+
+  job RecruiterJob @relation("JobVector", fields: [job_id], references: [job_id])
+}
+
+// Model for tracking profile completeness
+model ProfileCompleteness {
+  completeness_id   String   @id @default(uuid())
+  candidate_id      String   @unique
+  overall_score     Float    // 0-100 overall completeness score
+  basic_info_score  Float    // basic profile information score
+  skills_score      Float    // skills section score
+  experience_score  Float    // experience section score
+  education_score   Float    // education section score
+  document_score    Float    // uploaded documents score
+  missing_fields    Json     // array of missing required fields
+  suggestions       Json     // suggestions for improving profile
+  last_calculated   DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  candidate User @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id])
 }
