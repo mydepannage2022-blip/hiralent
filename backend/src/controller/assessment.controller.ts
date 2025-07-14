@@ -71,7 +71,16 @@ export const submitAnswerController = async (req: Request, res: Response) => {
 
 // Get assessment progress
 export const getProgressController = async (req: Request, res: Response) => {
-  // TODO: Fetch and return assessment progress
+  try {
+    const assessmentId = req.params.assessmentId;
+    if (!assessmentId) {
+      return res.status(400).json({ success: false, error: 'Missing assessmentId' });
+    }
+    const result = await assessmentService.getProgress(assessmentId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Complete the assessment

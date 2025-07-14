@@ -204,4 +204,42 @@ export class AssessmentService {
     // TODO: Fetch all assessments for candidate, calculate progress
     return null as any;
   }
+
+  // Get assessment progress
+  async getProgress(assessmentId: string): Promise<any> {
+    const assessment = await prisma.skillAssessment.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    const totalQuestions = assessment.total_questions;
+    const currentQuestion = assessment.current_question;
+    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
+    const progressPercentage = Math.round((currentQuestion / totalQuestions) * 100);
+    // Calculate current score (average of answered)
+    const scores = answers.map((a: any) => a.aiEvaluation?.score || 0);
+    const currentScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    // Time remaining (if startedAt and timeLimit)
+    let timeRemaining = null;
+    if (assessment.started_at && assessment.time_limit) {
+      const elapsed = (Date.now() - new Date(assessment.started_at).getTime()) / 1000; // seconds
+      timeRemaining = Math.max(0, assessment.time_limit * 60 - elapsed);
+    }
+    // Difficulty curve (array of difficulties so far)
+    const questions = assessment.questions as Question[];
+    const difficultyCurve = questions.slice(0, currentQuestion).map(q => q.difficulty || 'BEGINNER');
+    return {
+      success: true,
+      data: {
+        assessmentId: assessment.assessment_id,
+        currentQuestion,
+        totalQuestions,
+        progressPercentage,
+        currentScore,
+        timeRemaining,
+        difficultyCurve,
+      },
+    };
+  }
 }
