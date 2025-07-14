@@ -85,7 +85,16 @@ export const getProgressController = async (req: Request, res: Response) => {
 
 // Complete the assessment
 export const completeAssessmentController = async (req: Request, res: Response) => {
-  // TODO: Mark assessment as completed, return summary
+  try {
+    const assessmentId = req.params.assessmentId;
+    if (!assessmentId) {
+      return res.status(400).json({ success: false, error: 'Missing assessmentId' });
+    }
+    const result = await assessmentService.completeAssessment(assessmentId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Get assessment results

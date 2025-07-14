@@ -189,8 +189,52 @@ export class AssessmentService {
 
   // Complete the assessment
   async completeAssessment(assessmentId: string): Promise<any> {
-    // TODO: Mark assessment as completed, generate AI report, update DB
-    return null;
+    // Fetch assessment
+    const assessment = await prisma.skillAssessment.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    if (assessment.status === 'COMPLETED') {
+      return { success: true, data: { assessmentId, status: 'COMPLETED' } };
+    }
+    // Generate AI report
+    const results = Array.isArray(assessment.answers) ? assessment.answers : [];
+    const report = await this.ai.generateReport({
+      assessment,
+      results,
+      totalTime: null, // TODO: Calculate if needed
+    });
+    // Update assessment with report
+    const updated = await prisma.skillAssessment.update({
+      where: { assessment_id: assessmentId },
+      data: {
+        status: 'COMPLETED',
+        completed_at: new Date(),
+        overall_score: report?.overallScore || null,
+        skill_level_result: report?.skillLevel || null,
+        strengths: report?.strengths || [],
+        weaknesses: report?.weaknesses || [],
+        recommendations: report?.recommendations || [],
+        ai_analysis: report || {},
+        confidence_score: report?.confidenceScore || null,
+      },
+    });
+    return {
+      success: true,
+      data: {
+        assessmentId: updated.assessment_id,
+        status: updated.status,
+        overallScore: updated.overall_score,
+        skillLevel: updated.skill_level_result,
+        completedAt: updated.completed_at,
+        nextSteps: {
+          jobMatching: '/api/v1/candidates/match-jobs',
+          detailedResults: `/api/v1/candidates/assessment/${updated.assessment_id}/results`,
+        },
+      },
+    };
   }
 
   // Get assessment results
