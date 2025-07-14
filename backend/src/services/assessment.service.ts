@@ -1,3 +1,4 @@
+import { Json } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch/db_control';
 import prisma from '../lib/prisma';
 import {
   StartAssessmentParams,
@@ -14,7 +15,7 @@ import * as aiAssessment from './aiAssessment.service';
 export const startAssessment = async (params: StartAssessmentParams): Promise<any> => {
   const { candidateId, skillCategory, assessmentType, difficulty } = params;
   const candidateProfile = await prisma.candidateProfile.findUnique({
-    where: { candidateId: candidateId },
+    where: { candidate_id: candidateId },
   });
   if (!candidateProfile) throw new Error('Candidate profile not found');
   const aiProfile = {
@@ -39,8 +40,8 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
       time_limit: 30,
       status: 'PENDING',
       current_question: 0,
-      questions: questions as any,
-      answers: [] as any,
+      questions: questions as Json,
+      answers: [] as Json,
     },
   });
   const firstQuestion = questions[0] ? {
