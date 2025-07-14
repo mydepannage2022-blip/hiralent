@@ -1,11 +1,31 @@
 import { Request, Response } from 'express';
 import { AssessmentService } from '../services/assessment.service';
+import { startAssessmentSchema } from '../validation/assessment.validation';
 
 const assessmentService = new AssessmentService();
 
 // Start a new assessment
 export const startAssessmentController = async (req: Request, res: Response) => {
-  // TODO: Validate input, call assessmentService.startAssessment, return response
+  try {
+    // Validate input
+    const parsed = startAssessmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.errors });
+    }
+    // Get candidateId from auth
+    const candidateId = req.user?.user_id;
+    if (!candidateId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    // Call service
+    const result = await assessmentService.startAssessment({
+      ...parsed.data,
+      candidateId,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Get the next question
