@@ -32,8 +32,8 @@ export const adjustDifficulty = async (params: any): Promise<any> => {
 
 export const generateReport = async (params: any): Promise<any> => {
   const prompt = SKILL_ASSESSMENT_PROMPTS.COMPREHENSIVE_REPORT
-    .replace('{skillCategory}', params.assessment.skill_category)
-    .replace('{totalQuestions}', params.assessment.total_questions?.toString() || '')
+    .replace('{skillCategory}', params.assessment.skillCategory)
+    .replace('{totalQuestions}', params.assessment.totalQuestions?.toString() || '')
     .replace('{overallScore}', params.assessment.overall_score?.toString() || '')
     .replace('{totalTime}', params.totalTime?.toString() || '')
     .replace('{performanceData}', JSON.stringify(params.results || []));

@@ -24,28 +24,28 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
     // Save document metadata
     const document = await prisma.candidateDocument.create({
       data: {
-        candidate_id: candidateId,
-        file_name: file.originalname,
-        file_path: file.path,
-        file_type: file.mimetype,
-        file_size: file.size,
-        upload_status: 'uploaded',
-        extraction_status: 'pending'
+        candidateId: candidateId,
+        fileName: file.originalname,
+        filePath: file.path,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        uploadStatus: 'uploaded',
+        extractionStatus: 'pending'
       }
     });
 
     // Parse the document asynchronously
-    processDocumentAsync(document.document_id, candidateId);
+    processDocumentAsync(document.documentId, candidateId);
 
     return {
       success: true,
-      document_id: document.document_id,
+      documentId: document.documentId,
       document: {
-        name: document.file_name,
-        upload_status: document.upload_status,
-        extraction_status: document.extraction_status,
-        candidate_id: candidateId,
-        whole_document: fs.readFileSync(document.file_path, 'utf-8')
+        name: document.fileName,
+        uploadStatus: document.uploadStatus,
+        extractionStatus: document.extractionStatus,
+        candidateId: candidateId,
+        wholeDocument: fs.readFileSync(document.filePath, 'utf-8')
       },
       message: 'CV uploaded successfully. Processing in background.'
     };
@@ -63,13 +63,13 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
   try {
     // Update status to processing
     await prisma.candidateDocument.update({
-      where: { document_id: documentId },
-      data: { extraction_status: 'processing' }
+      where: { documentId: documentId },
+      data: { extractionStatus: 'processing' }
     });
 
     // Get document info
     const document = await prisma.candidateDocument.findUnique({
-      where: { document_id: documentId }
+      where: { documentId: documentId }
     });
 
     if (!document) {
@@ -77,25 +77,25 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
     }
 
     // Parse document text
-    const parsedDoc = await parseDocument(document.file_path, document.file_type);
+    const parsedDoc = await parseDocument(document.filePath, document.fileType);
     const processedText = preprocessText(parsedDoc.text);
     console.log('Processed Text:', processedText);
     // Update document with extracted text
     await prisma.candidateDocument.update({
-      where: { document_id: documentId },
+      where: { documentId: documentId },
       data: { 
-        processed_text: processedText,
-        extraction_status: 'completed'
+        processedText: processedText,
+        extractionStatus: 'completed'
       }
     });
 
     // Create skill extraction record
     const skillExtraction = await prisma.skillExtraction.create({
       data: {
-        document_id: documentId,
-        candidate_id: candidateId,
+        documentId: documentId,
+        candidateId: candidateId,
         status: 'processing',
-        ai_provider: 'openai'
+        aiProvider: 'openai'
       }
     });
     console.log('Skill Extraction Record:', skillExtraction);
@@ -106,12 +106,12 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
 
           // Update skill extraction record
       await prisma.skillExtraction.update({
-        where: { extraction_id: skillExtraction.extraction_id },
+        where: { extractionId: skillExtraction.extractionId },
         data: {
           status: 'completed',
-          raw_response: JSON.stringify(extractedData),
-          extracted_skills: JSON.stringify(extractedData),
-          processing_time: processingTime
+          rawResponse: JSON.stringify(extractedData),
+          extractedSkills: JSON.stringify(extractedData),
+          processingTime: processingTime
         }
       });
 
@@ -120,14 +120,14 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
       for (const skill of extractedData.skills) {
         await prisma.candidateSkill.create({
           data: {
-            candidate_id: candidateId,
-            skill_name: skill.name,
-            skill_category: skill.category || 'technical',
+            candidateId: candidateId,
+            skillName: skill.name,
+            skillCategory: skill.category || 'technical',
             proficiency: skill.proficiency || 'intermediate',
-            years_experience: skill.years_experience || 0,
-            confidence_score: 0.8, // Default confidence
-            source_type: 'cv_extraction',
-            source_document_id: documentId
+            yearsExperience: skill.yearsExperience || 0,
+            confidenceScore: 0.8, // Default confidence
+            sourceType: 'cv_extraction',
+            sourceDocumentId: documentId
           }
         });
       }
@@ -151,12 +151,12 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
     // Update extraction status to failed
     await prisma.skillExtraction.updateMany({
       where: { 
-        document_id: documentId,
+        documentId: documentId,
         status: 'processing'
       },
       data: {
         status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error'
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
       }
     });
   }
@@ -166,7 +166,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
 const updateCandidateProfile = async (candidateId: string, extractedData: AIExtractionResult): Promise<void> => {
   try {
     const existingProfile = await prisma.candidateProfile.findUnique({
-      where: { candidate_id: candidateId }
+      where: { candidateId: candidateId }
     });
 
     const profileData = {
@@ -177,13 +177,13 @@ const updateCandidateProfile = async (candidateId: string, extractedData: AIExtr
 
     if (existingProfile) {
       await prisma.candidateProfile.update({
-        where: { candidate_id: candidateId },
+        where: { candidateId: candidateId },
         data: profileData
       });
     } else {
       await prisma.candidateProfile.create({
         data: {
-          candidate_id: candidateId,
+          candidateId: candidateId,
           ...profileData
         }
       });
@@ -198,7 +198,7 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
   try {
     // Get candidate data
     const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
+      where: { userId: candidateId },
       include: {
         candidateProfile: true,
         candidateSkills: true
@@ -212,10 +212,10 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
     // Prepare data for AI prediction
     const candidateData = {
       skills: candidate.candidateSkills.map(s => ({
-        name: s.skill_name,
-        category: (s.skill_category as 'technical' | 'soft' | 'language' | 'certification') || 'technical',
+        name: s.skillName,
+        category: (s.skillCategory as 'technical' | 'soft' | 'language' | 'certification') || 'technical',
         proficiency: (s.proficiency as 'beginner' | 'intermediate' | 'advanced' | 'expert') || 'intermediate',
-        years_experience: s.years_experience || 0
+        yearsExperience: s.yearsExperience || 0
       })),
       education: candidate.candidateProfile?.education ? JSON.parse(candidate.candidateProfile.education) : [],
       experience: candidate.candidateProfile?.experience ? JSON.parse(candidate.candidateProfile.experience) : []
@@ -227,15 +227,15 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
     // Save prediction
     await prisma.careerPrediction.create({
       data: {
-        candidate_id: candidateId,
-        current_role: prediction.current_role,
-        predicted_roles: JSON.stringify(prediction.predicted_roles),
-        career_path: JSON.stringify(prediction.career_path),
-        skill_gaps: JSON.stringify(prediction.skill_gaps),
-        salary_prediction: JSON.stringify(prediction.salary_prediction),
-        confidence_score: prediction.confidence_score || 0.7,
-        ai_model_version: 'gemini-0.5',
-        input_data_summary: `Skills: ${candidateData.skills.length}, Experience: ${candidateData.experience.length}`
+        candidateId: candidateId,
+        currentRole: prediction.currentRole,
+        predictedRoles: JSON.stringify(prediction.predictedRoles),
+        careerPath: JSON.stringify(prediction.careerPath),
+        skillGaps: JSON.stringify(prediction.skillGaps),
+        salaryPrediction: JSON.stringify(prediction.salaryPrediction),
+        confidenceScore: prediction.confidenceScore || 0.7,
+        aiModelVersion: 'gemini-0.5',
+        inputDataSummary: `Skills: ${candidateData.skills.length}, Experience: ${candidateData.experience.length}`
       }
     });
 
@@ -253,7 +253,7 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
 export const updateCandidateVector = async (candidateId: string): Promise<{ success: boolean }> => {
   try {
     const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
+      where: { userId: candidateId },
       include: {
         candidateProfile: true,
         candidateSkills: true
@@ -266,12 +266,12 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
 
     // Create text representation for embedding
     const skillsText = candidate.candidateSkills
-      .map(s => `${s.skill_name} (${s.proficiency})`)
+      .map(s => `${s.skillName} (${s.proficiency})`)
       .join(', ');
 
     const experienceText = candidate.candidateProfile?.experience 
       ? JSON.parse(candidate.candidateProfile.experience)
-          .map((exp: any) => `${exp.job_title} at ${exp.company}`)
+          .map((exp: any) => `${exp.jobTitle} at ${exp.company}`)
           .join(', ')
       : '';
 
@@ -291,26 +291,26 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
 
     // Save to database
     const existingVector = await prisma.candidateVector.findUnique({
-      where: { candidate_id: candidateId }
+      where: { candidateId: candidateId }
     });
 
     const vectorData = {
-      skill_vector: skillVector,
-      experience_vector: experienceVector,
-      education_vector: educationVector,
-      combined_vector: combinedVector,
-      vector_version: 'v1.0'
+      skillVector: skillVector,
+      experienceVector: experienceVector,
+      educationVector: educationVector,
+      combinedVector: combinedVector,
+      vectorVersion: 'v1.0'
     };
 
     if (existingVector) {
       await prisma.candidateVector.update({
-        where: { candidate_id: candidateId },
+        where: { candidateId: candidateId },
         data: vectorData
       });
     } else {
       await prisma.candidateVector.create({
         data: {
-          candidate_id: candidateId,
+          candidateId: candidateId,
           ...vectorData
         }
       });
@@ -318,8 +318,8 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
 
     // Store in Pinecone
     await storeCandidateVector(candidateId, combinedVector, {
-      skills_count: candidate.candidateSkills.length,
-      full_name: candidate.full_name,
+      skillsCount: candidate.candidateSkills.length,
+      fullName: candidate.fullName,
       email: candidate.email
     });
 
@@ -338,7 +338,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
   try {
     // Get candidate vector
     const candidateVector = await prisma.candidateVector.findUnique({
-      where: { candidate_id: candidateId }
+      where: { candidateId: candidateId }
     });
 
     if (!candidateVector) {
@@ -347,14 +347,14 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
       return getJobRecommendations(candidateId, limit);
     }
 
-    const combinedVector = candidateVector.combined_vector as number[];
+    const combinedVector = candidateVector.combinedVector as number[];
 
     // Find similar jobs using Pinecone
     const similarJobs = await findSimilarJobs(combinedVector, limit);
 
     // Get candidate skills for detailed matching
     const candidateSkills = await prisma.candidateSkill.findMany({
-      where: { candidate_id: candidateId }
+      where: { candidateId: candidateId }
     });
 
     // Process each job recommendation
@@ -365,9 +365,9 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
 
       // Get job details
       const job = await prisma.recruiterJob.findUnique({
-        where: { job_id: jobId },
+        where: { jobId: jobId },
         include: {
-          recruiter: { select: { full_name: true } },
+          recruiter: { select: { fullName: true } },
           agency: { select: { name: true } }
         }
       });
@@ -377,7 +377,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
       // Generate detailed match reasoning
       const jobRequirements = {
         title: job.title,
-        required_skills: job.required_skills,
+        requiredSkills: job.requiredSkills,
         description: job.description,
         location: job.location
       };
@@ -387,32 +387,32 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
       // Save recommendation
       const existing = await prisma.jobRecommendation.findFirst({
         where: {
-          candidate_id: candidateId,
-          job_id: jobId
+          candidateId: candidateId,
+          jobId: jobId
         }
       });
 
       if (!existing) {
         await prisma.jobRecommendation.create({
           data: {
-            candidate_id: candidateId,
-            job_id: jobId,
-            match_score: match.score || 0,
-            skill_match: JSON.stringify(matchReasoning),
-            ai_reasoning: matchReasoning.reasoning
+            candidateId: candidateId,
+            jobId: jobId,
+            matchScore: match.score || 0,
+            skillMatch: JSON.stringify(matchReasoning),
+            aiReasoning: matchReasoning.reasoning
           }
         });
       }
 
       recommendations.push({
-        job_id: jobId,
+        jobId: jobId,
         title: job.title,
         company: job.agency.name,
         location: job.location,
-        salary_range: job.salary_range || undefined,
-        match_score: match.score || 0,
-        match_reasoning: matchReasoning,
-        created_at: job.created_at
+        salaryRange: job.salaryRange || undefined,
+        matchScore: match.score || 0,
+        matchReasoning: matchReasoning,
+        createdAt: job.createdAt
       });
     }
 
@@ -430,7 +430,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
 export const calculateProfileCompleteness = async (candidateId: string): Promise<ProfileCompletenessScore> => {
   try {
     const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
+      where: { userId: candidateId },
       include: {
         candidateProfile: true,
         candidateSkills: true,
@@ -448,14 +448,14 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
 
     // Basic info score (20 points)
     let basicInfoScore = 0;
-    if (candidate.full_name) basicInfoScore += 5;
+    if (candidate.fullName) basicInfoScore += 5;
     if (candidate.email) basicInfoScore += 5;
-    if (candidate.phone_number) basicInfoScore += 5;
-    if (candidate.candidateProfile?.resume_url) basicInfoScore += 5;
+    if (candidate.phoneNumber) basicInfoScore += 5;
+    if (candidate.candidateProfile?.resumeUrl) basicInfoScore += 5;
     totalScore += basicInfoScore;
 
-    if (!candidate.phone_number) {
-      missingFields.push('phone_number');
+    if (!candidate.phoneNumber) {
+      missingFields.push('phoneNumber');
       suggestions.push('Add your phone number for better contact');
     }
 
@@ -508,35 +508,35 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     totalScore += documentScore;
 
     if (documentScore === 0) {
-      missingFields.push('cv_document');
+      missingFields.push('cvDocument');
       suggestions.push('Upload your CV/Resume');
     }
 
     // Save completeness data
     const completenessData: ProfileCompletenessScore = {
-      overall_score: Math.round(totalScore),
-      basic_info_score: basicInfoScore,
-      skills_score: skillsScore,
-      experience_score: experienceScore,
-      education_score: educationScore,
-      document_score: documentScore,
-      missing_fields: missingFields,
+      overallScore: Math.round(totalScore),
+      basicInfoScore: basicInfoScore,
+      skillsScore: skillsScore,
+      experienceScore: experienceScore,
+      educationScore: educationScore,
+      documentScore: documentScore,
+      missingFields: missingFields,
       suggestions: suggestions
     };
 
     const existing = await prisma.profileCompleteness.findUnique({
-      where: { candidate_id: candidateId }
+      where: { candidateId: candidateId }
     });
 
     if (existing) {
       await prisma.profileCompleteness.update({
-        where: { candidate_id: candidateId },
+        where: { candidateId: candidateId },
         data: completenessData
       });
     } else {
       await prisma.profileCompleteness.create({
         data: {
-          candidate_id: candidateId,
+          candidateId: candidateId,
           ...completenessData
         }
       });
@@ -556,13 +556,13 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
 export const getProfileSummary = async (candidateId: string): Promise<CandidateProfileSummary> => {
   try {
     const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
+      where: { userId: candidateId },
       include: {
         candidateProfile: true,
         candidateSkills: true,
         candidateDocuments: true,
         careerPredictions: {
-          orderBy: { created_at: 'desc' },
+          orderBy: { createdAt: 'desc' },
           take: 1
         },
         profileCompleteness: true
@@ -574,35 +574,35 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     }
 
     return {
-      basic_info: {
-        name: candidate.full_name,
+      basicInfo: {
+        name: candidate.fullName,
         email: candidate.email,
-        phone: candidate.phone_number || undefined
+        phone: candidate.phoneNumber || undefined
       },
       skills: candidate.candidateSkills,
-      profile_completeness: candidate.profileCompleteness ? {
-        overall_score: candidate.profileCompleteness.overall_score,
-        basic_info_score: candidate.profileCompleteness.basic_info_score,
-        skills_score: candidate.profileCompleteness.skills_score,
-        experience_score: candidate.profileCompleteness.experience_score,
-        education_score: candidate.profileCompleteness.education_score,
-        document_score: candidate.profileCompleteness.document_score,
-        missing_fields: candidate.profileCompleteness.missing_fields as string[],
+      profileCompleteness: candidate.profileCompleteness ? {
+        overallScore: candidate.profileCompleteness.overallScore,
+        basicInfoScore: candidate.profileCompleteness.basicInfoScore,
+        skillsScore: candidate.profileCompleteness.skillsScore,
+        experienceScore: candidate.profileCompleteness.experienceScore,
+        educationScore: candidate.profileCompleteness.educationScore,
+        documentScore: candidate.profileCompleteness.documentScore,
+        missingFields: candidate.profileCompleteness.missingFields as string[],
         suggestions: candidate.profileCompleteness.suggestions as string[]
       } : undefined,
-      career_prediction: candidate.careerPredictions[0] ? {
-        current_role: candidate.careerPredictions[0].current_role || '',
-        predicted_roles: JSON.parse(candidate.careerPredictions[0].predicted_roles as string),
-        career_path: JSON.parse(candidate.careerPredictions[0].career_path as string),
-        skill_gaps: JSON.parse(candidate.careerPredictions[0].skill_gaps as string),
-        salary_prediction: JSON.parse(candidate.careerPredictions[0].salary_prediction as string),
-        confidence_score: candidate.careerPredictions[0].confidence_score
+      careerPrediction: candidate.careerPredictions[0] ? {
+        currentRole: candidate.careerPredictions[0].currentRole || '',
+        predictedRoles: JSON.parse(candidate.careerPredictions[0].predictedRoles as string),
+        careerPath: JSON.parse(candidate.careerPredictions[0].careerPath as string),
+        skillGaps: JSON.parse(candidate.careerPredictions[0].skillGaps as string),
+        salaryPrediction: JSON.parse(candidate.careerPredictions[0].salaryPrediction as string),
+        confidenceScore: candidate.careerPredictions[0].confidenceScore
       } : undefined,
       documents: candidate.candidateDocuments.map(doc => ({
-        id: doc.document_id,
-        name: doc.file_name,
-        upload_status: doc.upload_status,
-        extraction_status: doc.extraction_status || undefined
+        id: doc.documentId,
+        name: doc.fileName,
+        uploadStatus: doc.uploadStatus,
+        extractionStatus: doc.extractionStatus || undefined
       }))
     };
   } catch (error) {

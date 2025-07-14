@@ -2,7 +2,7 @@
 
 // File upload related types
 export interface DocumentUploadInput {
-  candidate_id: string;
+  candidateId: string;
   file: Express.Multer.File;
 }
 
