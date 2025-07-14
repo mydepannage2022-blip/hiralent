@@ -42,7 +42,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
       current_question: 0,
       questions: questions as Json,
       answers: [] as Json,
-    },
+    } as any,
   });
   const firstQuestion = questions[0] ? {
     questionId: questions[0].questionId || 'q1',

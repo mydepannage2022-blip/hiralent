@@ -589,7 +589,7 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
         document_score: candidate.profile_completeness.document_score,
         missing_fields: candidate.profile_completeness.missing_fields as string[],
         suggestions: candidate.profile_completeness.suggestions as string[]
-      } : undefined,
+      }: undefined,
       career_prediction: candidate.career_predictions[0] ? {
         current_role: candidate.career_predictions[0].current_role || '',
         predicted_roles: JSON.parse(candidate.career_predictions[0].predicted_roles as string),
@@ -612,4 +612,4 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     serviceError.statusCode = 500;
     throw serviceError;
   }
-};
+};  
