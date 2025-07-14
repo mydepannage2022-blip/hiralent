@@ -58,3 +58,19 @@ export interface AgencySubscriptionResponse {
     payment_status: string;
   };
 }
+
+export interface Recruiter {
+  user_id: string;
+  full_name: string;
+  email: string;
+  position?: string;
+  status: string;
+  joined_at: Date;
+  last_active?: Date;
+}
+
+export interface RecentActivity {
+  activity_type: string;
+  description: string;
+  timestamp: Date;
+}
