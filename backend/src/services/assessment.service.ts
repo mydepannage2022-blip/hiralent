@@ -239,14 +239,86 @@ export class AssessmentService {
 
   // Get assessment results
   async getAssessmentResults(assessmentId: string): Promise<any> {
-    // TODO: Fetch assessment, results, and AI analysis
-    return null;
+    // Fetch assessment
+    const assessment = await prisma.skillAssessment.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    const questions = assessment.questions as Question[];
+    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
+    const aiAnalysis = assessment.ai_analysis || {};
+    // Build question breakdown
+    const questionBreakdown = answers.map((a: any, idx: number) => ({
+      questionId: a.questionId || `q${idx + 1}`,
+      score: a.aiEvaluation?.score || 0,
+      difficulty: questions[idx]?.difficulty || 'BEGINNER',
+      timeTaken: a.timeTaken,
+      feedback: a.aiEvaluation?.feedback || '',
+    }));
+    return {
+      success: true,
+      data: {
+        assessmentId: assessment.assessment_id,
+        skillCategory: assessment.skill_category,
+        overallScore: assessment.overall_score,
+        skillLevel: assessment.skill_level_result,
+        strengths: assessment.strengths || [],
+        weaknesses: assessment.weaknesses || [],
+        recommendations: assessment.recommendations || [],
+        questionBreakdown,
+        aiAnalysis,
+      },
+    };
   }
 
   // Get assessment history for a candidate
-  async getAssessmentHistory(candidateId: string): Promise<AssessmentHistory> {
-    // TODO: Fetch all assessments for candidate, calculate progress
-    return null as any;
+  async getAssessmentHistory(candidateId: string): Promise<any> {
+    // Fetch all assessments for candidate
+    const assessments = await prisma.skillAssessment.findMany({
+      where: { candidate_id: candidateId, status: 'COMPLETED' },
+      orderBy: { completed_at: 'desc' },
+    });
+    // Build history array
+    const history = assessments.map((a, idx) => {
+      let improvement = undefined;
+      if (idx < assessments.length - 1) {
+        const diff = (a.overall_score || 0) - (assessments[idx + 1].overall_score || 0);
+        improvement = diff > 0 ? `+${diff} points from last attempt` : `${diff} points from last attempt`;
+      }
+      return {
+        assessmentId: a.assessment_id,
+        skillCategory: a.skill_category,
+        overallScore: a.overall_score,
+        skillLevel: a.skill_level_result,
+        completedAt: a.completed_at,
+        improvement,
+      };
+    });
+    // Build skillProgress
+    const skillProgress: Record<string, any> = {};
+    for (const a of assessments) {
+      const cat = a.skill_category;
+      if (!skillProgress[cat]) {
+        skillProgress[cat] = {
+          currentLevel: a.skill_level_result,
+          trend: 'STABLE',
+          lastScore: a.overall_score,
+          previousScore: undefined,
+        };
+      } else {
+        skillProgress[cat].previousScore = a.overall_score;
+        skillProgress[cat].trend = (a.overall_score || 0) > (skillProgress[cat].lastScore || 0) ? 'IMPROVING' : 'DECLINING';
+      }
+    }
+    return {
+      success: true,
+      data: {
+        assessments: history,
+        skillProgress,
+      },
+    };
   }
 
   // Get assessment progress
@@ -283,6 +355,32 @@ export class AssessmentService {
         currentScore,
         timeRemaining,
         difficultyCurve,
+      },
+    };
+  }
+
+  async getRecommendations(candidateId: string): Promise<any> {
+    // TODO: In future, use AI or business logic for personalized recommendations
+    return {
+      success: true,
+      data: {
+        recommendations: [
+          {
+            skillCategory: 'React',
+            reason: 'High demand in your job preferences',
+            difficulty: 'INTERMEDIATE',
+            estimatedTime: '2-3 weeks',
+            marketValue: '15% salary increase potential',
+          },
+        ],
+        learningPath: [
+          {
+            step: 1,
+            skill: 'Advanced JavaScript',
+            duration: '1 week',
+            resources: ['MDN Documentation', "You Don't Know JS"],
+          },
+        ],
       },
     };
   }

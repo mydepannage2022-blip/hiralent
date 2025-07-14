@@ -99,15 +99,42 @@ export const completeAssessmentController = async (req: Request, res: Response) 
 
 // Get assessment results
 export const getResultsController = async (req: Request, res: Response) => {
-  // TODO: Fetch and return assessment results
+  try {
+    const assessmentId = req.params.assessmentId;
+    if (!assessmentId) {
+      return res.status(400).json({ success: false, error: 'Missing assessmentId' });
+    }
+    const result = await assessmentService.getAssessmentResults(assessmentId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Get assessment history
 export const getHistoryController = async (req: Request, res: Response) => {
-  // TODO: Fetch and return assessment history
+  try {
+    const candidateId = req.user?.user_id;
+    if (!candidateId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const result = await assessmentService.getAssessmentHistory(candidateId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
 
 // Get skill recommendations
 export const getRecommendationsController = async (req: Request, res: Response) => {
-  // TODO: Fetch and return skill recommendations
+  try {
+    const candidateId = req.user?.user_id;
+    if (!candidateId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const result = await assessmentService.getRecommendations(candidateId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
 };
