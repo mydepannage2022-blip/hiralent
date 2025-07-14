@@ -22,9 +22,68 @@ export class AssessmentService {
 
   // Start a new assessment
   async startAssessment(params: StartAssessmentParams): Promise<any> {
-    // TODO: Fetch candidate profile, generate questions via AI, create SkillAssessment record
-    // Return assessmentId, first question, etc.
-    return null;
+    // Validate params (assume already validated by controller)
+    const { candidateId, skillCategory, assessmentType, difficulty } = params;
+
+    // Fetch candidate profile for context
+    const candidateProfile = await prisma.candidateProfile.findUnique({
+      where: { candidate_id: candidateId },
+    });
+    if (!candidateProfile) {
+      throw new Error('Candidate profile not found');
+    }
+
+    // Prepare context for AI
+    const aiProfile = {
+      experienceLevel: candidateProfile.experience || '',
+      existingSkills: candidateProfile.skills ? candidateProfile.skills.split(',').map(s => s.trim()) : [],
+      industry: '', // TODO: Add industry if available in profile
+    };
+
+    // Generate questions using AI
+    const questionCount = 20; // Default, or adjust per assessmentType
+    const questions = await this.ai.generateQuestions({
+      skillCategory,
+      difficulty,
+      questionCount,
+      candidateProfile: aiProfile,
+    });
+
+    // Create SkillAssessment record
+    const assessment = await prisma.skillAssessment.create({
+      data: {
+        candidate_id: candidateId,
+        assessment_type: assessmentType,
+        skill_category: skillCategory,
+        difficulty,
+        total_questions: questionCount,
+        time_limit: 30, // minutes, can be made configurable
+        status: 'PENDING',
+        current_question: 0,
+        questions: questions,
+        answers: [],
+      },
+    });
+
+    // Prepare first question for response
+    const firstQuestion = questions[0] ? {
+      questionId: questions[0].questionId || 'q1',
+      questionText: questions[0].questionText,
+      type: questions[0].type,
+      options: questions[0].options || [],
+      timeLimit: questions[0].timeLimit || 90,
+    } : null;
+
+    return {
+      success: true,
+      data: {
+        assessmentId: assessment.assessment_id,
+        totalQuestions: assessment.total_questions,
+        timeLimit: assessment.time_limit,
+        status: assessment.status,
+        firstQuestion,
+      },
+    };
   }
 
   // Get the next (adaptive) question
