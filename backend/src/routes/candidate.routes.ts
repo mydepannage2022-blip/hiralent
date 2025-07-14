@@ -11,6 +11,22 @@ import {
 } from '../controller/candidate.controller';
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
+import {
+  startAssessmentController,
+  getQuestionController,
+  submitAnswerController,
+  getProgressController,
+  completeAssessmentController,
+  getResultsController,
+  getHistoryController,
+  getRecommendationsController
+} from '../controller/assessment.controller';
+import {
+  validateAssessmentOwnership,
+  checkAssessmentStatus,
+  validateQuestionSubmission,
+  validateTimeLimit
+} from '../middlewares/assessment.middleware';
 
 const router = Router();
 
@@ -54,13 +70,30 @@ router.post('/update-vector', updateCandidateVectorController);
 
 router.post('/update-vector/:candidateId', updateCandidateVectorController);
 
-// ==================== WEEK 3 APIs: AI Skill Assessment (Optional) ====================
+// ==================== WEEK 3 APIs: AI Skill Assessment ====================
 
-router.post('/assess-skill', (req, res) => {
-  res.status(501).json({
-    success: false,
-    message: 'Skill assessment not implemented yet. Coming in Week 3!'
-  });
-});
+// Start a new assessment
+router.post('/start-assessment', startAssessmentController);
+
+// Get next question (adaptive)
+router.get('/assessment/:assessmentId/question', validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
+
+// Submit answer
+router.post('/assessment/:assessmentId/answer', validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
+
+// Get assessment progress
+router.get('/assessment/:assessmentId/progress', validateAssessmentOwnership, getProgressController);
+
+// Complete assessment
+router.post('/assessment/:assessmentId/complete', validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
+
+// Get assessment results
+router.get('/assessment/:assessmentId/results', validateAssessmentOwnership, getResultsController);
+
+// Get assessment history
+router.get('/assessments/history', getHistoryController);
+
+// Get skill recommendations
+router.get('/skill-recommendations', getRecommendationsController);
 
 export default router;
