@@ -64,7 +64,7 @@ export interface Recruiter {
   full_name: string;
   email: string;
   position?: string;
-  status: string;
+  status?: string; // Made optional to match DB result
   joined_at: Date;
   last_active?: Date;
 }

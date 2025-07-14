@@ -36,12 +36,12 @@ export const getDashboard = async (agency_id: string): Promise<AgencyDashboardRe
       recentActivities
     ] = await Promise.all([
       // Total jobs
-      prisma.job.count({
+      prisma.recruiterJob.count({ // FIXED: recruiterJob
         where: { agency_id }
       }),
 
       // Active jobs
-      prisma.job.count({
+      prisma.recruiterJob.count({ // FIXED: recruiterJob
         where: { 
           agency_id,
           status: 'active'
@@ -57,7 +57,7 @@ export const getDashboard = async (agency_id: string): Promise<AgencyDashboardRe
       }),
 
       // Total applications
-      prisma.application.count({
+      prisma.jobApplication.count({ // FIXED: jobApplication
         where: {
           job: {
             agency_id
@@ -66,19 +66,20 @@ export const getDashboard = async (agency_id: string): Promise<AgencyDashboardRe
       }),
 
       // Recent applications (last 7 days)
-      prisma.application.count({
+      prisma.jobApplication.count({ // FIXED: jobApplication
         where: {
           job: {
             agency_id
           },
-          created_at: {
+          applied_at: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           }
         }
       }),
 
       // Recent activities (last 10)
-      getRecentActivities(agency_id, 10)
+      // TODO: Implement agencyActivity model or remove this if not present
+      []
     ]);
 
     return {
@@ -167,9 +168,9 @@ export const getTeam = async (agency_id: string, page: number = 1, limit: number
           full_name: true,
           email: true,
           position: true,
-          status: true,
+          // status: true, // REMOVED: not in schema
           created_at: true,
-          last_login: true
+          last_login_at: true // FIXED: last_login_at
         },
         skip: offset,
         take: limit,
@@ -196,9 +197,9 @@ export const getTeam = async (agency_id: string, page: number = 1, limit: number
         full_name: recruiter.full_name || '',
         email: recruiter.email,
         position: recruiter.position,
-        status: recruiter.status,
+        // status: recruiter.status, // REMOVED: not in schema
         joined_at: recruiter.created_at,
-        last_active: recruiter.last_login
+        last_active: recruiter.last_login_at // FIXED: last_login_at
       })),
       total_count: totalCount,
       pending_invites: pendingInvites
@@ -227,7 +228,7 @@ export const getSubscription = async (agency_id: string): Promise<AgencySubscrip
 
     // Get usage statistics
     const [jobsPosted, recruitersActive] = await Promise.all([
-      prisma.job.count({
+      prisma.recruiterJob.count({ // FIXED: recruiterJob
         where: { 
           agency_id,
           created_at: {
@@ -240,7 +241,7 @@ export const getSubscription = async (agency_id: string): Promise<AgencySubscrip
         where: {
           agency_id,
           role: 'recruiter',
-          status: 'active'
+          // status: 'active' // REMOVED: not in schema
         }
       })
     ]);
@@ -248,18 +249,18 @@ export const getSubscription = async (agency_id: string): Promise<AgencySubscrip
     return {
       plan: {
         plan_name: subscription.plan.name,
-        plan_type: subscription.plan.type,
-        job_posting_limit: subscription.plan.job_posting_limit,
-        recruiter_limit: subscription.plan.recruiter_limit,
-        price_per_month: subscription.plan.price_per_month
+        // plan_type: subscription.plan.type, // REMOVED: not in schema
+        job_posting_limit: subscription.plan.job_post_limit, // FIXED: job_post_limit
+        // recruiter_limit: subscription.plan.recruiter_limit, // REMOVED: not in schema
+        price_per_month: subscription.plan.price_monthly_usd // FIXED: price_monthly_usd
       },
       usage: {
         jobs_posted: jobsPosted,
         recruiters_active: recruitersActive
       },
       billing: {
-        next_billing_date: subscription.next_billing_date,
-        payment_status: subscription.payment_status
+        // next_billing_date: subscription.next_billing_date, // REMOVED: not in schema
+        // payment_status: subscription.payment_status // REMOVED: not in schema
       }
     };
 
@@ -281,7 +282,7 @@ export const getAgencyById = async (agency_id: string) => {
         billing_contact_email: true,
         logo_url: true,
         status: true,
-        owner_id: true,
+        owner_user_id: true, // FIXED: owner_user_id
         created_at: true,
         updated_at: true
       }
@@ -307,11 +308,11 @@ export const checkUserAgencyAccess = async (user_id: string, agency_id: string):
       select: {
         role: true,
         agency_id: true,
-        owned_agency: {
-          select: {
-            agency_id: true
-          }
-        }
+        // owned_agency: { // REMOVED: not in schema
+        //   select: {
+        //     agency_id: true
+        //   }
+        // }
       }
     });
 
@@ -325,9 +326,9 @@ export const checkUserAgencyAccess = async (user_id: string, agency_id: string):
     }
 
     // Check if user owns the agency
-    if (user.owned_agency?.agency_id === agency_id) {
-      return true;
-    }
+    // if (user.owned_agency?.agency_id === agency_id) { // REMOVED: not in schema
+    //   return true;
+    // }
 
     // Check if user is a member of the agency
     if (user.agency_id === agency_id) {
@@ -345,23 +346,8 @@ export const checkUserAgencyAccess = async (user_id: string, agency_id: string):
 // Helper function - get recent activities
 export const getRecentActivities = async (agency_id: string, limit: number = 10) => {
   try {
-    const activities = await prisma.agencyActivity.findMany({
-      where: { agency_id },
-      orderBy: { created_at: 'desc' },
-      take: limit,
-      select: {
-        activity_type: true,
-        description: true,
-        created_at: true
-      }
-    });
-
-    return activities.map((activity:any) => ({
-      activity_type: activity.activity_type,
-      description: activity.description,
-      timestamp: activity.created_at
-    }));
-
+    // TODO: Implement agencyActivity model or remove this if not present in schema
+    return [];
   } catch (error) {
     console.error('Error getting recent activities:', error);
     return [];
@@ -371,15 +357,7 @@ export const getRecentActivities = async (agency_id: string, limit: number = 10)
 // Helper function - log activity
 export const logActivity = async (agency_id: string, user_id: string, activity_type: string, description: string) => {
   try {
-    await prisma.agencyActivity.create({
-      data: {
-        agency_id,
-        user_id,
-        activity_type,
-        description,
-        created_at: new Date()
-      }
-    });
+    // TODO: Implement agencyActivity model or remove this if not present in schema
   } catch (error) {
     console.error('Error logging activity:', error);
     // Don't throw error as this is not critical
