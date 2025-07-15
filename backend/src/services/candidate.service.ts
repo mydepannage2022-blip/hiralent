@@ -200,8 +200,8 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
-        candidate_profile: true,
-        candidate_skills: true
+        candidateProfile: true,
+        candidateSkills: true
       }
     });
 
@@ -211,14 +211,14 @@ export const generateCareerPrediction = async (candidateId: string): Promise<Car
 
     // Prepare data for AI prediction
     const candidateData = {
-      skills: candidate.candidate_skills.map(s => ({
+      skills: candidate.candidateSkills.map(s => ({
         name: s.skill_name,
         category: (s.skill_category as 'technical' | 'soft' | 'language' | 'certification') || 'technical',
         proficiency: (s.proficiency as 'beginner' | 'intermediate' | 'advanced' | 'expert') || 'intermediate',
         years_experience: s.years_experience || 0
       })),
-      education: candidate.candidate_profile?.education ? JSON.parse(candidate.candidate_profile.education) : [],
-      experience: candidate.candidate_profile?.experience ? JSON.parse(candidate.candidate_profile.experience) : []
+      education: candidate.candidateProfile?.education ? JSON.parse(candidate.candidateProfile.education) : [],
+      experience: candidate.candidateProfile?.experience ? JSON.parse(candidate.candidateProfile.experience) : []
     };
 
     // Generate prediction using AI
@@ -255,8 +255,8 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
-        candidate_profile: true,
-        candidate_skills: true
+        candidateProfile: true,
+        candidateSkills: true
       }
     });
 
@@ -265,18 +265,18 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
     }
 
     // Create text representation for embedding
-    const skillsText = candidate.candidate_skills
+    const skillsText = candidate.candidateSkills
       .map(s => `${s.skill_name} (${s.proficiency})`)
       .join(', ');
 
-    const experienceText = candidate.candidate_profile?.experience 
-      ? JSON.parse(candidate.candidate_profile.experience)
+    const experienceText = candidate.candidateProfile?.experience 
+      ? JSON.parse(candidate.candidateProfile.experience)
           .map((exp: any) => `${exp.job_title} at ${exp.company}`)
           .join(', ')
       : '';
 
-    const educationText = candidate.candidate_profile?.education
-      ? JSON.parse(candidate.candidate_profile.education)
+    const educationText = candidate.candidateProfile?.education
+      ? JSON.parse(candidate.candidateProfile.education)
           .map((edu: any) => `${edu.degree} in ${edu.field}`)
           .join(', ')
       : '';
@@ -318,7 +318,7 @@ export const updateCandidateVector = async (candidateId: string): Promise<{ succ
 
     // Store in Pinecone
     await storeCandidateVector(candidateId, combinedVector, {
-      skills_count: candidate.candidate_skills.length,
+      skills_count: candidate.candidateSkills.length,
       full_name: candidate.full_name,
       email: candidate.email
     });
@@ -432,9 +432,9 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
-        candidate_profile: true,
-        candidate_skills: true,
-        candidate_documents: true
+        candidateProfile: true,
+        candidateSkills: true,
+        candidateDocuments: true
       }
     });
 
@@ -451,7 +451,7 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     if (candidate.full_name) basicInfoScore += 5;
     if (candidate.email) basicInfoScore += 5;
     if (candidate.phone_number) basicInfoScore += 5;
-    if (candidate.candidate_profile?.resume_url) basicInfoScore += 5;
+    if (candidate.candidateProfile?.resume_url) basicInfoScore += 5;
     totalScore += basicInfoScore;
 
     if (!candidate.phone_number) {
@@ -460,7 +460,7 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
 
     // Skills score (25 points)
-    const skillsCount = candidate.candidate_skills.length;
+    const skillsCount = candidate.candidateSkills.length;
     const skillsScore = Math.min(25, skillsCount * 2.5);
     totalScore += skillsScore;
 
@@ -472,8 +472,8 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     // Experience score (25 points)
     let experienceScore = 0;
     try {
-      const experience = candidate.candidate_profile?.experience 
-        ? JSON.parse(candidate.candidate_profile.experience) 
+      const experience = candidate.candidateProfile?.experience 
+        ? JSON.parse(candidate.candidateProfile.experience) 
         : [];
       experienceScore = Math.min(25, experience.length * 8.33);
     } catch (e) {
@@ -489,8 +489,8 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     // Education score (15 points)
     let educationScore = 0;
     try {
-      const education = candidate.candidate_profile?.education 
-        ? JSON.parse(candidate.candidate_profile.education) 
+      const education = candidate.candidateProfile?.education 
+        ? JSON.parse(candidate.candidateProfile.education) 
         : [];
       educationScore = Math.min(15, education.length * 7.5);
     } catch (e) {
@@ -504,7 +504,7 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
 
     // Document score (15 points)
-    const documentScore = candidate.candidate_documents.length > 0 ? 15 : 0;
+    const documentScore = candidate.candidateDocuments.length > 0 ? 15 : 0;
     totalScore += documentScore;
 
     if (documentScore === 0) {
@@ -558,14 +558,14 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
-        candidate_profile: true,
-        candidate_skills: true,
-        candidate_documents: true,
-        career_predictions: {
+        candidateProfile: true,
+        candidateSkills: true,
+        candidateDocuments: true,
+        careerPredictions: {
           orderBy: { created_at: 'desc' },
           take: 1
         },
-        profile_completeness: true
+        profileCompleteness: true
       }
     });
 
@@ -579,26 +579,26 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
         email: candidate.email,
         phone: candidate.phone_number || undefined
       },
-      skills: candidate.candidate_skills,
-      profile_completeness: candidate.profile_completeness ? {
-        overall_score: candidate.profile_completeness.overall_score,
-        basic_info_score: candidate.profile_completeness.basic_info_score,
-        skills_score: candidate.profile_completeness.skills_score,
-        experience_score: candidate.profile_completeness.experience_score,
-        education_score: candidate.profile_completeness.education_score,
-        document_score: candidate.profile_completeness.document_score,
-        missing_fields: candidate.profile_completeness.missing_fields as string[],
-        suggestions: candidate.profile_completeness.suggestions as string[]
-      }: undefined,
-      career_prediction: candidate.career_predictions[0] ? {
-        current_role: candidate.career_predictions[0].current_role || '',
-        predicted_roles: JSON.parse(candidate.career_predictions[0].predicted_roles as string),
-        career_path: JSON.parse(candidate.career_predictions[0].career_path as string),
-        skill_gaps: JSON.parse(candidate.career_predictions[0].skill_gaps as string),
-        salary_prediction: JSON.parse(candidate.career_predictions[0].salary_prediction as string),
-        confidence_score: candidate.career_predictions[0].confidence_score
+      skills: candidate.candidateSkills,
+      profile_completeness: candidate.profileCompleteness ? {
+        overall_score: candidate.profileCompleteness.overall_score,
+        basic_info_score: candidate.profileCompleteness.basic_info_score,
+        skills_score: candidate.profileCompleteness.skills_score,
+        experience_score: candidate.profileCompleteness.experience_score,
+        education_score: candidate.profileCompleteness.education_score,
+        document_score: candidate.profileCompleteness.document_score,
+        missing_fields: candidate.profileCompleteness.missing_fields as string[],
+        suggestions: candidate.profileCompleteness.suggestions as string[]
       } : undefined,
-      documents: candidate.candidate_documents.map(doc => ({
+      career_prediction: candidate.careerPredictions[0] ? {
+        current_role: candidate.careerPredictions[0].current_role || '',
+        predicted_roles: JSON.parse(candidate.careerPredictions[0].predicted_roles as string),
+        career_path: JSON.parse(candidate.careerPredictions[0].career_path as string),
+        skill_gaps: JSON.parse(candidate.careerPredictions[0].skill_gaps as string),
+        salary_prediction: JSON.parse(candidate.careerPredictions[0].salary_prediction as string),
+        confidence_score: candidate.careerPredictions[0].confidence_score
+      } : undefined,
+      documents: candidate.candidateDocuments.map(doc => ({
         id: doc.document_id,
         name: doc.file_name,
         upload_status: doc.upload_status,
