@@ -139,7 +139,7 @@ const Companies = () => {
   return (
     <div className='w-full flex justify-center items-center bg-gradient-to-br from-gray-50 to-white py-16 lg:py-24'>
       <motion.div 
-        className='max-w-7xl w-full px-4 sm:px-6 lg:px-8'
+        className='lg:max-w-4xl xl:max-w-7xl w-9/10 '
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
