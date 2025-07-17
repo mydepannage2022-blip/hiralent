@@ -78,7 +78,7 @@ const Hero = () => {
   };
 
   return (
-    <div className='w-full flex justify-center h-[100vh] xl:h-[75vh] lg:h-[90vh]  items-center bg-[#EFF5FF]'>
+    <div className='w-full flex justify-center py-20 lg:pt-26 lg:pb-20 items-center bg-[#EFF5FF]'>
       <div className='lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col lg:flex-row justify-between items-center'>
 
         {/* Left Content */}
