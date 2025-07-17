@@ -5,6 +5,7 @@ import Navbar from '../src/components/layout/Navbar'
 import Category from '../src/components/jobSeekerLandingPage/Category'
 import Jobs from '../src/components/jobSeekerLandingPage/Jobs'
 import Steps from '../src/components/jobSeekerLandingPage/Steps'
+import Companies from '../src/components/jobSeekerLandingPage/Companies'
 
 const page = () => {
   return (
@@ -14,6 +15,7 @@ const page = () => {
       <Category />
       <Jobs />
       <Steps />
+      <Companies />
     </div>
   )
 }
