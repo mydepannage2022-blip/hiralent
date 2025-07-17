@@ -119,14 +119,14 @@ const Hero = () => {
               <input type="text" placeholder='Search for jobs, companies, or keywords' className='w-full outline-none px-2 text-[#A5A5A5] text-sm md:text-base' />
             </div>
 
-            <div className='w-full lg:w-full bg-white flex xl:justify-start items-center rounded-lg px-3 py-1 md:px-4 md:py-2 lg:px-2'>
+            <div className='w-full lg:w-full bg-white flex xl:justify-start items-center rounded-lg px-3 py-1 md:px-4 lg:px-2'>
               <IoLocationOutline className='text-[#CBCBCB] text-lg md:text-xl lg:text-xl xl:text-2xl flex-shrink-0' />
               <Select
                 options={locationOptions}
                 placeholder="location"
                 onChange={(option) => setSelectedLocation(option as any)}
                 isSearchable={true}
-                className="w-full outline-none text-sm md:text-base text-[#A5A5A5]"
+                className="w-full outline-none text-sm text-[#A5A5A5]"
                 styles={customStyles}
               />
             </div>

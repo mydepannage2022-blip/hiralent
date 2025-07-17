@@ -8,6 +8,7 @@ import Steps from '../src/components/jobSeekerLandingPage/Steps'
 import Companies from '../src/components/jobSeekerLandingPage/Companies'
 import Achievements from '../src/components/jobSeekerLandingPage/Achievements'
 import BlogSection from '../src/components/jobSeekerLandingPage/Blog'
+import Employer from '../src/components/jobSeekerLandingPage/Employer'
 
 const page = () => {
   return (
@@ -20,6 +21,7 @@ const page = () => {
       <Companies />
       <Achievements />
       <BlogSection />
+      <Employer />
     </div>
   )
 }
