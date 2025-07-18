@@ -315,7 +315,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Sign up
+              Register Company
             </motion.button>
 
             <motion.div
