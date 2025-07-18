@@ -115,7 +115,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link href="/Employer" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>Employer</Link>
+              <Link href="/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>Employer</Link>
             </motion.div>
           </div>
           
@@ -135,7 +135,7 @@ const Navbar = () => {
               >
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
-              <Link className='hidden lg:inline' href={"/signup/info"}>Get Start</Link>
+              <Link className='hidden lg:inline' href={"/signup"}>Get Start</Link>
               {/* <span ></span> */}
             </Link>
           </motion.div>
