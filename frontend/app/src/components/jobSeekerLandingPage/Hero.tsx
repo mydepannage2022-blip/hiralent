@@ -2,9 +2,9 @@
 import React from 'react'
 import { IoSearchOutline } from "react-icons/io5";
 import Select from "react-select";
-import { locationOptions } from "../../constants/groupedLocationOptions"; // Adjust 
+import { locationOptions } from "../../constants/groupedLocationOptions"; 
 import { IoLocationOutline } from "react-icons/io5";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 const Hero = () => {
@@ -114,7 +114,7 @@ const Hero = () => {
             variants={fadeInUp}
             transition={{ duration: 0.2 }}
           >
-            <div className='w-full lg:w-full flex lg:justify-start xl:justify-center items-center wrap bg-white rounded-lg px-3 py-3 md:px-4 md:py-4 lg:px-2 lg:py-2'>
+            <div className='w-full lg:w-full flex lg:justify-start xl:justify-center items-center wrap bg-white rounded-lg px-3 py-3 md:px-4 md:py-4 lg:px-2 lg:py-4'>
               <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-2xl text-[#CBCBCB] flex-shrink-0' />
               <input type="text" placeholder='Search for jobs, companies, or keywords' className='w-full outline-none px-2 text-[#A5A5A5] text-sm md:text-base' />
             </div>
