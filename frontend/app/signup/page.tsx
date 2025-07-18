@@ -633,12 +633,16 @@ const Page = () => {
             >
               Do you already have an account?{" "}
               <motion.a
-                href="#"
-                className="text-[#1B73E8] hover:underline"
+                href="/"
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
+                <Link href={"/login"} 
+                className="text-[#1B73E8] hover:underline"
+                
+                > 
                 Login
+                </Link>
               </motion.a>
             </motion.div>
           </form>
