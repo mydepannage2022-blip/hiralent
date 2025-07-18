@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { locationOptions } from "../../src/constants/groupedLocationOptions"; 
+import Select from "react-select";
 const testimonials = [
   {
     id: 1,
@@ -27,7 +29,7 @@ const testimonials = [
 ]
 
 const TestimonialSlider = () => {
-  const [currentSlide, setCurrentSlide] = useState(0)
+   const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -86,12 +88,35 @@ const TestimonialSlider = () => {
 }
 
 const Page = () => {
+  
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const customStyles = {
+    control: (base: any) => ({
+      ...base,
+      padding: "4px",
+      borderRadius: "8px",
+      borderColor: "transparent",
+      outline: "none",
+      boxShadow: "none",
+      border:"none",
+      fontSize: "16px",
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
+      color: "#111",
+      padding: "10px",
+      fontWeight: state.isSelected ? "bold" : "normal",
+    }),
+  };
+ 
   return (
     <div className='w-full flex justify-center h-screen items-center bg-[#FFFFFF]'>
       <div className='w-full flex flex-col lg:flex-row justify-between items-start lg:gap-0 xl:gap-16'>
         <div className='w-full lg:w-1/2 flex flex-col justify-start items-center lg:items-center lg:gap-5 p-3'>
           <div className='flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-8'>
-             <Link href='/signup/info' className='py-1 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg'>
+             <Link href='/signup' className='py-1 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg'>
             </Link>
             <Link href='/signup/location' className='py-1 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg'>
             </Link>      
@@ -113,15 +138,15 @@ const Page = () => {
 
             <div>
               <label className='block text-[#222] font-medium text-xs lg:text-sm mb-2'>
-                Full Name<span className='text-red-500'>*</span>
+                Loction<span className='text-red-500'>*</span>
               </label>
-              <input 
-                type="text" 
-                name="fullName" 
-                id="fullName"  
-                placeholder='Enter your Full Name' 
-                className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]'
-                required
+                <Select
+                options={locationOptions}
+                placeholder="location"
+                onChange={(option) => setSelectedLocation(option as any)}
+                isSearchable={true}
+                className="w-full outline-none text-sm text-[#A5A5A5]"
+                styles={customStyles}
               />
             </div>
 
@@ -139,60 +164,21 @@ const Page = () => {
               />
             </div>
 
-            <div>
-              <label className='block text-[#222] font-medium text-xs lg:text-sm mb-2'>
-                Password<span className='text-red-500'>*</span>
-              </label>
-              <div className='relative'>
-                <input 
-                  type="password" 
-                  name="password" 
-                  id="password"  
-                  placeholder='Enter your Password' 
-                  className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575] pr-10'
-                />
-                <button type="button" className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400'>
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' />
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' />
-                  </svg>
-                </button>
-              </div>
-            </div>
 
-            <div>
-              <label className='block text-[#222] font-medium text-xs lg:text-sm mb-2'>
-                Confirm Password<span className='text-red-500'>*</span>
-              </label>
-              <div className='relative'>
-                <input 
-                  type="password" 
-                  name="confirmPassword" 
-                  id="confirmPassword"  
-                  placeholder='Confirmed your Password' 
-                  className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575] pr-10'
-                />
-                <button type="button" className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400'>
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' />
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' />
-                  </svg>
-                </button>
-              </div>
-            </div>
+
 
             <button 
               type="submit" 
               className='w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm'
             >
-              Sign up
+              Continue
             </button>
 
             <div className='text-center text-gray-500 text-sm'>
-              OR
+              Skip
             </div>
 
-            <button 
+            {/* <button 
               type="button" 
               className='w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2'
             >
@@ -207,7 +193,7 @@ const Page = () => {
 
             <div className='text-center text-sm text-gray-600'>
               Do you already have an account? <a href='#' className='text-[#1B73E8] hover:underline'>Login</a>
-            </div>
+            </div> */}
           </form>
         </div>
 

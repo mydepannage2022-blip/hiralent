@@ -135,7 +135,8 @@ const Navbar = () => {
               >
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
-              <span className='hidden lg:inline'>Sign Up</span>
+              <Link className='hidden lg:inline' href={"/signup/info"}>Get Start</Link>
+              {/* <span ></span> */}
             </Link>
           </motion.div>
 
