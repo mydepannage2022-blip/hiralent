@@ -16,7 +16,7 @@ const Employer = () => {
 
   return (
     <div className="w-full flex justify-center items-center bg-[#EFF5FF]">
-      <div className="lg:max-w-5xl xl:max-w-7xl w-9/10 flex justify-start items-center gap-12">
+      <div className="lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col lg:flex-row justify-start items-center gap-12 pt-8 lg:py-0">
         {/* Header Section */}
         <motion.div
           className="flex flex-col justify-center items-center gap-5 w-full lg:w-1/3 pb-8 lg:pb-12"

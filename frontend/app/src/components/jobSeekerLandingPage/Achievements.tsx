@@ -41,7 +41,7 @@ const Achievements = () => {
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.h2 
-            className='text-[#222] text-lg lg:text-3xl xl:text-4xl font-semibold text-center lg:text-left'
+            className='text-[#222] text-2xl lg:text-3xl xl:text-4xl font-semibold text-center'
             animate={{ 
               backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
             }}
