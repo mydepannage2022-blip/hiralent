@@ -53,25 +53,25 @@ interface ValidationRules {
 const testimonials = [
   {
     id: 1,
-    name: "Sarah",
-    role: "Marketing Manager",
-    text: "This platform has completely transformed how we manage our projects. Simple, elegant, and exactly what we needed.",
+    name: "NovaEdge Marketing",
+    role: "Marketing Agency",
+    text: "This platform has completely transformed how we handle client campaigns. Simple, elegant, and exactly what we needed to scale efficiently.",
     image: "https://i1.rgstatic.net/ii/profile.image/277785684791316-1443240676661_Q512/Sara-Johnson-18.jpg",
   },
   {
     id: 2,
-    name: "Ahmed Ali",
-    role: "Software Developer",
-    text: "Clean interface, powerful features. The user experience is outstanding and support team is incredibly responsive.",
-    image: "https://img.a.transfermarkt.technology/portrait/big/995642-1712863495.jpg?lm=1",
+    name: "CodeCraft Labs",
+    role: "Software Development Firm",
+    text: "Clean interface and powerful tools. Our hiring process is now faster and more accurate. The support team is incredibly responsive too.",
+    image:
+      "https://static.wixstatic.com/media/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg",
   },
   {
     id: 3,
-    name: "Emma Wilson",
-    role: "Business Owner",
-    text: "Six months in and still impressed. Great value, reliable service, and intuitive design that just works.",
-    image:
-      "https://resize-elle.ladmedia.fr/r/400,279,ffffff,forcex,center-middle/img/var/plain_site/storage/images/people/la-vie-des-people/news/emma-watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-emma-roberts-3979994/95896063-1-fre-FR/Emma-Watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-Emma-Roberts.jpg",
+    name: "Wilson & Co.",
+    role: "Small Business Enterprise",
+    text: "Six months in and still impressed. Great value, reliable service, and an intuitive design that helps us find the right talent quickly.",
+    image: "https://www.wilsonco.com/wp-content/uploads/2024/01/cropped-wilson-and-co-favicon-32x32.png",
   },
 ];
 
@@ -533,7 +533,7 @@ const Page = () => {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <motion.img
-            src="/images/signup.jpg"
+              src="https://revistacariere.ro/wp-content/uploads/2018/08/24.03.2014-echipa-manaceri.jpg"
             alt=""
             className="absolute top-0 left-0 w-full h-full object-cover z-0"
             initial={{ opacity: 0 }}
