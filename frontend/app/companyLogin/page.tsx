@@ -358,7 +358,7 @@ const Page = () => {
           >
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-[#005DDC] py-2 px-2 lg:px-8 text-sm text-white"
+                className="border-l-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-white py-2 px-2 lg:px-8 text-sm text-[#222]"
                 href={"/login"}
               >
                 As a Candidate
@@ -366,7 +366,7 @@ const Page = () => {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-white py-2 px-2 lg:px-8 text-sm text-[#222]"
+                className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-[#005DDC] py-2 px-2 lg:px-8 text-sm text-white"
                 href={"/companyLogin"}
               >
                 As a Company
@@ -515,11 +515,11 @@ const Page = () => {
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
-                <Link href={"/signup"} 
+                <Link href={"/companyRegister"} 
                 className="text-[#1B73E8] hover:underline"
                 
                 > 
-                Sign up
+                Register a Company
                 </Link>
               </motion.a>
             </motion.div>

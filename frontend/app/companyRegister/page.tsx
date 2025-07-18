@@ -334,13 +334,17 @@ const Page = () => {
               transition={{ delay: 1.1, duration: 0.5 }}
             >
               Do you already have an account?{" "}
-              <motion.a
-                href="#"
-                className="text-[#1B73E8] hover:underline"
+               <motion.a
+                href="/"
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
+                <Link href={"/companyLogin"} 
+                className="text-[#1B73E8] hover:underline"
+                
+                > 
                 Login as Company
+                </Link>
               </motion.a>
             </motion.div>
           </form>
