@@ -400,20 +400,20 @@ const Page = () => {
               </Link>
             </motion.div>
           </motion.div>
-          <motion.div
+          {/* <motion.div
             className="flex flex-col justify-center items-center gap-1 py-2 text-[#222]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.5 }}
           >
-            <h2 className="text-2xl xl:text-3xl font-bold">Give us your information</h2>
+            <h2 className="text-2xl xl:text-3xl font-bold">Login  here</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
-              Please enter your personal details to set up your account and personalize your experience
+              Please enter your Correct Email and Password
             </p>
-          </motion.div>
+          </motion.div> */}
 
           <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.5 }}
@@ -437,7 +437,7 @@ const Page = () => {
               {touched.fullName && errors.fullName && (
                 <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
               )}
-            </motion.div>
+            </motion.div> */}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -525,7 +525,7 @@ const Page = () => {
               )}
             </motion.div>
 
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9, duration: 0.5 }}
@@ -533,7 +533,7 @@ const Page = () => {
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
                 Confirm Password<span className="text-red-500">*</span>
               </label>
-              <div className="relative">
+              {/* <div className="relative">
                 <motion.input
                   type={passwordVisibility.confirmPassword ? "text" : "password"}
                   name="confirmPassword"
@@ -579,11 +579,11 @@ const Page = () => {
                     </svg>
                   )}
                 </motion.button>
-              </div>
+              </div> */}
               {touched.confirmPassword && errors.confirmPassword && (
                 <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
               )}
-            </motion.div>
+            {/* </motion.div> */}
 
             <motion.button
               type="submit"
@@ -592,7 +592,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Sign up
+              Login
             </motion.button>
 
             <div className="text-center text-gray-500 text-sm">OR</div>
@@ -622,7 +622,7 @@ const Page = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Sign up with Google
+              Login with Google
             </motion.button>
 
             <motion.div
