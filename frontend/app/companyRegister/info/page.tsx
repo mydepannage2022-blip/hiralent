@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import Select, { SingleValue } from "react-select"; // Added react-select
+import { industryOptions } from "../../src/constants/groupedIndustriesOptions"; // Assuming industryOptions is in a separate file
+import { locationOptions } from "../../src/constants/groupedLocationOptions";
 
 const testimonials = [
   {
@@ -17,8 +20,7 @@ const testimonials = [
     name: "CodeCraft Labs",
     role: "Software Development Firm",
     text: "Clean interface and powerful tools. Our hiring process is now faster and more accurate. The support team is incredibly responsive too.",
-    image:
-      "https://static.wixstatic.com/media/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg",
+    image: "https://static.wixstatic.com/media/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/49fa21_344efda1a72e4badbec5a00ee6a7f0de%7Emv2.jpg",
   },
   {
     id: 3,
@@ -99,6 +101,28 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
+   const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
+ const [selectedIndustry, setSelectedIndustry] = useState<SingleValue<{ value: string; label: string }>>(null);
+   const customStyles = {
+    control: (base: any) => ({
+      ...base,
+      padding: "4px",
+      borderRadius: "8px",
+      borderColor: "transparent",
+      outline: "none",
+      boxShadow: "none",
+      border: "none",
+      fontSize: "16px",
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
+      color: "#111",
+      padding: "10px",
+      fontWeight: state.isSelected ? "bold" : "normal",
+    }),
+  };
+
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
       <div className="w-full flex flex-col lg:flex-row justify-between items-start lg:gap-0 xl:gap-16">
@@ -109,7 +133,7 @@ const Page = () => {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <motion.div
-            className="flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-8"
+            className="flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
@@ -117,13 +141,13 @@ const Page = () => {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/companyRegister"
-                className=" px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
+                className="px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/companyRegister/info"
-                className=" px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg"
+                className="px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
           </motion.div>
@@ -144,7 +168,7 @@ const Page = () => {
           >
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                className="border-l-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-white  py-2 px-2 lg:px-8  text-sm text-[#222]"
+                className="border-l-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-white py-2 px-2 lg:px-8 text-sm text-[#222]"
                 href={"/signup"}
               >
                 As a Candidate
@@ -152,7 +176,7 @@ const Page = () => {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-[#005DDC]  py-2 px-2 lg:px-8  text-sm"
+                className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-[#005DDC] py-2 px-2 lg:px-8 text-sm"
                 href={"/companyRegister"}
               >
                 As a Company
@@ -167,29 +191,51 @@ const Page = () => {
           >
             <h2 className="text-2xl xl:text-3xl font-bold">Give us Company information</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
-              Please enter your personal details to set up your account and personalize your experience
+              Please provide your company details to complete your profile and access all features
             </p>
           </motion.div>
 
-          <form className="w-full max-w-md space-y-4">
-            <motion.div
+          <form className="w-full max-w-md space-y-3 justify-center items-center">
+             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.5 }}
+              className="relative left-45"
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Full Name<span className="text-red-500">*</span>
+                Company Logo<span className="text-red-500">*</span>
               </label>
-              <motion.input
-                type="text"
-                name="fullName"
-                id="fullName"
-                placeholder="Enter your Full Name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
-                required
-                whileFocus={{ scale: 1.02 }}
-                transition={{ duration: 0.3 }}
-              />
+              <div className="relative w-24 h-24">
+                <motion.label
+                  htmlFor="companyLogo"
+                  className="w-24 h-24 border border-gray-300 rounded-full flex justify-center items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent bg-white hover:bg-gray-50 transition-colors"
+                  whileFocus={{ scale: 1.02 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <svg
+                    className="w-10 h-10 text-[#757575]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                </motion.label>
+                <input
+                  type="file"
+                  name="companyLogo"
+                  id="companyLogo"
+                  accept="image/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  required
+                />
+              </div>
             </motion.div>
 
             <motion.div
@@ -198,13 +244,13 @@ const Page = () => {
               transition={{ delay: 0.7, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-              Email<span className="text-red-500">*</span>
+                Company Name<span className="text-red-500">*</span>
               </label>
               <motion.input
-                type="email"
-                name="email"
-                id="email"
-                placeholder="Enter your Email Address"
+                type="text"
+                name="companyName"
+                id="companyName"
+                placeholder="Enter your Company Name"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
                 required
                 whileFocus={{ scale: 1.02 }}
@@ -218,41 +264,49 @@ const Page = () => {
               transition={{ delay: 0.8, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Password<span className="text-red-500">*</span>
+                Company Field<span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <motion.input
-                  type="password"
-                  name="password"
-                  id="password"
-                  placeholder="Enter your Password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575] pr-10"
-                  whileFocus={{ scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
+              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
+                <Select
+                  options={industryOptions}
+                  name="companyField"
+                  id="companyField"
+                  placeholder="Search or Select Industry"
+                  isSearchable
+                  className="text-sm text-[#757575]"
+                  classNamePrefix="select"
+                  required
+                  value={selectedIndustry}
+                  onChange={setSelectedIndustry}
                 />
-                <motion.button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                </motion.button>
-              </div>
+              </motion.div>
             </motion.div>
+
+     <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+            >
+              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+                Location<span className="text-red-500">*</span>
+              </label>
+              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
+                <Select
+                  options={locationOptions}
+                  name="location"
+                  id="location"
+                  placeholder="Search or Select Location"
+                  isSearchable
+                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
+                  classNamePrefix="select"
+                  styles={customStyles}
+                  required
+                  value={selectedLocation}
+                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setSelectedLocation(newValue)}
+                />
+              </motion.div>
+            </motion.div>
+
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -260,40 +314,18 @@ const Page = () => {
               transition={{ delay: 0.9, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Confirm Password<span className="text-red-500">*</span>
+                Company Description<span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <motion.input
-                  type="password"
-                  name="confirmPassword"
-                  id="confirmPassword"
-                  placeholder="Confirmed your Password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575] pr-10"
-                  whileFocus={{ scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
-                />
-                <motion.button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                </motion.button>
-              </div>
+              <motion.textarea
+                name="companyDescription"
+                id="companyDescription"
+                placeholder="Enter your Company Description"
+                className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
+                rows={2}
+                required
+                whileFocus={{ scale: 1.02 }}
+                transition={{ duration: 0.3 }}
+              />
             </motion.div>
 
             <motion.button
@@ -303,7 +335,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Proceed
+              Register Company
             </motion.button>
 
             <motion.div
@@ -322,16 +354,13 @@ const Page = () => {
               transition={{ delay: 1.1, duration: 0.5 }}
             >
               Do you already have an account?{" "}
-               <motion.a
+              <motion.a
                 href="/"
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
-                <Link href={"/companyLogin"} 
-                className="text-[#1B73E8] hover:underline"
-                
-                > 
-                Login as Company
+                <Link href={"/companyLogin"} className="text-[#1B73E8] hover:underline">
+                  Login as Company
                 </Link>
               </motion.a>
             </motion.div>

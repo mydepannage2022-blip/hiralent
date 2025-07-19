@@ -16,7 +16,7 @@ const Hero = () => {
   // Array of hero images that will change
   const heroImages = [
     "/images/expressive-young-girl-posing-2.png",
-    "https://ru.readkong.com/static/9f/fe/9ffe688d413d394d3b873a0de26798a7/edinoe-reshenie-po-kartam-i-kasse-s-1-iyulya-2018-1168016-4.jpg", // Add more images as needed
+    "https://ru.readkong.com/static/9f/fe/9ffe688d413d394d3b873a0de26798a7/edinoe-reshenie-po-kartam-i-kasse-s-1-iyulya-2018-1168016-4.jpg",
     "/images/679922-middle.png",
     "/images/Marina.png"
   ];
@@ -40,19 +40,19 @@ const Hero = () => {
   const customStyles = {
     control: (base: any) => ({
       ...base,
-      padding: "4px",
+      padding: "0px 8px", // Adjusted to py-2 equivalent (8px vertical), px-2 (8px horizontal)
       borderRadius: "8px",
       borderColor: "transparent",
       outline: "none",
       boxShadow: "none",
-      border:"none",
-      fontSize: "16px",
+      border: "none",
+      fontSize: "14px", // Slightly smaller font for slim look
     }),
     option: (base: any, state: any) => ({
       ...base,
       backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
       color: "#111",
-      padding: "10px",
+      padding: "8px", // Slimmer options
       fontWeight: state.isSelected ? "bold" : "normal",
     }),
   };
@@ -115,13 +115,18 @@ const Hero = () => {
             variants={fadeInUp}
             transition={{ duration: 0.2 }}
           >
-            <div className='w-full lg:w-full flex lg:justify-start xl:justify-center items-center wrap bg-white rounded-lg px-3 py-3 md:px-4 md:py-4 lg:px-2 lg:py-4'>
-              <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-2xl text-[#CBCBCB] flex-shrink-0' />
-              <input type="text" placeholder='Search for jobs, companies, or keywords' className='w-full outline-none px-2 text-[#A5A5A5] text-sm md:text-base' />
+            <div className='w-full lg:w-full flex lg:justify-start xl:justify-center items-center wrap bg-white rounded-lg px-3 py-2'>
+              <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-xl text-[#CBCBCB] flex-shrink-0' />
+              <input 
+                type="text" 
+                placeholder='Search for jobs, companies, or keywords' 
+                className='w-full outline-none px-2 text-[#A5A5A5] text-sm' 
+                onChange={(e) => setJobTitle(e.target.value)}
+              />
             </div>
 
-            <div className='w-full lg:w-full bg-white flex xl:justify-start items-center rounded-lg px-3 py-1 md:px-4 lg:px-2'>
-              <IoLocationOutline className='text-[#CBCBCB] text-lg md:text-xl lg:text-xl xl:text-2xl flex-shrink-0' />
+            <div className='w-full lg:w-full bg-white flex xl:justify-start items-center rounded-lg px-3 py-0'>
+              <IoLocationOutline className='text-lg md:text-xl lg:text-xl xl:text-xl text-[#CBCBCB] flex-shrink-0' />
               <Select
                 options={locationOptions}
                 placeholder="location"
@@ -133,12 +138,12 @@ const Hero = () => {
             </div>
 
             <motion.div 
-              className='w-full lg:w-full xl:w-2/5 flex justify-center items-center bg-[#005DDC] p-3 md:p-4 lg:p-2 hover:bg-[#0046B3] transition-colors duration-300 rounded-lg text-white cursor-pointer'
+              className='w-full lg:w-full xl:w-2/5 flex justify-center items-center bg-[#005DDC] px-3 py-2 hover:bg-[#0046B3] transition-colors duration-300 rounded-lg text-white cursor-pointer'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <button type='submit' className='flex justify-center items-center gap-2 text-white text-sm md:text-base' onClick={handleSearch}>
-                <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-2xl' />
+              <button type='submit' className='flex justify-center items-center gap-2 text-white text-sm' onClick={handleSearch}>
+                <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-xl' />
                 <p>Search</p>
               </button>
             </motion.div>
