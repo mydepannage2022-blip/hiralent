@@ -150,7 +150,6 @@ export interface CandidateProfileSummary {
   profile_completeness?: ProfileCompletenessScore;
   career_prediction?: CareerPredictionResult;
   documents: CandidateDocumentInfo[];
-
 }
 
 // API Response types
@@ -175,9 +174,10 @@ export interface CVUploadResponse {
     upload_status: string;
     extraction_status: string | null;
     candidate_id: string;
-    whole_document?: string; // Optional, if you want to return the whole document content
+    whole_document?: string;
   };
 }
+
 // Vector database types
 export interface VectorMetadata {
   skills_count: number;
@@ -208,6 +208,16 @@ export interface JobRecommendationInput {
 
 export interface CareerPredictionInput {
   candidateId: string;
+}
+
+// New types for candidate update APIs
+export interface UpdateLocationInput {
+  location?: string;
+  postalCode?: number;
+}
+
+export interface UpdateSalaryInput {
+  minimumSalary?: number;
 }
 
 // Utility types for OpenAI

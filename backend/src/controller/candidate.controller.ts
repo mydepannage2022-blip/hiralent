@@ -8,8 +8,11 @@ import {
   ProfileCompletenessScore,
   CareerPredictionResult,
   JobRecommendation,
-  HealthCheckResponse
+  HealthCheckResponse,
+  UpdateLocationInput,
+  UpdateSalaryInput
 } from '../types/candidate.types';
+
 
 // Extend Request interface for better type safety
 interface AuthenticatedRequest extends Request {
@@ -263,3 +266,43 @@ export const healthCheckController = async (req: Request, res: Response): Promis
     } as APIResponse);
   }
 };
+
+export async function updateLocationHandler(req: Request, res: Response) {
+  try {
+    const userId = (req.user as any).id;
+    const input: UpdateLocationInput = req.body;
+    const updatedProfile = await candidateService.updateCandidateLocation(userId, input);
+
+    res.status(200).json({
+      success: true,
+      data: updatedProfile,
+      message: 'Location updated successfully',
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update location',
+      error: error.message,
+    });
+  }
+}
+
+export async function updateSalaryHandler(req: Request, res: Response) {
+  try {
+    const userId = (req.user as any).id;
+    const input: UpdateSalaryInput = req.body;
+    const updatedProfile = await candidateService.updateCandidateSalary(userId, input);
+
+    res.status(200).json({
+      success: true,
+      data: updatedProfile,
+      message: 'Minimum salary updated successfully',
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update minimum salary',
+      error: error.message,
+    });
+  }
+}

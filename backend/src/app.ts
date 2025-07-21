@@ -1,10 +1,14 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import cors from "cors";
 
 dotenv.config();
-
 const app = express();
 
+app.use(cors({
+  origin: `${process.env.FRONTEND_URL}`, // ✅ allow your frontend
+  credentials: true                // ✅ allow cookies, auth headers if needed
+}));
 app.use(express.json()); // for JSON request body
 
 // routes

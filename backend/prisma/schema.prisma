@@ -36,8 +36,8 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String
-  is_email_verified Boolean
+  role              String // candidate company_admin , agency_admin , Super Admin 
+  is_email_verified Boolean 
   phone_number      String? // NEW
   position          String? // NEW
   linkedin_url      String? // NEW
@@ -71,20 +71,46 @@ model User {
   profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
 }
 
+// model CandidateProfile {
+//   candidate_id        String   @id
+//   resume_url          String?
+//   video_intro_url     String?
+//   skills              String?
+//   education           String?
+//   experience          String?
+//   preferred_locations String?
+//   languages           String?
+//   created_at          DateTime @default(now())
+//   updated_at          DateTime @updatedAt
+
+//   user User @relation(fields: [candidate_id], references: [user_id])
+// }
+
+
 model CandidateProfile {
-  candidate_id        String   @id
-  resume_url          String?
-  video_intro_url     String?
-  skills              String?
-  education           String?
-  experience          String?
-  preferred_locations String?
-  languages           String?
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  candidate_id          String   @id
+  resume_url           String?
+  video_intro_url      String?
+  skills               String?
+  education            String?
+  experience           String?
+  preferred_locations  String?
+  languages            String?
+  location             String?   // NEW: City name only
+  postal_code          Int?      // NEW: Postal code as number
+  minimum_salary_amount Float?   // NEW: Salary amount as Float for precision
+  payment_period       PaymentPeriod?   // NEW: e.g., "hourly", "monthly", "annually"
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
   user User @relation(fields: [candidate_id], references: [user_id])
 }
+enum PaymentPeriod {
+  HOURLY
+  MONTHLY
+  ANNUALLY
+}
+
 
 model RecruiterProfile {
   recruiter_id     String   @id

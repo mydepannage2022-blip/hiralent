@@ -13,8 +13,8 @@ import {
 } from '../types/candidate.types';
 import fs from 'fs';
 import path from 'path';
-import { any } from 'zod';
-
+import { any, number } from 'zod';
+import { UpdateLocationInput, UpdateSalaryInput } from '../types/candidate.types';
 const prisma = new PrismaClient();
 
 
@@ -613,3 +613,23 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     throw serviceError;
   }
 };  
+
+
+export async function updateCandidateLocation(userId: number, data: UpdateLocationInput) {
+  return prisma.candidateProfile.update({
+    where: { candidate_id: userId.toString() },
+    data: {
+      location: data.location,
+      postal_code: data.postalCode,
+    },
+  });
+}
+
+export async function updateCandidateSalary(userId: number, data: UpdateSalaryInput) {
+  return prisma.candidateProfile.update({
+    where: { candidate_id: userId.toString() },
+    data: {
+      minimum_salary_amount: data.minimumSalary,
+    },
+  });
+}

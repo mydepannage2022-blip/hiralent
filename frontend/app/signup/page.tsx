@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion"; // Import Framer Motion
-
+import { useSignup } from "../src/lib/queries";
+import { useAuth } from '../src/context/AuthContext';
+import { useRouter } from 'next/router';
 // Types (unchanged)
 interface FormData {
   fullName: string;
@@ -165,6 +167,7 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
+  const signupMutation = useSignup();
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
@@ -288,37 +291,71 @@ const Page = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // const handleSubmit = (e: React.FormEvent) => {
+  //   e.preventDefault();
 
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      fullName: true,
-      email: true,
-      password: true,
-      confirmPassword: true,
-    };
-    setTouched(allTouched);
+  //   // Mark all fields as touched
+  //   const allTouched: FormTouched = {
+  //     fullName: true,
+  //     email: true,
+  //     password: true,
+  //     confirmPassword: true,
+  //   };
+  //   setTouched(allTouched);
 
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) {
-        newErrors[fieldName] = error;
-      }
-    });
+  //   // Validate all fields
+  //   const newErrors: FormErrors = {};
+  //   Object.keys(formData).forEach((key) => {
+  //     const fieldName = key as keyof FormData;
+  //     const error = validateField(fieldName, formData[fieldName]);
+  //     if (error) {
+  //       newErrors[fieldName] = error;
+  //     }
+  //   });
 
-    setErrors(newErrors);
+  //   setErrors(newErrors);
 
-    // Check if form is valid
-    const isFormValid = Object.keys(newErrors).length === 0;
-    if (isFormValid) {
-      console.log("Form submitted:", formData);
-      // Handle form submission here
-    }
+  //   // Check if form is valid
+  //   const isFormValid = Object.keys(newErrors).length === 0;
+  //   if (isFormValid) {
+  //     console.log("Form submitted:", formData);
+  //     // Handle form submission here
+  //   }
+  // };
+
+ const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const allTouched: FormTouched = {
+    fullName: true,
+    email: true,
+    password: true,
+    confirmPassword: true,
   };
+  setTouched(allTouched);
+
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) newErrors[fieldName] = error;
+  });
+
+  setErrors(newErrors);
+
+  if (Object.keys(newErrors).length === 0) {
+    const { fullName, email, password } = formData;
+
+    signupMutation.mutate({
+      email,
+      password,
+      full_name: fullName,
+      role: 'candidate',
+    });
+  }
+};
+
+
 
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass =
@@ -592,7 +629,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Sign up
+               {signupMutation.isPending ? 'Signing up...' : 'Sign Up'}
             </motion.button>
 
             <div className="text-center text-gray-500 text-sm">OR</div>
