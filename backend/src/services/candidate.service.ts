@@ -615,21 +615,34 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
 };  
 
 
-export async function updateCandidateLocation(userId: number, data: UpdateLocationInput) {
-  return prisma.candidateProfile.update({
-    where: { candidate_id: userId.toString() },
-    data: {
+export async function updateCandidateLocation(userId: string, data: UpdateLocationInput) {
+  console.log("📛 userId in updateCandidateLocation: ", userId); 
+  return prisma.candidateProfile.upsert({
+    where: { candidate_id: userId },
+    update: {
       location: data.location,
       postal_code: data.postalCode,
     },
+    create: {
+      candidate_id: userId,
+      location: data.location,
+      postal_code: data.postalCode,
+    }
   });
 }
 
-export async function updateCandidateSalary(userId: number, data: UpdateSalaryInput) {
-  return prisma.candidateProfile.update({
-    where: { candidate_id: userId.toString() },
-    data: {
+
+export async function updateCandidateSalary(userId: string, data: UpdateSalaryInput) {
+  return prisma.candidateProfile.upsert({
+    where: { candidate_id: userId },
+    update: {
       minimum_salary_amount: data.minimumSalary,
+      payment_period: data.paymentPeriod,
     },
+    create: {
+      candidate_id: userId,
+      minimum_salary_amount: data.minimumSalary,
+      payment_period: data.paymentPeriod,
+    }
   });
 }

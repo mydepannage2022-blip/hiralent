@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { locationOptions } from "../../src/constants/groupedLocationOptions";
 import Select, { SingleValue } from "react-select";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, number } from "framer-motion";
+import { useUpdateLocation } from "../../src/lib/queries";
 
 const testimonials = [
   {
@@ -30,6 +31,12 @@ const testimonials = [
       "https://resize-elle.ladmedia.fr/r/400,279,ffffff,forcex,center-middle/img/var/plain_site/storage/images/people/la-vie-des-people/news/emma-watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-emma-roberts-3979994/95896063-1-fre-FR/Emma-Watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-Emma-Roberts.jpg",
   },
 ];
+
+
+interface LocationOption {  
+  value: string;
+  label: string;
+}
 
 const TestimonialSlider = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -101,8 +108,14 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
-  const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
+  
+  
+  
+  const { mutate } = useUpdateLocation();
+  const [postalCodeInput, setPostalCodeInput] = useState<number>();
+  const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   const customStyles = {
     control: (base: any) => ({
       ...base,
@@ -122,6 +135,23 @@ const Page = () => {
       fontWeight: state.isSelected ? "bold" : "normal",
     }),
   };
+
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  if (!selectedLocation || !postalCodeInput) {
+    alert("Please fill out both fields.");
+    return;
+  }
+  
+  const payload = {
+    location: selectedLocation.value,
+    postalCode: Number(postalCodeInput),
+  };
+  
+  console.log("📤 Sending Payload:", payload);
+  mutate(payload);
+};
+
 
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
@@ -184,7 +214,7 @@ const Page = () => {
             </p>
           </motion.div>
 
-          <form className="w-full max-w-md space-y-4">
+          <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -205,7 +235,7 @@ const Page = () => {
                   styles={customStyles}
                   required
                   value={selectedLocation}
-                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setSelectedLocation(newValue)}
+                  onChange={(option) => setSelectedLocation(option as LocationOption)}
                 />
               </motion.div>
             </motion.div>
@@ -219,12 +249,12 @@ const Page = () => {
                 Postal Code<span className="text-red-500">*</span>
               </label>
               <motion.input
-                type="text"
+                type="number"
                 name="postalCode"
                 id="postalCode"
                 placeholder="Enter your Postal or Zip Code"
                 className="w-full outline-none px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
-                required
+                onChange={(e) => setPostalCodeInput(Number(e.target.value))}
                 whileFocus={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               />

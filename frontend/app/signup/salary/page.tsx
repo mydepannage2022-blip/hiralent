@@ -5,6 +5,7 @@ import Link from "next/link";
 import { locationOptions } from "../../src/constants/groupedLocationOptions";
 import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUpdateSalary } from "../../src/lib/queries";
 
 const testimonials = [
   {
@@ -101,13 +102,12 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
+  const updateSalaryMutation = useUpdateSalary();
   const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
   const [minSalary, setMinSalary] = useState("");
   const [paymentPeriod, setPaymentPeriod] = useState<SingleValue<{ value: string; label: string }>>(null);
 
   const paymentPeriodOptions = [
-    { value: "hourly", label: "Hourly" },
-    { value: "daily", label: "Daily" },
     { value: "weekly", label: "Weekly" },
     { value: "monthly", label: "Monthly" },
     { value: "yearly", label: "Yearly" },
@@ -132,6 +132,22 @@ const Page = () => {
       fontWeight: state.isSelected ? "bold" : "normal",
     }),
   };
+
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  if (!minSalary || !paymentPeriod?.value) {
+    alert("Please fill in all fields");
+    return;
+  }
+
+  updateSalaryMutation.mutate({
+    minimumSalary: parseInt(minSalary),
+    paymentPeriod: paymentPeriod.value,
+  });
+};
+
 
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
@@ -194,7 +210,7 @@ const Page = () => {
             </p>
           </motion.div>
 
-          <form className="w-full max-w-md space-y-4">
+        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
             {/* <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -276,14 +292,14 @@ const Page = () => {
             >
               Continue
             </motion.button>
-                        <motion.div
-                          className="text-center text-gray-500 text-sm"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.7, duration: 0.5 }}
-                        >
-                          Skip
-                        </motion.div>
+            <motion.div
+              className="text-center text-gray-500 text-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+            >
+              Skip
+            </motion.div>
           </form>
         </motion.div>
 

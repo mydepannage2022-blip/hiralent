@@ -49,6 +49,10 @@ router.post(
 
 router.patch(
   '/update-location',
+    (req, res, next) => {
+    console.log("🟢 Raw Body Received:", req.body);
+    next();
+  },
   [checkAuth, validateBody(updateLocationSchema)],
   updateLocationHandler
 );

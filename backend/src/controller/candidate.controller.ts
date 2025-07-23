@@ -269,7 +269,8 @@ export const healthCheckController = async (req: Request, res: Response): Promis
 
 export async function updateLocationHandler(req: Request, res: Response) {
   try {
-    const userId = (req.user as any).id;
+     console.log("REQ BODY:", req.body);
+   const userId = req.user.user_id;
     const input: UpdateLocationInput = req.body;
     const updatedProfile = await candidateService.updateCandidateLocation(userId, input);
 
@@ -289,7 +290,7 @@ export async function updateLocationHandler(req: Request, res: Response) {
 
 export async function updateSalaryHandler(req: Request, res: Response) {
   try {
-    const userId = (req.user as any).id;
+     const userId = req.user.user_id;
     const input: UpdateSalaryInput = req.body;
     const updatedProfile = await candidateService.updateCandidateSalary(userId, input);
 

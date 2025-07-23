@@ -6,8 +6,8 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: `${process.env.FRONTEND_URL}`, // ✅ allow your frontend
-  credentials: true                // ✅ allow cookies, auth headers if needed
+  origin: `http://localhost:3000`, // ✅ allow your frontend
+  credentials: true,                // ✅ allow cookies, auth headers if needed
 }));
 app.use(express.json()); // for JSON request body
 

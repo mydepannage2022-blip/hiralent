@@ -218,6 +218,7 @@ export interface UpdateLocationInput {
 
 export interface UpdateSalaryInput {
   minimumSalary?: number;
+  paymentPeriod?: 'monthly' | 'yearly' | 'weekly';
 }
 
 // Utility types for OpenAI

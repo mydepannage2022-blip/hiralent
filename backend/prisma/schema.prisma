@@ -99,17 +99,13 @@ model CandidateProfile {
   location             String?   // NEW: City name only
   postal_code          Int?      // NEW: Postal code as number
   minimum_salary_amount Float?   // NEW: Salary amount as Float for precision
-  payment_period       PaymentPeriod?   // NEW: e.g., "hourly", "monthly", "annually"
+  payment_period       String?   // NEW: e.g., "hourly", "monthly", "annually"
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
   user User @relation(fields: [candidate_id], references: [user_id])
 }
-enum PaymentPeriod {
-  HOURLY
-  MONTHLY
-  ANNUALLY
-}
+
 
 
 model RecruiterProfile {

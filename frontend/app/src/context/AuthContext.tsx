@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 interface AuthContextType {
   user: any;
@@ -12,19 +12,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
+
+  // ✅ Restore token & user from localStorage on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem('authToken');
+    const savedUser = localStorage.getItem('authUser');
+
+    if (savedToken) setToken(savedToken);
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
 
   const login = (userData: any, token: string) => {
     setUser(userData);
     setToken(token);
     localStorage.setItem('authToken', token);
+    localStorage.setItem('authUser', JSON.stringify(userData)); // ✅ Save user too
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
   };
 
   return (
