@@ -1,9 +1,8 @@
 // lib/queries.ts
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary} from './api';
+import { signup , updateLocation, updateSalary , login as loginapi} from './api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
-import { login } from './api';
 
 export const useSignup = () => {
   const { login } = useAuth();
@@ -24,19 +23,18 @@ export const useSignup = () => {
 };
 
 export const useLogin = () => {
+  const { login } = useAuth();
   const router = useRouter();
 
   return useMutation({
-    mutationFn: login,
+    mutationFn: loginapi,
     onSuccess: (data) => {
-      // Token localStorage mein store karo
-      localStorage.setItem('token', data.token);
-
-      toast.success('Login successful');
-      router.push('/dashboard'); // ya jahan redirect karna ho
+      login(data.user, data.token);
+      router.push('/candidate/dashboard'); // Adjust redirect path as needed
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Login failed');
+      console.error('Login failed:', error?.response?.data?.message || error.message);
+      // Show toast or error state
     },
   });
 };

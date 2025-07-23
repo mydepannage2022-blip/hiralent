@@ -3,51 +3,30 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion"; // Import Framer Motion
-
-// Types (unchanged)
+import { useLogin } from "../src/lib/queries"; // Import useLogin
+import { useAuth } from '../src/context/AuthContext';
+import { useRouter } from 'next/navigation';// Types
 interface FormData {
-  fullName: string;
   email: string;
   password: string;
-  confirmPassword: string;
 }
 
 interface FormErrors {
-  fullName?: string;
   email?: string;
-  
   password?: string;
-  confirmPassword?: string;
 }
 
 interface FormTouched {
-  fullName?: boolean;
   email?: boolean;
   password?: boolean;
-  confirmPassword?: boolean;
-}
-
-interface PasswordVisibility {
-  password: boolean;
-  confirmPassword: boolean;
 }
 
 interface ValidationRules {
-  fullName: {
-    minLength: number;
-    pattern: RegExp;
-  };
   email: {
     pattern: RegExp;
   };
   password: {
     minLength: number;
-    patterns: {
-      lowercase: RegExp;
-      uppercase: RegExp;
-      number: RegExp;
-      special: RegExp;
-    };
   };
 }
 
@@ -77,21 +56,11 @@ const testimonials = [
 ];
 
 const validationRules: ValidationRules = {
-  fullName: {
-    minLength: 2,
-    pattern: /^[a-zA-Z\s]+$/,
-  },
   email: {
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   },
   password: {
-    minLength: 8,
-    patterns: {
-      lowercase: /[a-z]/,
-      uppercase: /[A-Z]/,
-      number: /\d/,
-      special: /[!@#$%^&*(),.?":{}|<>]/,
-    },
+    minLength: 6,
   },
 };
 
@@ -166,34 +135,18 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
+  const loginMutation = useLogin();
   const [formData, setFormData] = useState<FormData>({
-    fullName: "",
     email: "",
     password: "",
-    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<FormTouched>({});
-  const [passwordVisibility, setPasswordVisibility] = useState<PasswordVisibility>({
-    password: false,
-    confirmPassword: false,
-  });
+  const [passwordVisibility, setPasswordVisibility] = useState(false);
 
   const validateField = (name: keyof FormData, value: string): string | undefined => {
     switch (name) {
-      case "fullName":
-        if (!value.trim()) {
-          return "Full name is required";
-        }
-        if (value.length < validationRules.fullName.minLength) {
-          return `Full name must be at least ${validationRules.fullName.minLength} characters`;
-        }
-        if (!validationRules.fullName.pattern.test(value)) {
-          return "Full name can only contain letters and spaces";
-        }
-        return undefined;
-
       case "email":
         if (!value.trim()) {
           return "Email is required";
@@ -209,27 +162,6 @@ const Page = () => {
         }
         if (value.length < validationRules.password.minLength) {
           return `Password must be at least ${validationRules.password.minLength} characters`;
-        }
-        if (!validationRules.password.patterns.lowercase.test(value)) {
-          return "Password must contain at least one lowercase letter";
-        }
-        if (!validationRules.password.patterns.uppercase.test(value)) {
-          return "Password must contain at least one uppercase letter";
-        }
-        if (!validationRules.password.patterns.number.test(value)) {
-          return "Password must contain at least one number";
-        }
-        if (!validationRules.password.patterns.special.test(value)) {
-          return "Password must contain at least one special character";
-        }
-        return undefined;
-
-      case "confirmPassword":
-        if (!value) {
-          return "Please confirm your password";
-        }
-        if (value !== formData.password) {
-          return "Passwords do not match";
         }
         return undefined;
 
@@ -254,15 +186,6 @@ const Page = () => {
         ...prev,
         [fieldName]: error,
       }));
-
-      // Also validate confirm password if password changes
-      if (fieldName === "password" && touched.confirmPassword) {
-        const confirmError = validateField("confirmPassword", formData.confirmPassword);
-        setErrors((prev) => ({
-          ...prev,
-          confirmPassword: confirmError,
-        }));
-      }
     }
   };
 
@@ -282,22 +205,47 @@ const Page = () => {
     }));
   };
 
-  const togglePasswordVisibility = (field: keyof PasswordVisibility) => {
-    setPasswordVisibility((prev) => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+  const togglePasswordVisibility = () => {
+    setPasswordVisibility((prev) => !prev);
   };
+
+  // const handleSubmit = (e: React.FormEvent) => {
+  //   e.preventDefault();
+
+  //   // Mark all fields as touched
+  //   const allTouched: FormTouched = {
+  //     email: true,
+  //     password: true,
+  //   };
+  //   setTouched(allTouched);
+
+  //   // Validate all fields
+  //   const newErrors: FormErrors = {};
+  //   Object.keys(formData).forEach((key) => {
+  //     const fieldName = key as keyof FormData;
+  //     const error = validateField(fieldName, formData[fieldName]);
+  //     if (error) {
+  //       newErrors[fieldName] = error;
+  //     }
+  //   });
+
+  //   setErrors(newErrors);
+
+  //   // Check if form is valid
+  //   const isFormValid = Object.keys(newErrors).length === 0;
+  //   if (isFormValid) {
+  //     console.log("Form submitted:", formData);
+  //     // Handle form submission here
+  //   }
+  // };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Mark all fields as touched
     const allTouched: FormTouched = {
-      fullName: true,
       email: true,
       password: true,
-      confirmPassword: true,
     };
     setTouched(allTouched);
 
@@ -313,13 +261,17 @@ const Page = () => {
 
     setErrors(newErrors);
 
-    // Check if form is valid
-    const isFormValid = Object.keys(newErrors).length === 0;
-    if (isFormValid) {
-      console.log("Form submitted:", formData);
-      // Handle form submission here
+    // Submit if form is valid
+    if (Object.keys(newErrors).length === 0) {
+      loginMutation.mutate({
+        email: formData.email,
+        password: formData.password,
+      });
     }
   };
+
+
+
 
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass =
@@ -375,9 +327,7 @@ const Page = () => {
             </motion.div>
           </motion.div>
 
-
           <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -414,7 +364,7 @@ const Page = () => {
               </label>
               <div className="relative">
                 <motion.input
-                  type={passwordVisibility.password ? "text" : "password"}
+                  type={passwordVisibility ? "text" : "password"}
                   name="password"
                   id="password"
                   value={formData.password}
@@ -427,12 +377,12 @@ const Page = () => {
                 />
                 <motion.button
                   type="button"
-                  onClick={() => togglePasswordVisibility("password")}
+                  onClick={togglePasswordVisibility}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
                 >
-                  {passwordVisibility.password ? (
+                  {passwordVisibility ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
@@ -510,8 +460,8 @@ const Page = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 1.0, duration: 0.5 }}
             >
-              Do you already have an account?{" "}
-             <motion.a
+              Don't have an account?{" "}
+              <motion.a
                 href="/"
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}

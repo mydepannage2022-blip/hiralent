@@ -13,11 +13,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-interface LoginInput {
-  email: string;
-  password: string;
-}
-
 
 export const signup = async (data: {
   email: string;
@@ -30,8 +25,12 @@ export const signup = async (data: {
   return response.data;
 };
 
-export const login = async (data: LoginInput) => {
-  const response = await axios.post('/api/v1/users/login', data);
+export const login = async (data: {
+  email: string;
+  password: string;
+}) => {
+  const response = await api.post('/auth/login', data);
+  console.log(response.data);
   return response.data;
 };
 
