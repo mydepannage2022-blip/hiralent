@@ -5,7 +5,7 @@ const Category = () => {
   const categories = [
     {
       id: 1,
-      icon: "images/wordpress.png",
+      icon: "/images/wordpress.png",
       title: "Wordpress Developer",
       jobs: "72+ Job Available",
       bgColor: "bg-gradient-to-br from-[#F4F4F4] to-[#E8E8E8]",
@@ -14,7 +14,7 @@ const Category = () => {
     },
     {
       id: 2,
-      icon: "images/laptop-code.png",
+      icon: "/images/laptop-code.png",
       title: "Software Developer",
       jobs: "45+ Job Available",
       bgColor: "bg-gradient-to-br from-[#FFF5F5] to-[#FEE2E2]",
@@ -23,7 +23,7 @@ const Category = () => {
     },
     {
       id: 3,
-      icon: "images/user-code.png",
+      icon: "/images/user-code.png",
       title: "Software Tester",
       jobs: "68+ Job Available",
       bgColor: "bg-gradient-to-br from-[#F0FFF4] to-[#DCFCE7]",
@@ -32,7 +32,7 @@ const Category = () => {
     },
     {
       id: 4,
-      icon: "images/pen-tool.png",
+      icon: "/images/pen-tool.png",
       title: "Graphic Designer",
       jobs: "54+ Job Available",
       bgColor: "bg-gradient-to-br from-[#F5F5FF] to-[#E0E7FF]",
@@ -41,7 +41,7 @@ const Category = () => {
     },
     {
       id: 5,
-      icon: "images/users-group-alt.png",
+      icon: "/images/users-group-alt.png",
       title: "Team Leader",
       jobs: "38+ Job Available",
       bgColor: "bg-gradient-to-br from-[#FFF9F0] to-[#FED7AA]",
@@ -50,7 +50,7 @@ const Category = () => {
     },
     {
       id: 6,
-      icon: "images/search-text.png",
+      icon: "/images/search-text.png",
       title: "UX Designer",
       jobs: "29+ Job Available",
       bgColor: "bg-gradient-to-br from-[#F0F8FF] to-[#CFFAFE]",
@@ -59,7 +59,7 @@ const Category = () => {
     },
     {
       id: 7,
-      icon: "images/brush-alt.png",
+      icon: "/images/brush-alt.png",
       title: "Project Manager",
       jobs: "41+ Job Available",
       bgColor: "bg-gradient-to-br from-[#FFF0F5] to-[#FCE7F3]",
@@ -68,7 +68,7 @@ const Category = () => {
     },
     {
       id: 8,
-      icon: "images/edit.png",
+      icon: "/images/edit.png",
       title: "UI Designer",
       jobs: "33+ Job Available",
       bgColor: "bg-gradient-to-br from-[#F8F8FF] to-[#E0E7FF]",
