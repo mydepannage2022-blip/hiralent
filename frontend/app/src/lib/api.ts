@@ -51,3 +51,23 @@ export const updateSalary = async (data: {
   return res.data;
 };
 
+export const uploadResume = async (resume: File) => {
+  const formData = new FormData();
+  formData.append('cv', resume);
+
+  const token = localStorage.getItem('authToken');
+
+  const response = await axios.post(
+    'http://localhost:5000/api/v1/candidates/profile-upload',
+    formData, // 👈 FormData directly
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`, // 👈 Token in Authorization header
+      },
+    }
+  );
+
+  console.log(response.data);
+  return response.data;
+};

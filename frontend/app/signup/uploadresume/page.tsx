@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { locationOptions } from "../../src/constants/groupedLocationOptions";
-import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { useUploadResume } from '../../src/lib/queries';
 const testimonials = [
   {
     id: 1,
@@ -101,7 +99,8 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
-  const [resume, setResume] = useState(null);
+
+const { mutate: uploadResumeMutation} = useUploadResume();  const [resume, setResume] = useState(null);
 
   const customStyles = {
     control: (base: any) => ({
@@ -123,15 +122,47 @@ const Page = () => {
     }),
   };
 
-  const handleFileChange = (e:any) => {
-    const file = e.target.files[0];
-    if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-      setResume(file);
-    } else {
-      alert("Please upload a valid CV (PDF or Word format)");
-      setResume(null);
-    }
+  // const handleFileChange = (e:any) => {
+  //   const file = e.target.files[0];
+  //   if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+  //     setResume(file);
+  //   } else {
+  //     alert("Please upload a valid CV (PDF or Word format)");
+  //     setResume(null);
+  //   }
+  // };
+
+  const handleFileChange = (e: any) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  const allowedExtensions = ['.pdf', '.doc', '.docx'];
+  const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+  
+  if (allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension)) {
+    setResume(file);
+  } else {
+    alert("Please upload a valid CV (PDF or Word format)");
+    setResume(null);
+  }
   };
+
+
+  const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  if (resume) {
+    uploadResumeMutation(resume);
+  } else {
+    alert("Please select a valid resume");
+  }
+};
+
 
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
@@ -194,7 +225,7 @@ const Page = () => {
             </p>
           </motion.div>
 
-          <form className="w-full max-w-md space-y-4">
+          <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

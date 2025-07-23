@@ -21,7 +21,16 @@ const prisma = new PrismaClient();
 // Upload and process CV
 export const uploadAndProcessCV = async (candidateId: string, file: Express.Multer.File): Promise<CVUploadResponse> => {
   try {
-    // Save document metadata
+    // Check if file exists
+    if (!file) {
+      throw new Error('No file provided');
+    }
+
+    // Check if file path exists
+    if (!fs.existsSync(file.path)) {
+      throw new Error('File not found after upload');
+    }
+
     const document = await prisma.candidateDocument.create({
       data: {
         candidate_id: candidateId,
@@ -34,7 +43,7 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
       }
     });
 
-    // Parse the document asynchronously
+    // Don't read file content immediately - let it process async
     processDocumentAsync(document.document_id, candidateId);
 
     return {
@@ -45,16 +54,14 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
         upload_status: document.upload_status,
         extraction_status: document.extraction_status,
         candidate_id: candidateId,
-        whole_document: fs.readFileSync(document.file_path, 'utf-8')
+        // Remove this line - don't read file content here
+        // whole_document: fs.readFileSync(document.file_path, 'utf-8')
       },
       message: 'CV uploaded successfully. Processing in background.'
     };
   } catch (error) {
     console.error('Error uploading CV:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to upload CV');
-    serviceError.code = 'UPLOAD_FAILED';
-    serviceError.statusCode = 500;
-    throw serviceError;
+    throw error;
   }
 };
 
@@ -163,7 +170,7 @@ const processDocumentAsync = async (documentId: string, candidateId: string): Pr
 };
 
 // Update candidate profile with extracted data
-const updateCandidateProfile = async (candidateId: string, extractedData: AIExtractionResult): Promise<void> => {
+const  updateCandidateProfile = async (candidateId: string, extractedData: AIExtractionResult): Promise<void> => {
   try {
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }

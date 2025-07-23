@@ -1,6 +1,5 @@
-// lib/queries.ts
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi} from './api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume} from './api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 
@@ -39,7 +38,6 @@ export const useLogin = () => {
   });
 };
 
-
 export const useUpdateLocation = () => {
   const router = useRouter();
 
@@ -59,8 +57,6 @@ export const useUpdateLocation = () => {
   });
 };
 
-
-// 🟢 Salary Mutation with redirect
 export const useUpdateSalary = () => {
   const router = useRouter();
 
@@ -72,6 +68,26 @@ export const useUpdateSalary = () => {
     },
     onError: (err) => {
       console.error("Salary update failed:", err);
+    },
+  });
+};
+
+
+export const useUploadResume = () => {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: uploadResume,
+    onSuccess: () => {
+      console.log('Resume uploaded successfully');
+      router.push("/candidate/dashboard");
+    },
+    onError: (error: any) => {
+      console.error('Upload failed:', error);
+      console.error('Error details:', error?.response?.data);
+      console.error('Status:', error?.response?.status);
+      // Show user-friendly error message
+      alert(`Upload failed: ${error?.response?.data?.message || error.message}`);
     },
   });
 };
