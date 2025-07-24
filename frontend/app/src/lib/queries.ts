@@ -21,6 +21,25 @@ export const useSignup = () => {
   });
 };
 
+// export const useLogin = () => {
+//   const { login } = useAuth();
+//   const router = useRouter();
+
+//   return useMutation({
+//     mutationFn: loginapi,
+//     onSuccess: (data) => {
+//       login(data.user, data.token);
+//       router.push('/candidate/dashboard'); // Adjust redirect path as needed
+//     },
+//     onError: (error: any) => {
+//       console.error('Login failed:', error?.response?.data?.message || error.message);
+//       // Show toast or error state
+//     },
+//   });
+// };
+
+
+
 export const useLogin = () => {
   const { login } = useAuth();
   const router = useRouter();
@@ -29,14 +48,33 @@ export const useLogin = () => {
     mutationFn: loginapi,
     onSuccess: (data) => {
       login(data.user, data.token);
-      router.push('/candidate/dashboard'); // Adjust redirect path as needed
+
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        router.push(redirectPath);
+      } else {
+        // Role-based fallback
+        if (data.user.role === 'candidate') {
+          router.push('/candidate/dashboard');
+        } else if (data.user.role === 'company') {
+          router.push('/company/dashboard');
+        } else if (data.user.role === 'agency') {
+          router.push('/agency/dashboard');
+        } else {
+          router.push('/'); // fallback
+        }
+      }
     },
     onError: (error: any) => {
       console.error('Login failed:', error?.response?.data?.message || error.message);
-      // Show toast or error state
+      // Optionally show toast here
     },
   });
 };
+
+
+
 
 export const useUpdateLocation = () => {
   const router = useRouter();

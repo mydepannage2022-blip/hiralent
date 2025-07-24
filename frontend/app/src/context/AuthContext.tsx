@@ -7,6 +7,7 @@ interface AuthContextType {
   token: string | null;
   login: (userData: any, token: string) => void;
   logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,21 +15,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Restore token & user from localStorage on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('authUser');
 
     if (savedToken) setToken(savedToken);
     if (savedUser) setUser(JSON.parse(savedUser));
+
+    setLoading(false);
   }, []);
 
   const login = (userData: any, token: string) => {
     setUser(userData);
     setToken(token);
     localStorage.setItem('authToken', token);
-    localStorage.setItem('authUser', JSON.stringify(userData)); // ✅ Save user too
+    localStorage.setItem('authUser', JSON.stringify(userData));
   };
 
   const logout = () => {
@@ -39,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

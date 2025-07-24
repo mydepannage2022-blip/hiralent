@@ -1,12 +1,10 @@
 "use client"
 import React from 'react'
-import { IoSearchOutline } from "react-icons/io5";
-import Select from "react-select";
 import { locationOptions } from "../../../constants/groupedLocationOptions"; 
-import { IoLocationOutline } from "react-icons/io5";
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import JobSearch from '../../job/JobSearch';
 
 const Hero = () => {
   const [jobTitle, setJobTitle] = useState('');
@@ -22,7 +20,7 @@ const Hero = () => {
   ];
 
   // Change image every 4 seconds
-  useEffect(() => {
+    useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => 
         prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1
@@ -30,53 +28,54 @@ const Hero = () => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+    }, []);
 
-  const handleSearch = () => {
-    console.log("Searching for:", jobTitle, selectedLocation);
-    // You can redirect or filter jobs here
-  };
 
-  const customStyles = {
-    control: (base: any) => ({
-      ...base,
-      padding: "0px 8px", // Adjusted to py-2 equivalent (8px vertical), px-2 (8px horizontal)
-      borderRadius: "8px",
-      borderColor: "transparent",
-      outline: "none",
-      boxShadow: "none",
-      border: "none",
-      fontSize: "14px", // Slightly smaller font for slim look
-    }),
-    option: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
-      color: "#111",
-      padding: "8px", // Slimmer options
-      fontWeight: state.isSelected ? "bold" : "normal",
-    }),
-  };
+    const handleSearch = (title: string, location: any) => {
+      console.log("Searching for:", title, location?.value);
+      // Implement actual search logic or route navigation here
+    };
 
-  // Animation variants
-  const fadeInUp = {
-    initial: { opacity: 0, y: 50 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.8, ease: "easeOut" }
-  };
+    const customStyles = {
+      control: (base: any) => ({
+        ...base,
+        padding: "0px 8px", // Adjusted to py-2 equivalent (8px vertical), px-2 (8px horizontal)
+        borderRadius: "8px",
+        borderColor: "transparent",
+        outline: "none",
+        boxShadow: "none",
+        border: "none",
+        fontSize: "14px", // Slightly smaller font for slim look
+      }),
+      option: (base: any, state: any) => ({
+        ...base,
+        backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
+        color: "#111",
+        padding: "8px", // Slimmer options
+        fontWeight: state.isSelected ? "bold" : "normal",
+      }),
+    };
 
-  const staggerContainer = {
-    initial: {},
-    animate: {
-      transition: {
-        staggerChildren: 0.2
+    // Animation variants
+    const fadeInUp = {
+      initial: { opacity: 0, y: 50 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.8, ease: "easeOut" }
+    };
+
+    const staggerContainer = {
+      initial: {},
+      animate: {
+        transition: {
+          staggerChildren: 0.2
+        }
       }
-    }
-  };
+    };
 
-  // Light floating animation for icons (no rotation)
-  const lightFloatingAnimation = {
-    y: [-5, 5, -5],
-  };
+    // Light floating animation for icons (no rotation)
+    const lightFloatingAnimation = {
+      y: [-5, 5, -5],
+    };
 
   return (
     <div className='w-full flex justify-center pt-30 pb-8 md:pt-32 md:pb-18 lg:pt-26 lg:pb-20 items-center bg-[#EFF5FF]'>
@@ -109,45 +108,11 @@ const Hero = () => {
             Discover jobs that match your skills and passion. Type and explore!
           </motion.p>
 
-          <motion.form 
-            action="" 
-            className='w-full lg:w-4/5 xl:w-full flex flex-col xl:flex-row lg:justify-start xl:justify-between lg:items-start xl:items-center gap-3 md:gap-4 lg:gap-2 pt-2 lg:pt-2 xl:py-0'
-            variants={fadeInUp}
-            transition={{ duration: 0.2 }}
-          >
-            <div className='w-full lg:w-full flex lg:justify-start xl:justify-center items-center wrap bg-white rounded-lg px-3 py-2'>
-              <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-xl text-[#CBCBCB] flex-shrink-0' />
-              <input 
-                type="text" 
-                placeholder='Search for jobs, companies, or keywords' 
-                className='w-full outline-none px-2 text-[#A5A5A5] text-sm' 
-                onChange={(e) => setJobTitle(e.target.value)}
-              />
-            </div>
-
-            <div className='w-full lg:w-full bg-white flex xl:justify-start items-center rounded-lg px-3 py-0'>
-              <IoLocationOutline className='text-lg md:text-xl lg:text-xl xl:text-xl text-[#CBCBCB] flex-shrink-0' />
-              <Select
-                options={locationOptions}
-                placeholder="location"
-                onChange={(option) => setSelectedLocation(option as any)}
-                isSearchable={true}
-                className="w-full outline-none text-sm text-[#A5A5A5]"
-                styles={customStyles}
-              />
-            </div>
-
-            <motion.div 
-              className='w-full lg:w-full xl:w-2/5 flex justify-center items-center bg-[#005DDC] px-3 py-2 hover:bg-[#0046B3] transition-colors duration-300 rounded-lg text-white cursor-pointer'
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <button type='submit' className='flex justify-center items-center gap-2 text-white text-sm' onClick={handleSearch}>
-                <IoSearchOutline className='text-lg md:text-xl lg:text-xl xl:text-xl' />
-                <p>Search</p>
-              </button>
-            </motion.div>
-          </motion.form>
+          <JobSearch  
+          locationOptions={locationOptions}
+    onSearch={handleSearch}
+    customStyles={customStyles}
+  />
 
           <motion.div 
             className='flex justify-center lg:justify-start items-center gap-2 mt-2'
