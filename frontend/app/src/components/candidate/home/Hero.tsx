@@ -2,7 +2,7 @@
 import React from 'react'
 import { IoSearchOutline } from "react-icons/io5";
 import Select from "react-select";
-import { locationOptions } from "../../constants/groupedLocationOptions"; 
+import { locationOptions } from "../../../constants/groupedLocationOptions"; 
 import { IoLocationOutline } from "react-icons/io5";
 
 import { motion } from 'framer-motion';

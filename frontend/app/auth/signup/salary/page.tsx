@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { locationOptions } from "../../src/constants/groupedLocationOptions";
 import Select, { SingleValue } from "react-select";
-import { motion, AnimatePresence, number } from "framer-motion";
-import { useUpdateLocation } from "../../src/lib/queries";
+import { motion, AnimatePresence } from "framer-motion";
+import { useUpdateSalary } from "../../../src/lib/queries";
 
 const testimonials = [
   {
@@ -31,12 +30,6 @@ const testimonials = [
       "https://resize-elle.ladmedia.fr/r/400,279,ffffff,forcex,center-middle/img/var/plain_site/storage/images/people/la-vie-des-people/news/emma-watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-emma-roberts-3979994/95896063-1-fre-FR/Emma-Watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-Emma-Roberts.jpg",
   },
 ];
-
-
-interface LocationOption {  
-  value: string;
-  label: string;
-}
 
 const TestimonialSlider = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -108,48 +101,50 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
-  
-  
-  
-  const { mutate } = useUpdateLocation();
-  const [postalCodeInput, setPostalCodeInput] = useState<number>();
-  const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+  const updateSalaryMutation = useUpdateSalary();
+  const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
+  const [minSalary, setMinSalary] = useState("");
+  const [paymentPeriod, setPaymentPeriod] = useState<SingleValue<{ value: string; label: string }>>(null);
+
+  const paymentPeriodOptions = [
+    { value: "weekly", label: "Weekly" },
+    { value: "monthly", label: "Monthly" },
+    { value: "yearly", label: "Yearly" },
+  ];
+
   const customStyles = {
     control: (base: any) => ({
       ...base,
-      padding: "4px",
+      padding: "0px 8px", // Matches Hero section's py-2 for slim height
       borderRadius: "8px",
       borderColor: "transparent",
       outline: "none",
       boxShadow: "none",
       border: "none",
-      fontSize: "16px",
+      fontSize: "14px", // Slim font size
     }),
     option: (base: any, state: any) => ({
       ...base,
       backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
       color: "#111",
-      padding: "10px",
+      padding: "8px",
       fontWeight: state.isSelected ? "bold" : "normal",
     }),
   };
 
-const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
-  if (!selectedLocation || !postalCodeInput) {
-    alert("Please fill out both fields.");
+
+  if (!minSalary || !paymentPeriod?.value) {
+    alert("Please fill in all fields");
     return;
   }
-  
-  const payload = {
-    location: selectedLocation.value,
-    postalCode: Number(postalCodeInput),
-  };
-  
-  console.log("📤 Sending Payload:", payload);
-  mutate(payload);
+
+  updateSalaryMutation.mutate({
+    minimumSalary: parseInt(minSalary),
+    paymentPeriod: paymentPeriod.value,
+  });
 };
 
 
@@ -170,25 +165,25 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
           >
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup"
+                href="/auth/signup"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/location"
+                href="/auth/signup/location"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/salary"
-                className="py-0 px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg"
+                href="/auth/signup/salary"
+                className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/uploadresume"
+                href="/auth/signup/uploadresume"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg"
               ></Link>
             </motion.div>
@@ -208,56 +203,58 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            <h2 className="text-2xl lg:text-3xl font-bold">What is your location?</h2>
+            <h2 className="text-2xl lg:text-3xl font-bold">Tell us about your preferences</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
-              Please provide your location details to match you with nearby offers.
+              Provide your location and salary expectations to match you with the best job offers.
             </p>
           </motion.div>
 
-          <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-            >
-              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Location<span className="text-red-500">*</span>
-              </label>
-              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
-                <Select
-                  options={locationOptions}
-                  name="location"
-                  id="location"
-                  placeholder="Search or Select Location"
-                  isSearchable
-                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
-                  classNamePrefix="select"
-                  styles={customStyles}
-                  required
-                  value={selectedLocation}
-                  onChange={(option) => setSelectedLocation(option as LocationOption)}
-                />
-              </motion.div>
-            </motion.div>
-
+        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Postal Code<span className="text-red-500">*</span>
+                Minimum Salary Amount<span className="text-red-500">*</span>
               </label>
               <motion.input
                 type="number"
-                name="postalCode"
-                id="postalCode"
-                placeholder="Enter your Postal or Zip Code"
-                className="w-full outline-none px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
-                onChange={(e) => setPostalCodeInput(Number(e.target.value))}
+                name="minSalary"
+                id="minSalary"
+                placeholder="Enter minimum salary amount"
+                className="w-full outline-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
+                required
+                value={minSalary}
+                onChange={(e) => setMinSalary(e.target.value)}
                 whileFocus={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+            >
+              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+                Payment Period<span className="text-red-500">*</span>
+              </label>
+              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
+                <Select
+                  options={paymentPeriodOptions}
+                  name="paymentPeriod"
+                  id="paymentPeriod"
+                  placeholder="Select Payment Period"
+                  isSearchable
+                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
+                  classNamePrefix="select"
+                  styles={customStyles}
+                  required
+                  value={paymentPeriod}
+                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setPaymentPeriod(newValue)}
+                />
+              </motion.div>
             </motion.div>
 
             <motion.button
@@ -269,7 +266,6 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             >
               Continue
             </motion.button>
-
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}

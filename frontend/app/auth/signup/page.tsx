@@ -3,30 +3,52 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion"; // Import Framer Motion
-import { useLogin } from "../src/lib/queries"; // Import useLogin
-import { useAuth } from '../src/context/AuthContext';
-import { useRouter } from 'next/navigation';// Types
+import { useSignup } from "../../src/lib/queries";
+import { useAuth } from '../../src/context/AuthContext';
+import { useRouter } from 'next/router';
+// Types (unchanged)
 interface FormData {
+  fullName: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 interface FormErrors {
+  fullName?: string;
   email?: string;
   password?: string;
+  confirmPassword?: string;
 }
 
 interface FormTouched {
+  fullName?: boolean;
   email?: boolean;
   password?: boolean;
+  confirmPassword?: boolean;
+}
+
+interface PasswordVisibility {
+  password: boolean;
+  confirmPassword: boolean;
 }
 
 interface ValidationRules {
+  fullName: {
+    minLength: number;
+    pattern: RegExp;
+  };
   email: {
     pattern: RegExp;
   };
   password: {
     minLength: number;
+    patterns: {
+      lowercase: RegExp;
+      uppercase: RegExp;
+      number: RegExp;
+      special: RegExp;
+    };
   };
 }
 
@@ -56,11 +78,21 @@ const testimonials = [
 ];
 
 const validationRules: ValidationRules = {
+  fullName: {
+    minLength: 2,
+    pattern: /^[a-zA-Z\s]+$/,
+  },
   email: {
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   },
   password: {
-    minLength: 6,
+    minLength: 8,
+    patterns: {
+      lowercase: /[a-z]/,
+      uppercase: /[A-Z]/,
+      number: /\d/,
+      special: /[!@#$%^&*(),.?":{}|<>]/,
+    },
   },
 };
 
@@ -135,18 +167,35 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
-  const loginMutation = useLogin();
+  const signupMutation = useSignup();
   const [formData, setFormData] = useState<FormData>({
+    fullName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<FormTouched>({});
-  const [passwordVisibility, setPasswordVisibility] = useState(false);
+  const [passwordVisibility, setPasswordVisibility] = useState<PasswordVisibility>({
+    password: false,
+    confirmPassword: false,
+  });
 
   const validateField = (name: keyof FormData, value: string): string | undefined => {
     switch (name) {
+      case "fullName":
+        if (!value.trim()) {
+          return "Full name is required";
+        }
+        if (value.length < validationRules.fullName.minLength) {
+          return `Full name must be at least ${validationRules.fullName.minLength} characters`;
+        }
+        if (!validationRules.fullName.pattern.test(value)) {
+          return "Full name can only contain letters and spaces";
+        }
+        return undefined;
+
       case "email":
         if (!value.trim()) {
           return "Email is required";
@@ -162,6 +211,27 @@ const Page = () => {
         }
         if (value.length < validationRules.password.minLength) {
           return `Password must be at least ${validationRules.password.minLength} characters`;
+        }
+        if (!validationRules.password.patterns.lowercase.test(value)) {
+          return "Password must contain at least one lowercase letter";
+        }
+        if (!validationRules.password.patterns.uppercase.test(value)) {
+          return "Password must contain at least one uppercase letter";
+        }
+        if (!validationRules.password.patterns.number.test(value)) {
+          return "Password must contain at least one number";
+        }
+        if (!validationRules.password.patterns.special.test(value)) {
+          return "Password must contain at least one special character";
+        }
+        return undefined;
+
+      case "confirmPassword":
+        if (!value) {
+          return "Please confirm your password";
+        }
+        if (value !== formData.password) {
+          return "Passwords do not match";
         }
         return undefined;
 
@@ -186,6 +256,15 @@ const Page = () => {
         ...prev,
         [fieldName]: error,
       }));
+
+      // Also validate confirm password if password changes
+      if (fieldName === "password" && touched.confirmPassword) {
+        const confirmError = validateField("confirmPassword", formData.confirmPassword);
+        setErrors((prev) => ({
+          ...prev,
+          confirmPassword: confirmError,
+        }));
+      }
     }
   };
 
@@ -205,71 +284,45 @@ const Page = () => {
     }));
   };
 
-  const togglePasswordVisibility = () => {
-    setPasswordVisibility((prev) => !prev);
+  const togglePasswordVisibility = (field: keyof PasswordVisibility) => {
+    setPasswordVisibility((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
 
-  //   // Mark all fields as touched
-  //   const allTouched: FormTouched = {
-  //     email: true,
-  //     password: true,
-  //   };
-  //   setTouched(allTouched);
+ const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-  //   // Validate all fields
-  //   const newErrors: FormErrors = {};
-  //   Object.keys(formData).forEach((key) => {
-  //     const fieldName = key as keyof FormData;
-  //     const error = validateField(fieldName, formData[fieldName]);
-  //     if (error) {
-  //       newErrors[fieldName] = error;
-  //     }
-  //   });
+  const allTouched: FormTouched = {
+    fullName: true,
+    email: true,
+    password: true,
+    confirmPassword: true,
+  };
+  setTouched(allTouched);
 
-  //   setErrors(newErrors);
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) newErrors[fieldName] = error;
+  });
 
-  //   // Check if form is valid
-  //   const isFormValid = Object.keys(newErrors).length === 0;
-  //   if (isFormValid) {
-  //     console.log("Form submitted:", formData);
-  //     // Handle form submission here
-  //   }
-  // };
+  setErrors(newErrors);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  if (Object.keys(newErrors).length === 0) {
+    const { fullName, email, password } = formData;
 
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      email: true,
-      password: true,
-    };
-    setTouched(allTouched);
-
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) {
-        newErrors[fieldName] = error;
-      }
+    signupMutation.mutate({
+      email,
+      password,
+      full_name: fullName,
+      role: 'candidate',
     });
-
-    setErrors(newErrors);
-
-    // Submit if form is valid
-    if (Object.keys(newErrors).length === 0) {
-      loginMutation.mutate({
-        email: formData.email,
-        password: formData.password,
-      });
-    }
-  };
-
+  }
+};
 
 
 
@@ -287,13 +340,40 @@ const Page = () => {
 
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
-      <div className="w-full flex flex-col lg:flex-row justify-between items-center lg:gap-0 xl:gap-16">
+      <div className="w-full flex flex-col lg:flex-row justify-between items-start lg:gap-0 xl:gap-16">
         <motion.div
-          className="w-full lg:w-1/2 flex flex-col justify-center items-center lg:items-center lg:gap-0 xl:gap-4 p-3"
+          className="w-full lg:w-1/2 flex flex-col justify-start items-center lg:items-center lg:gap-0 xl:gap-4 p-3"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
+          <motion.div
+            className="flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+              <Link href="/auth/signup/location" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg">
+                {/* Placeholder */}
+              </Link>
+            </motion.div>
+            <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+              <Link href="/auth/signup/location" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg">
+                {/* Placeholder */}
+              </Link>
+            </motion.div>
+            <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+              <Link href="/auth/signup/location" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg">
+                {/* Placeholder */}
+              </Link>
+            </motion.div>
+            <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+              <Link href="/auth/signup/location" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg">
+                {/* Placeholder */}
+              </Link>
+            </motion.div>
+          </motion.div>
           <motion.div
             className="flex justify-center items-center gap-3 p-2"
             initial={{ opacity: 0 }}
@@ -312,7 +392,7 @@ const Page = () => {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-[#005DDC] py-2 px-2 lg:px-8 text-sm text-white"
-                href={"/login"}
+                href={"/auth/signup/info"}
               >
                 As a Candidate
               </Link>
@@ -320,14 +400,51 @@ const Page = () => {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-white py-2 px-2 lg:px-8 text-sm text-[#222]"
-                href={"/companyLogin"}
+                href={"/auth/companyRegister"}
               >
                 As a Company
               </Link>
             </motion.div>
           </motion.div>
+          <motion.div
+            className="flex flex-col justify-center items-center gap-1 py-2 text-[#222]"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <h2 className="text-2xl xl:text-3xl font-bold">Give us your information</h2>
+            <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
+              Please enter your personal details to set up your account and personalize your experience
+            </p>
+          </motion.div>
 
           <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+            >
+              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+                Full Name<span className="text-red-500">*</span>
+              </label>
+              <motion.input
+                type="text"
+                name="fullName"
+                id="fullName"
+                value={formData.fullName}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                placeholder="Enter your Full Name"
+                className={getInputClassName("fullName")}
+                required
+                whileFocus={{ scale: 1.02 }}
+                transition={{ duration: 0.3 }}
+              />
+              {touched.fullName && errors.fullName && (
+                <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
+              )}
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -364,7 +481,7 @@ const Page = () => {
               </label>
               <div className="relative">
                 <motion.input
-                  type={passwordVisibility ? "text" : "password"}
+                  type={passwordVisibility.password ? "text" : "password"}
                   name="password"
                   id="password"
                   value={formData.password}
@@ -377,12 +494,12 @@ const Page = () => {
                 />
                 <motion.button
                   type="button"
-                  onClick={togglePasswordVisibility}
+                  onClick={() => togglePasswordVisibility("password")}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
                 >
-                  {passwordVisibility ? (
+                  {passwordVisibility.password ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
@@ -414,6 +531,66 @@ const Page = () => {
               )}
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.5 }}
+            >
+              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+                Confirm Password<span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <motion.input
+                  type={passwordVisibility.confirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  id="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  placeholder="Confirm your Password"
+                  className={`${getInputClassName("confirmPassword")} pr-10`}
+                  whileFocus={{ scale: 1.02 }}
+                  transition={{ duration: 0.3 }}
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => togglePasswordVisibility("confirmPassword")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {passwordVisibility.confirmPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
+                      />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  )}
+                </motion.button>
+              </div>
+              {touched.confirmPassword && errors.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
+              )}
+            </motion.div>
+
             <motion.button
               type="submit"
               className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm"
@@ -421,7 +598,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Login
+               {signupMutation.isPending ? 'Signing up...' : 'Sign Up'}
             </motion.button>
 
             <div className="text-center text-gray-500 text-sm">OR</div>
@@ -451,7 +628,7 @@ const Page = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Login with Google
+              Sign up with Google
             </motion.button>
 
             <motion.div
@@ -460,17 +637,17 @@ const Page = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 1.0, duration: 0.5 }}
             >
-              Don't have an account?{" "}
+              Do you already have an account?{" "}
               <motion.a
                 href="/"
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
-                <Link href={"/signup"} 
+                <Link href={"/auth/login"} 
                 className="text-[#1B73E8] hover:underline"
                 
                 > 
-                Sign up
+                Login
                 </Link>
               </motion.a>
             </motion.div>

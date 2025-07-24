@@ -79,19 +79,19 @@ const Navbar = () => {
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/about">Find job</Link>
+              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/findjob">Find job</Link>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/services">Company</Link>
+              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/company">Company</Link>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/contact">Create CV</Link>
+              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/auth/signup">Create CV</Link>
             </motion.li>
           </ul>
         </div>
@@ -115,7 +115,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link href="/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>Employer</Link>
+              <Link href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</Link>
             </motion.div>
           </div>
           
@@ -135,7 +135,7 @@ const Navbar = () => {
               >
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
-              <Link className='hidden lg:inline' href={"/signup"}>Get Start</Link>
+              <Link className='hidden lg:inline' href={"/auth/signup"}>Get Start</Link>
               {/* <span ></span> */}
             </Link>
           </motion.div>
@@ -179,7 +179,7 @@ const Navbar = () => {
                 transition={{ delay: 0.1 }}
               >
                 <Link 
-                  href="/" 
+                  href="/candidate/home" 
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -193,7 +193,7 @@ const Navbar = () => {
                 transition={{ delay: 0.2 }}
               >
                 <Link 
-                  href="/about" 
+                  href="/candidate/findjob" 
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -207,7 +207,7 @@ const Navbar = () => {
                 transition={{ delay: 0.3 }}
               >
                 <Link 
-                  href="/services" 
+                  href="/candidate/company" 
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -221,7 +221,7 @@ const Navbar = () => {
                 transition={{ delay: 0.4 }}
               >
                 <Link 
-                  href="/contact" 
+                  href="/auth/signup" 
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -253,11 +253,11 @@ const Navbar = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <Link 
-                    href="/Employer" 
+                    href="/companyRegister" 
                     className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Employer
+                    as company
                   </Link>
                 </motion.div>
               </motion.div>

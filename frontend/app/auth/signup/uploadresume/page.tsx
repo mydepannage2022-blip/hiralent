@@ -2,11 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { locationOptions } from "../../src/constants/groupedLocationOptions";
-import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUpdateSalary } from "../../src/lib/queries";
-
+import { useUploadResume } from '../../../src/lib/queries';
 const testimonials = [
   {
     id: 1,
@@ -102,27 +99,19 @@ const TestimonialSlider = () => {
 };
 
 const Page = () => {
-  const updateSalaryMutation = useUpdateSalary();
-  const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
-  const [minSalary, setMinSalary] = useState("");
-  const [paymentPeriod, setPaymentPeriod] = useState<SingleValue<{ value: string; label: string }>>(null);
 
-  const paymentPeriodOptions = [
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
-    { value: "yearly", label: "Yearly" },
-  ];
+const { mutate: uploadResumeMutation} = useUploadResume();  const [resume, setResume] = useState(null);
 
   const customStyles = {
     control: (base: any) => ({
       ...base,
-      padding: "0px 8px", // Matches Hero section's py-2 for slim height
+      padding: "0px 8px",
       borderRadius: "8px",
       borderColor: "transparent",
       outline: "none",
       boxShadow: "none",
       border: "none",
-      fontSize: "14px", // Slim font size
+      fontSize: "14px",
     }),
     option: (base: any, state: any) => ({
       ...base,
@@ -133,19 +122,45 @@ const Page = () => {
     }),
   };
 
+  // const handleFileChange = (e:any) => {
+  //   const file = e.target.files[0];
+  //   if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+  //     setResume(file);
+  //   } else {
+  //     alert("Please upload a valid CV (PDF or Word format)");
+  //     setResume(null);
+  //   }
+  // };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-
-  if (!minSalary || !paymentPeriod?.value) {
-    alert("Please fill in all fields");
-    return;
+  const handleFileChange = (e: any) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  const allowedExtensions = ['.pdf', '.doc', '.docx'];
+  const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+  
+  if (allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension)) {
+    setResume(file);
+  } else {
+    alert("Please upload a valid CV (PDF or Word format)");
+    setResume(null);
   }
+  };
 
-  updateSalaryMutation.mutate({
-    minimumSalary: parseInt(minSalary),
-    paymentPeriod: paymentPeriod.value,
-  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  if (resume) {
+    uploadResumeMutation(resume);
+  } else {
+    alert("Please select a valid resume");
+  }
 };
 
 
@@ -166,26 +181,26 @@ const Page = () => {
           >
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup"
+                href="/auth/signup"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/location"
+                href="/auth/signup/location"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/salary"
+                href="/auth/signup/salary"
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/signup/uploadresume"
-                className="py-0 px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg"
+                href="/auth/signup/uploadresume"
+                className="py-0 px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
           </motion.div>
@@ -204,83 +219,32 @@ const Page = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            <h2 className="text-2xl lg:text-3xl font-bold">Tell us about your preferences</h2>
+            <h2 className="text-2xl lg:text-3xl font-bold">Upload your CV/Resume</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
-              Provide your location and salary expectations to match you with the best job offers.
+              Upload your CV or resume to complete your profile and connect with job opportunities.
             </p>
           </motion.div>
 
-        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-            {/* <motion.div
+          <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Location<span className="text-red-500">*</span>
-              </label>
-              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
-                <Select
-                  options={locationOptions}
-                  name="location"
-                  id="location"
-                  placeholder="Search or Select Location"
-                  isSearchable
-                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
-                  classNamePrefix="select"
-                  styles={customStyles}
-                  required
-                  value={selectedLocation}
-                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setSelectedLocation(newValue)}
-                />
-              </motion.div>
-            </motion.div> */}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-            >
-              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Minimum Salary Amount<span className="text-red-500">*</span>
+                CV/Resume<span className="text-red-500">*</span>
               </label>
               <motion.input
-                type="number"
-                name="minSalary"
-                id="minSalary"
-                placeholder="Enter minimum salary amount"
+                type="file"
+                name="resume"
+                id="resume"
+                accept=".pdf,.doc,.docx"
                 className="w-full outline-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
                 required
-                value={minSalary}
-                onChange={(e) => setMinSalary(e.target.value)}
+                onChange={handleFileChange}
                 whileFocus={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-            >
-              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Payment Period<span className="text-red-500">*</span>
-              </label>
-              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
-                <Select
-                  options={paymentPeriodOptions}
-                  name="paymentPeriod"
-                  id="paymentPeriod"
-                  placeholder="Select Payment Period"
-                  isSearchable
-                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
-                  classNamePrefix="select"
-                  styles={customStyles}
-                  required
-                  value={paymentPeriod}
-                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setPaymentPeriod(newValue)}
-                />
-              </motion.div>
             </motion.div>
 
             <motion.button
@@ -290,16 +254,8 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Continue
+              Finish Up
             </motion.button>
-            <motion.div
-              className="text-center text-gray-500 text-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-            >
-              Skip
-            </motion.div>
           </form>
         </motion.div>
 

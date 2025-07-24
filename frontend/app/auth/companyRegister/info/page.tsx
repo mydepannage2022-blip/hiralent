@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Select, { SingleValue } from "react-select"; // Added react-select
-import { industryOptions } from "../../src/constants/groupedIndustriesOptions"; // Assuming industryOptions is in a separate file
-import { locationOptions } from "../../src/constants/groupedLocationOptions";
+import { industryOptions } from "../../../src/constants/groupedIndustriesOptions"; // Assuming industryOptions is in a separate file
+import { locationOptions } from "../../../src/constants/groupedLocationOptions";
 
 const testimonials = [
   {
@@ -140,13 +140,13 @@ const Page = () => {
           >
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/companyRegister"
+                href="/auth/companyRegister"
                 className="px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
-                href="/companyRegister/info"
+                href="/auth/companyRegister/info"
                 className="px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg"
               ></Link>
             </motion.div>
@@ -169,7 +169,7 @@ const Page = () => {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 className="border-l-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] bg-white py-2 px-2 lg:px-8 text-sm text-[#222]"
-                href={"/signup"}
+                href={"/auth/signup"}
               >
                 As a Candidate
               </Link>
@@ -177,7 +177,7 @@ const Page = () => {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 className="border-r-1 border-t-1 border-b-1 rounded-t-none rounded-r-lg border-[#005DDC] bg-[#005DDC] py-2 px-2 lg:px-8 text-sm"
-                href={"/companyRegister"}
+                href={"/auth/companyRegister"}
               >
                 As a Company
               </Link>
@@ -359,7 +359,7 @@ const Page = () => {
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
-                <Link href={"/companyLogin"} className="text-[#1B73E8] hover:underline">
+                <Link href={"/auth/companyLogin"} className="text-[#1B73E8] hover:underline">
                   Login as Company
                 </Link>
               </motion.a>

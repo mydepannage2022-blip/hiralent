@@ -1,7 +1,7 @@
 "use client";
 
 import Select from "react-select";
-import {locationOptions} from "../../constants/groupedLocationOptions"; // use grouped or flat as you like
+import {locationOptions} from "../../../constants/groupedLocationOptions"; // use grouped or flat as you like
 
 export default function LocationSelect({ onChange }: { onChange: (value: any) => void }) {
   return (
