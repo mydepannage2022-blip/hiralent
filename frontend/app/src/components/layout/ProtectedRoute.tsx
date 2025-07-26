@@ -12,13 +12,13 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!loading && !token) {
-      localStorage.setItem("redirectAfterLogin", pathname); // Save attempted path
+      localStorage.setItem("redirectAfterLogin", pathname); 
       router.replace("/auth/login");
     }
   }, [token, loading, pathname, router]);
 
-  if (loading) return <Loader/>; // Wait for auth check
-  if (!token) return null; // Prevent flash
+  if (loading) return <Loader/>; 
+  if (!token) return null; 
 
   return <>{children}</>;
 }

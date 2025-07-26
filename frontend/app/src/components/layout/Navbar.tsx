@@ -135,7 +135,7 @@ const Navbar = () => {
               >
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
-              <Link className='hidden lg:inline' href={"/auth/signup"}>Get Start</Link>
+              <Link className='hidden lg:inline' href="/auth/signup">Get Start</Link>
               {/* <span ></span> */}
             </Link>
           </motion.div>
@@ -253,7 +253,7 @@ const Navbar = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <Link 
-                    href="/companyRegister" 
+                    href="/auth/companyRegister" 
                     className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
                     onClick={() => setIsMenuOpen(false)}
                   >
