@@ -17,18 +17,18 @@ const DashboardSidebar = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
 
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-    { name: 'Profile', icon: User, href: '/profile' },
-    { name: 'Notifications', icon: Bell, href: '/notifications' },
-    { name: 'Messages', icon: MessageSquare, href: '/messages' },
-    { name: 'Settings', icon: Settings, href: '/settings' },
-    { name: 'Analytics', icon: Activity, href: '/analytics' }
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
+    { name: 'Profile', icon: User, href: '#' },
+    { name: 'Notifications', icon: Bell, href: '#' },
+    { name: 'Messages', icon: MessageSquare, href: '#' },
+    { name: 'Settings', icon: Settings, href: '#' },
+    { name: 'Analytics', icon: Activity, href: '#' }
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className={`flex h-[90vh] bg-[#FFFFFF] rounded-xl ${isOpen ? 'w-64' : 'w-20'}`}>
       {/* Sidebar */}
-      <div className={`${isOpen ? 'w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out`}>
+      <div className={`${isOpen ? 'w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl`}>
   
         <div className='w-full flex-1'>
 
@@ -58,6 +58,7 @@ const DashboardSidebar = () => {
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
+              <Link href={item.href}>
                 <li key={item.name}>
                   <button
                     onClick={() => setActiveItem(item.name)}
@@ -80,6 +81,7 @@ const DashboardSidebar = () => {
                     </div>
                   )}
                 </li>
+                </Link>
               );
             })}
           </ul>
@@ -99,20 +101,6 @@ const DashboardSidebar = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 p-8">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            {activeItem}
-          </h2>
-          <div className="text-gray-600">
-            <p>Welcome to the {activeItem.toLowerCase()} section!</p>
-            <p className="mt-2">
-              This is where the content for <strong>{activeItem}</strong> will be displayed.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
