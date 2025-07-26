@@ -1,18 +1,34 @@
 import React from 'react'
+import { CiSearch } from 'react-icons/ci';
+import { IoIosNotificationsOutline } from "react-icons/io";
+
 
 const DashboardNavbar = () => {
   return (
     <div className='w-full flex justify-center items-center text-[#282828]'>
-      <div>
+      <div className='w-1/2'>
         <h3 className='font-bold text-xl lg:text-2xl '>Dashboard</h3>
-        <p className='font-light text'>Updating your information will offer you the most relevent content</p>
+        <p className='font-light text-sm text-[#515151]'>Updating your information will offer you the most relevent content</p>
       </div>
 
-      <div>
-        <form action="">
-          <input type="text" name="Search" id="" />
-
+      <div className='w-1/2 flex items-center justify-end gap-8'>
+        <form action="" className='flex justify-between items-center bg-white p-3 rounded-lg '>
+          <input type="text" name="Search" id="" placeholder='Search' className='outline-none text-base '/>
+          
+          <CiSearch  className='text-2xl'/>
         </form>
+
+        <IoIosNotificationsOutline  className='text-2xl '/>
+        
+        <div className='flex jutisy-center items-center gap-2'>
+          <img src="/images/candidate.png" alt="Canidate Image" />
+          <div className='flex flex-col justify-center items-start'>
+          <h3 className='text-[#222] text-base '>Youssra Kalam</h3>
+          <span className='text-sm text-[#A5A5A5]'>youssrakalam@gmail.com</span>
+          </div>
+        </div>
+
+
       </div>
     </div>
   )

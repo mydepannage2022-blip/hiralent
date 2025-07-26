@@ -466,7 +466,7 @@ const Page = () => {
                 whileHover={{ scale: 1.1 }}
                 transition={{ duration: 0.3 }}
               >
-                <Link href={"/signup"} 
+                <Link href={"/auth/signup"} 
                 className="text-[#1B73E8] hover:underline"
                 
                 > 

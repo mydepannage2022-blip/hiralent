@@ -26,9 +26,9 @@ const DashboardSidebar = () => {
   ];
 
   return (
-    <div className={`flex h-[90vh] bg-[#FFFFFF] rounded-xl ${isOpen ? 'w-64' : 'w-20'}`}>
+    <div className={`flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'w-64' : 'w-20'}`}>
       {/* Sidebar */}
-      <div className={`${isOpen ? 'w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl`}>
+      <div className={`${isOpen ? 'w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl gap-50`}>
   
         <div className='w-full flex-1'>
 

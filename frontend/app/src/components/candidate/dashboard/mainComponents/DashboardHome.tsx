@@ -4,13 +4,13 @@ import DashboardNavbar from '../DashboardNavbar'
 
 const DashboardHome = () => {
   return (
-    <div className='flex '>
+    <div className='w-full flex justify-center items-start p-8 gap-8 h-screen'>
 
-      <div className='flex justify-start items-center p-8'>
+      <div className='flex justify-start items-start'>
       <DashboardSidebar/>
       </div>
       
-      <div className="flex flex-col justify-center items-center p-4 h-screen">
+      <div className="w-full flex flex-col justify-start items-start ">
         <DashboardNavbar/>
       </div>
 
