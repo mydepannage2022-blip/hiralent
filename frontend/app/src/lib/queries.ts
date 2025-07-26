@@ -48,8 +48,8 @@ export const useLogin = () => {
     mutationFn: loginapi,
     onSuccess: (data) => {
       login(data.user, data.token);
-
-      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      console.log(data.user , data.token)
+       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
         router.push(redirectPath);

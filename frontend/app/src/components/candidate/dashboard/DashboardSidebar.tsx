@@ -10,6 +10,7 @@ import {
   ChevronRight,
   LogOut
 } from 'lucide-react';
+import Link from 'next/link';
 
 const DashboardSidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -87,12 +88,14 @@ const DashboardSidebar = () => {
 
         {/* Logout Button - Bottom of Sidebar */}
         <div className='w-full p-4 border-t border-gray-200'>
-          <button className={`w-full flex items-center ${
+          <Link href="/auth/logout">
+          <button  className={`w-full flex items-center ${
             isOpen ? 'px-4 py-3 space-x-3 justify-start' : 'px-3 py-3 justify-center'
           } rounded-lg transition-all duration-200 hover:bg-gray-50`}>
             <LogOut size={22} className='flex-shrink-0 text-red-600' /> 
             {isOpen && <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>}
           </button>
+            </Link>
         </div>
       </div>
 

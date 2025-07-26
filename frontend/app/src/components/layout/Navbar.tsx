@@ -7,11 +7,17 @@ import { IoIosArrowDropright } from "react-icons/io";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user, token } = useAuth();
 
+  const isLoggedIn = user && token;
+  console.log(
+  'is logged in ' , user, token
+  )
   // Scroll effect handler
   useEffect(() => {
     const handleScroll = () => {
@@ -111,12 +117,14 @@ const Navbar = () => {
             >
               <IoIosNotificationsOutline className='text-[#222] cursor-pointer lg:text-xl hover:text-[#005DDC] transition-colors duration-200' />
             </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.05, color: "#005DDC" }}
-              transition={{ duration: 0.2 }}
-            >
-              <Link href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</Link>
-            </motion.div>
+            {!isLoggedIn && (
+              <motion.div
+                whileHover={{ scale: 1.05, color: "#005DDC" }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</Link>
+              </motion.div>
+            )}
           </div>
           
           <motion.div
@@ -124,7 +132,7 @@ const Navbar = () => {
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.2 }}
           >
-            <Link href={"signup"} className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'>
+            <Link href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"} className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'>
               <motion.div
                 animate={{ x: [0, 3, 0] }}
                 transition={{ 
@@ -135,8 +143,7 @@ const Navbar = () => {
               >
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
-              <Link className='hidden lg:inline' href="/auth/signup">Get Start</Link>
-              {/* <span ></span> */}
+              <span className='hidden lg:inline'>{isLoggedIn ? 'Dashboard' : 'Get Started'}</span>
             </Link>
           </motion.div>
 
@@ -248,18 +255,20 @@ const Navbar = () => {
                 >
                   <IoIosNotificationsOutline className='text-[#222] cursor-pointer text-xl hover:text-[#005DDC] transition-colors duration-200' />
                 </motion.div>
-                <motion.div
-                  whileHover={{ scale: 1.05, color: "#005DDC" }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Link 
-                    href="/auth/companyRegister" 
-                    className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
-                    onClick={() => setIsMenuOpen(false)}
+                {!isLoggedIn && (
+                  <motion.div
+                    whileHover={{ scale: 1.05, color: "#005DDC" }}
+                    transition={{ duration: 0.2 }}
                   >
-                    as company
-                  </Link>
-                </motion.div>
+                    <Link 
+                      href="/auth/companyRegister" 
+                      className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      as company
+                    </Link>
+                  </motion.div>
+                )}
               </motion.div>
             </div>
           </motion.div>
