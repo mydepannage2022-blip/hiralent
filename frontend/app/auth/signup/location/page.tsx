@@ -5,7 +5,7 @@ import Link from "next/link";
 import { locationOptions } from "../../../src/constants/groupedLocationOptions";
 import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence, number } from "framer-motion";
-import { useUpdateLocation } from "../../../src/lib/queries";
+import { useUpdateLocation } from "../../../src/lib/auth.queries";
 
 const testimonials = [
   {

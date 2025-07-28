@@ -12,8 +12,8 @@ const DashboardNavbar = () => {
       </div>
 
       <div className='w-1/2 flex items-center justify-end gap-8'>
-        <form action="" className='flex justify-between items-center bg-white p-3 rounded-lg '>
-          <input type="text" name="Search" id="" placeholder='Search' className='outline-none text-base '/>
+        <form action="" className='flex justify-between items-center bg-white p-3 rounded-lg w-2/3'>
+          <input type="text" name="Search" id="" placeholder='Search' className='outline-none text-base w-full'/>
           
           <CiSearch  className='text-2xl'/>
         </form>

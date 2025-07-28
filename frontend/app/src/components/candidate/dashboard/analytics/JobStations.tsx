@@ -1,6 +1,6 @@
 import React from 'react'
 
-const ProfilePercentage = () => {
+const JobStations = () => {
   return (
     <div>
       
@@ -8,4 +8,4 @@ const ProfilePercentage = () => {
   )
 }
 
-export default ProfilePercentage
+export default JobStations

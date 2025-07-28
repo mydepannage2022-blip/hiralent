@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion"; // Import Framer Motion
-import { useLogin } from "../../src/lib/queries"; // Import useLogin
+import { useLogin } from "../../src/lib/auth.queries"; // Import useLogin
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/navigation';// Types
 interface FormData {

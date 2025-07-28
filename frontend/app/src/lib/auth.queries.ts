@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume} from './api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 

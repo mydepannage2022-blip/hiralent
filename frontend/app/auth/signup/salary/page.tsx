@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUpdateSalary } from "../../../src/lib/queries";
+import { useUpdateSalary } from "../../../src/lib/auth.queries";
 
 const testimonials = [
   {
