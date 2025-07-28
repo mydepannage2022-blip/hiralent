@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import { extractSkillsFromText, predictCareerPath, createEmbedding, generateJobMatchReasoning } from '../lib/openai';
 import { storeCandidateVector, findSimilarJobs, storeJobVector } from '../lib/pinecone';
 import { parseDocument, preprocessText, extractContactInfo } from '../utils/documentParser.util';
@@ -12,8 +12,6 @@ import {
   CandidateServiceError
 } from '../types/candidate.types';
 import fs from 'fs';
-import path from 'path';
-import { any, number } from 'zod';
 import { UpdateLocationInput, UpdateSalaryInput } from '../types/candidate.types';
 const prisma = new PrismaClient();
 
