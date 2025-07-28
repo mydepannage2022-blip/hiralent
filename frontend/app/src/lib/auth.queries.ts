@@ -21,24 +21,6 @@ export const useSignup = () => {
   });
 };
 
-// export const useLogin = () => {
-//   const { login } = useAuth();
-//   const router = useRouter();
-
-//   return useMutation({
-//     mutationFn: loginapi,
-//     onSuccess: (data) => {
-//       login(data.user, data.token);
-//       router.push('/candidate/dashboard'); // Adjust redirect path as needed
-//     },
-//     onError: (error: any) => {
-//       console.error('Login failed:', error?.response?.data?.message || error.message);
-//       // Show toast or error state
-//     },
-//   });
-// };
-
-
 
 export const useLogin = () => {
   const { login } = useAuth();

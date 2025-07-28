@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // ✅ move this here
 });
@@ -58,7 +58,7 @@ export const uploadResume = async (resume: File) => {
   const token = localStorage.getItem('authToken');
 
   const response = await axios.post(
-    'http://localhost:5000/api/v1/candidates/profile-upload',
+    `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/profile-upload`,
     formData, // 👈 FormData directly
     {
       headers: {
