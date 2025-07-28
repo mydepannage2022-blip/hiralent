@@ -5,10 +5,23 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://hiralent.vercel.app'
+];
+
 app.use(cors({
-  origin: `http://localhost:3000`, // ✅ allow your frontend
-  credentials: true,                // ✅ allow cookies, auth headers if needed
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
 }));
+
+
 app.use(express.json()); // for JSON request body
 
 // routes
