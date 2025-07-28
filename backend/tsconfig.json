@@ -1,9 +1,10 @@
 {
-  "typeRoots": ["./types", "./node_modules/@types"],
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
     "lib": ["ES2020"],
+    "rootDir": "src",
+    "outDir": "dist",
     "strict": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
