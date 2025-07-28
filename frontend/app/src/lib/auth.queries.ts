@@ -12,7 +12,7 @@ export const useSignup = () => {
     onSuccess: (data) => {
       // console.log("✅ Signup response:", data); 
       login(data.user, data.token);
-      router.push('/signup/location');
+      router.push('/auth/signup/location');
     },
     onError: (error: any) => {
       console.error('Signup failed:', error?.response?.data?.message || error.message);
@@ -69,7 +69,7 @@ export const useUpdateLocation = () => {
       });
     },
     onSuccess: () => {
-      router.push("/signup/salary");
+      router.push("/auth/signup/salary");
     },
     onError: (err) => {
       console.error("Location update failed:", err);
@@ -84,7 +84,7 @@ export const useUpdateSalary = () => {
     mutationFn: (data: { minimumSalary: number; paymentPeriod: string }) =>
       updateSalary(data),
     onSuccess: () => {
-      router.push("/signup/uploadresume");
+      router.push("/auth/signup/uploadresume");
     },
     onError: (err) => {
       console.error("Salary update failed:", err);
