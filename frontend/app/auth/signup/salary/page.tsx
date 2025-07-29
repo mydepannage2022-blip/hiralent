@@ -266,14 +266,16 @@ const Page = () => {
             >
               Continue
             </motion.button>
+            <Link href={"/auth/uploadresume"}>
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7, duration: 0.5 }}
-            >
+              >
               Skip
             </motion.div>
+              </Link>
           </form>
         </motion.div>
 

@@ -256,6 +256,17 @@ const { mutate: uploadResumeMutation} = useUploadResume();  const [resume, setRe
             >
               Finish Up
             </motion.button>
+
+            <Link href={"/candidate/dashboard"}>
+            <motion.div
+              className="text-center text-gray-500 text-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+              >
+              Skip
+            </motion.div>
+              </Link>
           </form>
         </motion.div>
 

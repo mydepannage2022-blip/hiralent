@@ -113,9 +113,7 @@ const Page = () => {
   
   const { mutate } = useUpdateLocation();
   const [postalCodeInput, setPostalCodeInput] = useState<number>();
-  const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+  const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null); 
   const customStyles = {
     control: (base: any) => ({
       ...base,
@@ -269,7 +267,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             >
               Continue
             </motion.button>
-
+            <Link href={"/auth/salary"}>
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}
@@ -278,6 +276,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             >
               Skip
             </motion.div>
+            </Link>
           </form>
         </motion.div>
 

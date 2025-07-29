@@ -209,35 +209,6 @@ const Page = () => {
     setPasswordVisibility((prev) => !prev);
   };
 
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
-
-  //   // Mark all fields as touched
-  //   const allTouched: FormTouched = {
-  //     email: true,
-  //     password: true,
-  //   };
-  //   setTouched(allTouched);
-
-  //   // Validate all fields
-  //   const newErrors: FormErrors = {};
-  //   Object.keys(formData).forEach((key) => {
-  //     const fieldName = key as keyof FormData;
-  //     const error = validateField(fieldName, formData[fieldName]);
-  //     if (error) {
-  //       newErrors[fieldName] = error;
-  //     }
-  //   });
-
-  //   setErrors(newErrors);
-
-  //   // Check if form is valid
-  //   const isFormValid = Object.keys(newErrors).length === 0;
-  //   if (isFormValid) {
-  //     console.log("Form submitted:", formData);
-  //     // Handle form submission here
-  //   }
-  // };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -421,7 +392,7 @@ const Page = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              Login
+              {loginMutation.isPending ? 'Logining...' : 'Login'}
             </motion.button>
 
             <div className="text-center text-gray-500 text-sm">OR</div>
