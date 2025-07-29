@@ -45,7 +45,6 @@ const DashboardNavbar = () => {
               {user?.is_email_verified ? (
                 <div className='flex items-center gap-1'>
                   <MdVerified className='text-green-500 text-sm' />
-                  <span className='text-xs text-green-600 font-medium'>Verified</span>
                 </div>
               ) : (
                 <div className='flex items-center gap-1'>
