@@ -71,3 +71,12 @@ export const uploadResume = async (resume: File) => {
   console.log(response.data);
   return response.data;
 };
+
+export const verifyEmail = async (token: string) => {
+  const response = await api.get(`/auth/verify-email?token=${token}`);
+  return response.data;
+};
+export const resendVerificationEmail = async () => {
+  const response = await api.post('/auth/resend-verification');
+  return response.data;
+};

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume} from './auth.api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 
@@ -20,7 +20,6 @@ export const useSignup = () => {
     },
   });
 };
-
 
 export const useLogin = () => {
   const { login } = useAuth();
@@ -54,9 +53,6 @@ export const useLogin = () => {
     },
   });
 };
-
-
-
 
 export const useUpdateLocation = () => {
   const router = useRouter();
@@ -108,6 +104,53 @@ export const useUploadResume = () => {
       console.error('Status:', error?.response?.status);
       // Show user-friendly error message
       alert(`Upload failed: ${error?.response?.data?.message || error.message}`);
+    },
+  });
+};
+
+export const useVerifyEmail = () => {
+  const { login } = useAuth();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: verifyEmail,
+    onSuccess: (data) => {
+      console.log("✅ Email verified successfully:", data);
+      
+      if (data.success && data.user && data.token) {
+        login(data.user, data.token);
+        
+        const role = data.user.role;
+        if (role === 'candidate') {
+          router.push('/candidate/dashboard');
+        } else if (role === 'company') {
+          router.push('/company/dashboard');
+        } else if (role === 'agency') {
+          router.push('/agency/dashboard');
+        } else {
+          router.push('/');
+        }
+      }
+    },
+    onError: (error: any) => {
+      console.error('Email verification failed:', error?.response?.data?.message || error.message);
+    },
+  });
+};
+
+export const useResendVerificationEmail = () => {
+  return useMutation({
+    mutationFn: resendVerificationEmail,
+    onSuccess: (data) => {
+      console.log("✅ Verification email sent:", data);
+      if (data.success) {
+        alert(data.message || "Verification email sent! Please check your inbox.");
+      }
+    },
+    onError: (error: any) => {
+      console.error('Resend verification failed:', error?.response?.data?.message || error.message);
+      const message = error?.response?.data?.message || error.message;
+      alert(`Failed to send email: ${message}`);
     },
   });
 };

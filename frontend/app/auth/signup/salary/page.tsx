@@ -266,7 +266,7 @@ const Page = () => {
             >
               Continue
             </motion.button>
-            <Link href={"/auth/uploadresume"}>
+            <Link href={"/auth/signup/uploadresume"}>
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}

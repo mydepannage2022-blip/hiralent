@@ -1,10 +1,17 @@
 import React from 'react'
 import { CiSearch } from 'react-icons/ci';
 import { IoIosNotificationsOutline } from "react-icons/io";
-import { useAuth } from '../../../context/AuthContext'; // Adjust path according to your file structure
+import { MdVerified, MdWarning } from "react-icons/md";
+import { useAuth } from '../../../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const DashboardNavbar = () => {
   const { user } = useAuth();
+  const router = useRouter();
+
+  const handleVerifyEmail = () => {
+    router.push('/auth/signup/verify-email');
+  };
 
   return (
     <div className='w-full flex justify-center items-center text-[#282828]'>
@@ -22,26 +29,42 @@ const DashboardNavbar = () => {
 
         <IoIosNotificationsOutline  className='text-2xl '/>
         
-        <div className='flex jutisy-center items-center gap-2'>
+        <div className='flex justify-center items-center gap-2'>
           <img 
             src={user?.profileImage || "/images/candidate.png"} 
             alt="User Image" 
             className="w-10 h-10 rounded-full object-cover"
           />
           <div className='flex flex-col justify-center items-start'>
-            <h3 className='text-[#222] text-base '>
-              {user?.full_name || user?.name || 'Guest User'}
-            </h3>
+            <div className='flex items-center gap-2'>
+              <h3 className='text-[#222] text-base '>
+                {user?.full_name || user?.name || 'Guest User'}
+              </h3>
+              
+              {/* Email Verification Status */}
+              {user?.is_email_verified ? (
+                <div className='flex items-center gap-1'>
+                  <MdVerified className='text-green-500 text-sm' />
+                  <span className='text-xs text-green-600 font-medium'>Verified</span>
+                </div>
+              ) : (
+                <div className='flex items-center gap-1'>
+                  <MdWarning className='text-yellow-500 text-sm' />
+                  <button 
+                    onClick={handleVerifyEmail}
+                    className='text-xs text-yellow-600 font-medium hover:text-yellow-700 hover:underline cursor-pointer'
+                  >
+                    Verify Email
+                  </button>
+                </div>
+              )}
+            </div>
+            
             <span className='text-sm text-[#A5A5A5]'>
               {user?.email || 'No email available'}
             </span>
           </div>
         </div>
-
-
-
-        
-
       </div>
     </div>
   )

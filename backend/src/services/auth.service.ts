@@ -67,11 +67,55 @@ export const login = async ({ email, password }: LoginInput) => {
   }
 };
 
+
+export const resendVerificationEmail = async (userId: string) => {
+  try {
+    // User ko find karo
+    const user = await prisma.user.findUnique({ 
+      where: { user_id: userId },
+      select: { 
+        email: true, 
+        is_email_verified: true, 
+        user_id: true,
+        full_name: true 
+      }
+    });
+
+    if (!user) {
+      return {
+        error: true,
+        message: "User not found"
+      };
+    }
+
+    // Agar email already verified hai
+    if (user.is_email_verified) {
+      return {
+        error: true,
+        message: "Email is already verified"
+      };
+    }
+
+    // Existing sendVerificationEmail function use karo
+    await sendVerificationEmail(user.email, user.user_id);
+
+    return { 
+      success: true, 
+      message: "Verification email sent successfully" 
+    };
+  } catch (error: any) {
+    console.error("❌ Resend Verification Email Error:", error);
+    return {
+      error: true,
+      message: error.message || "Failed to resend verification email"
+    };
+  }
+};
+
 export const sendVerificationEmail = async (email: string, userId: string) => {
   try {
     const token = generateToken({ userId }, "15m");
-    const link = `${process.env.APP_URL}/api/v1/auth/verify-email?token=${token}`;
-    console.log("🔗 Verification link:", link);
+    const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
 
     await sendEmail({
       to: email,
@@ -105,6 +149,7 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
   }
 };
 
+
 export const verifyEmail = async ({ token }: VerifyEmailInput) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
@@ -112,7 +157,14 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
       where: { user_id: decoded.userId },
       data: { is_email_verified: true },
     });
-    return user;
+
+    const authToken = generateToken({
+      user_id: user.user_id,
+      role: user.role,
+      agency_id: user.agency_id,
+    });
+
+    return { user, token: authToken };
   } catch (error: any) {
     console.error("❌ Verify Email Error:", error);
     return {
@@ -121,6 +173,7 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
     };
   }
 };
+
 
 export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
   try {

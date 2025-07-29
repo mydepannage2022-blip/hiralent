@@ -267,7 +267,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             >
               Continue
             </motion.button>
-            <Link href={"/auth/salary"}>
+            <Link href={"/auth/signup/salary"}>
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}
