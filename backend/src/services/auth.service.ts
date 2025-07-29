@@ -11,28 +11,65 @@ import {
   VerifyEmailInput,
 } from "../types/auth.types";
 
+// export const signup = async (input: SignupInput) => {
+//   const { email, password, full_name, role } = input;
+
+//   const exists = await prisma.user.findUnique({ where: { email } });
+//   if (exists) throw new Error("Email already exists");
+
+//   const password_hash = await bcrypt.hash(password, 10);
+//   const user = await prisma.user.create({
+//     data: {
+//       email,
+//       password_hash,
+//       full_name,
+//       role,
+//       agency_id: null, 
+//       is_email_verified: false,
+//     },
+//   });
+
+//   const token = generateToken({ user_id: user.user_id, role: user.role });
+//   await sendVerificationEmail(user.email, user.user_id);
+//   return { user, token };
+// };
+
 export const signup = async (input: SignupInput) => {
-  const { email, password, full_name, role } = input;
+  try {
+    const { email, password, full_name, role } = input;
 
-  const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) throw new Error("Email already exists");
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) throw new Error("Email already exists");
 
-  const password_hash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password_hash,
-      full_name,
-      role,
-      agency_id: null, 
-      is_email_verified: false,
-    },
-  });
+    const password_hash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password_hash,
+        full_name,
+        role,
+        agency_id: null, 
+        is_email_verified: false,
+      },
+    });
 
-  const token = generateToken({ user_id: user.user_id, role: user.role });
-  await sendVerificationEmail(user.email, user.user_id);
-  return { user, token };
+    const token = generateToken({ user_id: user.user_id, role: user.role });
+    await sendVerificationEmail(user.email, user.user_id);
+
+    return { user, token };
+
+  } catch (error: any) {
+    console.error("❌ Signup Error:", error); // log full error in backend logs
+
+    // Optional: include stack trace in dev
+    return {
+      error: true,
+      message: error.message ,
+    };
+  }
 };
+
+
 
 export const login = async ({ email, password }: LoginInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
