@@ -621,33 +621,47 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
 
 
 export async function updateCandidateLocation(userId: string, data: UpdateLocationInput) {
-  console.log("📛 userId in updateCandidateLocation: ", userId); 
-  return prisma.candidateProfile.upsert({
-    where: { candidate_id: userId },
-    update: {
-      location: data.location,
-      postal_code: data.postalCode,
-    },
-    create: {
-      candidate_id: userId,
-      location: data.location,
-      postal_code: data.postalCode,
-    }
-  });
+  try {
+    console.log("📛 userId in updateCandidateLocation: ", userId); 
+    
+    const result = await prisma.candidateProfile.upsert({
+      where: { candidate_id: userId },
+      update: {
+        location: data.location,
+        postal_code: data.postalCode,
+      },
+      create: {
+        candidate_id: userId,
+        location: data.location,
+        postal_code: data.postalCode,
+      }
+    });
+    
+    return result;
+  } catch (error) {
+    console.error("Error updating candidate location:", error);
+    throw new Error(`Failed to update candidate location: ${error.message || 'Unknown error'}`);
+  }
 }
 
-
 export async function updateCandidateSalary(userId: string, data: UpdateSalaryInput) {
-  return prisma.candidateProfile.upsert({
-    where: { candidate_id: userId },
-    update: {
-      minimum_salary_amount: data.minimumSalary,
-      payment_period: data.paymentPeriod,
-    },
-    create: {
-      candidate_id: userId,
-      minimum_salary_amount: data.minimumSalary,
-      payment_period: data.paymentPeriod,
-    }
-  });
+  try {
+    const result = await prisma.candidateProfile.upsert({
+      where: { candidate_id: userId },
+      update: {
+        minimum_salary_amount: data.minimumSalary,
+        payment_period: data.paymentPeriod,
+      },
+      create: {
+        candidate_id: userId,
+        minimum_salary_amount: data.minimumSalary,
+        payment_period: data.paymentPeriod,
+      }
+    });
+    
+    return result;
+  } catch (error) {
+    console.error("Error updating candidate salary:", error);
+    throw new Error(`Failed to update candidate salary: ${error.message || 'Unknown error'}`);
+  }
 }
