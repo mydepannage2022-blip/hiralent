@@ -10,7 +10,7 @@ const DashboardNavbar = () => {
   const router = useRouter();
 
   const handleVerifyEmail = () => {
-    router.push('/auth/signup/verify-email');
+    router.push('/auth/verify-email');
   };
 
   return (
