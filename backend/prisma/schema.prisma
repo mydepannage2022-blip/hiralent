@@ -90,6 +90,7 @@ model CandidateProfile {
   candidate_id          String   @id
   resume_url           String?
   video_intro_url      String?
+  profile_picture_url   String?
   skills               String?
   education            String?
   experience           String?
@@ -510,7 +511,8 @@ model ProfileCompleteness {
   overall_score     Float    // 0-100 overall completeness score
   basic_info_score  Float    // basic profile information score
   skills_score      Float    // skills section score
-  experience_score  Float    // experience section score
+  experience_score  Float 
+  profile_picture_score Float    // experience section score
   education_score   Float    // education section score
   document_score    Float    // uploaded documents score
   missing_fields    Json     // array of missing required fields

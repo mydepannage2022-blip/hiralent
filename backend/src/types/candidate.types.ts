@@ -126,6 +126,7 @@ export interface ProfileCompletenessScore {
   experience_score: number;
   education_score: number;
   document_score: number;
+  profile_picture_score: number; // Add this line
   missing_fields: string[];
   suggestions: string[];
 }
@@ -281,3 +282,20 @@ export interface HealthCheckResponse {
     vector_db: string;
   };
 }
+
+export interface ProfilePictureUploadResponse {
+  success: boolean;
+  profile_picture_url: string;
+  old_picture_url?: string;
+  message: string;
+}
+export interface ProfilePictureUploadResult{
+  success: boolean;
+  profile_picture_url: string;
+  old_picture_url?: string;
+  message: string;
+}
+
+
+
+

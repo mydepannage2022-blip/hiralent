@@ -10,7 +10,8 @@ import {
   JobRecommendation,
   HealthCheckResponse,
   UpdateLocationInput,
-  UpdateSalaryInput
+  UpdateSalaryInput,
+  ProfilePictureUploadResponse
 } from '../types/candidate.types';
 
 
@@ -307,3 +308,61 @@ export async function updateSalaryHandler(req: Request, res: Response) {
     });
   }
 }
+
+export const uploadProfilePictureController = async (
+  req: Request, 
+  res: Response
+): Promise<void> => {
+  try {
+    // User is guaranteed to exist due to checkAuth middleware
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error_code: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    // File is guaranteed to exist due to validateUploadedImage middleware
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'No image file provided',
+        error_code: 'NO_FILE'
+      } as APIResponse);
+      return;
+    }
+
+    console.log(`Profile picture upload initiated for user: ${req.user.user_id}`);
+    console.log(`File details:`, {
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+    // Upload to Cloudinary and update database
+    const result = await candidateService.uploadProfilePicture(
+      req.user.user_id, 
+      req.file
+    );
+
+    console.log(`Profile picture upload completed for user: ${req.user.user_id}`);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Profile picture uploaded successfully'
+    } as APIResponse<ProfilePictureUploadResponse>);
+
+  } catch (error) {
+    console.error('Controller error - Profile picture upload:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload profile picture',
+      error_code: 'UPLOAD_FAILED',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};

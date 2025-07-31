@@ -9,7 +9,8 @@ import {
   getExtractedSkillsController,
   healthCheckController,
   updateLocationHandler,
-  updateSalaryHandler
+  updateSalaryHandler,
+  uploadProfilePictureController
 } from '../controller/candidate.controller';
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
@@ -30,6 +31,11 @@ import {
   validateQuestionSubmission,
   validateTimeLimit
 } from '../middlewares/assessment.middleware';
+import { 
+  uploadImageMiddleware, 
+  handleImageUploadError, 
+  validateUploadedImage 
+} from '../middlewares/uploadImage.middleware';
 import { updateLocationSchema, updateSalarySchema } from '../validation/candidate.schema';
 const router = Router();
 
@@ -62,6 +68,16 @@ router.patch(
   [checkAuth, validateBody(updateSalarySchema)],
   updateSalaryHandler
 );
+
+router.post(
+  '/profile-picture-upload',
+  uploadImageMiddleware,
+  handleImageUploadError,
+  validateUploadedImage,
+  uploadProfilePictureController
+);
+
+
 router.get('/profile-summary', getProfileSummaryController);
 
 router.get('/profile-summary/:candidateId', getProfileSummaryController);
