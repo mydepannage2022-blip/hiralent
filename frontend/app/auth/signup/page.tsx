@@ -417,7 +417,7 @@ const Page = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.5 }}
           >
-            <h2 className="text-2xl xl:text-3xl font-bold">Give us your information</h2>
+            <h2 className="text-2xl font-bold">Give us your information</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
               Please enter your personal details to set up your account and personalize your experience
             </p>

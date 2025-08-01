@@ -122,16 +122,6 @@ const { mutate: uploadResumeMutation} = useUploadResume();  const [resume, setRe
     }),
   };
 
-  // const handleFileChange = (e:any) => {
-  //   const file = e.target.files[0];
-  //   if (file && (file.type === "application/pdf" || file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-  //     setResume(file);
-  //   } else {
-  //     alert("Please upload a valid CV (PDF or Word format)");
-  //     setResume(null);
-  //   }
-  // };
-
   const handleFileChange = (e: any) => {
   const file = e.target.files[0];
   if (!file) return;
