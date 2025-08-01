@@ -9,6 +9,9 @@ import {
   ForgotPasswordInput,
   ResetPasswordInput,
   VerifyEmailInput,
+   UserWithProfiles, 
+   CleanUser,
+   LoginResponse
 } from "../types/auth.types";
 
 export const signup = async (input: SignupInput) => {
@@ -43,9 +46,27 @@ export const signup = async (input: SignupInput) => {
   }
 };
 
-export const login = async ({ email, password }: LoginInput) => {
+export const login = async ({ email, password }: LoginInput): Promise<LoginResponse> => {
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find user with their profile based on role
+    const user: UserWithProfiles | null = await prisma.user.findUnique({ 
+      where: { email },
+      include: {
+        candidateProfile: true,
+        companyProfile: true,    // Updated field name
+        agencyAdminProfile: true,
+        agency: {
+          select: {
+            agency_id: true,
+            name: true,
+            website: true,
+            logo_url: true,
+            status: true
+          }
+        }
+      }
+    }) as UserWithProfiles | null;
+
     if (!user) throw new Error("User not found");
 
     const match = await bcrypt.compare(password, user.password_hash);
@@ -57,7 +78,31 @@ export const login = async ({ email, password }: LoginInput) => {
       agency_id: user.agency_id,
     });
 
-    return { user, token };
+    // Clean user object - remove sensitive fields
+    const cleanUser: CleanUser = {
+      user_id: user.user_id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      phone_number: user.phone_number,
+      position: user.position,
+      linkedin_url: user.linkedin_url,
+      agency_id: user.agency_id,
+      agency: user.agency,
+      profile: null // Will be set based on role
+    };
+
+    // Add profile based on user role
+    if (user.role === 'candidate') {
+      cleanUser.profile = user.candidateProfile;
+    } else if (user.role === 'company') {
+      cleanUser.profile = user.companyProfile;
+    } else if (user.role === 'agency') {
+      cleanUser.profile = user.agencyAdminProfile;
+    }
+
+    return { user: cleanUser, token };
+
   } catch (error: any) {
     console.error("❌ Login Error:", error);
     return {
@@ -66,7 +111,6 @@ export const login = async ({ email, password }: LoginInput) => {
     };
   }
 };
-
 
 export const resendVerificationEmail = async (userId: string) => {
   try {

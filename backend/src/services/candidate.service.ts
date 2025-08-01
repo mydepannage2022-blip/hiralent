@@ -432,11 +432,11 @@ export const getJobRecommendations = async (
       const jobId = match.metadata?.job_id;
       if (!jobId) continue;
 
-      // Get job details
-      const job = await prisma.recruiterJob.findUnique({
+      // Get job details - Updated to use CompanyJob
+      const job = await prisma.companyJob.findUnique({
         where: { job_id: jobId },
         include: {
-          recruiter: { select: { full_name: true } },
+          company: { select: { full_name: true } },  // Updated from 'recruiter' to 'company'
           agency: { select: { name: true } },
         },
       });
@@ -479,7 +479,7 @@ export const getJobRecommendations = async (
       recommendations.push({
         job_id: jobId,
         title: job.title,
-        company: job.agency.name,
+        company: job.company.full_name,  // Updated to use company relation
         location: job.location,
         salary_range: job.salary_range || undefined,
         match_score: match.score || 0,
@@ -499,6 +499,7 @@ export const getJobRecommendations = async (
     throw serviceError;
   }
 };
+
 
 // Calculate profile completeness
 export const calculateProfileCompleteness = async (

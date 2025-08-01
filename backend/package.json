@@ -58,7 +58,7 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/sanitize-html": "^2.16.0",
     "nodemon": "^3.1.10",
-    "prisma": "^6.11.1",
+    "prisma": "^6.13.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
