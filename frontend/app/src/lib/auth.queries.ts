@@ -80,7 +80,7 @@ export const useUpdateSalary = () => {
     mutationFn: (data: { minimumSalary: number; paymentPeriod: string }) =>
       updateSalary(data),
     onSuccess: () => {
-      router.push("/auth/signup/uploadresume");
+      router.push("/auth/signup/profile-picture");
     },
     onError: (err) => {
       console.error("Salary update failed:", err);

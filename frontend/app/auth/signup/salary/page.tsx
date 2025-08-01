@@ -186,7 +186,7 @@ const Page = () => {
                 {/* Placeholder */}
               </Link>
             </motion.div>
-            
+
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/auth/signup/uploadresume"
@@ -272,7 +272,7 @@ const Page = () => {
             >
               Continue
             </motion.button>
-            <Link href={"/auth/signup/uploadresume"}>
+            <Link href={"/auth/signup/profile-picture"}>
             <motion.div
               className="text-center text-gray-500 text-sm"
               initial={{ opacity: 0 }}
