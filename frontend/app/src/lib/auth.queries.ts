@@ -96,7 +96,7 @@ export const useUploadResume = () => {
     mutationFn: uploadResume,
     onSuccess: () => {
       console.log('Resume uploaded successfully');
-      router.push("/candidate/dashboard");
+      router.push("/auth/logout");
     },
     onError: (error: any) => {
       console.error('Upload failed:', error);
