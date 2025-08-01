@@ -163,7 +163,7 @@ export const useUploadProfilePicture = () => {
     mutationFn: uploadProfilePicture,
     onSuccess: () => {
       console.log('Profile picture uploaded successfully');
-      router.push("/candidate/dashboard"); // ya jahan jana ho
+      router.push("/auth/signup/uploadresume"); // ya jahan jana ho
     },
     onError: (error: any) => {
       console.error('Upload failed:', error);
