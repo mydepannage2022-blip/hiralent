@@ -184,6 +184,12 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
                 className="py-0 px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg"
               ></Link>
             </motion.div>
+             <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+              <Link href="/auth/signup/profile-picture" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg">
+                {/* Placeholder */}
+              </Link>
+            </motion.div>
+            
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/auth/signup/uploadresume"

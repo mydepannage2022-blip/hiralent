@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail} from './auth.api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 
@@ -151,6 +151,23 @@ export const useResendVerificationEmail = () => {
       console.error('Resend verification failed:', error?.response?.data?.message || error.message);
       const message = error?.response?.data?.message || error.message;
       alert(`Failed to send email: ${message}`);
+    },
+  });
+};
+
+
+export const useUploadProfilePicture = () => {
+  const router = useRouter();
+  
+  return useMutation({
+    mutationFn: uploadProfilePicture,
+    onSuccess: () => {
+      console.log('Profile picture uploaded successfully');
+      router.push("/candidate/dashboard"); // ya jahan jana ho
+    },
+    onError: (error: any) => {
+      console.error('Upload failed:', error);
+      alert(`Upload failed: ${error?.response?.data?.message || error.message}`);
     },
   });
 };

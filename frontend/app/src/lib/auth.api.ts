@@ -80,3 +80,13 @@ export const resendVerificationEmail = async () => {
   const response = await api.post('/auth/resend-verification');
   return response.data;
 };
+
+export const uploadProfilePicture = async (image: File) => {
+  const formData = new FormData();
+  formData.append('profilePicture', image); // backend expects 'image' field
+  
+  const response = await api.post('/candidates/profile-picture-upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};

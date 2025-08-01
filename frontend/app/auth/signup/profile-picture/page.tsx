@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Select, { SingleValue } from "react-select";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUpdateSalary } from "../../../src/lib/auth.queries";
+import { useUploadProfilePicture } from "../../../src/lib/auth.queries";
+import { Upload, User, Check } from "lucide-react";
 
 const testimonials = [
   {
@@ -100,53 +100,80 @@ const TestimonialSlider = () => {
   );
 };
 
-const Page = () => {
-  const updateSalaryMutation = useUpdateSalary();
-  const [selectedLocation, setSelectedLocation] = useState<SingleValue<{ value: string; label: string }>>(null);
-  const [minSalary, setMinSalary] = useState("");
-  const [paymentPeriod, setPaymentPeriod] = useState<SingleValue<{ value: string; label: string }>>(null);
+const ProfilePicturePage = () => {
+  const { mutate, isPending } = useUploadProfilePicture();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const paymentPeriodOptions = [
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
-    { value: "yearly", label: "Yearly" },
-  ];
+  const handleFileSelect = (file: File) => {
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPG, JPEG, or PNG)');
+      return;
+    }
 
-  const customStyles = {
-    control: (base: any) => ({
-      ...base,
-      padding: "0px 8px", // Matches Hero section's py-2 for slim height
-      borderRadius: "8px",
-      borderColor: "transparent",
-      outline: "none",
-      boxShadow: "none",
-      border: "none",
-      fontSize: "14px", // Slim font size
-    }),
-    option: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
-      color: "#111",
-      padding: "8px",
-      fontWeight: state.isSelected ? "bold" : "normal",
-    }),
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview URL
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
   };
 
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      alert("Please select a profile picture.");
+      return;
+    }
+    
+    console.log("📤 Uploading Profile Picture:", selectedFile.name);
+    mutate(selectedFile);
+  };
 
-  if (!minSalary || !paymentPeriod?.value) {
-    alert("Please fill in all fields");
-    return;
-  }
-
-  updateSalaryMutation.mutate({
-    minimumSalary: parseInt(minSalary),
-    paymentPeriod: paymentPeriod.value,
-  });
-};
-
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   return (
     <div className="w-full flex justify-center h-screen items-center bg-[#FFFFFF]">
@@ -157,6 +184,7 @@ const Page = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
+          {/* Progress Steps */}
           <motion.div
             className="flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-8"
             initial={{ opacity: 0 }}
@@ -182,11 +210,10 @@ const Page = () => {
               ></Link>
             </motion.div>
              <motion.div className="p-none" whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
-              <Link href="/auth/signup/profile-picture" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#CFE3FF] rounded-lg">
+              <Link href="/auth/signup/profile-picture" className="py-[-10px] px-6 md:px-10 lg:px-12 bg-[#063B82] rounded-lg">
                 {/* Placeholder */}
               </Link>
             </motion.div>
-            
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/auth/signup/uploadresume"
@@ -194,6 +221,9 @@ const Page = () => {
               ></Link>
             </motion.div>
           </motion.div>
+
+
+          {/* Logo */}
           <motion.div
             className="flex justify-center items-center gap-3 p-2"
             initial={{ opacity: 0 }}
@@ -203,88 +233,117 @@ const Page = () => {
             <img src="/images/logo.png" alt="logo" className="w-[200px]" />
           </motion.div>
 
+          {/* Header */}
           <motion.div
             className="flex flex-col justify-center items-center gap-3 text-[#222]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            <h2 className="text-2xl lg:text-3xl font-bold">Tell us about your preferences</h2>
+            <h2 className="text-2xl lg:text-3xl font-bold">Add your profile picture</h2>
             <p className="text-center text-xs lg:text-sm w-full lg:w-2/3">
-              Provide your location and salary expectations to match you with the best job offers.
+              Upload a professional photo to make your profile more personalized and trustworthy.
             </p>
           </motion.div>
 
-        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+          {/* Form */}
+          <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
             >
               <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Minimum Salary Amount<span className="text-red-500">*</span>
+                Profile Picture<span className="text-red-500">*</span>
               </label>
-              <motion.input
-                type="number"
-                name="minSalary"
-                id="minSalary"
-                placeholder="Enter minimum salary amount"
-                className="w-full outline-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
-                required
-                value={minSalary}
-                onChange={(e) => setMinSalary(e.target.value)}
-                whileFocus={{ scale: 1.02 }}
+              
+              {/* File Upload Area */}
+              <motion.div
+                className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors duration-300 ${
+                  isDragOver 
+                    ? 'border-[#063B82] bg-[#EFF5FF]' 
+                    : 'border-gray-300 hover:border-[#063B82]'
+                }`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-            >
-              <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
-                Payment Period<span className="text-red-500">*</span>
-              </label>
-              <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
-                <Select
-                  options={paymentPeriodOptions}
-                  name="paymentPeriod"
-                  id="paymentPeriod"
-                  placeholder="Select Payment Period"
-                  isSearchable
-                  className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
-                  classNamePrefix="select"
-                  styles={customStyles}
+              >
+                <input
+                  type="file"
+                  // name="profilePicture"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={handleFileInputChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   required
-                  value={paymentPeriod}
-                  onChange={(newValue: SingleValue<{ value: string; label: string }>) => setPaymentPeriod(newValue)}
                 />
+                
+                {previewUrl ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#063B82]">
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[#063B82]">
+                        {selectedFile?.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Click or drag to change
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <Upload className="w-12 h-12 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        JPG, JPEG or PNG (max 5MB)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
 
+            {/* Submit Button */}
             <motion.button
               type="submit"
-              className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              disabled={isPending || !selectedFile}
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 text-sm ${
+                isPending || !selectedFile
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-[#1B73E8] hover:bg-[#1557B0] text-white'
+              }`}
+              whileHover={!isPending && selectedFile ? { scale: 1.05 } : {}}
+              whileTap={!isPending && selectedFile ? { scale: 0.95 } : {}}
               transition={{ duration: 0.3 }}
             >
-              Continue
+              {isPending ? 'Uploading...' : 'Upload Profile Picture'}
             </motion.button>
-            <Link href={"/auth/signup/uploadresume"}>
-            <motion.div
-              className="text-center text-gray-500 text-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
+
+            {/* Skip Option */}
+            <Link href="/candidate/dashboard">
+              <motion.div
+                className="text-center text-gray-500 text-sm cursor-pointer hover:text-gray-700"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7, duration: 0.5 }}
               >
-              Skip
-            </motion.div>
-              </Link>
+                Skip for now
+              </motion.div>
+            </Link>
           </form>
         </motion.div>
 
+        {/* Right Side - Same Testimonial Slider */}
         <motion.div
           className="hidden lg:block w-full lg:w-1/2 relative h-[95vh] mr-4 rounded-lg overflow-hidden"
           initial={{ opacity: 0, scale: 0.95 }}
@@ -306,4 +365,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default ProfilePicturePage;
