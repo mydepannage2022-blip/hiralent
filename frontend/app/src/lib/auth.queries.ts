@@ -119,17 +119,7 @@ export const useVerifyEmail = () => {
       
       if (data.success && data.user && data.token) {
         login(data.user, data.token);
-        
-        const role = data.user.role;
-        if (role === 'candidate') {
-          router.push('/candidate/dashboard');
-        } else if (role === 'company') {
-          router.push('/company/dashboard');
-        } else if (role === 'agency') {
-          router.push('/agency/dashboard');
-        } else {
-          router.push('/');
-        }
+        router.push('/auth/logout');
       }
     },
     onError: (error: any) => {

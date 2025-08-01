@@ -18,9 +18,8 @@
       if (user?.profile?.profile_picture_url) {
         return user.profile.profile_picture_url;
       }
-      return "/images/candidate.jgp";
+      return "/images/candidate.jpg";
     };
-
     return (
       <div className='w-full flex justify-center items-center text-[#282828]'>
         <div className='w-1/2'>
