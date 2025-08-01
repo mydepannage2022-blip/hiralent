@@ -189,7 +189,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
                 {/* Placeholder */}
               </Link>
             </motion.div>
-            
+
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
               <Link
                 href="/auth/signup/uploadresume"
@@ -275,7 +275,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             </motion.button>
             <Link href={"/auth/signup/salary"}>
             <motion.div
-              className="text-center text-gray-500 text-sm"
+              className="text-center text-gray-500 text-sm cursor-pointer hover:text-gray-700"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7, duration: 0.5 }}
