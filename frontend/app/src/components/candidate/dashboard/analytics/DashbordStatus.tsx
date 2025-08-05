@@ -2,8 +2,8 @@ import React from 'react'
 
 const DashbordStatus = () => {
   return (
-    <div>
-      
+    <div className='bg-white rounded-xl'>
+      hi
     </div>
   )
 }

@@ -2,6 +2,7 @@ import React from 'react'
 import DashboardSidebar from '../DashboardSidebar'
 import DashboardNavbar from '../DashboardNavbar'
 import DashboardProfilePercantage from '../analytics/DashboardProfilePercantage'
+import DashbordStatus from '../analytics/DashbordStatus'
 
 const DashboardHome = () => {
   return (
@@ -13,9 +14,12 @@ const DashboardHome = () => {
       
       <div className="w-full flex flex-col justify-start items-start ">
         <DashboardNavbar/>
-        <div className='w-full flex justify-center items-center '>
-            <div className='w-2/3 flex flex-col justify-start items-center '>
+        <div className='w-full flex justify-center items-center gap-3 py-4'>
+            <div className='w-2/3 flex flex-col justify-start items-center'>
                 <DashboardProfilePercantage />
+            </div>
+            <div className='w-1/3 flex flex-col justify-start items-center '>
+              <DashbordStatus/>
             </div>
         </div>
       </div>

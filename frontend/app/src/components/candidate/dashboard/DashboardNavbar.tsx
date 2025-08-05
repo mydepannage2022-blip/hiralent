@@ -44,10 +44,8 @@
             <div className='flex flex-col justify-center items-start'>
               <div className='flex items-center gap-2'>
                 <h3 className='text-[#222] text-base '>
-                  {user?.full_name || 'Guest User'}  {/* ✅ Use full_name */}
+                  {user?.full_name || 'Guest User'}  
                 </h3>
-                
-                {/* Note: is_email_verified not in login response, so removed verification status */}
               </div>
               
               <span className='text-sm text-[#A5A5A5]'>
