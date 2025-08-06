@@ -9,7 +9,7 @@ const page = () => {
 
   return (
     <ProtectedRoute>
-    <div className="w-full bg-[#F9F9F9]">
+    <div className="w-full bg-[#F9F9F9] flex justify-center items-center">
       <DashboardHome/>
     </div>
     </ProtectedRoute>

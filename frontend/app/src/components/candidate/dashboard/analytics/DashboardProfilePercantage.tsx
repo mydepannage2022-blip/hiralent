@@ -1,17 +1,32 @@
 import Link from 'next/link'
 import React from 'react'
+import { useAuth } from '../../../../context/AuthContext';
 
-const DashboardProfilePercantage = () => {
+const DashboardProfilePercentage = () => {
+  const { user } = useAuth();
+
+  // Get profile picture from user profile - same logic as navbar
+  const getProfileImage = () => {
+    if (user?.profile?.profile_picture_url) {
+      return user.profile.profile_picture_url;
+    }
+    return "/images/candidate.jpg";
+  };
+
   return (
     <div className='w-full flex justify-start items-start bg-white p-8 rounded-xl gap-8 text-[#222]'>
         <div>
-          <img src="/images/candidate.jpg" alt="Candidate"  className='w-24 rounded-full'/>
+          <img 
+            src={getProfileImage()} 
+            alt="User Profile" 
+            className='w-24 h-24 rounded-full object-cover'
+          />
         </div>
         <div className='flex flex-col justify-start items-start gap-1'>
           <h2 className='font-bold text-xl '><span className='text-[#005DDC]'>70%</span> of Your Profile is Complete</h2>
           <p className='font-light text-sm'>Almost there! Just a little more effort to make it perfect.</p> 
-          <div className='w-full h-2  bg-[#CBCBCB] rounded-lg relative'>
-            <span className='w-[70%] h-2 bg-[#005DDC] rounded-lg relative z-99999999999'></span>
+          <div className='w-full h-2 bg-[#CBCBCB] rounded-lg relative overflow-hidden mt-2'>
+            <div className='w-[70%] h-full bg-[#005DDC] rounded-lg absolute top-0 left-0 transition-all duration-300'></div>
           </div>
           <Link href="profile" className='pt-2 font-light text-[#005DDC]'>Complete your Profile</Link>
         </div>
@@ -43,4 +58,4 @@ const DashboardProfilePercantage = () => {
     )
 }
 
-export default DashboardProfilePercantage
+export default DashboardProfilePercentage
