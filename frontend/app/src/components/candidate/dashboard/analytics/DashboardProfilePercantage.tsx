@@ -14,7 +14,7 @@ const DashboardProfilePercentage = () => {
   };
 
   return (
-    <div className='w-full flex justify-start items-start bg-white p-8 rounded-xl gap-8 text-[#222]'>
+    <div className='w-full flex justify-start items-start bg-white lg:p-4 xl:p-8 rounded-xl lg:gap-2 xl:gap-8 text-[#222]'>
         <div>
           <img 
             src={getProfileImage()} 
@@ -23,12 +23,12 @@ const DashboardProfilePercentage = () => {
           />
         </div>
         <div className='flex flex-col justify-start items-start gap-1'>
-          <h2 className='font-bold text-xl '><span className='text-[#005DDC]'>70%</span> of Your Profile is Complete</h2>
-          <p className='font-light text-sm'>Almost there! Just a little more effort to make it perfect.</p> 
+          <h2 className='font-bold lg:text-sm xl:text-xl'><span className='text-[#005DDC]'>70%</span> of Your Profile is Complete</h2>
+          <p className='font-light text-xs'>Almost there! Just a little more effort to make it perfect.</p> 
           <div className='w-full h-2 bg-[#CBCBCB] rounded-lg relative overflow-hidden mt-2'>
             <div className='w-[70%] h-full bg-[#005DDC] rounded-lg absolute top-0 left-0 transition-all duration-300'></div>
           </div>
-          <Link href="profile" className='pt-2 font-light text-[#005DDC]'>Complete your Profile</Link>
+          <Link href="profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>Complete your Profile</Link>
         </div>
         <div className='flex justify-center items-center gap-4'>
           <div className='flex flex-col items-start justify-start gap-2 ring ring-[#EDEDED] p-2 rounded-lg'>
@@ -39,7 +39,7 @@ const DashboardProfilePercentage = () => {
               <h2 className=''>5</h2>
               <p>people</p>
             </div>
-              <p className='text-[#757575] font-light text-sm'>viewed your profile</p>
+              <p className='text-[#757575] font-light lg:text-xs xl:text-sm'>viewed your profile</p>
           </div>
 
           <div className='flex flex-col items-start justify-start gap-2 ring ring-[#EDEDED] p-2 rounded-lg'>
@@ -50,7 +50,7 @@ const DashboardProfilePercentage = () => {
               <h2 className=''>10</h2>
               <p>people</p>
             </div>
-              <p className='text-[#757575] font-light text-sm'>liked your profile</p>
+              <p className='text-[#757575] font-light lg:text-xs xl:text-sm'>liked your profile</p>
           </div>
 
         </div>

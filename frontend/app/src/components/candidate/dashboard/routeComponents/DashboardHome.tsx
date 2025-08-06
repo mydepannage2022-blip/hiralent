@@ -13,7 +13,7 @@ const DashboardHome = () => {
   const [isOpen, setIsOpen] = useState(true);
   
   return (
-    <div className={`w-full lg:max-w-9/10 flex justify-center items-start p-8 gap-8`}>
+    <div className={`w-full xl:max-w-9/10 flex justify-center items-start p-8 gap-8`}>
       
       {/* Sticky Sidebar */}
       <div className='flex justify-start items-start sticky top-8 self-start' onClick={() => setIsOpen(!isOpen)}>

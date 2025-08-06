@@ -29,8 +29,8 @@ const DashboardStatus = () => {
   return (
     <div className="bg-white w-full rounded-xl p-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Status of apply</h3>
-        <span className="text-sm text-gray-500">January 2025</span>
+        <h3 className="lg:text-sm xl:text-lg font-semibold text-gray-900">Status of apply</h3>
+        <span className="lg:text-xs xl:text-sm text-gray-500">January 2025</span>
       </div>
       
       <div className='flex justify-start items-center'>
@@ -82,7 +82,7 @@ const DashboardStatus = () => {
 
 
       <div className="pt-4 border-t border-gray-100">
-        <p className="text-sm text-gray-500 leading-relaxed">
+        <p className="lg:text-[10px] xl:text-sm text-gray-500 leading-relaxed">
           Minim dolor in amet nulla laboris enim dolore consequat.
         </p>
       </div>

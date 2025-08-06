@@ -26,9 +26,9 @@ const DashboardSidebar = () => {
   ];
 
   return (
-    <div className={`flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'w-64' : 'w-20'}`}>
+    <div className={`flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'}`}>
       {/* Sidebar */}
-      <div className={`${isOpen ? 'w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl gap-50`}>
+      <div className={`${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl gap-50`}>
   
         <div className='w-full flex-1'>
 
@@ -63,7 +63,7 @@ const DashboardSidebar = () => {
                   <button
                     onClick={() => setActiveItem(item.name)}
                     className={`w-full flex items-center ${
-                      isOpen ? 'px-4 py-3 space-x-3' : 'px-3 py-3 justify-center'
+                      isOpen ? 'lg:px-2 xl:px-4 py-3 space-x-3' : 'px-3 py-3 justify-center'
                     } rounded-lg transition-all duration-200 ${
                       activeItem === item.name
                         ? 'bg-[#EDEDED] '

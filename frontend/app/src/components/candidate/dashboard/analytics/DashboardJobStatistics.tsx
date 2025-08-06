@@ -47,11 +47,10 @@ const DashboardJobStatistics = () => {
         </div>
       </div>
 
-      <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-0">
         {/* Statistics Section */}
-        <div className="lg:col-span-1">
-          <h4 className="text-base font-medium text-gray-900 mb-4">Statistics</h4>
-          <div className="flex flex-col space-y-3 mb-4">
+        <div className="flex justify-start items-center gap-6 ">
+          <h4 className="text-base font-medium text-gray-900">Statistics</h4>
+          <div className="flex flex gap-4">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
               <span className="text-sm text-gray-600">Job views</span>
@@ -62,10 +61,13 @@ const DashboardJobStatistics = () => {
             </div>
           </div>
         </div>
+      <div className="w-full ">
+     
 
         {/* Chart Section */}
-        <div className="w-full lg:col-span-2">
-          <div className="h-64">
+        <div className="w-full flex justify-between items-start">
+
+          <div className="w-4/5 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -100,12 +102,9 @@ const DashboardJobStatistics = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
 
-      {/* Job Views Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t border-gray-100">
-        <div className="text-center">
+      <div className="flex flex-col gap-4 justify-center items-start">
+        <div className="text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <span className="text-sm text-gray-600">Job views</span>
           </div>
@@ -119,7 +118,7 @@ const DashboardJobStatistics = () => {
           </div>
         </div>
         
-        <div className="text-center">
+        <div className="text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <span className="text-sm text-gray-600">Job views</span>
           </div>
@@ -132,6 +131,11 @@ const DashboardJobStatistics = () => {
             </svg>
           </div>
         </div>
+      </div>
+
+        </div>
+
+
       </div>
     </div>
   );
