@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import React, { useState } from 'react'
 import { useAuth } from '../../../../context/AuthContext';
-import { useProfileCompletenessWithContext } from '../../../../../src/lib/profile.queries';
+import { useProfileCompleteness } from '../../../../../src/lib/profile.queries';
 import { useProfile } from '../../../../../src/context/ProfileContext';
 
 const DashboardProfilePercentage = () => {
   const { user } = useAuth();
-  const { data: profileData, isLoading, error, refetch } = useProfileCompletenessWithContext();
-  const { profileCompleteness } = useProfile();
+  const { data: profileData, isLoading, error, refetch } = useProfileCompleteness();
+  const { profileCompleteness } = useProfile(); // Back to using context
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
 
   // Get profile picture from user profile - same logic as navbar
@@ -18,7 +18,7 @@ const DashboardProfilePercentage = () => {
     return "/images/candidate.jpg";
   };
 
-  // Get completion percentage - prioritize context data
+  // Get completion percentage - prioritize context data (original logic)
   const getCompletionPercentage = () => {
     // First try from context (saved data)
     if (profileCompleteness?.data?.overall_score !== undefined) {

@@ -5,22 +5,24 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Simple interceptor - just add token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-// Profile Completeness Response Type - Exact API Response
+// Profile Completeness Response Type
 export interface ProfileCompletenessResponse {
   success: boolean;
-  data: any; 
+  data: any;
   message: string;
 }
 
-// Get Profile Completeness
+// Simple API call
 export const getProfileCompleteness = async (): Promise<ProfileCompletenessResponse> => {
   const response = await api.get('/candidates/completeness');
-  console.log('Profile completeness response:', response.data);
   return response.data;
 };

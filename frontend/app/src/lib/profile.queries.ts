@@ -3,35 +3,48 @@ import { useQuery } from '@tanstack/react-query';
 import { getProfileCompleteness } from './profile.api';
 import { useProfile } from '../context/ProfileContext';
 
-// Hook for fetching profile completeness
-export const useProfileCompletenessWithContext = () => {
-  const { setProfileCompleteness, setLoading } = useProfile();
-  
-  const query = useQuery({
+export const useProfileCompleteness = () => {
+  const { setProfileCompleteness } = useProfile();
+
+  return useQuery({
     queryKey: ['profileCompleteness'],
-    queryFn: getProfileCompleteness,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      try {
+        const data = await getProfileCompleteness();
+        console.log('✅ Profile completeness loaded:', data);
+        
+        if (data.success) {
+          setProfileCompleteness(data);
+        }
+        
+        return data;
+      } catch (error: any) {
+        console.error('❌ Profile completeness failed:', error);
+        
+        if (error?.response?.status === 401) {
+          console.log('🔑 401 Unauthorized - redirecting to login');
+          
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authUser');
+          }
+          
+          window.location.href = '/auth/login';
+          return null;
+        }
+        
+        throw error; 
+      }
+    },
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,  
     refetchOnWindowFocus: false,
-    retry: 2,
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     retryDelay: 1000,
   });
-
-  // Handle success/error/loading in the hook itself
-  React.useEffect(() => {
-    if (query.data && query.data.success) {
-      console.log('✅ Profile completeness loaded:', query.data);
-      setProfileCompleteness(query.data);
-    }
-    setLoading(query.isLoading);
-  }, [query.data, query.isLoading, setProfileCompleteness, setLoading]);
-
-  // Handle errors
-  React.useEffect(() => {
-    if (query.error) {
-      console.error('❌ Profile completeness failed:', query.error);
-    }
-  }, [query.error]);
-
-  return query;
 };

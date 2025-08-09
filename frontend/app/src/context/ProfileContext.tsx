@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { ProfileCompletenessResponse } from '../lib/profile.api';
 
 interface ProfileContextType {
-  profileCompleteness: any; 
+  profileCompleteness: any; // Store complete API response
   setProfileCompleteness: (data: any) => void;
   refreshProfile: () => void;
   loading: boolean;
@@ -20,6 +20,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
   // Function to trigger profile refresh
   const refreshProfile = () => {
     setProfileCompleteness(null);
+    // This will trigger re-fetch in components using the hook
   };
 
   return (

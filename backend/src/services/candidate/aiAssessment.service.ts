@@ -1,6 +1,6 @@
 // TODO: Import types from assessment.types and openai.ts
 import { SKILL_ASSESSMENT_PROMPTS } from './skillAssessment.prompts';
-import { generateGeminiJSON } from '../lib/openai';
+import { generateGeminiJSON } from '../../lib/openai';
 
 export const generateQuestions = async (params: any): Promise<any[]> => {
   const prompt = SKILL_ASSESSMENT_PROMPTS.QUESTION_GENERATION

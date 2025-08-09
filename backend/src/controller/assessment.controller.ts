@@ -8,7 +8,7 @@ import {
   getAssessmentResults,
   getAssessmentHistory,
   getRecommendations
-} from '../services/assessment.service';
+} from '../services/candidate/assessment.service';
 import { startAssessmentSchema } from '../validation/assessment.validation';
 import { submitAnswerSchema } from '../validation/assessment.validation';
 
