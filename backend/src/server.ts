@@ -1,11 +1,9 @@
 import app from './app';
-import { connectDB } from "../src/lib/mongo";
-
-
+import { connectDB } from './lib/mongo';
 
 (async () => {
   try {
-    const mongo = await connectDB(); // ✅ no top-level await in a module, it's inside a function
+    const mongo = await connectDB();
     app.locals.mongo = mongo;
 
     const PORT = process.env.PORT || 5000;
