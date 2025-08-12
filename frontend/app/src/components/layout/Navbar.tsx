@@ -41,7 +41,7 @@ const Navbar = () => {
       className={`fixed top-0 w-full flex justify-center items-center z-50 transition-all duration-300 ${
         isScrolled 
           ? 'bg-transparent' 
-          : 'bg-[#EFF5FF]'
+          : 'bg-transparent'
       }`}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
