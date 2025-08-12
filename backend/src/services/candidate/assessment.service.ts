@@ -1,15 +1,9 @@
 import { Json } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch/db_control';
-import prisma from '../lib/prisma';
+import prisma from '../../lib/prisma';
 import {
   StartAssessmentParams,
   Question,
-  AnswerEvaluationParams,
-  AssessmentResult,
-  AssessmentHistory,
-  AssessmentType,
-  DifficultyLevel,
-  QuestionType,
-} from '../types/assessment.types';
+} from '../../types/assessment.types';
 import * as aiAssessment from './aiAssessment.service';
 
 export const startAssessment = async (params: StartAssessmentParams): Promise<any> => {

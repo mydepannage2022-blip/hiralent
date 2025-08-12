@@ -36,7 +36,7 @@ const DashboardSidebar = () => {
         <div className="flex flex-row-reverse items-center justify-between py-4 px-4 border-b border-gray-200 relative">
           <div className={`flex flex-col items-center ${isOpen ? 'space-x-3' : 'justify-center hidden'}`}>
             <div className="rounded-lg flex items-center justify-center">
-              <img src="/images/logo.png" alt="" />
+              <img src="/images/logo.jpg" alt="" />
             </div>
             {isOpen && (
               <div>

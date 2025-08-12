@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as candidateService from '../services/candidate.service';
+import { generateCareerPrediction , updateCandidateVector} from '../services/candidate/documentProcessor.service'; 
 import { AuthUser } from '../types/express';
 import { 
   APIResponse, 
@@ -132,7 +133,7 @@ export const generateCareerPredictionController = async (req: Request, res: Resp
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
-    const prediction = await candidateService.generateCareerPrediction(candidateId);
+    const prediction = await generateCareerPrediction(candidateId);
 
     res.status(200).json({
       success: true,
@@ -195,7 +196,7 @@ export const updateCandidateVectorController = async (req: Request, res: Respons
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
-    const result = await candidateService.updateCandidateVector(candidateId);
+    const result = await updateCandidateVector(candidateId);
 
     res.status(200).json({
       success: true,

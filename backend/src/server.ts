@@ -1,7 +1,17 @@
 import app from './app';
+import { connectDB } from './lib/mongo';
 
-const PORT = process.env.PORT || 3000;
+(async () => {
+  try {
+    const mongo = await connectDB();
+    app.locals.mongo = mongo;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
+})();

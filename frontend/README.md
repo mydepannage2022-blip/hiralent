@@ -15,45 +15,173 @@ It is strictly typed, modular, and optimized for rapid development, maintainabil
 ## 2. Folder & File Structure
 
 ```
+# Talenta Frontend – Complete Folder Structure
+
+This is the **full folder and file structure** for the Talenta frontend, including all subfolders and key files.  
+Use this for onboarding, AI model training, or as a reference for further development.
+
+---
+
+## Root Directory
+
+```
 frontend/
 │
-├── .env                  # Frontend environment variables (API URLs, etc.)
-├── package.json          # NPM dependencies and scripts
-├── tsconfig.json         # TypeScript config
-├── next.config.ts        # Next.js config
-├── postcss.config.mjs    # PostCSS config (for Tailwind)
-├── README.md             # This documentation file
-├── public/               # Static assets (SVGs, images, etc.)
+├── .env                      # Frontend environment variables (API URLs, etc.)
+├── .gitignore                # Git ignore rules
+├── next-env.d.ts             # Next.js TypeScript environment types
+├── next.config.ts            # Next.js configuration
+├── package.json              # NPM dependencies and scripts
+├── postcss.config.mjs        # PostCSS config (for Tailwind)
+├── README.md                 # Project documentation
+├── tsconfig.json             # TypeScript configuration
+├── public/                   # Static assets (SVGs, images, etc.)
 │   ├── file.svg
 │   ├── globe.svg
 │   ├── next.svg
 │   ├── vercel.svg
 │   ├── window.svg
 │   └── images/
-├── app/                  # Next.js App Router pages and layouts
-│   ├── favicon.ico
-│   ├── globals.css       # Global styles (Tailwind, fonts)
-│   ├── layout.tsx        # Root layout (fonts, Providers)
-│   ├── page.tsx          # Main landing page
-│   ├── auth/             # Auth pages (login, signup)
-│   ├── candidate/        # Candidate dashboard, home, etc.
-│   ├── job/              # Job-related pages
-│   └── src/              # All source code (components, context, lib, hooks)
-│       ├── components/
+│       ├── 679922-middle.png
+│       ├── applepay.png
+│       ├── blog1.png
+│       ├── blog2.png
+│       ├── blog3.png
+│       ├── brush-alt.png
+│       ├── buttons.png
+│       ├── candidate.jpg
+│       ├── candidate.png
+│       ├── component-16.png
+│       ├── component-19.png
+│       ├── component-41.png
+│       ├── diners.png
+│       ├── edit.png
+│       ├── employer.png
+│       ├── expressive-young-girl-posing-2.png
+│       ├── facebook.png
+│       ├── frame-1890165341.png
+│       ├── frame-2147225662.png
+│       ├── frame-2147225745.png
+│       ├── frame-2147225746.png
+│       ├── googlepay.png
+│       ├── instgram.png
+│       ├── laptop-code.png
+│       ├── linked.png
+│       ├── linkedin.ico
+│       ├── logo.jpg
+│       ├── logo.png
+│       ├── loveclip.png
+│       ├── Marina.png
+│       ├── microsoft.png
+│       ├── MIM.png
+│       ├── mircrosoft.png
+│       ├── OB.png
+│       ├── paypal.png
+│       ├── pen-tool.png
+│       ├── sandro.png
+│       ├── search-text.png
+│       ├── signup.jpg
+│       ├── strip.png
+│       ├── user-achivments.png
+│       ├── user-code.png
+│       ├── users-group-alt.png
+│       ├── visa.png
+│       ├── whatsapp.png
+│       ├── wordpress.png
+│       ├── x.png
+│       ├── zb-bjdz-google-icon-1.png
+│       ├── zb-bjdz-google-icon-12-x.png
+│       └── ... (other images)
+├── app/                      # Next.js App Router pages and layouts
+│   ├── favicon.ico           # Site favicon
+│   ├── globals.css           # Global styles (Tailwind, fonts)
+│   ├── layout.tsx            # Root layout (fonts, Providers)
+│   ├── page.tsx              # Main landing page
+│   ├── auth/                 # Authentication pages
+│   │   ├── companyLogin/
+│   │   │   └── page.tsx
+│   │   ├── companyRegister/
+│   │   │   └── page.tsx
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   ├── logout/
+│   │   │   └── page.tsx
+│   │   ├── signup/
+│   │   │   └── page.tsx
+│   │   └── verify-email/
+│   │       └── page.tsx
+│   ├── candidate/            # Candidate pages
+│   │   ├── dashboard/
+│   │   │   └── page.tsx
+│   │   └── home/
+│   │       └── page.tsx
+│   ├── job/                  # Job-related pages
+│   │   └── findjob/
+│   │       └── page.tsx
+│   └── src/                  # Source code (logic, components, context, etc.)
+│       ├── components/       # All reusable UI components
 │       │   ├── candidate/
 │       │   │   ├── dashboard/
+│       │   │   │   ├── DashboardSidebar.tsx
+│       │   │   │   ├── DashboardNavbar.tsx
+│       │   │   │   ├── DashboardProfilePercentage.tsx
+│       │   │   │   └── ... (other dashboard components)
 │       │   │   ├── home/
+│       │   │   │   ├── Hero.tsx
+│       │   │   │   ├── Category.tsx
+│       │   │   │   ├── Jobs.tsx
+│       │   │   │   ├── Steps.tsx
+│       │   │   │   ├── Companies.tsx
+│       │   │   │   ├── Achievements.tsx
+│       │   │   │   ├── Blog.tsx
+│       │   │   │   ├── Employer.tsx
+│       │   │   │   └── DashboardStatus.tsx
 │       │   ├── layout/
+│       │   │   ├── Navbar.tsx
+│       │   │   ├── Footer.tsx
+│       │   │   ├── ProtectedRoute.tsx
+│       │   │   └── Loader.tsx
 │       │   └── ... (other shared components)
-│       ├── context/
+│       ├── constants/        # App-wide constants (enums, config, etc.)
+│       ├── context/          # React context providers
 │       │   └── AuthContext.tsx
-│       ├── lib/
+│       ├── lib/              # API functions and utilities
 │       │   ├── api.ts
 │       │   ├── auth.api.ts
 │       │   └── queries.ts
-│       └── hooks/
-│           └── ... (custom React hooks)
+│       ├── providers/        # Context provider wrappers
+│       │   └── Providers.tsx
+│       ├── types/            # TypeScript types and interfaces
+│       │   └── ... (custom types)
+│       └── hooks/            # Custom React hooks
+│           └── ... (useAuth, useCandidate, etc.)
+.next/                        # Next.js build output (auto-generated)
+│   └── ... (build, cache, server, static, types)
 ```
+
+---
+
+## Key Details
+
+- **All pages** are in `app/` using Next.js App Router.
+- **Authentication** flows are in `app/auth/` (login, signup, company login/register, verify email, logout).
+- **Candidate** flows are in `app/candidate/` (dashboard, home).
+- **Job** flows are in `app/job/` (find job).
+- **Reusable components** are in `app/src/components/` (organized by domain and layout).
+- **Context** for authentication and global state is in `app/src/context/`.
+- **API functions** and backend integration are in `app/src/lib/`.
+- **Providers** for context are in `app/src/providers/`.
+- **TypeScript types** are in `app/src/types/`.
+- **Custom hooks** are in `app/src/hooks/`.
+- **Constants** (enums, config) are in `app/src/constants/`.
+- **Static assets** (SVGs, images) are in `public/`.
+- **Global styles** are in `app/globals.css` (Tailwind, fonts).
+- **Build output** is in `.next/` (auto-generated, do not edit).
+
+---
+
+**This structure is up-to-date as of July 2025. For any new features, follow the same modular and domain
+
 
 ---
 
