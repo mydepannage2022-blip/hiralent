@@ -1,13 +1,13 @@
-import React from 'react'
+"use client"
 
 const page = () => {
   return (
     <div className='w-full flex justify-start items-start gap-3'>
       <div className='w-2/3 flex flex-col justify-start items-center gap-4'>
-        Profile coming soon
-      </div>
+          Notification coming soon
+        </div>
       <div className='w-1/3 flex flex-col justify-start items-start gap-4'>
-        Profile settings coming soon
+        Notification settings coming soon
       </div>
     </div>
   )
