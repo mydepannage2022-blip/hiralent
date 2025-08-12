@@ -34,7 +34,7 @@ const Pagination: React.FC<PaginationProps> = ({ totalPages, currentPage }) => {
     }
 
     return (
-        <div className="flex justify-center items-center gap-4 mt-5">
+        <div className="flex justify-center items-center gap-2 sm:gap-4 mt-4">
             {/* Previous Icon */}
             <button className="text-[#515151] hover:text-black cursor-pointer">
                 <ChevronLeft size={20} />

@@ -33,7 +33,7 @@ const CompanySearch: React.FC<Props> = ({ locationOptions, onSearch, customStyle
   return (
     <motion.form
       onSubmit={handleSearch}
-      className='w-full flex xl:flex-row lg:justify-start xl:justify-between lg:items-start xl:items-center gap-3 md:gap-4 lg:gap-2 pt-2 lg:pt-2 xl:py-0'
+      className='w-full flex md:flex-row flex-col lg:justify-start xl:justify-between lg:items-start xl:items-center gap-3 md:gap-4 lg:gap-2 pt-2 lg:pt-2 xl:py-0 sm:mx-11 md:mx-0 mx-2'
       variants={fadeInUp}
       initial="hidden"
       animate="show"

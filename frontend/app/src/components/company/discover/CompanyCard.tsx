@@ -29,7 +29,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({
     salaries,
 }) => {
     return (
-        <div className="flex items-start justify-between border border-[#EDEDED] rounded-lg py-3 px-4 bg-white w-[925px]">
+        <div className="flex items-start justify-between border border-[#EDEDED] rounded-lg py-3 px-4 bg-white w-full">
             {/* Left section */}
             <div className="flex items-start gap-2 flex-1">
                 {/* Logo */}
