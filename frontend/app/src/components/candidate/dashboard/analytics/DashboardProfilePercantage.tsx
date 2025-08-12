@@ -108,7 +108,7 @@ const DashboardProfilePercentage = () => {
               style={{ width: `${completionPercentage}%` }}
             ></div>
           </div>
-          <Link href="profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
+          <Link href="/candidate/dashboard/profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
             Complete your Profile
           </Link>
         </div>
