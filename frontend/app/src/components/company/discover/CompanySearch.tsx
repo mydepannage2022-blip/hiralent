@@ -9,7 +9,6 @@ interface LocationOption {
   value: string;
   label: string;
 }
-
 interface Props {
   locationOptions: LocationOption[];
   onSearch: (title: string, location: LocationOption | null) => void;
@@ -60,6 +59,9 @@ const CompanySearch: React.FC<Props> = ({ locationOptions, onSearch, customStyle
           styles={customStyles}
         />
       </div>
+
+
+
 
       <motion.div
         className='w-full lg:w-full xl:w-2/5 flex justify-center items-center bg-[#005DDC] px-3 py-2 hover:bg-[#0046B3] transition-colors duration-300 rounded-lg text-white cursor-pointer shadow-md shadow-[#004bb5]/50'
