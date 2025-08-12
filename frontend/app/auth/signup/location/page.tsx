@@ -203,7 +203,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            <img src="/images/logo.jpg" alt="logo" className="w-[200px]" />
+            <img src="/images/logo.png" alt="logo" className="w-[200px]" />
           </motion.div>
 
           <motion.div

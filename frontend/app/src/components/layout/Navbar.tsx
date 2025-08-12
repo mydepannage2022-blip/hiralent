@@ -64,7 +64,7 @@ const Navbar = () => {
 
         <div className='w-1/2 lg:w-1/8 xl:w-1/3 flex justify-start items-center'>
           <motion.img 
-            src="/images/logo.jpg" 
+            src="/images/logo.png" 
             alt="Hiralent Ai Job Based Platform" 
             className='w-24 py-3 object-contain'
             whileHover={{ scale: 1.05 }}
