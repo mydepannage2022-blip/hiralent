@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 "use client"
 
 const page = () => {
@@ -12,5 +13,4 @@ const page = () => {
     </div>
   )
 }
-
 export default page
