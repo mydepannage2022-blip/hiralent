@@ -11,9 +11,9 @@ const Loader = () => {
         {/* Company Logo */}
         <div className="animate-pulse">
           <img 
-            src="/images/logo.png" 
+            src="/images/logo.jpg" 
             alt="Company Logo" 
-            className="w-32 h-auto object-contain"
+            className="w-32 lg:w-48 xl:w-56 h-auto object-contain"
           />
         </div>
 
