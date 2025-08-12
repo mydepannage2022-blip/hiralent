@@ -11,8 +11,7 @@ import {
   LogOut,
   LucideIcon
 } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface MenuItem {
   name: string;
@@ -26,6 +25,7 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }) => {
+  const router = useRouter();
   const pathname = usePathname();
   const [activeItem, setActiveItem] = useState<string>('Dashboard');
 
@@ -46,11 +46,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }
     }
   }, [pathname]);
 
+  const handleNavigation = (href: string) => {
+    router.push(href);
+  };
+
   return (
     <div className={`flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'}`}>
-      {/* Sidebar */}
       <div className={`${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'} flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl gap-50`}>
-  
+        
         <div className='w-full flex-1'>
           {/* Header with Company Logo */}
           <div className="flex flex-row-reverse items-center justify-between py-4 px-4 border-b border-gray-200 relative">
@@ -81,22 +84,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }
                 
                 return (
                   <li key={item.name}>
-                    <Link href={item.href}>
-                      <button
-                        className={`w-full flex items-center ${
-                          isOpen ? 'lg:px-2 xl:px-4 py-3 space-x-3' : 'px-3 py-3 justify-center'
-                        } rounded-lg transition-all duration-200 ${
-                          isActive
-                            ? 'bg-[#EDEDED]'
-                            : 'text-[#353535] hover:bg-gray-50'
-                        }`}
-                      >
-                        <Icon size={22} className="flex-shrink-0 text-[#353535]" />
-                        {isOpen && (
-                          <span className="font-medium">{item.name}</span>
-                        )}
-                      </button>
-                    </Link>
+                    <button
+                      onClick={() => handleNavigation(item.href)}
+                      className={`w-full flex items-center ${
+                        isOpen ? 'lg:px-2 xl:px-4 py-3 space-x-3' : 'px-3 py-3 justify-center'
+                      } rounded-lg transition-all duration-200 ${
+                        isActive
+                          ? 'bg-[#EDEDED]'
+                          : 'text-[#353535] hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon size={22} className="flex-shrink-0 text-[#353535]" />
+                      {isOpen && (
+                        <span className="font-medium">{item.name}</span>
+                      )}
+                    </button>
                     {!isOpen && isActive && (
                       <div className="absolute left-20 bg-gray-800 text-white px-2 py-1 rounded text-sm whitespace-nowrap z-10 pointer-events-none">
                         {item.name}
@@ -109,16 +111,17 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }
           </nav>
         </div>
 
-        {/* Logout Button - Bottom of Sidebar */}
+        {/* Logout Button */}
         <div className='w-full p-4 border-t border-gray-200'>
-          <Link href="/auth/logout">
-            <button className={`w-full flex items-center ${
+          <button 
+            onClick={() => handleNavigation('/auth/logout')}
+            className={`w-full flex items-center ${
               isOpen ? 'px-4 py-3 space-x-3 justify-start' : 'px-3 py-3 justify-center'
-            } rounded-lg transition-all duration-200 hover:bg-gray-50`}>
-              <LogOut size={22} className='flex-shrink-0 text-red-600' /> 
-              {isOpen && <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>}
-            </button>
-          </Link>
+            } rounded-lg transition-all duration-200 hover:bg-gray-50`}
+          >
+            <LogOut size={22} className='flex-shrink-0 text-red-600' /> 
+            {isOpen && <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>}
+          </button>
         </div>
       </div>
     </div>
