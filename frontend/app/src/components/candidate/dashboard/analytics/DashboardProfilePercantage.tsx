@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import SmartLink from '../../../layout/SmartLink';
 import React, { useState } from 'react'
 import { useAuth } from '../../../../context/AuthContext';
 import { useProfileCompleteness } from '../../../../../src/lib/profile.queries';
@@ -108,9 +108,9 @@ const DashboardProfilePercentage = () => {
               style={{ width: `${completionPercentage}%` }}
             ></div>
           </div>
-          <Link href="/candidate/dashboard/profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
+          <SmartLink href="/candidate/dashboard/profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
             Complete your Profile
-          </Link>
+          </SmartLink>
         </div>
         <div className='flex justify-center items-center gap-4'>
           <div className='flex flex-col items-start justify-start gap-2 ring ring-[#EDEDED] p-2 rounded-lg'>
@@ -191,12 +191,12 @@ const DashboardProfilePercentage = () => {
 
           {/* Complete Profile Button */}
           <div className='mt-3 pt-2 border-t border-gray-100'>
-            <Link 
-              href="/profile" 
+            <SmartLink
+              href="/profile"
               className='text-xs text-[#005DDC] font-medium hover:underline'
             >
               Complete Profile →
-            </Link>
+            </SmartLink>
           </div>
         </div>
       )}

@@ -39,7 +39,7 @@ const SmartLink = ({
     // Backup - 3 seconds baad automatically stop kar do
     setTimeout(() => {
       stopNavigation();
-    }, 3000);
+    }, 2300);
   };
 
   // Navigation complete hone pe stop karna

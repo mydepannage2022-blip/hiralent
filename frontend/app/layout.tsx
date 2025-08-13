@@ -12,7 +12,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
 export const metadata: Metadata = {
   title: "Hiralent — Hire Vetted Talent Fast",
   description:
