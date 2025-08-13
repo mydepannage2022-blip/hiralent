@@ -31,7 +31,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }
 
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
-    { name: 'Profile', icon: User, href: '/candidate/dashboard/profile' },
+    { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
