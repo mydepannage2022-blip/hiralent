@@ -8,7 +8,6 @@ import CompanyInfoCard from '../../src/components/company/public-profile/Company
 const publicProfile = () => {
     return (
         <div className="text-black">
-            <Navbar />
             <div className="mt-30 mb-20">
                 {/* Banner */}
                 <div className="relative h-56 w-full overflow-hidden">

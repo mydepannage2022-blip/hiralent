@@ -41,7 +41,7 @@ const SmartLink = ({
     // Safety timeout - 2 seconds baad force stop
     setTimeout(() => {
       stopNavigation();
-    }, 2000);
+    }, 5000);
   };
 
   // Pathname change detection
