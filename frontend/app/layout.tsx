@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./src/context/Providers";
-import Navbar from "./src/components/layout/Navbar";
-import Footer from "./src/components/layout/Footer";
+import ConditionalLayout from "./src/components/layout/ConditionalLayout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,6 +13,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
 export const metadata: Metadata = {
   title: "Hiralent — Hire Vetted Talent Fast",
   description:
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/logo.png", // Public folder me add kar lo
+        url: "/images/logo.png",
         width: 1200,
         height: 630,
         alt: "Hiralent — Hire Vetted Talent Fast",
@@ -57,9 +57,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <Navbar/>
-          {children}
-          <Footer/>
+          <ConditionalLayout>
+            {children}
+          </ConditionalLayout>
         </Providers>
       </body>
     </html>

@@ -26,34 +26,28 @@ const SmartLink = ({
   const previousPathname = useRef(pathname);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Agar same page pe hai to navigation start nahi karna
     if (pathname === href) {
       return;
     }
     
     startNavigation();
     
-    // User ka custom onClick call karo
     if (onClick) {
       onClick();
     }
 
-    // Safety timeout - 2 seconds baad force stop
     setTimeout(() => {
       stopNavigation();
     }, 5000);
   };
 
-  // Pathname change detection
   useEffect(() => {
     if (previousPathname.current !== pathname) {
-      // Path change hui hai, navigation complete
       stopNavigation();
       previousPathname.current = pathname;
     }
   }, [pathname, stopNavigation]);
 
-  // Page load complete detection
   useEffect(() => {
     const handleLoad = () => {
       stopNavigation();
