@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import Link from 'next/link';
 import { IoSearchOutline } from "react-icons/io5";
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { FaRegArrowAltCircleRight } from "react-icons/fa";
@@ -8,7 +7,7 @@ import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-
+import SmartLink from './SmartLink';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -79,25 +78,25 @@ const Navbar = () => {
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/">Home</Link>
+              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/">Home</SmartLink>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/findjob">Find job</Link>
+              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/findjob">Find job</SmartLink>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/company">Company</Link>
+              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/company">Company</SmartLink>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <Link className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/auth/signup">Create CV</Link>
+              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/auth/signup">Create CV</SmartLink>
             </motion.li>
           </ul>
         </div>
@@ -122,7 +121,7 @@ const Navbar = () => {
                 whileHover={{ scale: 1.05, color: "#005DDC" }}
                 transition={{ duration: 0.2 }}
               >
-                <Link href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</Link>
+                <SmartLink href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</SmartLink>
               </motion.div>
             )}
           </div>
@@ -132,7 +131,7 @@ const Navbar = () => {
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.2 }}
           >
-            <Link href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"} className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'>
+            <SmartLink href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"} className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'>
               <motion.div
                 animate={{ x: [0, 3, 0] }}
                 transition={{ 
@@ -144,7 +143,7 @@ const Navbar = () => {
                 <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
               </motion.div>
               <span className='hidden lg:inline'>{isLoggedIn ? 'Dashboard' : 'Get Started'}</span>
-            </Link>
+            </SmartLink>
           </motion.div>
 
           {/* Mobile Menu Button */}
@@ -185,13 +184,13 @@ const Navbar = () => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
               >
-                <Link 
-                  href="/candidate/home" 
+                <SmartLink
+                  href="/candidate/home"
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Home
-                </Link>
+                </SmartLink>
               </motion.div>
               
               <motion.div
@@ -199,13 +198,13 @@ const Navbar = () => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <Link 
-                  href="/candidate/findjob" 
+                <SmartLink
+                  href="/candidate/findjob"
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Find job
-                </Link>
+                </SmartLink>
               </motion.div>
               
               <motion.div
@@ -213,13 +212,13 @@ const Navbar = () => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                <Link 
-                  href="/candidate/company" 
+                <SmartLink
+                  href="/candidate/company"
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Company
-                </Link>
+                </SmartLink>
               </motion.div>
               
               <motion.div
@@ -227,13 +226,13 @@ const Navbar = () => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <Link 
-                  href="/auth/signup" 
+                <SmartLink
+                  href="/auth/signup"
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Create CV
-                </Link>
+                </SmartLink>
               </motion.div>
 
               {/* Mobile Icons Section */}
@@ -260,13 +259,13 @@ const Navbar = () => {
                     whileHover={{ scale: 1.05, color: "#005DDC" }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Link 
-                      href="/auth/companyRegister" 
+                    <SmartLink
+                      href="/auth/companyRegister"
                       className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
                       onClick={() => setIsMenuOpen(false)}
                     >
                       as company
-                    </Link>
+                    </SmartLink>
                   </motion.div>
                 )}
               </motion.div>
