@@ -10,16 +10,16 @@ const publicProfile = () => {
         <div className="text-black">
             <Navbar />
             <div className="mt-30 mb-20">
+                {/* Banner */}
+                <div className="relative h-56 w-full overflow-hidden">
+                    <Image
+                        src="/images/publicprofile-banner.png" // your banner image path
+                        alt="Company banner"
+                        fill
+                        className="object-cover blur-sm scale-105"
+                    />
+                </div>
                 <div className="relative w-full">
-                    {/* Banner */}
-                    <div className="relative h-56 w-full overflow-hidden">
-                        <Image
-                            src="/images/publicprofile-banner.png" // your banner image path
-                            alt="Company banner"
-                            fill
-                            className="object-cover blur-sm scale-105"
-                        />
-                    </div>
 
                     {/* Card */}
                     <div className="relative z-10 -mt-20 px-4">
