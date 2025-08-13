@@ -10,7 +10,7 @@ import React from 'react'
 const page = () => {
   return (
     <div className='w-full flex justify-start items-start gap-3'>
-    <div className='w-2/3 flex flex-col justify-start items-center gap-2'>
+    <div className='w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-4 p-3'>
        <Meta />
        <PersonalInformation />
        <PreferredJobBenefits />
