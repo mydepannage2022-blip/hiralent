@@ -51,9 +51,9 @@ const OffcanvasSidebar: React.FC<OffcanvasSidebarProps> = ({ isOpen, onClose }) 
                 >
                     <h3 className="text-lg font-medium">{title}</h3>
                     {openSections[name] ? (
-                        <ChevronUp size={18} className="text-[#515151] hover:text-black" />
+                        <ChevronUp size={20} className="text-[#515151] hover:text-black" />
                     ) : (
-                        <ChevronDown size={18} className="text-[#515151] hover:text-black" />
+                        <ChevronDown size={20} className="text-[#515151] hover:text-black" />
                     )}
                 </div>
 
@@ -65,7 +65,7 @@ const OffcanvasSidebar: React.FC<OffcanvasSidebarProps> = ({ isOpen, onClose }) 
                         opacity: openSections[name] ? 1 : 0,
                     }}
                 >
-                    <div className="mt-4 space-y-2">{children}</div>
+                    <div className="mt-4 space-y-3">{children}</div>
                 </div>
             </div>
         );
@@ -93,7 +93,7 @@ const OffcanvasSidebar: React.FC<OffcanvasSidebarProps> = ({ isOpen, onClose }) 
                             <div>
                                 <h2 className="text-lg font-medium mb-3">All Filters</h2>
                                 <div className="mb-2">
-                                    <h3 className="text-sm font-medium mb-2">Active Filters</h3>
+                                    <h3 className="text-lg font-medium mb-2">Active Filters</h3>
                                     <div className="flex flex-wrap gap-2">
                                         <span className="bg-[#EDEDED] text-sm text-[#757575] px-2 py-1 rounded-lg">
                                             Culture & values <span className="text-black font-medium cursor-pointer ml-1">✕</span>
@@ -106,7 +106,7 @@ const OffcanvasSidebar: React.FC<OffcanvasSidebarProps> = ({ isOpen, onClose }) 
                             </div>
                             <button
                                 aria-label="Close filters"
-                                className="ml-4 lg:hidden text-gray-600 hover:text-black"
+                                className="ml-4 lg:hidden text-[#515151] hover:text-black"
                                 onClick={onClose}
                             >
                                 ✕

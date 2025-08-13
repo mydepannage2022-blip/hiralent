@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import Navbar from '../../src/components/layout/Navbar'
-import CompanySearch from '../../src/components/company/discover/CompanySearch'
-import { locationOptions } from "../../src/constants/groupedLocationOptions"
-import Tabs from "../../src/components/company/discover/Tabs"
-import Sidebar from '@/app/src/components/company/discover/Sidebar';
+import Navbar from '../../src/components/layout/Navbar';
+import CompanySearch from '../../src/components/company/discover/CompanySearch';
+import { locationOptions } from "../../src/constants/groupedLocationOptions";
+import Tabs from "../../src/components/company/discover/Tabs";
+import Sidebar from '../../src/components/company/discover/Sidebar';
 import OffCanvasSidebar from '../../src/components/company/discover/OffCanvasSidebar';
-import CompanyCard from '@/app/src/components/company/discover/CompanyCard';
-import Pagination from "../../src/components/company/discover/Pagination"
-import Footer from '../../src/components/layout/Footer'
+import { Filter } from "lucide-react";
+import CompanyCard from '../../src/components/company/discover/CompanyCard';
+import Pagination from "../../src/components/company/discover/Pagination";
+import Footer from '../../src/components/layout/Footer';
 
 const DiscoverPage = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -41,40 +42,44 @@ const DiscoverPage = () => {
     return (
         <div className='text-black'>
             <Navbar />
-            <div className="mt-35 mb-20">
+            <div className="sm:mt-40 mt-30 mb-20">
                 <div className='flex justify-center items-center flex-col mb-14'>
-                    <h1 className='mb-8 text-3xl font-bold'>Discover the Best Workplaces</h1>
-                    <div className='lg:max-w-5xl xl:max-w-3xl w-full flex flex-col lg:flex-row justify-between items-center gap-8 lg:gap-0 mb-6'>
+                    <h1 className="xl:mb-8 mb-6 text-xl sm:text-3xl lg:text-4xl font-bold">
+                        Discover the Best Workplaces
+                    </h1>
+                    <div className='md:max-w-xl lg:max-w-2xl w-full flex justify-between items-center gap-8 lg:gap-0 mb-6'>
                         <CompanySearch
                             locationOptions={locationOptions}
                             onSearch={handleSearch}
                             customStyles={customStyles}
                         />
                     </div>
-                    <Tabs />
+                    <div className='flex items-center space-x-3 sm:mx-0 mx-2'>
+                        {/* Mobile toggle button */}
+                        <button
+                            className="border border-[#CBCBCB] text-[#515151] py-1.5 px-2 font-medium cursor-pointer rounded-lg lg:hidden hover:border-[#005DDC] hover:bg-[#005DDC] hover:text-white transition-colors duration-200"
+
+                            onClick={() => setSidebarOpen(true)}
+                        >
+                            <Filter size={20} />
+                        </button>
+                        <Tabs />
+                    </div>
                 </div>
 
                 <div className='flex justify-center gap-4'>
-                    {/* Desktop Sidebar */}
+                    {/* Sidebar */}
                     <div className="hidden lg:block">
                         <Sidebar />
                     </div>
 
-                    {/* Mobile toggle button */}
-                    <button
-                        className="p-2 bg-blue-500 text-white rounded-lg lg:hidden"
-                        onClick={() => setSidebarOpen(true)}
-                    >
-                        Open Filters
-                    </button>
-
-                    {/* Sidebar */}
+                    {/* OffCanvasSidebar */}
                     <OffCanvasSidebar
                         isOpen={isSidebarOpen}
                         onClose={() => setSidebarOpen(false)}
                     />
 
-                    <div className='flex flex-col gap-4'>
+                    <div className='flex flex-col gap-4 sm:mx-11 md:mx-22 lg:mx-0 mx-2 lg:w-[780px] xl:w-[925px] w-full'>
                         <CompanyCard
                             logo="/images/bmw-logo.png"
                             name="BMW"
