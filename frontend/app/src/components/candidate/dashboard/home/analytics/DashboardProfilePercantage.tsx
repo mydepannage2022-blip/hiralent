@@ -1,8 +1,8 @@
-import SmartLink from '../../../layout/SmartLink';
+import SmartLink from '../../../../layout/SmartLink';
 import React, { useState } from 'react'
-import { useAuth } from '../../../../context/AuthContext';
-import { useProfileCompleteness } from '../../../../../src/lib/profile.queries';
-import { useProfile } from '../../../../../src/context/ProfileContext';
+import { useAuth } from '../../../../../context/AuthContext';
+import { useProfileCompleteness } from '../../../../../../src/lib/profile.queries';
+import { useProfile } from '../../../../../../src/context/ProfileContext';
 
 const DashboardProfilePercentage = () => {
   const { user } = useAuth();
@@ -108,7 +108,7 @@ const DashboardProfilePercentage = () => {
               style={{ width: `${completionPercentage}%` }}
             ></div>
           </div>
-          <SmartLink href="/candidate/dashboard/profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
+          <SmartLink href="/candidate/dashboard/candidate-profile" className='pt-2 font-light text-[#005DDC] lg:text-sm xl:text-base'>
             Complete your Profile
           </SmartLink>
         </div>
