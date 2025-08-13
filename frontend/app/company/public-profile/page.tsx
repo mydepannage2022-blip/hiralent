@@ -5,6 +5,7 @@ import Navbar from '../../src/components/layout/Navbar'
 import Image from 'next/image';
 import CompanyInfoCard from '../../src/components/company/public-profile/CompanyInfoCard';
 import PublicProfileTabs from '../../src/components/company/public-profile/PublicProfileTabs';
+import Footer from '../../src/components/layout/Footer'
 
 const publicProfile = () => {
     return (
@@ -42,6 +43,7 @@ const publicProfile = () => {
                     <PublicProfileTabs />
                 </div>
             </div>
+            <Footer />
         </div>
     )
 }
