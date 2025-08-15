@@ -5,6 +5,19 @@
   --foreground: #222;
 }
 
+.recharts-wrapper {
+  z-index: 1 !important;
+}
+
+.recharts-surface {
+  z-index: 1 !important;
+}
+
+.modal-overlay {
+  z-index: 9999 !important;
+}
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

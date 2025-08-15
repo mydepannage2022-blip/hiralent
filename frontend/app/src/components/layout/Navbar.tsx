@@ -1,7 +1,7 @@
+"use client"
 import React, { useState, useEffect } from 'react'
 import { IoSearchOutline } from "react-icons/io5";
 import { IoIosNotificationsOutline } from "react-icons/io";
-import { FaRegArrowAltCircleRight } from "react-icons/fa";
 import { IoIosArrowDropright } from "react-icons/io";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";

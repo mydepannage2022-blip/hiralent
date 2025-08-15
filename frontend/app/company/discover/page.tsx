@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Navbar from '../../src/components/layout/Navbar';
 import CompanySearch from '../../src/components/company/discover/CompanySearch';
 import { locationOptions } from "../../src/constants/groupedLocationOptions";
 import Tabs from "../../src/components/company/discover/Tabs";
@@ -10,7 +9,6 @@ import OffCanvasSidebar from '../../src/components/company/discover/OffCanvasSid
 import { Filter } from "lucide-react";
 import CompanyCard from '../../src/components/company/discover/CompanyCard';
 import Pagination from "../../src/components/company/discover/Pagination";
-import Footer from '../../src/components/layout/Footer';
 
 const DiscoverPage = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -41,7 +39,6 @@ const DiscoverPage = () => {
 
     return (
         <div className='text-black'>
-            <Navbar />
             <div className="sm:mt-40 mt-30 mb-20">
                 <div className='flex justify-center items-center flex-col mb-14'>
                     <h1 className="xl:mb-8 mb-6 text-xl sm:text-3xl lg:text-4xl font-bold">
@@ -141,7 +138,6 @@ const DiscoverPage = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </div>
     );
 };

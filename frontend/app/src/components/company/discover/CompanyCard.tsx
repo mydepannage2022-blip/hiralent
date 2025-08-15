@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Star, ChevronRight } from 'lucide-react';
+import SmartLink from '../../layout/SmartLink';
 
 interface CompanyCardProps {
     logo: string;
@@ -84,12 +84,12 @@ const CompanyCard: React.FC<CompanyCardProps> = ({
                             <span>{reviews} Reviews</span>
                             <span>{salaries} Salaries</span>
                         </div>
-                        <Link href="/company/public-profile">
+                        <SmartLink href="/company/public-profile">
                             <ChevronRight
                                 size={20}
                                 className="text-[#515151] hover:text-black cursor-pointer"
                             />
-                        </Link>
+                        </SmartLink>
                     </div>
                 </div>
             </div>

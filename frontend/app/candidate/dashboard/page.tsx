@@ -1,9 +1,10 @@
 "use client"
-import DashboardProfilePercentage from '@/app/src/components/candidate/dashboard/analytics/DashboardProfilePercantage';
-import DashboardJobStatistics from '@/app/src/components/candidate/dashboard/analytics/DashboardJobStatistics';
-import SavedJobs from '@/app/src/components/candidate/dashboard/SavedJobs';
-import DashboardStatus from '@/app/src/components/candidate/dashboard/analytics/DashbordStatus';
-import MessagesModule from '@/app/src/components/candidate/dashboard/DashboardChatModule';
+
+import DashboardJobStatistics from "@/app/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics";
+import DashboardProfilePercentage from "@/app/src/components/candidate/dashboard/home/analytics/DashboardProfilePercantage";
+import DashboardStatus from "@/app/src/components/candidate/dashboard/home/analytics/DashbordStatus";
+import MessagesModule from "@/app/src/components/candidate/dashboard/home/DashboardChatModule";
+import SavedJobs from "@/app/src/components/candidate/dashboard/home/SavedJobs";
 
 export default function DashboardHome() {
   return (
@@ -15,7 +16,8 @@ export default function DashboardHome() {
       </div>
       <div className='w-1/3 flex flex-col justify-start items-start gap-2'>
         <DashboardStatus/>
-        <MessagesModule/>
+        <MessagesModule
+        />
       </div>
     </div>
   );
