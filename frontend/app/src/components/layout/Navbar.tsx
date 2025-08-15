@@ -90,7 +90,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.05, color: "#005DDC" }}
               transition={{ duration: 0.2 }}
             >
-              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/company">Company</SmartLink>
+              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/company/discover">Companies</SmartLink>
             </motion.li>
             <motion.li
               whileHover={{ scale: 1.05, color: "#005DDC" }}
@@ -213,11 +213,11 @@ const Navbar = () => {
                 transition={{ delay: 0.3 }}
               >
                 <SmartLink
-                  href="/candidate/company"
+                  href="/company/discover"
                   className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Company
+                  Companies
                 </SmartLink>
               </motion.div>
               
