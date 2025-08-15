@@ -15,6 +15,8 @@ import {
   APIResponse,
   UpdateLocationInput,
   UpdateSalaryInput,
+  UpdateHeadlineInput, 
+  HeadlineUpdateResult
 } from "../types/candidate.types";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
@@ -280,6 +282,149 @@ export const getJobRecommendations = async (
   }
 };
 
+// export const calculateProfileCompleteness = async (
+//   candidateId: string
+// ): Promise<ProfileCompletenessScore> => {
+//   try {
+//     const candidate = await prisma.user.findUnique({
+//       where: { user_id: candidateId },
+//       include: {
+//         candidateProfile: true,
+//         candidateSkills: true,
+//         candidateDocuments: true,
+//       },
+//     });
+
+//     if (!candidate) {
+//       throw new Error("Candidate not found");
+//     }
+
+//     let totalScore = 0;
+//     const missingFields: string[] = [];
+//     const suggestions: string[] = [];
+
+//     // Basic info score (20 points)
+//     let basicInfoScore = 0;
+//     if (candidate.full_name) basicInfoScore += 5;
+//     if (candidate.email) basicInfoScore += 5;
+//     if (candidate.phone_number) basicInfoScore += 5;
+//     if (candidate.candidateProfile?.resume_url) basicInfoScore += 5;
+//     totalScore += basicInfoScore;
+
+//     if (!candidate.phone_number) {
+//       missingFields.push("phone_number");
+//       suggestions.push("Add your phone number for better contact");
+//     }
+
+//     // Profile picture score (5 points)
+//     let profilePictureScore = 0;
+//     if (candidate.candidateProfile?.profile_picture_url) {
+//       profilePictureScore = 5;
+//     }
+//     totalScore += profilePictureScore;
+
+//     if (!candidate.candidateProfile?.profile_picture_url) {
+//       missingFields.push("profile_picture");
+//       suggestions.push("Add a profile picture to personalize your profile");
+//     }
+
+//     // Skills score (25 points)
+//     const skillsCount = candidate.candidateSkills.length;
+//     const skillsScore = Math.min(25, skillsCount * 2.5);
+//     totalScore += skillsScore;
+
+//     if (skillsCount < 10) {
+//       missingFields.push("skills");
+//       suggestions.push("Add more skills to improve your profile");
+//     }
+
+//     // Experience score (25 points)
+//     let experienceScore = 0;
+//     try {
+//       const experience = candidate.candidateProfile?.experience
+//         ? JSON.parse(candidate.candidateProfile.experience)
+//         : [];
+//       experienceScore = Math.min(25, experience.length * 8.33);
+//     } catch (e) {
+//       experienceScore = 0;
+//     }
+//     totalScore += experienceScore;
+
+//     if (experienceScore < 15) {
+//       missingFields.push("experience");
+//       suggestions.push("Add more work experience details");
+//     }
+
+//     // Education score (15 points)
+//     let educationScore = 0;
+//     try {
+//       const education = candidate.candidateProfile?.education
+//         ? JSON.parse(candidate.candidateProfile.education)
+//         : [];
+//       educationScore = Math.min(15, education.length * 7.5);
+//     } catch (e) {
+//       educationScore = 0;
+//     }
+//     totalScore += educationScore;
+
+//     if (educationScore < 10) {
+//       missingFields.push("education");
+//       suggestions.push("Add your educational background");
+//     }
+
+//     // Document score (10 points)
+//     const documentScore = candidate.candidateDocuments.length > 0 ? 10 : 0;
+//     totalScore += documentScore;
+
+//     if (documentScore === 0) {
+//       missingFields.push("cv_document");
+//       suggestions.push("Upload your CV/Resume");
+//     }
+
+//     // Save completeness data
+//     const completenessData: ProfileCompletenessScore = {
+//       overall_score: Math.round(totalScore),
+//       basic_info_score: basicInfoScore,
+//       skills_score: skillsScore,
+//       experience_score: experienceScore,
+//       education_score: educationScore,
+//       document_score: documentScore,
+//       profile_picture_score: profilePictureScore,
+//       missing_fields: missingFields,
+//       suggestions: suggestions,
+//     };
+
+//     const existing = await prisma.profileCompleteness.findUnique({
+//       where: { candidate_id: candidateId },
+//     });
+
+//     if (existing) {
+//       await prisma.profileCompleteness.update({
+//         where: { candidate_id: candidateId },
+//         data: completenessData,
+//       });
+//     } else {
+//       await prisma.profileCompleteness.create({
+//         data: {
+//           candidate_id: candidateId,
+//           ...completenessData,
+//         },
+//       });
+//     }
+
+//     return completenessData;
+//   } catch (error) {
+//     console.error("Error calculating profile completeness:", error);
+//     const serviceError: CandidateServiceError = new Error(
+//       "Failed to calculate profile completeness"
+//     );
+//     serviceError.code = "COMPLETENESS_CALCULATION_FAILED";
+//     serviceError.statusCode = 500;
+//     throw serviceError;
+//   }
+// };
+
+
 export const calculateProfileCompleteness = async (
   candidateId: string
 ): Promise<ProfileCompletenessScore> => {
@@ -326,6 +471,18 @@ export const calculateProfileCompleteness = async (
       suggestions.push("Add a profile picture to personalize your profile");
     }
 
+    // NEW: Headline score (3 points)
+    let headlineScore = 0;
+    if (candidate.candidateProfile?.headline) {
+      headlineScore = 3;
+    }
+    totalScore += headlineScore;
+
+    if (!candidate.candidateProfile?.headline) {
+      missingFields.push("headline");
+      suggestions.push("Add a professional headline to your profile");
+    }
+
     // Skills score (25 points)
     const skillsCount = candidate.candidateSkills.length;
     const skillsScore = Math.min(25, skillsCount * 2.5);
@@ -336,13 +493,13 @@ export const calculateProfileCompleteness = async (
       suggestions.push("Add more skills to improve your profile");
     }
 
-    // Experience score (25 points)
+    // Experience score (22 points) - Reduced from 25 to accommodate headline
     let experienceScore = 0;
     try {
       const experience = candidate.candidateProfile?.experience
         ? JSON.parse(candidate.candidateProfile.experience)
         : [];
-      experienceScore = Math.min(25, experience.length * 8.33);
+      experienceScore = Math.min(22, experience.length * 7.33);
     } catch (e) {
       experienceScore = 0;
     }
@@ -379,7 +536,7 @@ export const calculateProfileCompleteness = async (
       suggestions.push("Upload your CV/Resume");
     }
 
-    // Save completeness data
+    // Save completeness data with headline score
     const completenessData: ProfileCompletenessScore = {
       overall_score: Math.round(totalScore),
       basic_info_score: basicInfoScore,
@@ -388,6 +545,7 @@ export const calculateProfileCompleteness = async (
       education_score: educationScore,
       document_score: documentScore,
       profile_picture_score: profilePictureScore,
+      headline_score: headlineScore, // NEW FIELD
       missing_fields: missingFields,
       suggestions: suggestions,
     };
@@ -449,6 +607,7 @@ export const getProfileSummary = async (
         name: candidate.full_name,
         email: candidate.email,
         phone: candidate.phone_number || undefined,
+        headline: candidate.candidateProfile?.headline || undefined, // NEW FIELD
       },
       skills: candidate.candidateSkills,
       profile_completeness: candidate.profileCompleteness
@@ -460,6 +619,7 @@ export const getProfileSummary = async (
             education_score: candidate.profileCompleteness.education_score,
             document_score: candidate.profileCompleteness.document_score,
             profile_picture_score: candidate.profileCompleteness.profile_picture_score,
+            headline_score: candidate.profileCompleteness.headline_score, // NEW FIELD
             missing_fields: candidate.profileCompleteness.missing_fields as string[],
             suggestions: candidate.profileCompleteness.suggestions as string[],
           }
@@ -499,6 +659,52 @@ export const getProfileSummary = async (
     throw serviceError;
   }
 };
+
+export const updateCandidateHeadline = async (
+  candidateId: string,
+  data: UpdateHeadlineInput
+): Promise<HeadlineUpdateResult> => {
+  try {
+    // Validate headline length
+    if (!data.headline || data.headline.trim().length === 0) {
+      throw new Error("Headline is required");
+    }
+
+    if (data.headline.length > 120) {
+      throw new Error("Headline cannot exceed 120 characters");
+    }
+
+    // Update headline in database
+    const updatedProfile = await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        headline: data.headline.trim(),
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        headline: data.headline.trim(),
+      },
+    });
+
+    // Recalculate profile completeness (async, don't wait)
+    calculateProfileCompleteness(candidateId).catch((error) => {
+      console.warn("Failed to recalculate profile completeness:", error);
+    });
+
+    return {
+      success: true,
+      headline: updatedProfile.headline || data.headline,
+      message: "Headline updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating candidate headline:", error);
+    throw new Error(
+      `Failed to update headline: ${error.message || "Unknown error"}`
+    );
+  }
+};
+
 
 export async function updateCandidateLocation(
   userId: string,

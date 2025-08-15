@@ -12,7 +12,9 @@ import {
   HealthCheckResponse,
   UpdateLocationInput,
   UpdateSalaryInput,
-  ProfilePictureUploadResponse
+  ProfilePictureUploadResponse,
+  UpdateHeadlineInput,        // NEW - Add this import
+  HeadlineUpdateResult 
 } from '../types/candidate.types';
 
 
@@ -363,6 +365,73 @@ export const uploadProfilePictureController = async (
       success: false,
       message: 'Failed to upload profile picture',
       error_code: 'UPLOAD_FAILED',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+
+// Update candidate headline controller
+export const updateHeadlineController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const userId = req.user.user_id;
+    const input: UpdateHeadlineInput = req.body;
+    
+    const result = await candidateService.updateCandidateHeadline(userId, input);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Headline updated successfully',
+    } as APIResponse<HeadlineUpdateResult>);
+    
+  } catch (error: any) {
+    console.error('Error updating headline:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update headline',
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+// Get candidate headline controller
+export const getHeadlineController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const candidateId = req.params.candidateId || req.user.user_id;
+    
+    // Use existing service to get profile summary which now includes headline
+    const summary = await candidateService.getProfileSummary(candidateId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        headline: summary.basic_info.headline || null
+      },
+      message: 'Headline retrieved successfully'
+    } as APIResponse);
+    
+  } catch (error: any) {
+    console.error('Error getting headline:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get headline',
       error: error instanceof Error ? error.message : 'Unknown error'
     } as APIResponse);
   }

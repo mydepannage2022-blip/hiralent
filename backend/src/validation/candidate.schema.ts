@@ -12,3 +12,14 @@ export const updateSalarySchema: z.ZodSchema<UpdateSalaryInput> = z.object({
   minimumSalary: z.number().min(0, 'Minimum salary must be non-negative').optional(),
   paymentPeriod: z.enum(['monthly', 'yearly', 'weekly']).optional(), // 👈 make optional
 }).strict();
+
+export const updateHeadlineSchema = z.object({
+  headline: z.string()
+    .min(1, "Headline is required")
+    .max(120, "Headline cannot exceed 120 characters")
+    .trim()
+    .refine(
+      (val) => val.length > 0, 
+      { message: "Headline cannot be empty" }
+    )
+});

@@ -491,6 +491,7 @@ model CandidateProfile {
   resume_url           String?
   video_intro_url      String?
   profile_picture_url   String?
+  headline             String?  @db.VarChar(120)  // No default needed (nullable)
   skills               String?
   education            String?
   experience           String?
@@ -505,6 +506,7 @@ model CandidateProfile {
 
   user User @relation(fields: [candidate_id], references: [user_id])
 }
+
 
 model AdminAuditLog {
   log_id       String   @id @default(uuid())
@@ -691,6 +693,7 @@ model ProfileCompleteness {
   profile_picture_score Float
   education_score   Float
   document_score    Float
+  headline_score    Float    @default(0.0)  // ADD DEFAULT VALUE
   missing_fields    Json
   suggestions       Json
   last_calculated   DateTime @default(now())

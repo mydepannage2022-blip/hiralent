@@ -10,7 +10,9 @@ import {
   healthCheckController,
   updateLocationHandler,
   updateSalaryHandler,
-  uploadProfilePictureController
+  uploadProfilePictureController,
+  updateHeadlineController,  // NEW - Add this import
+  getHeadlineController 
 } from '../controller/candidate.controller';
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
@@ -36,7 +38,7 @@ import {
   handleImageUploadError, 
   validateUploadedImage 
 } from '../middlewares/uploadImage.middleware';
-import { updateLocationSchema, updateSalarySchema } from '../validation/candidate.schema';
+import { updateLocationSchema, updateSalarySchema , updateHeadlineSchema} from '../validation/candidate.schema';
 const router = Router();
 
 // Health check (no auth required)
@@ -76,6 +78,18 @@ router.post(
   validateUploadedImage,
   uploadProfilePictureController
 );
+
+router.patch(
+  '/update-headline',
+  [checkAuth, validateBody(updateHeadlineSchema)],
+  updateHeadlineController
+);
+
+// Get candidate headline
+router.get('/headline', getHeadlineController);
+
+// Get headline for specific candidate (admin/company use)
+router.get('/headline/:candidateId', getHeadlineController);
 
 
 router.get('/profile-summary', getProfileSummaryController);

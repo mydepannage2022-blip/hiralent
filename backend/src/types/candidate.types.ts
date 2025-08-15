@@ -46,6 +46,7 @@ export interface ExtractedEducation {
 }
 
 export interface AIExtractionResult {
+  headline: string;
   skills: ExtractedSkill[];
   experience: ExtractedExperience[];
   education: ExtractedEducation[];
@@ -126,6 +127,7 @@ export interface ProfileCompletenessScore {
   experience_score: number;
   education_score: number;
   document_score: number;
+  headline_score: number;
   profile_picture_score: number; // Add this line
   missing_fields: string[];
   suggestions: string[];
@@ -136,6 +138,7 @@ export interface CandidateBasicInfo {
   name: string;
   email: string;
   phone?: string;
+  headline?: string;
 }
 
 export interface CandidateDocumentInfo {
@@ -145,12 +148,23 @@ export interface CandidateDocumentInfo {
   extraction_status?: string;
 }
 
+export interface HeadlineUpdateResult {
+  success: boolean;
+  headline: string;
+  message: string;
+}
+
+
 export interface CandidateProfileSummary {
   basic_info: CandidateBasicInfo;
   skills: any[]; // Will be CandidateSkill[] from Prisma
   profile_completeness?: ProfileCompletenessScore;
   career_prediction?: CareerPredictionResult;
   documents: CandidateDocumentInfo[];
+}
+
+export interface UpdateHeadlineInput {
+  headline: string; // Max 120 characters
 }
 
 // API Response types

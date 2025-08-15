@@ -90,6 +90,88 @@ Please respond with valid JSON only.
 
 // ---------------------- extractSkillsFromText ----------------------
 
+// export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
+//   try {
+//    const systemPrompt = `You are an expert HR analyst. Extract structured information from the following CV/resume text.
+
+// Return ONLY a valid JSON object in this exact format:
+
+// {
+//   "skills": [
+//     {
+//       "name": "skill name",
+//       "category": "technical | soft | language | certification",
+//       "proficiency": "beginner | intermediate | advanced | expert",
+//       "years_experience": number
+//     }
+//   ],
+//   "experience": [
+//     {
+//       "job_title": "title",
+//       "company": "company name",
+//       "duration": "e.g., Jan 2022 - May 2023",
+//       "years": number,
+//       "description": "brief summary of work"
+//     }
+//   ],
+//   "education": [
+//     {
+//       "degree": "degree name",
+//       "institution": "institution name",
+//       "year": "graduation year or range",
+//       "field": "field of study"
+//     }
+//   ],
+//   "summary": "2–3 sentence professional summary"
+// }
+
+// Instructions:
+// - Be accurate and extract only explicitly stated information.
+// - Categorize each skill carefully.
+// - For missing data, omit the field (do not use 'Not Available').
+// - Do NOT include any explanation or text outside the JSON.
+// `;
+
+//     const userPrompt = `Extract skills and information from this CV text:\n\n${text}`;
+
+//     return await generateGeminiJSON(systemPrompt, userPrompt);
+//   } catch (error: any) {
+//     console.error('Error extracting skills from text:', error);
+    
+//     // Return a fallback structure if AI fails
+//     console.log('Returning fallback structure due to AI service unavailability');
+//     return {
+//       skills: [
+//         {
+//           name: "Communication",
+//           category: "soft",
+//           proficiency: "intermediate",
+//           years_experience: 2
+//         }
+//       ],
+//       experience: [
+//         {
+//           job_title: "Not Available",
+//           company: "Not Available",
+//           duration: "Not Available",
+//           years: 0,
+//           description: "AI service temporarily unavailable"
+//         }
+//       ],
+//       education: [
+//         {
+//           degree: "Not Available",
+//           institution: "Not Available",
+//           year: "Not Available",
+//           field: "Not Available"
+//         }
+//       ],
+//       summary: "AI service temporarily unavailable. Please try again later."
+//     } as AIExtractionResult;
+//   }
+// }
+
+
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
    const systemPrompt = `You are an expert HR analyst. Extract structured information from the following CV/resume text.
@@ -97,6 +179,7 @@ export async function extractSkillsFromText(text: string): Promise<AIExtractionR
 Return ONLY a valid JSON object in this exact format:
 
 {
+  "headline": "Professional headline (max 120 characters)",
   "skills": [
     {
       "name": "skill name",
@@ -125,14 +208,22 @@ Return ONLY a valid JSON object in this exact format:
   "summary": "2–3 sentence professional summary"
 }
 
-Instructions:
+Instructions for headline:
+- Create a professional headline like LinkedIn (max 120 characters)
+- Include current/target role and key expertise
+- Examples: "Senior Software Engineer | Full-Stack Developer | React & Node.js Expert"
+- Examples: "Digital Marketing Specialist | SEO & Content Strategy | Growth Hacker"
+- Make it compelling and industry-focused
+- If unclear, use most recent job title + key skills
+
+Instructions for other fields:
 - Be accurate and extract only explicitly stated information.
 - Categorize each skill carefully.
 - For missing data, omit the field (do not use 'Not Available').
 - Do NOT include any explanation or text outside the JSON.
 `;
 
-    const userPrompt = `Extract skills and information from this CV text:\n\n${text}`;
+    const userPrompt = `Extract skills, headline, and information from this CV text:\n\n${text}`;
 
     return await generateGeminiJSON(systemPrompt, userPrompt);
   } catch (error: any) {
@@ -141,6 +232,7 @@ Instructions:
     // Return a fallback structure if AI fails
     console.log('Returning fallback structure due to AI service unavailability');
     return {
+      headline: "Professional seeking new opportunities", // Fallback headline
       skills: [
         {
           name: "Communication",

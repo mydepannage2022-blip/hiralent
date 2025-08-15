@@ -185,6 +185,7 @@ const updateCandidateProfile = async (
     });
 
     const profileData = {
+      headline: extractedData.headline ? extractedData.headline.substring(0, 120) : undefined, // NEW - Add headline
       skills: JSON.stringify(extractedData.skills || []),
       education: JSON.stringify(extractedData.education || []),
       experience: JSON.stringify(extractedData.experience || []),
@@ -203,10 +204,18 @@ const updateCandidateProfile = async (
         },
       });
     }
+
+    // NEW - Log headline extraction
+    if (extractedData.headline) {
+      console.log("Headline extracted and stored:", extractedData.headline);
+    }
+    
   } catch (error) {
     console.error("Error updating candidate profile:", error);
   }
 };
+
+
 
 // Helper function to generate career prediction
 export const generateCareerPrediction = async (
@@ -283,7 +292,7 @@ export const generateCareerPrediction = async (
   }
 };
 
-// Helper function to update candidate vector
+
 export const updateCandidateVector = async (
   candidateId: string
 ): Promise<{ success: boolean }> => {
@@ -301,6 +310,8 @@ export const updateCandidateVector = async (
     }
 
     // Create text representation for embedding
+    const headlineText = candidate.candidateProfile?.headline || ""; // NEW - Include headline
+
     const skillsText = candidate.candidateSkills
       .map((s) => `${s.skill_name} (${s.proficiency})`)
       .join(", ");
@@ -317,7 +328,8 @@ export const updateCandidateVector = async (
           .join(", ")
       : "";
 
-    const combinedText = `Skills: ${skillsText}. Experience: ${experienceText}. Education: ${educationText}`;
+    // NEW - Include headline in combined text
+    const combinedText = `Headline: ${headlineText}. Skills: ${skillsText}. Experience: ${experienceText}. Education: ${educationText}`;
 
     // Create embeddings
     const combinedVector = await createEmbedding(combinedText);
@@ -356,11 +368,12 @@ export const updateCandidateVector = async (
       });
     }
 
-    // Store in Pinecone
+    // Store in Pinecone - NEW: include headline in metadata
     await storeCandidateVector(candidateId, combinedVector, {
       skills_count: candidate.candidateSkills.length,
       full_name: candidate.full_name,
       email: candidate.email,
+      headline: headlineText, // NEW - Add headline to metadata
     });
 
     return { success: true };

@@ -43,6 +43,14 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     return "/images/candidate.jpg";
   };
 
+  // Get user headline from profile
+  const getUserHeadline = () => {
+    if (user?.profile?.headline) {
+      return user.profile.headline;
+    }
+    return 'Professional seeking new opportunities';
+  };
+
   // Dynamic page titles and descriptions based on pathname
   const getPageInfo = () => {
     switch (pathname) {
@@ -145,8 +153,9 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
               </h3>
             </div>
             
-            <span className='text-xs lg:text-sm text-[#A5A5A5]'>
-              {user?.email || 'No email available'}
+            {/* CHANGED: Show headline instead of email */}
+            <span className='text-xs lg:text-sm text-[#A5A5A5] max-w-48 truncate' title={getUserHeadline()}>
+              {getUserHeadline()}
             </span>
           </div>
         </div>
