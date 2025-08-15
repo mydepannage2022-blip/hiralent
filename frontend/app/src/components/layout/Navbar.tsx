@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation';
 import { IoSearchOutline } from "react-icons/io5";
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { IoIosArrowDropright } from "react-icons/io";
@@ -8,15 +9,29 @@ import { IoClose } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import SmartLink from './SmartLink';
+
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, token } = useAuth();
+  const pathname = usePathname();
 
   const isLoggedIn = user && token;
-  console.log(
-  'is logged in ' , user, token
-  )
+  console.log('is logged in', user, token);
+
+  // Navigation items configuration
+  const navItems = [
+    { href: '/', label: 'Home', activePattern: /^\/$/},
+    { href: '/candidate/findjob', label: 'Find job', activePattern: /^\/candidate\/findjob/},
+    { href: '/company/discover', label: 'Companies', activePattern: /^\/company/},
+    { href: '/auth/signup', label: 'Create CV', activePattern: /^\/auth\/signup/},
+  ];
+
+  // Function to check if a nav item is active
+  const isActiveNavItem = (activePattern: RegExp) => {
+    return activePattern.test(pathname);
+  };
+
   // Scroll effect handler
   useEffect(() => {
     const handleScroll = () => {
@@ -26,12 +41,70 @@ const Navbar = () => {
         setIsScrolled(false);
       }
     };
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  // Component for nav link with active state
+  const NavLink = ({ 
+    href, 
+    label, 
+    activePattern, 
+    className = '', 
+    onClick,
+    isMobile = false 
+  }: {
+    href: string;
+    label: string;
+    activePattern: RegExp;
+    className?: string;
+    onClick?: () => void;
+    isMobile?: boolean;
+  }) => {
+    const isActive = isActiveNavItem(activePattern);
+    
+    return (
+      <motion.li
+        whileHover={{ scale: 1.05, color: "#005DDC" }}
+        transition={{ duration: 0.2 }}
+        className={isMobile ? 'block' : ''}
+      >
+        <SmartLink 
+          className={`text-sm transition-all duration-200 relative ${
+            isActive 
+              ? 'text-[#005DDC] font-medium' 
+              : 'text-[#222] font-light hover:text-[#005DDC]'
+          } ${className}`}
+          href={href}
+          onClick={onClick}
+        >
+          {label}
+          {/* Active indicator */}
+          {isActive && !isMobile && (
+            <motion.div
+              className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#005DDC] rounded-full"
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+          )}
+          {/* Active indicator for mobile */}
+          {isActive && isMobile && (
+            <motion.div
+              className="absolute left-0 top-0 bottom-0 w-1 bg-[#005DDC] rounded-r-full"
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+          )}
+        </SmartLink>
+      </motion.li>
+    );
   };
 
   return (
@@ -57,9 +130,8 @@ const Navbar = () => {
             : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         }}
         transition={{ duration: 0.3 }}
-
       >
-
+        {/* Logo */}
         <div className='w-1/2 lg:w-1/8 xl:w-1/3 flex justify-start items-center'>
           <motion.img 
             src="/images/logo.png" 
@@ -72,31 +144,15 @@ const Navbar = () => {
 
         {/* Desktop Menu */}
         <div className='hidden lg:flex w-1/3 justify-center items-center'>
-          <ul className='flex justify-around items-center gap-6 text-[#222] font-light'>
-            <motion.li
-              whileHover={{ scale: 1.05, color: "#005DDC" }}
-              transition={{ duration: 0.2 }}
-            >
-              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/">Home</SmartLink>
-            </motion.li>
-            <motion.li
-              whileHover={{ scale: 1.05, color: "#005DDC" }}
-              transition={{ duration: 0.2 }}
-            >
-              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/candidate/findjob">Find job</SmartLink>
-            </motion.li>
-            <motion.li
-              whileHover={{ scale: 1.05, color: "#005DDC" }}
-              transition={{ duration: 0.2 }}
-            >
-              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/company/discover">Companies</SmartLink>
-            </motion.li>
-            <motion.li
-              whileHover={{ scale: 1.05, color: "#005DDC" }}
-              transition={{ duration: 0.2 }}
-            >
-              <SmartLink className='text-sm hover:text-[#005DDC] transition-colors duration-200' href="/auth/signup">Create CV</SmartLink>
-            </motion.li>
+          <ul className='flex justify-around items-center gap-6'>
+            {navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                activePattern={item.activePattern}
+              />
+            ))}
           </ul>
         </div>
 
@@ -120,7 +176,16 @@ const Navbar = () => {
                 whileHover={{ scale: 1.05, color: "#005DDC" }}
                 transition={{ duration: 0.2 }}
               >
-                <SmartLink href="/auth/companyRegister" className='text-[#222] font-light text-sm hover:text-[#005DDC] transition-colors duration-200'>as company</SmartLink>
+                <SmartLink 
+                  href="/auth/companyRegister" 
+                  className={`font-light text-sm transition-colors duration-200 ${
+                    pathname.includes('/auth/companyRegister')
+                      ? 'text-[#005DDC] font-medium'
+                      : 'text-[#222] hover:text-[#005DDC]'
+                  }`}
+                >
+                  as company
+                </SmartLink>
               </motion.div>
             )}
           </div>
@@ -130,7 +195,10 @@ const Navbar = () => {
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.2 }}
           >
-            <SmartLink href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"} className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'>
+            <SmartLink 
+              href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"} 
+              className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'
+            >
               <motion.div
                 animate={{ x: [0, 3, 0] }}
                 transition={{ 
@@ -159,7 +227,6 @@ const Navbar = () => {
             )}
           </motion.button>
         </div>
-
       </motion.div>
 
       {/* Mobile Menu */}
@@ -178,61 +245,24 @@ const Navbar = () => {
           >
             <div className='flex flex-col p-4 space-y-4'>
               {/* Mobile Menu Items */}
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <SmartLink
-                  href="/candidate/home"
-                  className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
-                  onClick={() => setIsMenuOpen(false)}
+              {navItems.map((item, index) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 * (index + 1) }}
+                  className="relative"
                 >
-                  Home
-                </SmartLink>
-              </motion.div>
-              
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <SmartLink
-                  href="/candidate/findjob"
-                  className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Find job
-                </SmartLink>
-              </motion.div>
-              
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <SmartLink
-                  href="/company/discover"
-                  className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Companies
-                </SmartLink>
-              </motion.div>
-              
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <SmartLink
-                  href="/auth/signup"
-                  className='block text-[#222] font-light py-2 hover:text-[#005DDC] transition duration-200'
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Create CV
-                </SmartLink>
-              </motion.div>
+                  <NavLink
+                    href={item.href}
+                    label={item.label}
+                    activePattern={item.activePattern}
+                    className="block py-2 pl-4"
+                    onClick={() => setIsMenuOpen(false)}
+                    isMobile={true}
+                  />
+                </motion.div>
+              ))}
 
               {/* Mobile Icons Section */}
               <motion.div
@@ -260,7 +290,11 @@ const Navbar = () => {
                   >
                     <SmartLink
                       href="/auth/companyRegister"
-                      className='text-[#222] font-light hover:text-[#005DDC] transition-colors duration-200'
+                      className={`font-light transition-colors duration-200 ${
+                        pathname.includes('/auth/companyRegister')
+                          ? 'text-[#005DDC] font-medium'
+                          : 'text-[#222] hover:text-[#005DDC]'
+                      }`}
                       onClick={() => setIsMenuOpen(false)}
                     >
                       as company
