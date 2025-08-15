@@ -26,6 +26,7 @@ const publicProfile = () => {
                     <div className="relative w-full">
                         {/* Card */}
                         <div className="relative z-10 -mt-20 px-4">
+                           
                             <CompanyInfoCard
                                 logo="/images/bmw-logo.png"
                                 name="BMW"
