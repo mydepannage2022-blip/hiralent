@@ -2,7 +2,9 @@
 import Button from '@/app/src/components/layout/Button'
 import React from 'react'
 import { useAuth } from '../../../../../context/AuthContext';
-
+import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
+import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
+import SmartLink from '@/app/src/components/layout/SmartLink';
 const Meta = () => {
   const { user } = useAuth();
 
@@ -19,10 +21,41 @@ const Meta = () => {
     return user?.full_name || "Unknown User";
   };
 
-  // Get headline directly from user profile - NO FALLBACK
-  const getHeadline = () => {
-    // Only return actual headline, no fallback
-    return user?.profile?.headline || null;
+  // Get headline with email fallback
+  const getHeadlineOrEmail = () => {
+    // First try headline
+    if (user?.profile?.headline) {
+      return user.profile.headline;
+    }
+    // Fallback to email
+    if (user?.email) {
+      return user.email;
+    }
+    return null;
+  };
+
+  // Check if user is verified
+  const isEmailVerified = () => {
+    return user?.is_email_verified || false;
+  };
+
+  // Get verification icon and status
+  const getVerificationIcon = () => {
+    if (isEmailVerified()) {
+      return (
+        " "
+      );
+    } else {
+      return (
+          <SmartLink href='/auth/verify-email' >
+        <HiExclamationTriangle 
+          className="w-4 h-4 text-orange-500" 
+          title="Email Not Verified"
+          
+        />
+        </SmartLink>
+      );
+    }
   };
 
   // Handle resume actions
@@ -76,7 +109,7 @@ const Meta = () => {
     }
   };
 
-  const headline = getHeadline();
+  const headlineOrEmail = getHeadlineOrEmail();
 
   return (
     <div className='w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl'>
@@ -90,13 +123,19 @@ const Meta = () => {
 
       <div className='flex flex-col justify-center items-start gap-2'>
         <div className=''>
-          <h3 className='font-semibold text-lg text-[#222]'>
-            {getUserName()}
-          </h3>
-          {/* Only show headline if it exists */}
-          {headline && (
+          {/* User Name with Verification Icon */}
+          <div className='flex items-center gap-2'>
+            <h3 className='font-semibold text-lg text-[#222]'>
+              {getUserName()}
+            </h3>
+            {/* Verification Icon */}
+            {getVerificationIcon()}
+          </div>
+          
+          {/* Headline or Email */}
+          {headlineOrEmail && (
             <p className='text-gray-600 text-sm leading-relaxed'>
-              {headline}
+              {headlineOrEmail}
             </p>
           )}
         </div>

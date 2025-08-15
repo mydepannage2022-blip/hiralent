@@ -59,6 +59,7 @@ export interface UserWithProfiles {
 export interface CleanUser {
   user_id: string;
   email: string;
+  is_email_verified: boolean;
   full_name: string;
   role: string;
   phone_number: string | null;

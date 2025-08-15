@@ -82,6 +82,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
     const cleanUser: CleanUser = {
       user_id: user.user_id,
       email: user.email,
+      is_email_verified: user.is_email_verified,
       full_name: user.full_name,
       role: user.role,
       phone_number: user.phone_number,

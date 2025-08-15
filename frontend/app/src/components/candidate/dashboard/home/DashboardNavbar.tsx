@@ -2,8 +2,11 @@ import React from 'react'
 import { CiSearch } from 'react-icons/ci';
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
+import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
+import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
 import { useAuth } from '../../../../context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
+import SmartLink from '../../../layout/SmartLink';
 
 interface DashboardNavbarProps {
   isMobileMenuOpen?: boolean;
@@ -17,10 +20,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  const handleVerifyEmail = () => {
-    router.push('/auth/verify-email');
-  };
 
   const handleNotificationClick = () => {
     router.push('/candidate/dashboard/notifications');
@@ -43,12 +42,40 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     return "/images/candidate.jpg";
   };
 
-  // Get user headline from profile
-  const getUserHeadline = () => {
+  // Get user headline with email fallback
+  const getUserHeadlineOrEmail = () => {
+    // First try headline
     if (user?.profile?.headline) {
       return user.profile.headline;
     }
+    // Fallback to email
+    if (user?.email) {
+      return user.email;
+    }
     return 'Professional seeking new opportunities';
+  };
+
+  // Check if user is verified
+  const isEmailVerified = () => {
+    return user?.is_email_verified || false;
+  };
+
+  // Get verification icon
+  const getVerificationIcon = () => {
+    if (isEmailVerified()) {
+      return (
+        " "
+      );
+    } else {
+      return (
+        <SmartLink href='/auth/verify-email' >
+          <HiExclamationTriangle 
+            className="w-3 h-3 text-orange-500 flex-shrink-0" 
+            title="Email Not Verified"
+          />
+        </SmartLink>
+      );
+    }
   };
 
   // Dynamic page titles and descriptions based on pathname
@@ -147,15 +174,18 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
           />
           <div className='hidden lg:hidden xl:flex flex-col justify-center items-start'>
-            <div className='flex items-center gap-2'>
+            {/* User Name with Verification Icon */}
+            <div className='flex items-center gap-1'>
               <h3 className='text-[#222] text-sm lg:text-base'>
                 {user?.full_name || 'Guest User'}  
               </h3>
+              {/* Verification Icon */}
+              {getVerificationIcon()}
             </div>
             
-            {/* CHANGED: Show headline instead of email */}
-            <span className='text-xs lg:text-sm text-[#A5A5A5] max-w-48 truncate' title={getUserHeadline()}>
-              {getUserHeadline()}
+            {/* Headline or Email */}
+            <span className='text-xs lg:text-sm text-[#A5A5A5] max-w-48 truncate' title={getUserHeadlineOrEmail()}>
+              {getUserHeadlineOrEmail()}
             </span>
           </div>
         </div>
