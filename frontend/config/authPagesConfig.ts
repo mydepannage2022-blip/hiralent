@@ -42,7 +42,7 @@ export const commonTestimonials: Testimonial[] = [
 
 // Page-specific configurations
 export const authPagesConfig: Record<string, AuthPageConfig> = {
-  signup: {
+  info: {
     backgroundImage: "/images/signup.jpg",
     testimonials: commonTestimonials,
     title: "Give us your information",
@@ -50,19 +50,35 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   location: {
-    backgroundImage: "/images/location.jpg", // Different image for location page
+    backgroundImage: "/images/location.jpg",
     testimonials: [
       {
         id: 1,
         name: "John Doe",
         role: "Remote Worker",
         text: "Finding the perfect location match has never been easier. Great filtering options!",
-        image: "/images/testimonials/john.jpg",
+        image: "https://i1.rgstatic.net/ii/profile.image/277785684791316-1443240676661_Q512/Sara-Johnson-18.jpg",
       },
-      ...commonTestimonials.slice(1) // Use some common ones too
+      ...commonTestimonials.slice(1)
     ],
-    title: "Choose your location",
-    subtitle: "Select your preferred work location to help us match you with the best opportunities"
+    title: "What is your location?",
+    subtitle: "Please provide your location details to match you with nearby offers."
+  },
+
+  salary: {
+    backgroundImage: "/images/salary.jpg",
+    testimonials: [
+      {
+        id: 1,
+        name: "Alex Kumar",
+        role: "Software Engineer",
+        text: "Setting clear salary expectations helped me find roles that matched my worth.",
+        image: "https://img.a.transfermarkt.technology/portrait/big/995642-1712863495.jpg?lm=1",
+      },
+      ...commonTestimonials.slice(1)
+    ],
+    title: "Tell us about your preferences",
+    subtitle: "Provide your location and salary expectations to match you with the best job offers."
   },
   
   profilePicture: {
@@ -73,48 +89,32 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
         name: "Maria Garcia",
         role: "Designer",
         text: "A professional profile picture made all the difference in my job search success.",
-        image: "/images/testimonials/maria.jpg",
+        image: "https://resize-elle.ladmedia.fr/r/400,279,ffffff,forcex,center-middle/img/var/plain_site/storage/images/people/la-vie-des-people/news/emma-watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-emma-roberts-3979994/95896063-1-fre-FR/Emma-Watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-Emma-Roberts.jpg",
       },
       ...commonTestimonials.slice(1)
     ],
-    title: "Upload your profile picture",
-    subtitle: "Add a professional photo to make a great first impression with employers"
+    title: "Add your profile picture",
+    subtitle: "Upload a professional photo to make your profile more personalized and trustworthy."
   },
   
-  skills: {
-    backgroundImage: "/images/skills.jpg",
+  uploadresume: {
+    backgroundImage: "/images/resume.jpg",
     testimonials: [
       {
         id: 1,
         name: "David Chen",
         role: "Full Stack Developer",
-        text: "Showcasing my skills properly helped me land my dream job within weeks!",
-        image: "/images/testimonials/david.jpg",
+        text: "Uploading my resume helped the AI match me with perfect job opportunities!",
+        image: "https://i1.rgstatic.net/ii/profile.image/277785684791316-1443240676661_Q512/Sara-Johnson-18.jpg",
       },
       ...commonTestimonials.slice(1)
     ],
-    title: "Tell us about your skills",
-    subtitle: "Highlight your technical and professional skills to attract the right opportunities"
-  },
-  
-  experience: {
-    backgroundImage: "/images/experience.jpg",
-    testimonials: [
-      {
-        id: 1,
-        name: "Lisa Thompson",
-        role: "Project Manager",
-        text: "Detailing my experience helped employers understand my true potential and value.",
-        image: "/images/testimonials/lisa.jpg",
-      },
-      ...commonTestimonials.slice(1)
-    ],
-    title: "Share your experience",
-    subtitle: "Tell us about your work history and achievements to build a compelling profile"
+    title: "Upload your CV/Resume",
+    subtitle: "Upload your CV or resume to complete your profile and connect with job opportunities."
   }
 };
 
 // Utility function to get config for a specific page
 export const getAuthPageConfig = (pageName: string): AuthPageConfig => {
-  return authPagesConfig[pageName] || authPagesConfig.signup;
+  return authPagesConfig[pageName] || authPagesConfig.info;
 };

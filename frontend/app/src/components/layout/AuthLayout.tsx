@@ -107,10 +107,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   activeTab = 'candidate'
 }) => {
   return (
-    <div className="w-full min-h-screen bg-[#FFFFFF] lg:overflow-hidden">
+    <div className="w-full min-h-screen bg-[#FFFFFF]">
       <div className="w-full h-screen flex flex-col lg:flex-row">
+        {/* Left Column - Form Content (Scrollable) */}
         <motion.div
-          className="w-full lg:w-1/2 flex flex-col justify-start items-center lg:overflow-y-auto lg:h-screen p-3 py-6 lg:py-8"
+          className="w-full lg:w-1/2 flex flex-col justify-start items-center overflow-y-auto h-screen p-3 py-6 lg:py-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
