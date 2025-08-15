@@ -38,7 +38,7 @@ const SmartLink = ({
 
     setTimeout(() => {
       stopNavigation();
-    }, 5000);
+    }, 10000);
   };
 
   useEffect(() => {

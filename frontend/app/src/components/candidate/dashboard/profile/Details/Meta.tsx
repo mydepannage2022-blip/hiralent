@@ -19,12 +19,10 @@ const Meta = () => {
     return user?.full_name || "Unknown User";
   };
 
-  // Get headline directly from user profile
+  // Get headline directly from user profile - NO FALLBACK
   const getHeadline = () => {
-    if (user?.profile?.headline) {
-      return user.profile.headline;
-    }
-    return "Professional seeking new opportunities";
+    // Only return actual headline, no fallback
+    return user?.profile?.headline || null;
   };
 
   // Handle resume actions
@@ -78,6 +76,8 @@ const Meta = () => {
     }
   };
 
+  const headline = getHeadline();
+
   return (
     <div className='w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl'>
       <div>
@@ -93,9 +93,12 @@ const Meta = () => {
           <h3 className='font-semibold text-lg text-[#222]'>
             {getUserName()}
           </h3>
-          <p className='text-gray-600 text-sm leading-relaxed'>
-            {getHeadline()}
-          </p>
+          {/* Only show headline if it exists */}
+          {headline && (
+            <p className='text-gray-600 text-sm leading-relaxed'>
+              {headline}
+            </p>
+          )}
         </div>
       
         <div className='flex justify-start gap-3 mt-2'>
