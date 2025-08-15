@@ -24,7 +24,7 @@ const DashboardJobStatistics = () => {
   const periods: ('Week' | 'Month' | 'Year')[] = ['Week', 'Month', 'Year'];
 
   return (
-    <div className="bg-white w-full rounded-xl p-6 ">
+    <div className="bg-white w-full rounded-xl p-6" > {/* Add inline style */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Job statistics</h3>
@@ -61,15 +61,14 @@ const DashboardJobStatistics = () => {
             </div>
           </div>
         </div>
-      <div className="w-full ">
-     
+      <div className="w-full">
 
         {/* Chart Section */}
-        <div className="w-full flex justify-between items-start">
+        <div className="w-full flex justify-between items-start" > {/* Remove z-[1] class, add inline style */}
 
-          <div className="w-4/5 h-64">
+          <div className="w-4/5 h-64" > {/* Add inline style */}
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }} style={{ zIndex: -1 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis 
                   dataKey="day" 
@@ -134,7 +133,6 @@ const DashboardJobStatistics = () => {
       </div>
 
         </div>
-
 
       </div>
     </div>

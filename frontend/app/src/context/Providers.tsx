@@ -16,6 +16,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         <ProfileProvider>
           <NavigationLoadingProvider>
             <NavigationLoader />
+            
             {children}
           </NavigationLoadingProvider>
         </ProfileProvider>

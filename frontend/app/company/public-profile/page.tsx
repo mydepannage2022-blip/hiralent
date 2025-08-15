@@ -10,7 +10,6 @@ import Footer from '../../src/components/layout/Footer'
 const publicProfile = () => {
     return (
         <div className="text-black">
-            <Navbar />
             <div className="mt-35 mb-20">
                 <div className='mb-12'>
                     {/* Banner */}
@@ -44,7 +43,6 @@ const publicProfile = () => {
                     <PublicProfileTabs />
                 </div>
             </div>
-            <Footer />
         </div>
     )
 }

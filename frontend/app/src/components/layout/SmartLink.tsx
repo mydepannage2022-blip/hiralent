@@ -1,16 +1,16 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useNavigationLoading } from '../../context/NavigationLoadingContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface SmartLinkProps {
   href: string;
   children: React.ReactNode;
   className?: string;
   prefetch?: boolean;
-  onClick?: () => void; // Add this line
+  onClick?: () => void;
 }
 
 const SmartLink = ({ 
@@ -18,40 +18,44 @@ const SmartLink = ({
   children, 
   className = "", 
   prefetch = true,
-  onClick // Add this
+  onClick
 }: SmartLinkProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { startNavigation, stopNavigation } = useNavigationLoading();
+  const previousPathname = useRef(pathname);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Agar same page pe hai to navigation start nahi karna
-    if (window.location.pathname === href) {
+    if (pathname === href) {
       return;
     }
     
     startNavigation();
     
-    // User ka custom onClick call karo (jaise menu close karna)
     if (onClick) {
       onClick();
     }
-    
-    // Backup - 3 seconds baad automatically stop kar do
+
     setTimeout(() => {
       stopNavigation();
-    }, 3000);
+    }, 5000);
   };
 
-  // Navigation complete hone pe stop karna
   useEffect(() => {
-    const handleRouteChange = () => {
+    if (previousPathname.current !== pathname) {
+      stopNavigation();
+      previousPathname.current = pathname;
+    }
+  }, [pathname, stopNavigation]);
+
+  useEffect(() => {
+    const handleLoad = () => {
       stopNavigation();
     };
 
-    // Page load complete hone pe
     if (typeof window !== 'undefined') {
-      window.addEventListener('load', handleRouteChange);
-      return () => window.removeEventListener('load', handleRouteChange);
+      window.addEventListener('load', handleLoad);
+      return () => window.removeEventListener('load', handleLoad);
     }
   }, [stopNavigation]);
 
