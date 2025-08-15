@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react';
-import Navbar from '../../src/components/layout/Navbar'
 import Image from 'next/image';
 import CompanyInfoCard from '../../src/components/company/public-profile/CompanyInfoCard';
 import PublicProfileTabs from '../../src/components/company/public-profile/PublicProfileTabs';
@@ -35,8 +34,28 @@ const publicProfile = () => {
                             phone="+1 98482346"
                         />
                     </div>
+
+                    <div className="relative w-full">
+                        {/* Card */}
+                        <div className="relative z-10 -mt-20 px-4">
+                            <CompanyInfoCard
+                                logo="/images/bmw-logo.png"
+                                name="BMW"
+                                website="BMW.com"
+                                websiteUrl="https://bmw.com"
+                                location="Germany"
+                                companySize="1000"
+                                email="BMW@gmail.com"
+                                phone="+1 98482346"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="mx-25">
+                    <PublicProfileTabs />
                 </div>
             </div>
+            <Footer />
         </div>
     )
 }
