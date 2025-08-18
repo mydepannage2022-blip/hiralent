@@ -3,11 +3,11 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUploadResume } from '../../../src/lib/auth.queries';
+import { useUploadResume } from '../../../../src/lib/auth.queries';
 import { useRouter } from 'next/navigation';
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
-import AuthLayout from "@/app/src/components/layout/AuthLayout";
-import SmartLink from "@/app/src/components/layout/SmartLink";
+import AuthLayout from "@/src/components/layout/AuthLayout";
+import SmartLink from "@/src/components/ui/SmartLink";
 
 const UploadResumePage = () => {
   const { mutate: uploadResumeMutation, isPending } = useUploadResume();

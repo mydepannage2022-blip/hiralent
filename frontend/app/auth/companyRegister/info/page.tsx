@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Select, { SingleValue } from "react-select"; // Added react-select
-import { industryOptions } from "../../../src/constants/groupedIndustriesOptions"; // Assuming industryOptions is in a separate file
-import { locationOptions } from "../../../src/constants/groupedLocationOptions";
+import { industryOptions } from "../../../../src/constants/groupedIndustriesOptions"; // Assuming industryOptions is in a separate file
+import { locationOptions } from "../../../../src/constants/groupedLocationOptions";
 
 const testimonials = [
   {

@@ -13,7 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
-import SmartLink from '../../../layout/SmartLink';
+import SmartLink from '../../../ui/SmartLink';
 import LogoutModal from '../../../layout/LogoutModal';
 import { useAuth } from '../../../../context/AuthContext'; 
 

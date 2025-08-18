@@ -1,6 +1,6 @@
 "use client"
 
-import Navbar from '@/app/src/components/layout/Navbar'
+import Navbar from '@/src/components/ui/Navbar'
 import React from 'react'
 
 const page = () => {

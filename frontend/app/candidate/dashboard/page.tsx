@@ -1,10 +1,10 @@
 "use client"
 
-import DashboardJobStatistics from "@/app/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics";
-import DashboardProfilePercentage from "@/app/src/components/candidate/dashboard/home/analytics/DashboardProfilePercantage";
-import DashboardStatus from "@/app/src/components/candidate/dashboard/home/analytics/DashbordStatus";
-import MessagesModule from "@/app/src/components/candidate/dashboard/home/DashboardChatModule";
-import SavedJobs from "@/app/src/components/candidate/dashboard/home/SavedJobs";
+import DashboardJobStatistics from "@/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics";
+import DashboardProfilePercentage from "@/src/components/candidate/dashboard/home/analytics/DashboardProfilePercantage";
+import DashboardStatus from "@/src/components/candidate/dashboard/home/analytics/DashbordStatus";
+import MessagesModule from "@/src/components/candidate/dashboard/home/DashboardChatModule";
+import SavedJobs from "@/src/components/candidate/dashboard/home/SavedJobs";
 
 export default function DashboardHome() {
   return (

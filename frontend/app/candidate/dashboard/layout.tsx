@@ -1,8 +1,8 @@
 "use client"
 import { useState, ReactNode } from 'react';
-import ProtectedRoute from '@/app/src/components/layout/ProtectedRoute';
-import DashboardSidebar from '@/app/src/components/candidate/dashboard/home/DashboardSidebar';
-import DashboardNavbar from '@/app/src/components/candidate/dashboard/home/DashboardNavbar';
+import ProtectedRoute from '@/src/components/layout/ProtectedRoute';
+import DashboardSidebar from '@/src/components/candidate/dashboard/home/DashboardSidebar';
+import DashboardNavbar from '@/src/components/candidate/dashboard/home/DashboardNavbar';
 
 interface DashboardLayoutProps {
   children: ReactNode;

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import CompanySearch from '../../src/components/company/discover/CompanySearch';
-import { locationOptions } from "../../src/constants/groupedLocationOptions";
-import Tabs from "../../src/components/company/discover/Tabs";
-import Sidebar from '../../src/components/company/discover/Sidebar';
-import OffCanvasSidebar from '../../src/components/company/discover/OffCanvasSidebar';
+import CompanySearch from '../../../src/components/company/discover/CompanySearch';
+import { locationOptions } from "../../../src/constants/groupedLocationOptions";
+import Tabs from "../../../src/components/company/discover/Tabs";
+import Sidebar from '../../../src/components/company/discover/Sidebar';
+import OffCanvasSidebar from '../../../src/components/company/discover/OffCanvasSidebar';
 import { Filter } from "lucide-react";
-import CompanyCard from '../../src/components/company/discover/CompanyCard';
-import Pagination from "../../src/components/company/discover/Pagination";
+import CompanyCard from '../../../src/components/company/discover/CompanyCard';
+import Pagination from "../../../src/components/company/discover/Pagination";
 
 const DiscoverPage = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);

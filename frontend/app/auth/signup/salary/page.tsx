@@ -4,10 +4,10 @@
 import React, { useState } from "react";
 import Select, { SingleValue } from "react-select";
 import { motion } from "framer-motion";
-import { useUpdateSalary } from "../../../src/lib/auth.queries";
+import { useUpdateSalary } from "../../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
-import AuthLayout from "@/app/src/components/layout/AuthLayout";
-import SmartLink from "@/app/src/components/layout/SmartLink";
+import AuthLayout from "@/src/components/layout/AuthLayout";
+import SmartLink from "@/src/components/ui/SmartLink";
 
 const SalaryPage = () => {
   const updateSalaryMutation = useUpdateSalary();

@@ -1,10 +1,10 @@
 "use client"
-import Button from '@/app/src/components/layout/Button'
+import Button from '@/src/components/ui/Button'
 import React from 'react'
 import { useAuth } from '../../../../../context/AuthContext';
 import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
 import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
-import SmartLink from '@/app/src/components/layout/SmartLink';
+import SmartLink from '@/src/components/ui/SmartLink';
 const Meta = () => {
   const { user } = useAuth();
 

@@ -3,7 +3,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import SmartLink from "../layout/SmartLink";
+import SmartLink from "../ui/SmartLink";
 
 interface TabSelectorProps {
   activeTab?: 'candidate' | 'company';

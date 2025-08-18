@@ -3,10 +3,10 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useLogin } from "../../src/lib/auth.queries";
+import { useLogin } from "../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
-import SmartLink from "@/app/src/components/layout/SmartLink";
-import AuthLayout from "@/app/src/components/layout/AuthLayout";
+import SmartLink from "@/src/components/ui/SmartLink";
+import AuthLayout from "@/src/components/layout/AuthLayout";
 
 // Types
 interface FormData {

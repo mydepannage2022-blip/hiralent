@@ -3,11 +3,11 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useUploadProfilePicture } from "../../../src/lib/auth.queries";
+import { useUploadProfilePicture } from "../../../../src/lib/auth.queries";
 import { Upload } from "lucide-react";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
-import AuthLayout from "@/app/src/components/layout/AuthLayout";
-import SmartLink from "@/app/src/components/layout/SmartLink";
+import AuthLayout from "@/src/components/layout/AuthLayout";
+import SmartLink from "@/src/components/ui/SmartLink";
 
 const ProfilePicturePage = () => {
   const { mutate, isPending } = useUploadProfilePicture();
