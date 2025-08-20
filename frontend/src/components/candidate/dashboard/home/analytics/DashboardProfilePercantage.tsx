@@ -1,4 +1,4 @@
-import SmartLink from '../../../../ui/SmartLink';
+import SmartLink from '../../../../layout/SmartLink';
 import React, { useState } from 'react'
 import { useAuth } from '../../../../../context/AuthContext';
 import { useProfileCompleteness } from '../../../../../lib/profile.queries';

@@ -7,7 +7,7 @@ import { useUploadProfilePicture } from "../../../../src/lib/auth.queries";
 import { Upload } from "lucide-react";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
-import SmartLink from "@/src/components/ui/SmartLink";
+import SmartLink from "@/src/components/layout/SmartLink";
 
 const ProfilePicturePage = () => {
   const { mutate, isPending } = useUploadProfilePicture();

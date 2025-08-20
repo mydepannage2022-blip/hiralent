@@ -1,10 +1,11 @@
-import Meta from '@/src/components/candidate/dashboard/profile/Details/Meta'
-import PersonalInformation from '@/src/components/candidate/dashboard/profile/Details/PersonalInformation'
-import PreferredJobBenefits from '@/src/components/candidate/dashboard/profile/Details/PreferredJobBenefits'
-import ProffessionalSkills from '@/src/components/candidate/dashboard/profile/Details/ProffessionalSkills'
-import WorkExperience from '@/src/components/candidate/dashboard/profile/Details/WorkExperience'
-import ResumeQuality from '@/app/src/components/candidate/dashboard/profile/ResumeQuality'
-import UploadYourResume from '@/app/src/components/candidate/dashboard/profile/UploadYourResume'
+import Meta from '@/src/components/candidate/dashboard/profile/profileForm/Meta'
+import PersonalInformation from '@/src/components/candidate/dashboard/profile/profileForm/PersonalInformation'
+import PreferredJobBenefits from '@/src/components/candidate/dashboard/profile/profileForm/PreferredJobBenefits'
+import ProffessionalSkills from '@/src/components/candidate/dashboard/profile/profileForm/ProffessionalSkills'
+import WorkExperience from '@/src/components/candidate/dashboard/profile/profileForm/WorkExperience'
+import { ResumeLink } from '@/src/components/candidate/dashboard/profile/resume-link/ResumeLink'
+import { ResumeQuality } from '@/src/components/candidate/dashboard/profile/resume-quality/ResumeQuality'
+import { ResumeUpload } from '@/src/components/candidate/dashboard/profile/resume-upload/ResumeUpload'
 import React from 'react'
 
 const page = () => {
@@ -19,8 +20,10 @@ const page = () => {
       </div>
       <div className='w-1/3 flex flex-col justify-start items-start gap-2'>
        <ResumeQuality />
-       <UploadYourResume />
-       <UploadYourResume />
+       <ResumeUpload 
+        uploadType="application_specific"
+      />
+       <ResumeLink />
       </div>
     </div>
   )

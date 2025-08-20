@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import Navbar from '../../../src/components/ui/Navbar'
+import Navbar from '../../../src/components/layout/Navbar'
 import Image from 'next/image';
 import CompanyInfoCard from '../../../src/components/company/public-profile/CompanyInfoCard';
 

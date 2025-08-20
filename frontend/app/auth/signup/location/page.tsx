@@ -8,7 +8,7 @@ import Select from "react-select";
 import { useUpdateLocation } from "../../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
-import SmartLink from "@/src/components/ui/SmartLink";
+import SmartLink from "@/src/components/layout/SmartLink";
 
 interface LocationOption {  
   value: string;

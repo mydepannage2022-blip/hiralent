@@ -3,7 +3,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import SmartLink from "../ui/SmartLink";
+import SmartLink from "../layout/SmartLink";
 
 interface Step {
   id: number;

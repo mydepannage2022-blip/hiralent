@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Star, ChevronRight } from 'lucide-react';
-import SmartLink from '../../ui/SmartLink';
+import SmartLink from '../../layout/SmartLink';
 
 interface CompanyCardProps {
     logo: string;

@@ -1,19 +1,24 @@
-// src/components/profile/resume-link/ResumeLink.tsx
-
+"use client"
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Button from '@/src/components/ui/Button'; 
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
+import Button from '@/src/components/layout/Button';
 import { Copy, Check } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { ResumeLink as ResumeLinkType } from '@/src/types/profile';
 
+// MOCK DATA
+const mockResumeLink: ResumeLinkType = {
+  url: 'https://Joblin.com/u/LF-8752322',
+  qrCodeData: 'https://Joblin.com/u/LF-8752322'
+};
+
 interface ResumeLinkProps {
-  data: ResumeLinkType;
+  data?: ResumeLinkType; // Optional ab
   className?: string;
 }
 
 export const ResumeLink: React.FC<ResumeLinkProps> = ({
-  data,
+  data = mockResumeLink, // Default mock data
   className = ''
 }) => {
   const [isCopied, setIsCopied] = useState(false);
@@ -66,23 +71,12 @@ export const ResumeLink: React.FC<ResumeLinkProps> = ({
           </p>
           
           <Button
+            text={isCopied ? "Copied!" : "Copy link"}
             onClick={handleCopyLink}
-            variant="outline"
-            className="w-full flex items-center gap-2"
-            disabled={isCopied}
-          >
-            {isCopied ? (
-              <>
-                <Check className="h-4 w-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" />
-                Copy link
-              </>
-            )}
-          </Button>
+            variant="light"
+            animation={false}
+            className="w-full"
+          />
         </div>
       </CardContent>
     </Card>

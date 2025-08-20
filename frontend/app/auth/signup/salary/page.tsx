@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useUpdateSalary } from "../../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
-import SmartLink from "@/src/components/ui/SmartLink";
+import SmartLink from "@/src/components/layout/SmartLink";
 
 const SalaryPage = () => {
   const updateSalaryMutation = useUpdateSalary();

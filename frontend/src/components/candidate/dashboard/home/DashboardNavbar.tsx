@@ -6,7 +6,7 @@ import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
 import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
 import { useAuth } from '../../../../context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import SmartLink from '../../../ui/SmartLink';
+import SmartLink from '../../../layout/SmartLink';
 
 interface DashboardNavbarProps {
   isMobileMenuOpen?: boolean;
