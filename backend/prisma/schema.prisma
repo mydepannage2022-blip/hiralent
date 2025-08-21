@@ -491,7 +491,7 @@ model CandidateProfile {
   resume_url           String?
   video_intro_url      String?
   profile_picture_url   String?
-  headline             String?  @db.VarChar(120)  // No default needed (nullable)
+  headline             String?  @db.VarChar(120)
   skills               String?
   education            String?
   experience           String?
