@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import PeopleCard from '@/src/components/company/public-profile/PeopleCard';
 import OverviewCard from '@/src/components/company/public-profile/OverviewCard';

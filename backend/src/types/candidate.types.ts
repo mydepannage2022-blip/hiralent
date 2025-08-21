@@ -313,3 +313,200 @@ export interface ProfilePictureUploadResult{
 
 
 
+// Basic Info Update Types
+export interface UpdateBasicInfoInput {
+  full_name?: string;
+  phone_number?: string;
+  email?: string;
+}
+
+export interface BasicInfoUpdateResult {
+  success: boolean;
+  message: string;
+  updated_fields: string[];
+}
+
+// Skills Management Types
+export interface UpdateSkillsInput {
+  skills: CandidateSkillInput[];
+}
+
+export interface CandidateSkillInput {
+  skill_name: string;
+  skill_category: 'technical' | 'soft' | 'language' | 'certification';
+  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  years_experience?: number;
+}
+
+export interface AddSkillInput {
+  skill_name: string;
+  skill_category: 'technical' | 'soft' | 'language' | 'certification';
+  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  years_experience?: number;
+}
+
+export interface SkillUpdateResult {
+  success: boolean;
+  message: string;
+  skills_count: number;
+}
+
+// Experience Management Types
+export interface UpdateExperienceInput {
+  experiences: ExperienceInput[];
+}
+
+export interface ExperienceInput {
+  job_title: string;
+  company: string;
+  duration: string;
+  years: number;
+  description: string;
+  currently_working?: boolean;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface AddExperienceInput {
+  job_title: string;
+  company: string;
+  duration: string;
+  years: number;
+  description: string;
+  currently_working?: boolean;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface ExperienceUpdateResult {
+  success: boolean;
+  message: string;
+  experiences_count: number;
+}
+
+// Education Management Types
+export interface UpdateEducationInput {
+  education: EducationInput[];
+}
+
+export interface EducationInput {
+  degree: string;
+  institution: string;
+  year: string;
+  field: string;
+  grade?: string;
+  currently_studying?: boolean;
+}
+
+export interface AddEducationInput {
+  degree: string;
+  institution: string;
+  year: string;
+  field: string;
+  grade?: string;
+  currently_studying?: boolean;
+}
+
+export interface EducationUpdateResult {
+  success: boolean;
+  message: string;
+  education_count: number;
+}
+
+// Profile Section Update Types
+export interface ProfileSectionUpdateInput {
+  section: 'basic_info' | 'skills' | 'experience' | 'education';
+  data: any;
+}
+
+export interface ProfileSectionUpdateResult {
+  success: boolean;
+  message: string;
+  section: string;
+  completion_score: number;
+}
+
+// Bulk Profile Update Types
+export interface BulkProfileUpdateInput {
+  basic_info?: UpdateBasicInfoInput;
+  skills?: CandidateSkillInput[];
+  experience?: ExperienceInput[];
+  education?: EducationInput[];
+}
+
+export interface BulkProfileUpdateResult {
+  success: boolean;
+  message: string;
+  updated_sections: string[];
+  new_completion_score: number;
+}
+
+// Add these new types to candidate.types.ts
+
+// Enhanced Basic Info Types
+export interface UpdateBasicInfoInput {
+  full_name?: string;
+  phone_number?: string;
+  email?: string;
+  about_me?: string;  // NEW
+  city?: string;      // NEW
+}
+
+// Social Links Types
+export interface SocialLink {
+  platform: 'github' | 'linkedin' | 'portfolio' | 'twitter' | 'behance' | 'dribbble' | 'other';
+  url: string;
+  display_name?: string;
+}
+
+export interface UpdateLinksInput {
+  links: SocialLink[];
+}
+
+export interface LinksUpdateResult {
+  success: boolean;
+  message: string;
+  links_count: number;
+}
+
+// Job Benefits Types
+export interface JobBenefit {
+  benefit_type: 'health_insurance' | 'dental_insurance' | 'vision_insurance' | 
+                'retirement_401k' | 'paid_time_off' | 'flexible_hours' | 
+                'remote_work' | 'professional_development' | 'gym_membership' |
+                'stock_options' | 'bonus_structure' | 'other';
+  importance: 'required' | 'preferred' | 'nice_to_have';
+  notes?: string;
+}
+
+export interface UpdateJobBenefitsInput {
+  job_benefits: JobBenefit[];
+}
+
+export interface JobBenefitsUpdateResult {
+  success: boolean;
+  message: string;
+  benefits_count: number;
+}
+
+// Enhanced Profile Summary
+export interface CandidateBasicInfo {
+  name: string;
+  email: string;
+  phone?: string;
+  headline?: string;
+  about_me?: string;  // NEW
+  city?: string;      // NEW
+  location?: string;
+}
+
+// Enhanced Bulk Update
+export interface BulkProfileUpdateInput {
+  basic_info?: UpdateBasicInfoInput;
+  skills?: CandidateSkillInput[];
+  experience?: ExperienceInput[];
+  education?: EducationInput[];
+  links?: SocialLink[];        // NEW
+  job_benefits?: JobBenefit[]; // NEW
+}
+

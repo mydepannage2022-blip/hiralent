@@ -486,21 +486,32 @@ model JobVector {
 
 // EXISTING MODELS (No changes needed)
 
+
 model CandidateProfile {
   candidate_id          String   @id
+  
   resume_url           String?
   video_intro_url      String?
   profile_picture_url   String?
   headline             String?  @db.VarChar(120)
+  about_me             String?  @db.VarChar(500)   
+
   skills               String?
   education            String?
   experience           String?
-  preferred_locations  String?
   languages            String?
+  
   location             String?
+  city                 String? 
   postal_code          Int?
+  preferred_locations  String?
+  
   minimum_salary_amount Float?
   payment_period       String?
+  job_benefits         String?
+
+  links                String?
+  
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
