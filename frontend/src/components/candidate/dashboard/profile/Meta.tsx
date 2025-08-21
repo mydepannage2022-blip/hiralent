@@ -1,10 +1,10 @@
 "use client"
 import Button from '@/src/components/layout/Button'
 import React from 'react'
-import { useAuth } from '../../../../../context/AuthContext';
+import { useAuth } from '@/src/context/AuthContext';
 import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
 import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
-import SmartLink from '@/src/components/layout/SmartLink';
+
 const Meta = () => {
   const { user } = useAuth();
 
@@ -43,17 +43,17 @@ const Meta = () => {
   const getVerificationIcon = () => {
     if (isEmailVerified()) {
       return (
-        " "
+        <HiCheckBadge 
+          className="w-4 h-4 text-green-500" 
+          title="Email Verified"
+        />
       );
     } else {
       return (
-          <SmartLink href='/auth/verify-email' >
         <HiExclamationTriangle 
           className="w-4 h-4 text-orange-500" 
           title="Email Not Verified"
-          
         />
-        </SmartLink>
       );
     }
   };
