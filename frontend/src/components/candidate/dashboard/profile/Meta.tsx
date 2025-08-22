@@ -1,45 +1,56 @@
-"use client"
-import Button from '@/src/components/layout/Button'
-import React from 'react'
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Upload, Camera, Check, X } from 'lucide-react';
+import { HiCheckBadge, HiExclamationTriangle } from 'react-icons/hi2';
 import { useAuth } from '@/src/context/AuthContext';
-import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
-import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
+import { useProfile } from '@/src/context/ProfileContext'; // ✅ Added profile context
+import { useUploadProfilePicture } from '@/src/lib/profile.queries';
+import Button from '@/src/components/layout/Button';
 
-const Meta = () => {
-  const { user } = useAuth();
+const MetaSection: React.FC = () => {
+  const { user } = useAuth(); // ✅ Only for user info (name, email verification)
+  const { profileData } = useProfile(); // ✅ For profile data (picture, headline, etc.)
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Get profile picture - same logic as navbar
+  const { mutate: uploadProfilePicture, isPending } = useUploadProfilePicture();
+
+  // Get profile picture with fallback
   const getProfileImage = () => {
-    if (user?.profile?.profile_picture_url) {
-      return user.profile.profile_picture_url;
+    if (previewUrl) return previewUrl;
+    if (profileData?.profile_picture_url) { // ✅ From profile context
+      return profileData.profile_picture_url;
     }
     return "/images/candidate.jpg";
   };
 
-  // Get user name
+  // Get user name (from auth context)
   const getUserName = () => {
     return user?.full_name || "Unknown User";
   };
 
   // Get headline with email fallback
   const getHeadlineOrEmail = () => {
-    // First try headline
-    if (user?.profile?.headline) {
-      return user.profile.headline;
+    if (profileData?.headline) { // ✅ From profile context
+      return profileData.headline;
     }
-    // Fallback to email
-    if (user?.email) {
+    if (user?.email) { // ✅ Fallback to auth context email
       return user.email;
     }
     return null;
   };
 
-  // Check if user is verified
+  // Check if user is verified (from auth context)
   const isEmailVerified = () => {
     return user?.is_email_verified || false;
   };
 
-  // Get verification icon and status
+  // Get verification icon
   const getVerificationIcon = () => {
     if (isEmailVerified()) {
       return (
@@ -58,13 +69,82 @@ const Meta = () => {
     }
   };
 
-  // Handle resume actions
+  // Handle file selection
+  const handleFileSelect = (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPG, JPEG, or PNG)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleSaveImage = () => {
+    if (selectedFile) {
+      uploadProfilePicture(selectedFile, {
+        onSuccess: () => {
+          setIsEditing(false);
+          setSelectedFile(null);
+          setPreviewUrl(null);
+          // Profile data will be updated automatically via context refresh
+        }
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  };
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+  };
+
+  // Resume actions (these use auth token from localStorage)
   const handleViewResume = async () => {
     try {
-      // Call API to get resume download URL
       const response = await fetch('/api/candidates/resume/download', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
       
@@ -83,17 +163,15 @@ const Meta = () => {
 
   const handleDownloadResume = async () => {
     try {
-      // Call API to get resume download URL
       const response = await fetch('/api/candidates/resume/download', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
       
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data.download_url) {
-          // Create temporary link for download
           const link = document.createElement('a');
           link.href = data.data.download_url;
           link.download = data.data.file_name || 'resume.pdf';
@@ -109,38 +187,123 @@ const Meta = () => {
     }
   };
 
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const headlineOrEmail = getHeadlineOrEmail();
 
   return (
-    <div className='w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl'>
-      <div>
-        <img 
-          src={getProfileImage()} 
-          alt="User Profile" 
-          className='w-32 h-32 rounded-xl object-cover'
-        />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl mb-6"
+    >
+      {/* Profile Picture Section */}
+      <div className="relative">
+        {!isEditing ? (
+          <div className="relative group">
+            <img 
+              src={getProfileImage()} 
+              alt="User Profile" 
+              className="w-32 h-32 rounded-xl object-cover"
+            />
+            <div 
+              onClick={handleStartEdit}
+              className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        ) : (
+          <div className="w-32 h-32 relative">
+            {/* File Upload Area */}
+            <motion.div
+              className={`w-full h-full border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ${
+                isDragOver 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-300 hover:border-blue-500'
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleFileInputChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              
+              {previewUrl ? (
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                  <p className="text-xs text-gray-500">Upload Photo</p>
+                </div>
+              )}
+            </motion.div>
+            
+            {/* Edit Controls */}
+            <div className="absolute -bottom-2 -right-2 flex gap-1">
+              <button
+                onClick={handleCancelEdit}
+                disabled={isPending}
+                className="w-6 h-6 bg-gray-600 text-white rounded-full flex items-center justify-center hover:bg-gray-700 disabled:opacity-50"
+              >
+                <X className="w-3 h-3" />
+              </button>
+              {selectedFile && (
+                <button
+                  onClick={handleSaveImage}
+                  disabled={isPending}
+                  className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-3 h-3" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className='flex flex-col justify-center items-start gap-2'>
-        <div className=''>
+      {/* User Info Section */}
+      <div className="flex flex-col justify-center items-start gap-2">
+        <div>
           {/* User Name with Verification Icon */}
-          <div className='flex items-center gap-2'>
-            <h3 className='font-semibold text-lg text-[#222]'>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-lg text-[#222]">
               {getUserName()}
             </h3>
-            {/* Verification Icon */}
             {getVerificationIcon()}
           </div>
           
           {/* Headline or Email */}
           {headlineOrEmail && (
-            <p className='text-gray-600 text-sm leading-relaxed'>
+            <p className="text-gray-600 text-sm leading-relaxed">
               {headlineOrEmail}
             </p>
           )}
         </div>
       
-        <div className='flex justify-start gap-3 mt-2'>
+        {/* Resume Buttons */}
+        <div className="flex justify-start gap-3 mt-2">
           <Button 
             text="View Resume" 
             variant="dark" 
@@ -155,8 +318,8 @@ const Meta = () => {
           />
         </div>
       </div>
-    </div>
-  )
-}
+    </motion.div>
+  );
+};
 
-export default Meta
+export default MetaSection;

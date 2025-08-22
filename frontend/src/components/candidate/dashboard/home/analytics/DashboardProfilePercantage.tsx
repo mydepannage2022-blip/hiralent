@@ -7,13 +7,13 @@ import { useProfile } from '../../../../../context/ProfileContext';
 const DashboardProfilePercentage = () => {
   const { user } = useAuth();
   const { data: profileData, isLoading, error, refetch } = useProfileCompleteness();
-  const { profileCompleteness } = useProfile(); // Back to using context
+  const { profileCompleteness, profileData: contextProfileData } = useProfile(); // ✅ Added profileData from context
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
 
-  // Get profile picture from user profile - same logic as navbar
+  // ✅ Updated: Get profile picture from profile context instead of auth
   const getProfileImage = () => {
-    if (user?.profile?.profile_picture_url) {
-      return user.profile.profile_picture_url;
+    if (contextProfileData?.profile_picture_url) {
+      return contextProfileData.profile_picture_url;
     }
     return "/images/candidate.jpg";
   };
@@ -204,4 +204,4 @@ const DashboardProfilePercentage = () => {
   )
 }
 
-export default DashboardProfilePercentage
+export default DashboardProfilePercentage 

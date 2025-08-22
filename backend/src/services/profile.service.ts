@@ -64,11 +64,10 @@ export const updateBasicInfo = async (
       profileUpdateData.about_me = data.about_me;
       updatedFields.push('about_me');
     }
-    if (data.city !== undefined) {
-      profileUpdateData.city = data.city;
-      updatedFields.push('city');
+    if (data.location !== undefined) {
+      profileUpdateData.location = data.location;
+      updatedFields.push('location');
     }
-
     // Update User if there are fields to update
     if (Object.keys(userUpdateData).length > 0) {
       await prisma.user.update({

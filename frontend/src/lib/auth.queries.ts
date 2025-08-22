@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
+import { useProfile } from '../context/ProfileContext';
 
 export const useSignup = () => {
   const { login } = useAuth();
@@ -16,26 +17,36 @@ export const useSignup = () => {
     },
     onError: (error: any) => {
       console.error('Signup failed:', error?.response?.data?.message || error.message);
-      // Show toast or error state
+ 
     },
   });
 };
 
 export const useLogin = () => {
   const { login } = useAuth();
+  const { setProfileData } = useProfile(); 
   const router = useRouter();
 
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
       login(data.user, data.token);
-      console.log(data.user , data.token)
-       const redirectPath = localStorage.getItem('redirectAfterLogin');
+      
+      if (data.profile) {
+        setProfileData(data.profile); 
+        
+        console.log('✅ Profile data set in context:', data.profile);
+      }
+
+      console.log('User:', data.user);
+      console.log('Profile:', data.profile);
+      console.log('Token:', data.token);
+
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
         router.push(redirectPath);
       } else {
-        // Role-based fallback
         if (data.user.role === 'candidate') {
           router.push('/candidate/dashboard');
         } else if (data.user.role === 'company') {
@@ -43,13 +54,12 @@ export const useLogin = () => {
         } else if (data.user.role === 'agency') {
           router.push('/agency/dashboard');
         } else {
-          router.push('/'); // fallback
+          router.push('/');
         }
       }
     },
     onError: (error: any) => {
       console.error('Login failed:', error?.response?.data?.message || error.message);
-      // Optionally show toast here
     },
   });
 };
@@ -61,7 +71,7 @@ export const useUpdateLocation = () => {
     mutationFn: (data: { location: string; postalCode: number }) => {
       return updateLocation({
         location: data.location,
-        postalCode: Number(data.postalCode), // convert string to number
+        postalCode: Number(data.postalCode),
       });
     },
     onSuccess: () => {

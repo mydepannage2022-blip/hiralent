@@ -5,6 +5,7 @@ import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
 import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
 import { useAuth } from '../../../../context/AuthContext';
+import { useProfile } from '../../../../context/ProfileContext'; // ✅ Added profile context
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
 
@@ -17,7 +18,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   isMobileMenuOpen = false, 
   setIsMobileMenuOpen = () => {} 
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuth(); // ✅ Only for user info (name, email verification)
+  const { profileData } = useProfile(); // ✅ For profile data (picture, headline)
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,28 +36,28 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Get profile picture from user profile
+  // ✅ Updated: Get profile picture from profile context
   const getProfileImage = () => {
-    if (user?.profile?.profile_picture_url) {
-      return user.profile.profile_picture_url;
+    if (profileData?.profile_picture_url) {
+      return profileData.profile_picture_url;
     }
     return "/images/candidate.jpg";
   };
 
-  // Get user headline with email fallback
+  // ✅ Updated: Get user headline with email fallback
   const getUserHeadlineOrEmail = () => {
-    // First try headline
-    if (user?.profile?.headline) {
-      return user.profile.headline;
+    // First try headline from profile context
+    if (profileData?.headline) {
+      return profileData.headline;
     }
-    // Fallback to email
+    // Fallback to email from auth context
     if (user?.email) {
       return user.email;
     }
     return 'Professional seeking new opportunities';
   };
 
-  // Check if user is verified
+  // Check if user is verified (from auth context)
   const isEmailVerified = () => {
     return user?.is_email_verified || false;
   };

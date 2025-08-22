@@ -53,7 +53,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       where: { email },
       include: {
         candidateProfile: true,
-        companyProfile: true,    // Updated field name
+        companyProfile: true,
         agencyAdminProfile: true,
         agency: {
           select: {
@@ -78,7 +78,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       agency_id: user.agency_id,
     });
 
-    // Clean user object - remove sensitive fields
+    // Clean user object - remove sensitive fields AND profile
     const cleanUser: CleanUser = {
       user_id: user.user_id,
       email: user.email,
@@ -90,19 +90,25 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       linkedin_url: user.linkedin_url,
       agency_id: user.agency_id,
       agency: user.agency,
-      profile: null // Will be set based on role
+      // Remove profile from user object
     };
 
-    // Add profile based on user role
+    // Extract profile based on user role
+    let profileData = null;
     if (user.role === 'candidate') {
-      cleanUser.profile = user.candidateProfile;
+      profileData = user.candidateProfile;
     } else if (user.role === 'company') {
-      cleanUser.profile = user.companyProfile;
+      profileData = user.companyProfile;
     } else if (user.role === 'agency') {
-      cleanUser.profile = user.agencyAdminProfile;
+      profileData = user.agencyAdminProfile;
     }
 
-    return { user: cleanUser, token };
+    // Return separate objects
+    return { 
+      user: cleanUser, 
+      profile: profileData,  // ✅ Separate profile object
+      token 
+    };
 
   } catch (error: any) {
     console.error("❌ Login Error:", error);
@@ -112,6 +118,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
     };
   }
 };
+
 
 export const resendVerificationEmail = async (userId: string) => {
   try {

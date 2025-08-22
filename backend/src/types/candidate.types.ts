@@ -449,7 +449,7 @@ export interface UpdateBasicInfoInput {
   phone_number?: string;
   email?: string;
   about_me?: string;  // NEW
-  city?: string;      // NEW
+  location?: string;  // NEW
 }
 
 // Social Links Types
