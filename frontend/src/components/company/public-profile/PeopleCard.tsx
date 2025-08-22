@@ -22,12 +22,12 @@ const ICON_PATHS: Record<SocialType, string> = {
     instagram: '/images/instagramIcon.svg', // gradient fill baked in
 };
 
-export default function PeopleCard({
+const PeopleCard = ({
     image,
     name,
     role,
-    socials = [],
-}: PeopleCardProps) {
+    socials = []
+}: PeopleCardProps) => {
     return (
         <article className="relative text-center bg-white rounded-lg border border-[#EDEDED] pt-11 pb-3">
             {/* Floating Avatar */}
@@ -70,3 +70,5 @@ export default function PeopleCard({
         </article>
     );
 }
+
+export default PeopleCard;

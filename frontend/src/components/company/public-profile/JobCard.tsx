@@ -14,8 +14,8 @@ interface JobCardProps {
 
 const JobCard: React.FC<JobCardProps> = ({ logo, company, title, types, location, salary, postedTime }) => {
   return (
-    <div className="bg-white rounded-lg border border-[#EDEDED] p-6 flex items-start gap-3">
-      <div className="">
+    <div className="bg-white rounded-lg border border-[#EDEDED] p-4 sm:p-6 flex items-start gap-3">
+      <div>
         <Image src={logo} alt={`${company} logo`} width={70} height={70} className="border border-[#EDEDED] rounded-lg" />
       </div>
       <div className="flex-1">
@@ -33,7 +33,7 @@ const JobCard: React.FC<JobCardProps> = ({ logo, company, title, types, location
           <span className="text-[#353535]">{location}</span>
         </div>
         <div className="flex justify-between items-center">
-          <div className="text-md text-[#005DDC] font-medium">{salary}</div>
+          <div className="text-xs sm:text-base text-[#005DDC] font-medium">{salary}</div>
           <div className="text-xs text-[#757575]">{postedTime}</div>
         </div>
       </div>
