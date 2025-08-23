@@ -40,25 +40,40 @@ const SkillsSection: React.FC<SkillsProps> = ({ data = [] }) => {
     });
   };
 
-  const handleSave = () => {
-    updateSkills(skills, {
-      onSuccess: () => {
-        setIsEditing(false);
-      }
-    });
-  };
+const handleSave = () => {
+  // Debugging before sending
+  console.log("🔍 Saving skills...");
+  console.log("🔍 Current skills state:", skills);
 
-  const handleAddSkill = () => {
-    if (newSkill.skill_name.trim()) {
-      setSkills([...skills, { ...newSkill }]);
-      setNewSkill({
-        skill_name: '',
-        skill_category: 'technical',
-        proficiency: 'beginner',
-        years_experience: 1
-      });
+  updateSkills(skills, {
+    onSuccess: (response) => {
+      console.log("✅ API Success:", response);
+      setIsEditing(false);
+    },
+    onError: (error) => {
+      console.error("❌ API Error:", error);
+      console.error("❌ Error response:", error?.response?.data);
+      console.error("❌ Error status:", error?.response?.status);
     }
-  };
+  });
+};
+
+
+const handleAddSkill = () => {
+  if (newSkill.skill_name.trim()) {
+    console.log("➕ Adding new skill:", newSkill);
+    setSkills([...skills, { ...newSkill }]);
+    setNewSkill({
+      skill_name: '',
+      skill_category: 'technical',
+      proficiency: 'beginner',
+      years_experience: 1
+    });
+  } else {
+    console.warn("⚠️ Tried to add empty skill");
+  }
+};
+
 
   const handleRemoveSkill = (index: number) => {
     setSkills(skills.filter((_, i) => i !== index));

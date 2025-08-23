@@ -24,6 +24,7 @@ import {
   CandidateServiceError
 } from "../types/candidate.types";
 
+
 // Import heavy operations from separate service
 import {
   processSkillsUpdate,
@@ -40,8 +41,10 @@ export const updateBasicInfo = async (
   candidateId: string,
   data: UpdateBasicInfoInput
 ): Promise<BasicInfoUpdateResult> => {
+  
   try {
-    const updatedFields: string[] = [];
+      console.log("Updating basic info for candidate:", candidateId, data);  
+      const updatedFields: string[] = [];
 
     // Update User table fields
     const userUpdateData: any = {};
@@ -53,11 +56,6 @@ export const updateBasicInfo = async (
       userUpdateData.phone_number = data.phone_number;
       updatedFields.push('phone_number');
     }
-    if (data.email !== undefined) {
-      userUpdateData.email = data.email;
-      updatedFields.push('email');
-    }
-
     // Update CandidateProfile table fields
     const profileUpdateData: any = {};
     if (data.about_me !== undefined) {

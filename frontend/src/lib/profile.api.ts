@@ -21,21 +21,25 @@ export interface ProfileCompletenessResponse {
   message: string;
 }
 
-// Simple API call
+// Simple API call for profile completeness
 export const getProfileCompleteness = async (): Promise<ProfileCompletenessResponse> => {
   const response = await api.get('/candidates/completeness');
   return response.data;
 };
 
+// ✅ NEW: Get candidate profile (same structure as login response)
+export const getCandidateProfile = async (): Promise<APIResponse> => {
+  const response = await api.get('/candidates/profile');
+  return response.data;
+};
 
 // ==================== TYPE DEFINITIONS ====================
 
 export interface BasicInfoData {
   full_name?: string;
   phone_number?: string;
-  email?: string;
   about_me?: string;
-  city?: string;
+  location?: string;
 }
 
 export interface SkillData {

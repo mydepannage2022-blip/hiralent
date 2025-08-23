@@ -157,7 +157,7 @@ export interface HeadlineUpdateResult {
 
 export interface CandidateProfileSummary {
   basic_info: CandidateBasicInfo;
-  skills: any[]; // Will be CandidateSkill[] from Prisma
+  skills: any[]; 
   profile_completeness?: ProfileCompletenessScore;
   career_prediction?: CareerPredictionResult;
   documents: CandidateDocumentInfo[];
@@ -447,7 +447,6 @@ export interface BulkProfileUpdateResult {
 export interface UpdateBasicInfoInput {
   full_name?: string;
   phone_number?: string;
-  email?: string;
   about_me?: string;  // NEW
   location?: string;  // NEW
 }
@@ -510,3 +509,27 @@ export interface BulkProfileUpdateInput {
   job_benefits?: JobBenefit[]; // NEW
 }
 
+
+ 
+export interface CandidateProfile {
+  about_me: string | null;
+  candidate_id: string;
+  city: string | null;
+  created_at: string;
+  education: string | null;
+  experience: string | null;
+  headline: string | null;
+  job_benefits: string | null;
+  languages: string | null;
+  links: string | null;
+  location: string | null;
+  minimum_salary_amount: number | null;
+  payment_period: string | null;
+  postal_code: number | null;
+  preferred_locations: string | null;
+  profile_picture_url: string | null;
+  resume_url: string | null;
+  skills: string | null;
+  updated_at: string;
+  video_intro_url: string | null;
+}

@@ -1,6 +1,7 @@
 import React from 'react';
-import { useMutation, useQueryClient ,useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { getProfileCompleteness, 
+  getCandidateProfile, // ✅ Added new import
   updateBasicInfo,
   updateSkills,
   addSkill,
@@ -22,7 +23,7 @@ import { getProfileCompleteness,
   SocialLinkData,
   JobBenefitData } from './profile.api';
 import { useProfile } from '../context/ProfileContext';
-
+import { useAuth } from '../context/AuthContext';
 export const useProfileCompleteness = () => {
   const { setProfileCompleteness } = useProfile();
 
@@ -69,20 +70,42 @@ export const useProfileCompleteness = () => {
   });
 };
 
+// ✅ FIXED: Helper function to refresh both user and profile data
+const refreshProfileData = async (setProfileData: any , updateUser: any) => {
+
+  try {
+    const profileResponse = await getCandidateProfile();
+    if (profileResponse.success) {
+      // ✅ Update profile context
+      setProfileData(profileResponse.data.profile);
+
+      // ✅ Update auth context
+      updateUser(profileResponse.data.user);
+      
+      console.log('✅ User data refreshed:', profileResponse.data.user);
+      console.log('✅ Profile data refreshed:', profileResponse.data.profile);
+    }
+  } catch (error) {
+    console.error('❌ Failed to refresh profile data:', error);
+  }
+};
 
 // ==================== BASIC INFO HOOKS ====================
 
 export const useUpdateBasicInfo = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
 
   return useMutation({
     mutationFn: updateBasicInfo,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Basic info updated:', data);
-      // Refresh profile completeness
+      
+      
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+
+      await refreshProfileData(setProfileData , updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Basic info update failed:', error?.response?.data?.message || error.message);
@@ -92,16 +115,18 @@ export const useUpdateBasicInfo = () => {
 
 // ==================== SKILLS HOOKS ====================
 
+
 export const useUpdateSkills = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: updateSkills,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Skills updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Skills update failed:', error?.response?.data?.message || error.message);
@@ -111,14 +136,15 @@ export const useUpdateSkills = () => {
 
 export const useAddSkill = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: addSkill,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Skill added:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Add skill failed:', error?.response?.data?.message || error.message);
@@ -128,14 +154,15 @@ export const useAddSkill = () => {
 
 export const useDeleteSkill = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: deleteSkill,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Skill deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Delete skill failed:', error?.response?.data?.message || error.message);
@@ -145,16 +172,19 @@ export const useDeleteSkill = () => {
 
 // ==================== EXPERIENCE HOOKS ====================
 
+// ==================== EXPERIENCE HOOKS ====================
+
 export const useUpdateExperience = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: updateExperience,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Experience updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Experience update failed:', error?.response?.data?.message || error.message);
@@ -164,14 +194,15 @@ export const useUpdateExperience = () => {
 
 export const useAddExperience = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: addExperience,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Experience added:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Add experience failed:', error?.response?.data?.message || error.message);
@@ -183,14 +214,15 @@ export const useAddExperience = () => {
 
 export const useUpdateEducation = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: updateEducation,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Education updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Education update failed:', error?.response?.data?.message || error.message);
@@ -200,14 +232,15 @@ export const useUpdateEducation = () => {
 
 export const useAddEducation = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: addEducation,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Education added:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Add education failed:', error?.response?.data?.message || error.message);
@@ -219,14 +252,15 @@ export const useAddEducation = () => {
 
 export const useUpdateLinks = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: updateLinks,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Links updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Links update failed:', error?.response?.data?.message || error.message);
@@ -236,14 +270,15 @@ export const useUpdateLinks = () => {
 
 export const useAddLink = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: addLink,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Link added:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Add link failed:', error?.response?.data?.message || error.message);
@@ -253,14 +288,15 @@ export const useAddLink = () => {
 
 export const useDeleteLink = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: deleteLink,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Link deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Delete link failed:', error?.response?.data?.message || error.message);
@@ -272,14 +308,15 @@ export const useDeleteLink = () => {
 
 export const useUpdateJobBenefits = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: updateJobBenefits,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Job benefits updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Job benefits update failed:', error?.response?.data?.message || error.message);
@@ -291,14 +328,15 @@ export const useUpdateJobBenefits = () => {
 
 export const useUploadProfilePicture = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: uploadProfilePicture,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Profile picture uploaded:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Profile picture upload failed:', error?.response?.data?.message || error.message);
@@ -310,14 +348,15 @@ export const useUploadProfilePicture = () => {
 
 export const useBulkUpdateProfile = () => {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useProfile();
-
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
   return useMutation({
     mutationFn: bulkUpdateProfile,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ Bulk profile updated:', data);
       queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
-      refreshProfile();
+      
+      await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
       console.error('❌ Bulk update failed:', error?.response?.data?.message || error.message);

@@ -18,6 +18,7 @@ import {
   UpdateHeadlineInput, 
   HeadlineUpdateResult
 } from "../types/candidate.types";
+import { generateToken } from "../utils/jwt.util";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -716,5 +717,102 @@ export const uploadProfilePicture = async (
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Profile picture upload failed: ${errorMessage}`);
+  }
+};
+
+
+export const getCandidateProfile = async (candidateId: string) => {
+  try {
+    // Get user with profile data - same as login query
+    const user = await prisma.user.findUnique({
+      where: { user_id: candidateId },
+      include: {
+        candidateProfile: true,
+        agency: {
+          select: {
+            agency_id: true,
+            name: true,
+            website: true,
+            logo_url: true,
+            status: true
+          }
+        }
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // ✅ Generate fresh token - same as login
+    const token = generateToken({
+      user_id: user.user_id,
+      role: user.role,
+      agency_id: user.agency_id,
+    });
+
+    // Clean user object - same structure as login response
+    const cleanUser = {
+      user_id: user.user_id,
+      email: user.email,
+      is_email_verified: user.is_email_verified,
+      full_name: user.full_name,
+      role: user.role,
+      phone_number: user.phone_number,
+      position: user.position,
+      linkedin_url: user.linkedin_url,
+      agency_id: user.agency_id,
+      agency: user.agency,
+    };
+
+    // Extract profile data
+    let profileData = null;
+    if (user.candidateProfile) {
+      profileData = {
+        ...user.candidateProfile,
+        // Convert dates to ISO strings to match login response format
+        created_at: user.candidateProfile.created_at.toISOString(),
+        updated_at: user.candidateProfile.updated_at.toISOString(),
+      };
+    } else {
+      // If no profile exists, return basic structure with candidate_id
+      profileData = {
+        candidate_id: candidateId,
+        about_me: null,
+        city: null,
+        created_at: new Date().toISOString(),
+        education: null,
+        experience: null,
+        headline: null,
+        job_benefits: null,
+        languages: null,
+        links: null,
+        location: null,
+        minimum_salary_amount: null,
+        payment_period: null,
+        postal_code: null,
+        preferred_locations: null,
+        profile_picture_url: null,
+        resume_url: null,
+        skills: null,
+        updated_at: new Date().toISOString(),
+        video_intro_url: null,
+      };
+    }
+
+    // ✅ Return user, profile, and token - exactly like login response
+    return {
+      user: cleanUser,
+      profile: profileData,
+      token: token
+    };
+  } catch (error) {
+    console.error("Error getting candidate profile:", error);
+    const serviceError: CandidateServiceError = new Error(
+      "Failed to get candidate profile"
+    );
+    serviceError.code = "PROFILE_FETCH_FAILED";
+    serviceError.statusCode = 500;
+    throw serviceError;
   }
 };

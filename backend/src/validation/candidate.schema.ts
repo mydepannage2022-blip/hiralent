@@ -4,14 +4,14 @@ import { UpdateLocationInput, UpdateSalaryInput } from '../types/candidate.types
 export const updateLocationSchema: z.ZodSchema<UpdateLocationInput> = z.object({
   location: z.string().min(1, 'Location is required').max(100, 'Location must be 100 characters or less').optional(),
   postalCode: z.number().min(1, 'Postal code is required').max(99999999, 'Postal code must be 8 digits or less').optional(),
-}).strict();
+});
 
 
 
 export const updateSalarySchema: z.ZodSchema<UpdateSalaryInput> = z.object({
   minimumSalary: z.number().min(0, 'Minimum salary must be non-negative').optional(),
   paymentPeriod: z.enum(['monthly', 'yearly', 'weekly']).optional(), // 👈 make optional
-}).strict();
+});
 
 export const updateHeadlineSchema = z.object({
   headline: z.string()
@@ -30,18 +30,19 @@ export const updateHeadlineSchema = z.object({
 export const updateBasicInfoSchema = z.object({
   full_name: z.string()
     .min(1, "Name is required")
-    .max(100, "Name must be 100 characters or less")
-    .optional(),
+    .max(100, "Name must be 100 characters or less"), 
   phone_number: z.string()
     .min(10, "Phone number must be at least 10 digits")
     .max(20, "Phone number must be 20 digits or less")
     .regex(/^[+]?[0-9\s\-()]+$/, "Invalid phone number format")
     .optional(),
-  email: z.string()
-    .email("Invalid email format")
-    .max(255, "Email must be 255 characters or less")
+  location: z.string()                                 
+    .max(255, "Location must be 255 characters or less")
+    .optional(),
+  about_me: z.string()
+    .max(500, "About me must be 500 characters or less")
     .optional()
-}).strict().refine(
+}).refine(
   (data) => Object.keys(data).length > 0,
   { message: "At least one field must be provided" }
 );
@@ -61,14 +62,14 @@ export const skillSchema = z.object({
     .min(0, "Years of experience must be non-negative")
     .max(50, "Years of experience must be 50 or less")
     .optional()
-}).strict();
+});
 
 // Skills Update Schema
 export const updateSkillsSchema = z.object({
   skills: z.array(skillSchema)
     .min(1, "At least one skill is required")
     .max(50, "Maximum 50 skills allowed")
-}).strict();
+});
 
 // Add Single Skill Schema
 export const addSkillSchema = skillSchema;
@@ -93,14 +94,14 @@ export const experienceSchema = z.object({
   currently_working: z.boolean().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional()
-}).strict();
+});
 
 // Experience Update Schema
 export const updateExperienceSchema = z.object({
   experiences: z.array(experienceSchema)
     .min(1, "At least one experience is required")
     .max(20, "Maximum 20 experiences allowed")
-}).strict();
+});
 
 // Add Single Experience Schema
 export const addExperienceSchema = experienceSchema;
@@ -123,14 +124,14 @@ export const educationSchema = z.object({
     .max(20, "Grade must be 20 characters or less")
     .optional(),
   currently_studying: z.boolean().optional()
-}).strict();
+});
 
 // Education Update Schema
 export const updateEducationSchema = z.object({
   education: z.array(educationSchema)
     .min(1, "At least one education entry is required")
     .max(10, "Maximum 10 education entries allowed")
-}).strict();
+});
 
 // Add Single Education Schema
 export const addEducationSchema = educationSchema;
@@ -141,7 +142,7 @@ export const bulkProfileUpdateSchema = z.object({
   skills: z.array(skillSchema).max(50).optional(),
   experience: z.array(experienceSchema).max(20).optional(),
   education: z.array(educationSchema).max(10).optional()
-}).strict().refine(
+}).refine(
   (data) => Object.keys(data).length > 0,
   { message: "At least one section must be provided" }
 );
@@ -158,12 +159,12 @@ export const socialLinkSchema = z.object({
   display_name: z.string()
     .max(50, "Display name must be 50 characters or less")
     .optional()
-}).strict();
+});
 
 export const updateLinksSchema = z.object({
   links: z.array(socialLinkSchema)
     .max(10, "Maximum 10 links allowed")
-}).strict();
+});
 
 // Job Benefits Schema
 export const jobBenefitSchema = z.object({
@@ -177,9 +178,9 @@ export const jobBenefitSchema = z.object({
   notes: z.string()
     .max(200, "Notes must be 200 characters or less")
     .optional()
-}).strict();
+});
 
 export const updateJobBenefitsSchema = z.object({
   job_benefits: z.array(jobBenefitSchema)
     .max(20, "Maximum 20 benefits allowed")
-}).strict();
+});

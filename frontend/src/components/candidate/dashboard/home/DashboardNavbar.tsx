@@ -196,4 +196,4 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   )
 }
 
-export default DashboardNavbar
+export default DashboardNavbar  

@@ -12,7 +12,8 @@ import {
   updateSalaryHandler,
   uploadProfilePictureController,
   updateHeadlineController,
-  getHeadlineController 
+  getHeadlineController,
+  getProfileController,
 } from '../controller/candidate.controller';
 
 // Profile Management Controllers
@@ -43,7 +44,7 @@ import {
   completeAssessmentController,
   getResultsController,
   getHistoryController,
-  getRecommendationsController
+  getRecommendationsController,
 } from '../controller/candidate/assessment.controller';
 import {
   validateAssessmentOwnership,
@@ -131,6 +132,8 @@ router.get('/headline/:candidateId', getHeadlineController);
 router.get('/profile-summary', getProfileSummaryController);
 
 router.get('/profile-summary/:candidateId', getProfileSummaryController);
+
+router.get('/profile', checkAuth, getProfileController);
 
 router.get('/completeness', getProfileCompletenessController);
 
