@@ -57,9 +57,8 @@ const MessagesModule = () => {
       hasNotification: false
     }
   ];
-
-  return (
-    <div className="bg-white w-full rounded-xl">
+  return  (
+    <div className="bg-white w-full rounded-xl hidden md:block">
       <div className="flex items-center justify-between p-6 pb-4">
         <h3 className="text-lg font-semibold text-gray-900">Messages</h3>
         <button className="text-blue-600 text-sm font-medium hover:text-blue-700">

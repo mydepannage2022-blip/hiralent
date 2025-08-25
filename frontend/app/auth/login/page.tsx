@@ -152,7 +152,7 @@ const LoginPage = () => {
 
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass =
-      "w-full px-4 py-3 border rounded-lg focus:outline-none text-sm text-[#757575]";
+      "w-full px-4 py-3 border rounded-lg focus:outline-none text-xs text-[#757575]";
     const hasError = touched[fieldName] && errors[fieldName];
 
     if (hasError) {
@@ -177,8 +177,9 @@ const LoginPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs  mb-1">
             Email<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -204,8 +205,9 @@ const LoginPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Password<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -261,8 +263,8 @@ const LoginPage = () => {
         </motion.div>
 
         {/* Forgot Password Link */}
-        <div className="text-right">
-          <SmartLink href="/auth/forgot-password" className="text-[#1B73E8] hover:underline text-sm">
+        <div className="text-right mb-1">
+          <SmartLink href="/auth/forgot-password" className="text-[#1B73E8] hover:underline text-xs">
             Forgot your password?
           </SmartLink>
         </div>

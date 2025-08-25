@@ -116,27 +116,27 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="w-full max-w-md space-y-6 lg:space-y-8">
+          <div className="w-full max-w-md space-y-6 lg:space-y-8 mb-2">
             {/* Progress Steps */}
             {currentStep && (
-              <div className="flex justify-center">
+              <div className="flex justify-center mb-2">
                 <ProgressSteps currentStep={currentStep} steps={signupSteps} />
               </div>
             )}
 
             {/* Logo */}
             <motion.div
-              className="flex justify-center items-center"
+              className="flex justify-center items-center mb-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
-              <img src="/images/logo.png" alt="logo" className="w-[180px] lg:w-[200px]" />
+              <img src="/images/logo.png" alt="logo" className="w-[120px] lg:w-[160px]" />
             </motion.div>
 
             {/* Tab Selection */}
             {showTabs && (
-              <div className="flex justify-center">
+              <div className="flex justify-center my-2">
                 <TabSelector activeTab={activeTab} />
               </div>
             )}
@@ -144,14 +144,14 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
             {/* Title and Subtitle */}
             {(title || subtitle) && (
               <motion.div
-                className="flex flex-col justify-center items-center gap-2 text-[#222] text-center"
+                className="flex flex-col justify-center items-center gap-1 text-[#222] text-center mb-1"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
               >
-                {title && <h2 className="text-xl lg:text-2xl font-bold">{title}</h2>}
+                {title && <h2 className="text-lg lg:text-xl font-bold">{title}</h2>}
                 {subtitle && (
-                  <p className="text-xs lg:text-sm text-gray-600 max-w-sm">
+                  <p className="text-xs lg:text-xs text-gray-600 max-w-sm">
                     {subtitle}
                   </p>
                 )}
