@@ -128,7 +128,7 @@ export interface ProfileCompletenessScore {
   education_score: number;
   document_score: number;
   headline_score: number;
-  profile_picture_score: number; // Add this line
+  profile_picture_score: number; 
   missing_fields: string[];
   suggestions: string[];
 }
@@ -157,14 +157,14 @@ export interface HeadlineUpdateResult {
 
 export interface CandidateProfileSummary {
   basic_info: CandidateBasicInfo;
-  skills: any[]; 
+  skills: PopulatedSkill[]; 
   profile_completeness?: ProfileCompletenessScore;
   career_prediction?: CareerPredictionResult;
   documents: CandidateDocumentInfo[];
 }
 
 export interface UpdateHeadlineInput {
-  headline: string; // Max 120 characters
+  headline: string; 
 }
 
 // API Response types
@@ -529,7 +529,43 @@ export interface CandidateProfile {
   preferred_locations: string | null;
   profile_picture_url: string | null;
   resume_url: string | null;
-  skills: string | null;
+  skills: string[];
   updated_at: string;
   video_intro_url: string | null;
+}
+
+export interface PopulatedSkill {
+  skill_id: string;
+  skill_name: string;
+  skill_category?: string;
+  proficiency?: string;
+  years_experience?: number;
+  confidence_score?: number;
+  source_type: string;
+  is_verified: boolean;
+}
+
+export interface CandidateProfileWithSkills extends Omit<CandidateProfile, 'skills'> {
+  skills: PopulatedSkill[]; // Populated skills instead of IDs
+}
+
+export interface SkillAddResult {
+  success: boolean;
+  message: string;
+  skill: PopulatedSkill;
+  total_skills_count: number;
+}
+
+export interface SkillRemoveResult {
+  success: boolean;
+  message: string;
+  removed_skill_id: string;
+  total_skills_count: number;
+}
+
+export interface SkillsUpdateResult {
+  success: boolean;
+  message: string;
+  skills: PopulatedSkill[];
+  total_skills_count: number;
 }

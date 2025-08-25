@@ -46,6 +46,23 @@ export interface UserWithProfiles {
   candidateProfile?: any;
   companyProfile?: any;
   agencyAdminProfile?: any;
+  
+  // Add candidateSkills relation for login function
+  candidateSkills?: Array<{
+    skill_id: string;
+    candidate_id: string;
+    skill_name: string;
+    skill_category: string | null;
+    proficiency: string | null;
+    years_experience: number | null;
+    confidence_score: number | null;
+    source_type: string;
+    source_document_id: string | null;
+    is_verified: boolean;
+    created_at: Date;
+    updated_at: Date;
+  }>;
+  
   agency?: {
     agency_id: string;
     name: string;
@@ -84,7 +101,7 @@ export interface CandidateProfile {
   profile_picture_url?: string | null;
   headline?: string | null;
   about_me?: string | null;
-  skills?: string | null;
+  skills?: any; // Changed: Can be string[] (IDs) or PopulatedSkill[] depending on context
   education?: string | null;
   experience?: string | null;
   languages?: string | null;
@@ -96,8 +113,8 @@ export interface CandidateProfile {
   payment_period?: string | null;
   job_benefits?: string | null;
   links?: string | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
 }
 
 export interface CompanyProfile {
@@ -130,8 +147,8 @@ export interface CompanyProfile {
   rating?: number | null;
   total_jobs_posted?: number | null;
   active_jobs_count?: number | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
 }
 
 export interface AgencyAdminProfile {
@@ -146,8 +163,8 @@ export interface AgencyAdminProfile {
   languages?: string[] | null;
   years_experience?: number | null;
   certifications?: string[] | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
 }
 
 // ✅ UPDATED: Success login response with separate profile

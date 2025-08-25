@@ -43,10 +43,13 @@ export interface BasicInfoData {
 }
 
 export interface SkillData {
+  skill_id?: string;       
   skill_name: string;
-  skill_category: string;
-  proficiency: string;
+  skill_category: 'technical' | 'soft' | 'language' | 'certification';
+  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   years_experience?: number;
+  source_type?: string;   
+  is_verified?: boolean;
 }
 
 export interface ExperienceData {

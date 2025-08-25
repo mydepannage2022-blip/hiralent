@@ -489,14 +489,13 @@ model JobVector {
 
 model CandidateProfile {
   candidate_id          String   @id
-  
   resume_url           String?
   video_intro_url      String?
   profile_picture_url   String?
   headline             String?  @db.VarChar(120)
   about_me             String?  @db.VarChar(500)   
 
-  skills               String?
+  skills               String[]
   education            String?
   experience           String?
   languages            String?

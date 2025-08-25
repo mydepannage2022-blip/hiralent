@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Briefcase, X, Check, Plus, Trash2 } from 'lucide-react';
 import { useUpdateSkills, useAddSkill, useDeleteSkill } from '@/src/lib/profile.queries';
 import { SkillData } from '@/src/lib/profile.api';
+import { useProfile } from '@/src/context/ProfileContext';
 
-interface SkillsProps {
-  data: SkillData[];
-}
-
-const SkillsSection: React.FC<SkillsProps> = ({ data = [] }) => {
+const SkillsSection: React.FC = () => {
+  const { profileData, setProfileData } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [skills, setSkills] = useState<SkillData[]>(data);
+  const [skills, setSkills] = useState<SkillData[]>([]);
+
   const [newSkill, setNewSkill] = useState<SkillData>({
     skill_name: '',
     skill_category: 'technical',
@@ -24,14 +23,20 @@ const SkillsSection: React.FC<SkillsProps> = ({ data = [] }) => {
   const { mutate: addSkill, isPending: isAdding } = useAddSkill();
   const { mutate: deleteSkill, isPending: isDeleting } = useDeleteSkill();
 
+  useEffect(() => {
+    if (profileData?.skills) {
+      setSkills(profileData.skills);
+    }
+  }, [profileData]);
+
   const handleEdit = () => {
     setIsEditing(true);
-    setSkills([...data]);
+    setSkills([...profileData?.skills || []]);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setSkills([...data]);
+    setSkills([...profileData?.skills || []]);
     setNewSkill({
       skill_name: '',
       skill_category: 'technical',
@@ -40,44 +45,46 @@ const SkillsSection: React.FC<SkillsProps> = ({ data = [] }) => {
     });
   };
 
-const handleSave = () => {
-  // Debugging before sending
-  console.log("🔍 Saving skills...");
-  console.log("🔍 Current skills state:", skills);
+  const handleSave = () => {
+    updateSkills(skills, {
+      onSuccess: () => {
+        setIsEditing(false);
+        setProfileData({
+          ...profileData,
+          skills: [...skills],
+        });
+      },
+      onError: (error) => {
+        console.error("❌ API Error:", error);
+      }
+    });
+  };
 
-  updateSkills(skills, {
-    onSuccess: (response) => {
-      console.log("✅ API Success:", response);
-      setIsEditing(false);
-    },
-    onError: (error) => {
-      console.error("❌ API Error:", error);
-      console.error("❌ Error response:", error?.response?.data);
-      console.error("❌ Error status:", error?.response?.status);
+  const handleAddSkill = () => {
+    if (newSkill.skill_name.trim()) {
+      setSkills([...skills, { ...newSkill }]);
+      setNewSkill({
+        skill_name: '',
+        skill_category: 'technical',
+        proficiency: 'beginner',
+        years_experience: 1
+      });
     }
-  });
-};
+  };
 
-
-const handleAddSkill = () => {
-  if (newSkill.skill_name.trim()) {
-    console.log("➕ Adding new skill:", newSkill);
-    setSkills([...skills, { ...newSkill }]);
-    setNewSkill({
-      skill_name: '',
-      skill_category: 'technical',
-      proficiency: 'beginner',
-      years_experience: 1
+const handleRemoveSkill = (index: number) => {
+  const skillToDelete = skills[index];
+  if (skillToDelete.skill_id) {
+    deleteSkill(skillToDelete.skill_id, {
+      onSuccess: () => {
+        console.log("✅ Deleted skill:", skillToDelete.skill_id);
+      }
     });
   } else {
-    console.warn("⚠️ Tried to add empty skill");
+    // unsaved skill
+    setSkills(skills.filter((_, i) => i !== index));
   }
 };
-
-
-  const handleRemoveSkill = (index: number) => {
-    setSkills(skills.filter((_, i) => i !== index));
-  };
 
   const handleSkillChange = (index: number, field: keyof SkillData, value: string | number) => {
     const updatedSkills = [...skills];
@@ -94,7 +101,7 @@ const handleAddSkill = () => {
     }
   };
 
-  const hasContent = data && data.length > 0;
+  const hasContent = profileData?.skills?.length > 0;
 
   return (
     <motion.div 
@@ -102,7 +109,6 @@ const handleAddSkill = () => {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
     >
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -141,19 +147,15 @@ const handleAddSkill = () => {
         )}
       </div>
 
-      {/* Content */}
       {!isEditing ? (
         <div>
           {hasContent ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {data.map((skill, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-50 rounded-lg p-3 border border-gray-200"
-                >
+              {profileData.skills.map((skill : any, index : number) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 text-sm">{skill.skill_name}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProficiencyColor(skill.proficiency)}`}>
+                    <span className={`px-2 py-1 rounded-full text-[9px] font-medium ${getProficiencyColor(skill.proficiency)}`}>
                       {skill.proficiency}
                     </span>
                   </div>
@@ -181,7 +183,6 @@ const handleAddSkill = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Existing Skills */}
           {skills.map((skill, index) => (
             <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 bg-gray-50 rounded-lg">
               <div>
@@ -190,30 +191,27 @@ const handleAddSkill = () => {
                   type="text"
                   value={skill.skill_name}
                   onChange={(e) => handleSkillChange(index, 'skill_name', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="e.g. JavaScript"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                 />
               </div>
-              
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
                 <select
                   value={skill.skill_category}
                   onChange={(e) => handleSkillChange(index, 'skill_category', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                 >
                   <option value="technical">Technical</option>
                   <option value="soft">Soft Skill</option>
                   <option value="language">Language</option>
                 </select>
               </div>
-              
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency</label>
                 <select
                   value={skill.proficiency}
                   onChange={(e) => handleSkillChange(index, 'proficiency', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                 >
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Intermediate</option>
@@ -221,7 +219,6 @@ const handleAddSkill = () => {
                   <option value="expert">Expert</option>
                 </select>
               </div>
-              
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Years</label>
                 <input
@@ -230,10 +227,9 @@ const handleAddSkill = () => {
                   max="50"
                   value={skill.years_experience || 1}
                   onChange={(e) => handleSkillChange(index, 'years_experience', parseInt(e.target.value))}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                 />
               </div>
-              
               <div className="flex items-end">
                 <button
                   onClick={() => handleRemoveSkill(index)}
@@ -245,8 +241,6 @@ const handleAddSkill = () => {
               </div>
             </div>
           ))}
-
-          {/* Add New Skill */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Skill Name</label>
@@ -254,30 +248,28 @@ const handleAddSkill = () => {
                 type="text"
                 value={newSkill.skill_name}
                 onChange={(e) => setNewSkill({...newSkill, skill_name: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="e.g. Python"
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
               />
             </div>
-            
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
               <select
                 value={newSkill.skill_category}
-                onChange={(e) => setNewSkill({...newSkill, skill_category: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                onChange={(e) => setNewSkill({ ...newSkill, skill_category: e.target.value as SkillData['skill_category'] })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
               >
                 <option value="technical">Technical</option>
                 <option value="soft">Soft Skill</option>
                 <option value="language">Language</option>
+                <option value="certification">Certification</option>
               </select>
             </div>
-            
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency</label>
               <select
                 value={newSkill.proficiency}
-                onChange={(e) => setNewSkill({...newSkill, proficiency: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                onChange={(e) => setNewSkill({ ...newSkill, proficiency: e.target.value as SkillData['proficiency'] })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
               >
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
@@ -285,7 +277,6 @@ const handleAddSkill = () => {
                 <option value="expert">Expert</option>
               </select>
             </div>
-            
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Years</label>
               <input
@@ -294,10 +285,9 @@ const handleAddSkill = () => {
                 max="50"
                 value={newSkill.years_experience || 1}
                 onChange={(e) => setNewSkill({...newSkill, years_experience: parseInt(e.target.value)})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
               />
             </div>
-            
             <div className="flex items-end">
               <button
                 onClick={handleAddSkill}

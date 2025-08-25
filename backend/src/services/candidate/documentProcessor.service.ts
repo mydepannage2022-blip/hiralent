@@ -184,17 +184,35 @@ const updateCandidateProfile = async (
       where: { candidate_id: candidateId },
     });
 
+    // Get all skill IDs that were extracted and saved
+    const extractedSkills = await prisma.candidateSkill.findMany({
+      where: { 
+        candidate_id: candidateId,
+        source_type: "cv_extraction" 
+      },
+      select: { skill_id: true }
+    });
+
+    const skillIds = extractedSkills.map(skill => skill.skill_id);
+
     const profileData = {
-      headline: extractedData.headline ? extractedData.headline.substring(0, 120) : undefined, // NEW - Add headline
-      skills: JSON.stringify(extractedData.skills || []),
+      headline: extractedData.headline ? extractedData.headline.substring(0, 120) : undefined,
+      skills: skillIds, // Array of skill IDs instead of JSON
       education: JSON.stringify(extractedData.education || []),
       experience: JSON.stringify(extractedData.experience || []),
     };
 
     if (existingProfile) {
+      // Merge existing skill IDs with new ones (avoid duplicates)
+      const existingSkillIds = existingProfile.skills || [];
+      const mergedSkillIds = [...new Set([...existingSkillIds, ...skillIds])];
+      
       await prisma.candidateProfile.update({
         where: { candidate_id: candidateId },
-        data: profileData,
+        data: {
+          ...profileData,
+          skills: mergedSkillIds, // Merged skill IDs
+        },
       });
     } else {
       await prisma.candidateProfile.create({
@@ -205,7 +223,8 @@ const updateCandidateProfile = async (
       });
     }
 
-    // NEW - Log headline extraction
+    // Log results
+    console.log(`Profile updated with ${skillIds.length} new skill IDs`);
     if (extractedData.headline) {
       console.log("Headline extracted and stored:", extractedData.headline);
     }
@@ -301,7 +320,7 @@ export const updateCandidateVector = async (
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: true,
+        candidateSkills: true // Get skills from CandidateSkill table directly
       },
     });
 
@@ -310,8 +329,9 @@ export const updateCandidateVector = async (
     }
 
     // Create text representation for embedding
-    const headlineText = candidate.candidateProfile?.headline || ""; // NEW - Include headline
+    const headlineText = candidate.candidateProfile?.headline || "";
 
+    // Use actual skill names from CandidateSkill table (not profile JSON)
     const skillsText = candidate.candidateSkills
       .map((s) => `${s.skill_name} (${s.proficiency})`)
       .join(", ");
@@ -328,7 +348,7 @@ export const updateCandidateVector = async (
           .join(", ")
       : "";
 
-    // NEW - Include headline in combined text
+    // Include headline in combined text
     const combinedText = `Headline: ${headlineText}. Skills: ${skillsText}. Experience: ${experienceText}. Education: ${educationText}`;
 
     // Create embeddings
@@ -351,7 +371,7 @@ export const updateCandidateVector = async (
       experience_vector: experienceVector,
       education_vector: educationVector,
       combined_vector: combinedVector,
-      vector_version: "v1.0",
+      vector_version: "v1.1", // Updated version for new skill flow
     };
 
     if (existingVector) {
@@ -368,12 +388,12 @@ export const updateCandidateVector = async (
       });
     }
 
-    // Store in Pinecone - NEW: include headline in metadata
+    // Store in Pinecone - include headline in metadata
     await storeCandidateVector(candidateId, combinedVector, {
       skills_count: candidate.candidateSkills.length,
       full_name: candidate.full_name,
       email: candidate.email,
-      headline: headlineText, // NEW - Add headline to metadata
+      headline: headlineText,
     });
 
     return { success: true };
