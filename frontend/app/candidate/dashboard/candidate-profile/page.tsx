@@ -73,7 +73,7 @@ const page = () => {
         
         {/* Professional Skills Section */}
         <div className="w-full">
-          <SkillsSection data={skillsData} />
+          <SkillsSection/>
         </div>
         
         {/* Work Experience Section */}
