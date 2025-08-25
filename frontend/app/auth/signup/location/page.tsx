@@ -30,7 +30,7 @@ const LocationPage = () => {
       outline: "none",
       boxShadow: "none",
       border: "none",
-      fontSize: "16px",
+      fontSize: "12px",
     }),
     option: (base: any, state: any) => ({
       ...base,
@@ -70,8 +70,9 @@ const LocationPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs  mb-1">
             Location<span className="text-red-500">*</span>
           </label>
           <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
@@ -81,7 +82,7 @@ const LocationPage = () => {
               id="location"
               placeholder="Search or Select Location"
               isSearchable
-              className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
+              className="w-full text-xs  text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
               classNamePrefix="select"
               styles={customStyles}
               required
@@ -95,8 +96,9 @@ const LocationPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Postal Code<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -104,7 +106,7 @@ const LocationPage = () => {
             name="postalCode"
             id="postalCode"
             placeholder="Enter your Postal or Zip Code"
-            className="w-full outline-none px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
+            className="w-full outline-none px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-[12px] text-[#757575] mb-1"
             onChange={(e) => setPostalCodeInput(Number(e.target.value))}
             whileFocus={{ scale: 1.02 }}
             transition={{ duration: 0.3 }}

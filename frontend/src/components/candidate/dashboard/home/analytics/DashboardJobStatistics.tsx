@@ -25,10 +25,10 @@ const DashboardJobStatistics = () => {
 
   return (
     <div className="bg-white w-full rounded-xl p-6" > {/* Add inline style */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between flex-col mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Job statistics</h3>
-          <p className="text-sm text-gray-500">Showing Jobstatistic Jul 19-25</p>
+          <p className="text-sm text-gray-500 mb-2">Showing Jobstatistic Jul 19-25</p>
         </div>
         <div className="flex space-x-2">
           {periods.map((period) => (
@@ -48,7 +48,7 @@ const DashboardJobStatistics = () => {
       </div>
 
         {/* Statistics Section */}
-        <div className="flex justify-start items-center gap-6 ">
+        <div className="flex justify-start items-center flex-col gap-6 ">
           <h4 className="text-base font-medium text-gray-900">Statistics</h4>
           <div className="flex flex gap-4">
             <div className="flex items-center space-x-2">
@@ -64,9 +64,9 @@ const DashboardJobStatistics = () => {
       <div className="w-full">
 
         {/* Chart Section */}
-        <div className="w-full flex justify-between items-start" > {/* Remove z-[1] class, add inline style */}
+        <div className="w-full flex justify-between items-start flex-col" > {/* Remove z-[1] class, add inline style */}
 
-          <div className="w-4/5 h-64" > {/* Add inline style */}
+          <div className="w-full md-w-4/5 h-64" > {/* Add inline style */}
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }} style={{ zIndex: -1 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -102,12 +102,12 @@ const DashboardJobStatistics = () => {
             </ResponsiveContainer>
           </div>
 
-      <div className="flex flex-col gap-4 justify-center items-start">
-        <div className="text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
+      <div className="w-full flex flex-col sm:flex-row gap-4 justify-center  items-start">
+        <div className="w-full text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <span className="text-sm text-gray-600">Job views</span>
           </div>
-          <div className="text-3xl font-bold text-gray-900 mb-1">2,342</div>
+          <div className=" text-3xl font-bold text-gray-900 mb-1">2,342</div>
           <div className="flex items-center justify-center space-x-1">
             <span className="text-sm text-gray-500">This week</span>
             <span className="text-sm font-medium text-green-600">6.4%</span>
@@ -117,7 +117,7 @@ const DashboardJobStatistics = () => {
           </div>
         </div>
         
-        <div className="text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
+        <div className="w-full text-center flex flex-col ring ring-[#EDEDED] rounded-xl p-2">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <span className="text-sm text-gray-600">Job views</span>
           </div>
