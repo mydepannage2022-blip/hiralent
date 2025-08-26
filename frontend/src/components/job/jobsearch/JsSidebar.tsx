@@ -5,13 +5,13 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const JsSidebar = () => {
     const [openSections, setOpenSections] = useState({
-        worklanguage: true,
-        publicationdate: true,
-        educationlevel: true,
-        jobtype: true,
-        distance: true,
-        salarymonthly: true,
-        workmodes: true,
+        worklanguage: false,
+        publicationdate: false,
+        educationlevel: false,
+        jobtype: false,
+        distance: false,
+        salarymonthly: false,
+        workmodes: false,
     });
 
     const toggleSection = (section: keyof typeof openSections) => {
@@ -69,20 +69,12 @@ const JsSidebar = () => {
     };
 
     return (
-        <div className="w-full max-w-[18rem] border border-[#EDEDED] py-6 px-2 rounded-lg">
+        <div className="lg:w-[24rem] w-full max-w-[18rem] border border-[#EDEDED] py-6 px-2 rounded-lg">
             {/* Filters Header */}
             <div className='px-4'>
                 <h2 className="text-lg font-medium mb-3">All Filters</h2>
                 <div className="mb-2">
                     <h2 className="text-lg font-medium mb-2">Active Filters</h2>
-                    <div className="flex flex-wrap gap-2">
-                        <span className="bg-[#EDEDED] text-sm text-[#757575] px-2 py-1 rounded-lg ">
-                            Culture & values <span className='text-black font-medium cursor-pointer'>✕</span>
-                        </span>
-                        <span className="bg-[#EDEDED] text-sm text-[#757575] px-2 py-1 rounded-lg">
-                            Company size 100+ <span className='text-black font-medium cursor-pointer'>✕</span>
-                        </span>
-                    </div>
                 </div>
             </div>
 
