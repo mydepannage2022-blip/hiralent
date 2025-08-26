@@ -54,12 +54,12 @@ function NotificationAccount() {
   };
 
   return (
-    <div className="border border-gray-300 p-5 rounded-xl ">
+    <div className="border border-gray-300 p-4 rounded-xl mb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center">
           <Bell className="text-gray-700" />
-          <span className="text-lg font-bold ml-2">Notifications</span>
+          <span className="font-medium  ml-2">Notifications</span>
         </div>
       </div>
 
@@ -68,11 +68,11 @@ function NotificationAccount() {
         {notificationOptions.map(({ key, title, description }) => (
           <div
             key={key}
-            className="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50 transition"
+            className="flex justify-between items-center md:p-3 rounded-lg md:hover:bg-gray-50 transition"
           >
             <div className="flex flex-col">
-              <span className="text-base font-semibold">{title}</span>
-              <span className="text-gray-500 text-sm">{description}</span>
+              <span className="text-sm md:text-base font-semibold">{title}</span>
+              <span className="text-gray-500 text-xs md:text-sm">{description}</span>
             </div>
             <Toggle enabled={toggles[key]} onToggle={() => handleToggle(key)} />
           </div>
