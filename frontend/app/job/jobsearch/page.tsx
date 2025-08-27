@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import CompanySearch from '../../../src/components/company/discover/CompanySearch';
 import { locationOptions } from "../../../src/constants/groupedLocationOptions";
 import JsSidebar from '../../../src/components/job/jobsearch/JsSidebar';
-import OffCanvasSidebar from '../../../src/components/company/discover/OffCanvasSidebar';
+import OffCanvasSidebarJs from '../../../src/components/job/jobsearch/OffCanvasSidebarJs';
 import { Filter } from "lucide-react";
 import JsJobCard from '../../../src/components/job/jobsearch/JsJobCard';
 import Pagination from "../../../src/components/company/discover/Pagination";
@@ -69,7 +69,7 @@ const JobSearchPage = () => {
                     </div>
 
                     {/* OffCanvasSidebar */}
-                    <OffCanvasSidebar
+                    <OffCanvasSidebarJs
                         isOpen={isSidebarOpen}
                         onClose={() => setSidebarOpen(false)}
                     />
@@ -77,7 +77,7 @@ const JobSearchPage = () => {
                     <div className='flex flex-col gap-4 sm:mx-11 md:mx-22 lg:mx-0 mx-2 lg:w-[780px] xl:w-[925px] w-full'>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <JsJobCard
-                                logo="/images/bmw-logo.png"
+                                logo="/images/jobco1.jpg"
                                 company="Sanford Group"
                                 title="UI/UX Designer"
                                 types={["Full-Time", "Part-Time"]}
@@ -87,7 +87,7 @@ const JobSearchPage = () => {
                             />
 
                             <JsJobCard
-                                logo="/images/bmw-logo.png"
+                                logo="/images/jobco2.svg"
                                 company="Rosenbaum LLC"
                                 title="UI/UX Designer"
                                 types={["Full-Time", "Part-Time"]}
@@ -217,7 +217,7 @@ const JobSearchPage = () => {
                             />
 
                             <JsJobCard
-                                logo="/images/bmw-logo.png"
+                                logo="/images/jobco14.png"
                                 company="Brekke-Willms"
                                 title="UI/UX Designer"
                                 types={["Full-Time"]}
@@ -237,7 +237,7 @@ const JobSearchPage = () => {
                             />
 
                             <JsJobCard
-                                logo="/images/bmw-logo.png"
+                                logo="/images/jobco15.png"
                                 company="Abernathy Ltd"
                                 title="UI/UX Designer"
                                 types={["Hybrid", "Part-Time"]}
@@ -247,7 +247,7 @@ const JobSearchPage = () => {
                             />
 
                             <JsJobCard
-                                logo="/images/bmw-logo.png"
+                                logo="/images/jobco16.png"
                                 company="Conn Group"
                                 title="UI/UX Designer"
                                 types={["Full-Time", "Part-Time"]}
