@@ -198,6 +198,9 @@ const MetaSection: React.FC = () => {
 
   const headlineOrEmail = getHeadlineOrEmail();
 
+
+
+  
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
