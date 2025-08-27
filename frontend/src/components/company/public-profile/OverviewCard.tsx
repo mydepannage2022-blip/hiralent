@@ -14,7 +14,7 @@ interface OverviewCardProps {
     dislikes: number;
 }
 
-export default function OverviewCard({
+const OverviewCard = ({
     name,
     role,
     avatar,
@@ -22,18 +22,18 @@ export default function OverviewCard({
     text,
     likes,
     dislikes
-}: OverviewCardProps) {
+}: OverviewCardProps) => {
     return (
         <div className="bg-white border border-[#EDEDED] rounded-lg p-4 flex flex-col justify-between">
             {/* Top section */}
-            <div className="flex items-start gap-5">
+            <div className="flex items-start gap-2 sm:gap-5">
                 {/* Big Quote Mark Image */}
                 <Image
                     src="/images/quote.png" // your exported asset path
                     alt="quote"
                     width={32}
                     height={32}
-                    className="object-contain flex-shrink-0 mt-1"
+                    className="object-contain flex-shrink-0 sm:mt-1"
                 />
 
                 {/* Avatar + Name/Role + Rating */}
@@ -45,7 +45,7 @@ export default function OverviewCard({
                             className="w-10 h-10 rounded-full object-cover"
                         />
                         <div>
-                            <p className="text-lg font-semibold text-gray-900">{name}</p>
+                            <p className="text-sm sm:text-lg font-semibold text-gray-900">{name}</p>
                             <p className="text-sm text-[#A5A5A5]">{role}</p>
                         </div>
                     </div>
@@ -73,7 +73,7 @@ export default function OverviewCard({
             </div>
 
             {/* Review Text */}
-            <p className="text-lg mt-4 text-[#222222] leading-relaxed">
+            <p className="text-base sm:text-lg mt-4 text-[#222222] leading-relaxed">
                 {text}
             </p>
 
@@ -95,3 +95,5 @@ export default function OverviewCard({
         </div>
     );
 }
+
+export default OverviewCard;

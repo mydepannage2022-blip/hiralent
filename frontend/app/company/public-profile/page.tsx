@@ -2,19 +2,20 @@
 
 import React from 'react';
 import Image from 'next/image';
+import CompanyInfoCard from '@/src/components/company/public-profile/CompanyInfoCard';
+import Tabs from '@/src/components/company/public-profile/PublicProfileTabs';
 import PeopleCard from '@/src/components/company/public-profile/PeopleCard';
 import OverviewCard from '@/src/components/company/public-profile/OverviewCard';
-import Tabs from '@/src/components/company/public-profile/PublicProfileTabs';
-import CompanyInfoCard from '@/src/components/company/public-profile/CompanyInfoCard';
+import { ChevronRight } from "lucide-react";
 import JobCard from '@/src/components/company/public-profile/JobCard';
 
 const publicProfile = () => {
     return (
         <div className="text-black">
-            <div className="mt-35 mb-20">
+            <div className="mt-30 md:mt-35 mb-20">
                 <div className='mb-12'>
                     {/* Banner */}
-                    <div className="relative h-76 w-full overflow-hidden">
+                    <div className="relative h-35 sm:h-45 md:h-55 lg:h-75 w-full overflow-hidden">
                         <Image
                             src="/images/publicprofile-banner.png"
                             alt="Company banner"
@@ -25,7 +26,7 @@ const publicProfile = () => {
 
                     <div className="relative w-full">
                         {/* Card */}
-                        <div className="relative z-10 -mt-20 px-4">
+                        <div className="relative z-10 -mt-10 sm:-mt-12 md:-mt-16 lg:-mt-20 px-4">
                             <CompanyInfoCard
                                 logo="/images/bmw-logo.png"
                                 name="BMW"
@@ -40,12 +41,13 @@ const publicProfile = () => {
                     </div>
                 </div>
 
-                <div className="mx-25">
+                <div className="mx-6 sm:mx-12 md:mx-18 lg:mx-24">
                     <Tabs />
                     {/* People Section */}
-                    <div className="py-4">
-                        <h1 className="text-3xl font-bold mb-18">People at BMW</h1>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                    <div className="py-6 sm:py-8 sm:mb-8">
+                        <h1 className="text-xl sm:text-3xl font-bold mb-18">People at BMW</h1>
+                        {/* Row + column gaps controlled separately */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-12 items-start">
                             <PeopleCard
                                 image="/images/people1.png"
                                 name="Cameron Williamson"
@@ -100,8 +102,8 @@ const publicProfile = () => {
                     </div>
 
                     {/* Overview Section */}
-                    <div className="py-8">
-                        <h1 className="text-3xl font-bold mb-8">Overview</h1>
+                    <div className="py-6 sm:py-8 sm:mb-8">
+                        <h1 className="text-xl sm:text-3xl font-bold mb-8">Overview</h1>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <OverviewCard
                                 name="Leslie Alexander"
@@ -134,16 +136,16 @@ const publicProfile = () => {
                     </div>
 
                     {/* Jobs Section */}
-                    <section className="mt-10">
+                    <div className="pt-6 sm:pt-8">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-3xl font-semibold text-[#353535]">
+                            <h2 className="text-xl sm:text-3xl font-bold">
                                 Jobs from BMW
                             </h2>
-                            <a href="#" className="text-blue-600 font-semibold hover:underline flex items-center">
+                            <a href="#" className="text-[#005DDC] font-semibold inline-flex items-center gap-3">
                                 See all
-                                <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                </svg>
+                                <ChevronRight
+                                    className="w-4 h-4 text-[#005DDC] relative top-[1px]"
+                                />
                             </a>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
@@ -163,7 +165,7 @@ const publicProfile = () => {
                                 types={["Remote"]}
                                 location="Canada"
                                 salary="25 95$ / Month"
-                                postedTime="1 hour ago"
+                                postedTime="3 hours ago"
                             />
                             <JobCard
                                 logo="/images/bmw-logo.png"
@@ -172,7 +174,7 @@ const publicProfile = () => {
                                 types={["Part-Time"]}
                                 location="Canada"
                                 salary="25 95$ / Month"
-                                postedTime="3 hours ago"
+                                postedTime="1 hour ago"
                             />
                             <JobCard
                                 logo="/images/bmw-logo.png"
@@ -202,7 +204,7 @@ const publicProfile = () => {
                                 postedTime="9 hours ago"
                             />
                         </div>
-                    </section>
+                    </div>
                 </div>
             </div>
         </div>
