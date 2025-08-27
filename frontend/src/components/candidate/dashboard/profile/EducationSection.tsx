@@ -1,18 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, GraduationCap, X, Check, Plus, Trash2, Calendar } from 'lucide-react';
 import { useUpdateEducation, useAddEducation } from '@/src/lib/profile.queries';
 import { EducationData } from '@/src/lib/profile.api';
+import { useProfile } from '@/src/context/ProfileContext';
 
-interface EducationProps {
-  data: EducationData[];
-}
-
-const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
+const EducationSection: React.FC = () => {
+  const { profileData, setProfileData } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [educations, setEducations] = useState<EducationData[]>(data);
+  const [educations, setEducations] = useState<EducationData[]>([]);
   const [newEducation, setNewEducation] = useState<EducationData>({
     degree: '',
     institution: '',
@@ -25,14 +23,45 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
   const { mutate: updateEducation, isPending: isUpdating } = useUpdateEducation();
   const { mutate: addEducation, isPending: isAdding } = useAddEducation();
 
+  // Parse education data from profile context
+  const getEducationData = (): EducationData[] => {
+    if (!profileData?.education) return [];
+    
+    try {
+      let educationArray = [];
+      
+      if (typeof profileData.education === 'string') {
+        educationArray = JSON.parse(profileData.education);
+      } else if (Array.isArray(profileData.education)) {
+        educationArray = profileData.education;
+      }
+      
+      // Ensure proper data types
+      return educationArray.map((edu: any) => ({
+        ...edu,
+        currently_studying: Boolean(edu.currently_studying)
+      }));
+    } catch (error) {
+      console.error('Error parsing education data:', error);
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const educationData = getEducationData();
+    setEducations(educationData);
+  }, [profileData]);
+
   const handleEdit = () => {
     setIsEditing(true);
-    setEducations([...data]);
+    const educationData = getEducationData();
+    setEducations([...educationData]);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setEducations([...data]);
+    const educationData = getEducationData();
+    setEducations([...educationData]);
     setNewEducation({
       degree: '',
       institution: '',
@@ -44,9 +73,23 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
   };
 
   const handleSave = () => {
-    updateEducation(educations, {
+    // Ensure data types are correct before sending
+    const sanitizedEducations = educations.map((edu) => ({
+      ...edu,
+      grade: (edu.grade || '').substring(0, 20), // Truncate to 20 chars
+      currently_studying: Boolean(edu.currently_studying)
+    }));
+    
+    updateEducation(sanitizedEducations, {
       onSuccess: () => {
         setIsEditing(false);
+        setProfileData({
+          ...profileData,
+          education: [...sanitizedEducations],
+        });
+      },
+      onError: (error) => {
+        console.error("API Error:", error);
       }
     });
   };
@@ -75,7 +118,7 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
     setEducations(updatedEducations);
   };
 
-  const hasContent = data && data.length > 0;
+  const hasContent = getEducationData().length > 0;
 
   return (
     <motion.div 
@@ -87,17 +130,17 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-green-600" />
+            <GraduationCap className="w-2 h-2 lg:w-4 lg:h-4 text-green-600" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">Education</h3>
+          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Education</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
             Edit
           </button>
         ) : (
@@ -105,17 +148,17 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              <X className="w-4 h-4" />
+              <X className="w-2 h-2 lg:w-4 lg:h-4" />
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-2 h-2 lg:w-4 lg:h-4" />
               {isUpdating ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -127,28 +170,28 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
         <div>
           {hasContent ? (
             <div className="space-y-4">
-              {data.map((edu, index) => (
-                <div key={index} className="border-l-4 border-green-500 pl-4 pb-4">
+              {getEducationData().map((edu: any, index: number) => (
+                <div key={index} className="pl-4 pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{edu.degree}</h4>
-                      <p className="text-green-600 font-medium">{edu.institution}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <h4 className="font-semibold text-gray-900 text-xs lg:text-sm">{edu.degree}</h4>
+                      <p className="font-light text-xs lg:text-sm">{edu.institution}</p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
+                          <Calendar className="w-3 h-3 lg:w-4 lg:h-4" />
                           <span>{edu.year}</span>
                         </div>
                         {edu.currently_studying && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[9px] lg:text-xs">
                             Currently Studying
                           </span>
                         )}
                       </div>
                       {edu.field && (
-                        <p className="text-gray-600 mt-1 text-sm">Field: {edu.field}</p>
+                        <p className="text-gray-600 mt-1 text-xs lg:text-sm">Field: {edu.field}</p>
                       )}
                       {edu.grade && (
-                        <p className="text-gray-600 text-sm">Grade: {edu.grade}</p>
+                        <p className="text-gray-600 text-xs lg:text-sm">Grade: {edu.grade}</p>
                       )}
                     </div>
                   </div>
@@ -160,10 +203,10 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                 <Plus className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-sm">Add your Education</p>
+              <p className="text-gray-500 text-xs lg:text-sm">Add your Education</p>
               <button
                 onClick={handleEdit}
-                className="mt-3 text-blue-600 text-sm font-medium hover:text-blue-700"
+                className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
               >
                 Education
               </button>
@@ -176,22 +219,22 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
           {educations.map((edu, index) => (
             <div key={index} className="p-4 bg-gray-50 rounded-lg space-y-4">
               <div className="flex justify-between items-start">
-                <h4 className="font-medium text-gray-900">Education {index + 1}</h4>
+                <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Education {index + 1}</h4>
                 <button
                   onClick={() => handleRemoveEducation(index)}
                   className="text-red-600 hover:bg-red-50 p-1 rounded"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
                 </button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Degree Level</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Degree Level</label>
                   <select
                     value={edu.degree}
                     onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
                     <option value="">Select degree</option>
                     <option value="Bachelor's">Bachelor's</option>
@@ -205,34 +248,34 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">University Name</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">University Name</label>
                   <input
                     type="text"
                     value={edu.institution}
                     onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Harvard University"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date of Study</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Study Period</label>
                   <input
                     type="text"
                     value={edu.year}
                     onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. 2020-2024 or 2024"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date of Study</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Field of Study</label>
                   <input
                     type="text"
                     value={edu.field}
                     onChange={(e) => handleEducationChange(index, 'field', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Computer Science"
                   />
                 </div>
@@ -241,37 +284,43 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={edu.currently_studying}
+                  checked={edu.currently_studying || false}
                   onChange={(e) => handleEducationChange(index, 'currently_studying', e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <label className="text-sm text-gray-700">I am currently studying</label>
+                <label className="text-xs lg:text-sm text-gray-700">I am currently studying</label>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
+                <label className="block text-xs font-medium text-gray-700 mb-1">Grade/GPA (Optional)</label>
+                <input
+                  type="text"
                   value={edu.grade || ''}
-                  onChange={(e) => handleEducationChange(index, 'grade', e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                  placeholder="Describe your studies, achievements, etc..."
+                  onChange={(e) => {
+                    if (e.target.value.length <= 20) {
+                      handleEducationChange(index, 'grade', e.target.value);
+                    }
+                  }}
+                  maxLength={20}
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="e.g. 3.8 GPA or First Class"
                 />
+                <span className="text-xs text-gray-400 mt-1">{(edu.grade || '').length}/20 characters</span>
               </div>
             </div>
           ))}
 
           {/* Add New Education */}
           <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
-            <h4 className="font-medium text-gray-900">Add New Education</h4>
+            <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Add New Education</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Degree Level</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Degree Level</label>
                 <select
                   value={newEducation.degree}
                   onChange={(e) => setNewEducation({...newEducation, degree: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
                   <option value="">Select degree</option>
                   <option value="Bachelor's">Bachelor's</option>
@@ -285,34 +334,34 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">University Name</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">University Name</label>
                 <input
                   type="text"
                   value={newEducation.institution}
                   onChange={(e) => setNewEducation({...newEducation, institution: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. MIT"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date of Study</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Study Period</label>
                 <input
                   type="text"
                   value={newEducation.year}
                   onChange={(e) => setNewEducation({...newEducation, year: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. 2022-2026"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date of Study</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Field of Study</label>
                 <input
                   type="text"
                   value={newEducation.field}
                   onChange={(e) => setNewEducation({...newEducation, field: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. Data Science"
                 />
               </div>
@@ -321,30 +370,36 @@ const EducationSection: React.FC<EducationProps> = ({ data = [] }) => {
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={newEducation.currently_studying}
+                checked={newEducation.currently_studying || false}
                 onChange={(e) => setNewEducation({...newEducation, currently_studying: e.target.checked})}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <label className="text-sm text-gray-700">I am currently studying</label>
+              <label className="text-xs lg:text-sm text-gray-700">I am currently studying</label>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
+              <label className="block text-xs font-medium text-gray-700 mb-1">Grade/GPA (Optional)</label>
+              <input
+                type="text"
                 value={newEducation.grade || ''}
-                onChange={(e) => setNewEducation({...newEducation, grade: e.target.value})}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                placeholder="Describe your studies, achievements, etc..."
+                onChange={(e) => {
+                  if (e.target.value.length <= 20) {
+                    setNewEducation({...newEducation, grade: e.target.value});
+                  }
+                }}
+                maxLength={20}
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="e.g. 3.8 GPA or First Class"
               />
+              <span className="text-xs text-gray-400 mt-1">{(newEducation.grade || '').length}/20 characters</span>
             </div>
             
             <button
               onClick={handleAddEducation}
               disabled={!newEducation.degree.trim() || !newEducation.institution.trim()}
-              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200"
+              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 text-xs lg:text-sm"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
               Add Education
             </button>
           </div>

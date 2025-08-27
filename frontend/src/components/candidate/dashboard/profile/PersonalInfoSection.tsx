@@ -168,7 +168,7 @@ const handleSave = () => {
       {!isEditing ? (
         <div className="space-y-6">
           {/* Personal Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">First name</label>
               <p className="text-xs lg:text-sm text-gray-900">{firstName || 'Add'}</p>

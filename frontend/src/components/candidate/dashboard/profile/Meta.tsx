@@ -202,7 +202,7 @@ const MetaSection: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl mb-6"
+      className="w-full flex justify-start items-center gap-4 p-none lg:p-3 ring ring-[#EDEDED] rounded-xl mb-6"
     >
       {/* Profile Picture Section */}
       <div className="relative">
