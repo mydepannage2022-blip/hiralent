@@ -120,7 +120,6 @@ export const useUpdateSalary = () => {
 
 export const useUploadResume = () => {
   const router = useRouter();
-
   return useMutation({
     mutationFn: uploadResume,
     onSuccess: () => {
