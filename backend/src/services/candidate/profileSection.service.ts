@@ -18,51 +18,79 @@ export const processSkillsUpdate = async (
   skills: CandidateSkillInput[]
 ): Promise<{ skillsCount: number }> => {
   try {
-    // Start transaction for data integrity
-    const result = await prisma.$transaction(async (tx) => {
-      // Delete existing skills that are from manual entry (not CV extraction)
-      await tx.candidateSkill.deleteMany({
-        where: { 
-          candidate_id: candidateId,
-          source_type: { not: "cv_extraction" }
-        }
-      });
+    // Get existing skills
+    const existingSkills = await prisma.candidateSkill.findMany({
+      where: { candidate_id: candidateId }
+    });
 
-      // Validate and prepare skills data
-      const skillsToCreate = skills.map(skill => {
-        // Validate skill data
-        if (!skill.skill_name || skill.skill_name.trim().length === 0) {
-          throw new Error("Skill name is required");
-        }
+    const existingSkillMap = new Map(
+      existingSkills.map(skill => [skill.skill_id, skill])
+    );
 
-        return {
-          candidate_id: candidateId,
-          skill_name: skill.skill_name.trim(),
-          skill_category: skill.skill_category,
-          proficiency: skill.proficiency,
-          years_experience: skill.years_experience || 0,
-          confidence_score: 1.0, // Manual entry has full confidence
-          source_type: "manual_entry",
-          is_verified: true
-        };
-      });
+    const incomingSkillsWithId = skills.filter(skill => skill.skill_id);
+    const incomingSkillsWithoutId = skills.filter(skill => !skill.skill_id);
 
-      // Batch create skills
-      if (skillsToCreate.length > 0) {
-        await tx.candidateSkill.createMany({
-          data: skillsToCreate
+    // Skills to delete (existing but not in incoming)
+    const toDelete = existingSkills.filter(
+      existing => !incomingSkillsWithId.some(incoming => incoming.skill_id === existing.skill_id)
+    );
+
+    // Skills to update (have skill_id and exist)
+    const toUpdate = incomingSkillsWithId.filter(
+      skill => existingSkillMap.has(skill.skill_id!)
+    );
+
+    // Skills to create (no skill_id)
+    const toCreate = incomingSkillsWithoutId;
+
+    // Execute operations in transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete removed skills
+      if (toDelete.length > 0) {
+        await tx.candidateSkill.deleteMany({
+          where: {
+            skill_id: { in: toDelete.map(s => s.skill_id) },
+            candidate_id: candidateId
+          }
         });
       }
 
-      // Get final count
-      const finalCount = await tx.candidateSkill.count({
-        where: { candidate_id: candidateId }
-      });
+      // Update existing skills
+      for (const skill of toUpdate) {
+        await tx.candidateSkill.update({
+          where: { skill_id: skill.skill_id! },
+          data: {
+            skill_name: skill.skill_name.trim(),
+            skill_category: skill.skill_category,
+            proficiency: skill.proficiency,
+            years_experience: skill.years_experience || 0,
+            updated_at: new Date()
+          }
+        });
+      }
 
-      return { skillsCount: finalCount };
+      // Create new skills
+      if (toCreate.length > 0) {
+        await tx.candidateSkill.createMany({
+          data: toCreate.map(skill => ({
+            candidate_id: candidateId,
+            skill_name: skill.skill_name.trim(),
+            skill_category: skill.skill_category,
+            proficiency: skill.proficiency,
+            years_experience: skill.years_experience || 0,
+            source_type: "manual_entry",
+            is_verified: false
+          }))
+        });
+      }
     });
 
-    return result;
+    // Return final count
+    const finalCount = await prisma.candidateSkill.count({
+      where: { candidate_id: candidateId }
+    });
+
+    return { skillsCount: finalCount };
   } catch (error) {
     console.error("Error in processSkillsUpdate:", error);
     throw new Error(`Skills processing failed: ${error.message || "Unknown error"}`);

@@ -52,14 +52,14 @@ export const skillSchema = z.object({
   skill_name: z.string().min(1, "Skill name is required").max(50),
   skill_category: z.enum(['technical', 'soft', 'language', 'certification']),
   proficiency: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
-  years_experience: z.coerce.number().min(0).max(50).optional(), // 👈 fix: accept string or number
+  years_experience: z.coerce.number().min(0).max(1000).optional(), // 👈 fix: accept string or number
 });
 
 
 // Skills Update Schema
 export const updateSkillsSchema = z.object({
   skills: z.array(skillSchema)
-    .max(100, "Maximum 50 skills allowed") // 👈 min(1) hata diya, taake empty array bhi chale
+    .max(1000, "Maximum 100 skills allowed") // 👈 min(1) hata diya, taake empty array bhi chale
 });
 
 // Add Single Skill Schema

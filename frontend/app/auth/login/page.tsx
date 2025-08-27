@@ -8,6 +8,7 @@ import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 
+
 // Types
 interface FormData {
   email: string;
@@ -119,37 +120,36 @@ const LoginPage = () => {
     setPasswordVisibility((prev) => !prev);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      email: true,
-      password: true,
-    };
-    setTouched(allTouched);
-
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) {
-        newErrors[fieldName] = error;
-      }
-    });
-
-    setErrors(newErrors);
-
-    // Submit if form is valid
-    if (Object.keys(newErrors).length === 0) {
-      loginMutation.mutate({
-        email: formData.email,
-        password: formData.password,
-      });
-    }
+  // Mark all fields as touched
+  const allTouched: FormTouched = {
+    email: true,
+    password: true,
   };
+  setTouched(allTouched);
 
+  // Validate all fields
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) {
+      newErrors[fieldName] = error;
+    }
+  });
+
+  setErrors(newErrors);
+
+  // Submit if form is valid
+  if (Object.keys(newErrors).length === 0) {
+ loginMutation.mutate({
+  email: formData.email,
+  password: formData.password,
+});
+  }
+};
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass =
       "w-full px-4 py-3 border rounded-lg focus:outline-none text-xs text-[#757575]";
@@ -170,8 +170,8 @@ const LoginPage = () => {
       subtitle={pageConfig.subtitle}
       showTabs={true}
       activeTab="candidate"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
+    > 
+    <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -195,13 +195,13 @@ const updateCandidateProfile = async (
 
     const skillIds = extractedSkills.map(skill => skill.skill_id);
 
-    const profileData = {
+   const profileData = {
       headline: extractedData.headline ? extractedData.headline.substring(0, 120) : undefined,
-      skills: skillIds, // Array of skill IDs instead of JSON
+      skills: skillIds,
       education: JSON.stringify(extractedData.education || []),
       experience: JSON.stringify(extractedData.experience || []),
+      languages: extractedData.languages ? JSON.stringify(extractedData.languages) : undefined, 
     };
-
     if (existingProfile) {
       // Merge existing skill IDs with new ones (avoid duplicates)
       const existingSkillIds = existingProfile.skills || [];

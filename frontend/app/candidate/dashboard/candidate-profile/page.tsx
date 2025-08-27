@@ -60,9 +60,9 @@ const page = () => {
   }
 
   return (
-    <div className='w-full flex justify-start items-start gap-3'>
+    <div className='w-full flex flex-col lg:flex-row justify-start items-start gap-3'>
       {/* Left Column - Main Profile Sections */}
-      <div className='w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-4 p-3'>
+      <div className='w-full  lg: w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-4 p-3'>
         {/* Existing Meta Component */}
         <Meta />
         
@@ -121,7 +121,7 @@ const page = () => {
       </div>
       
       {/* Right Column - Resume Related Components */}
-      <div className='w-1/3 flex flex-col justify-start items-start gap-2'>
+      <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>
         {/* <ResumeQuality /> */}
         <ResumeUpload 
           uploadType="application_specific"
