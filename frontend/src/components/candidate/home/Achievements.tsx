@@ -68,7 +68,7 @@ const Achievements = () => {
           
           {/* Box 1 - Profile Based */}
           <motion.div 
-            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1'
+            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1 cursor-pointer'
             variants={boxVariants}
             initial="hidden"
             whileInView="visible"
@@ -105,7 +105,7 @@ const Achievements = () => {
 
           {/* Box 2 - Successful Placements */}
           <motion.div 
-            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1'
+            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1 cursor-pointer'
             variants={boxVariants}
             initial="hidden"
             whileInView="visible"
@@ -144,7 +144,7 @@ const Achievements = () => {
 
           {/* Box 3 - Active Companies */}
           <motion.div 
-            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1'
+            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1 cursor-pointer'
             variants={boxVariants}
             initial="hidden"
             whileInView="visible"
@@ -184,7 +184,7 @@ const Achievements = () => {
 
           {/* Box 4 - Job Categories */}
           <motion.div 
-            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1'
+            className='box flex justify-start items-center gap-4 w-full p-5 ring ring-[#E0E0E0] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:ring-[#005DDC] hover:ring-1 cursor-pointer'
             variants={boxVariants}
             initial="hidden"
             whileInView="visible"
