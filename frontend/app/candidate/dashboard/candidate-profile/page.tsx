@@ -122,9 +122,7 @@ const page = () => {
       {/* Right Column - Resume Related Components */}
       <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>
         {/* <ResumeQuality /> */}
-        <ResumeUpload 
-          uploadType="application_specific"
-        />
+        <ResumeUpload/>
         <ResumeLink />
       </div>
     </div>
