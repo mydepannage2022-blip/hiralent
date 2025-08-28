@@ -52,37 +52,28 @@ export const skillSchema = z.object({
   skill_name: z.string().min(1, "Skill name is required").max(50),
   skill_category: z.enum(['technical', 'soft', 'language', 'certification']),
   proficiency: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
-  years_experience: z.coerce.number().min(0).max(50).optional(), // 👈 fix: accept string or number
+  years_experience: z.coerce.number().min(0).max(1000).optional(), // 👈 fix: accept string or number
 });
 
 
 // Skills Update Schema
 export const updateSkillsSchema = z.object({
   skills: z.array(skillSchema)
-    .max(100, "Maximum 50 skills allowed") // 👈 min(1) hata diya, taake empty array bhi chale
+    .max(1000, "Maximum 100 skills allowed") // 👈 min(1) hata diya, taake empty array bhi chale
 });
 
 // Add Single Skill Schema
 export const addSkillSchema = skillSchema;
 
 // Single Experience Schema
+// In candidate.schema.ts
 export const experienceSchema = z.object({
-  job_title: z.string()
-    .min(1, "Job title is required")
-    .max(100, "Job title must be 100 characters or less"),
-  company: z.string()
-    .min(1, "Company name is required")
-    .max(100, "Company name must be 100 characters or less"),
-  duration: z.string()
-    .min(1, "Duration is required")
-    .max(50, "Duration must be 50 characters or less"),
-  years: z.number()
-    .min(0, "Years must be non-negative")
-    .max(50, "Years must be 50 or less"),
-  description: z.string()
-    .min(10, "Description must be at least 10 characters")
-    .max(1000, "Description must be 1000 characters or less"),
-  currently_working: z.boolean().optional(),
+  job_title: z.string().min(1, "Job title is required").max(100),
+  company: z.string().min(1, "Company name is required").max(100),  
+  duration: z.string().min(1, "Duration is required").max(50),
+  years: z.coerce.number().min(0).max(50), // 👈 z.coerce.number() string ko number me convert karega
+  description: z.string().min(10).max(1000),
+  currently_working: z.coerce.boolean().optional(), // 👈 boolean coercion
   start_date: z.string().optional(),
   end_date: z.string().optional()
 });
@@ -99,21 +90,11 @@ export const addExperienceSchema = experienceSchema;
 
 // Single Education Schema
 export const educationSchema = z.object({
-  degree: z.string()
-    .min(1, "Degree is required")
-    .max(100, "Degree must be 100 characters or less"),
-  institution: z.string()
-    .min(1, "Institution name is required")
-    .max(150, "Institution name must be 150 characters or less"),
-  year: z.string()
-    .min(1, "Year is required")
-    .max(20, "Year must be 20 characters or less"),
-  field: z.string()
-    .min(1, "Field of study is required")
-    .max(100, "Field must be 100 characters or less"),
-  grade: z.string()
-    .max(20, "Grade must be 20 characters or less")
-    .optional(),
+  degree: z.string().min(1).max(100),
+  institution: z.string().min(1).max(150),
+  year: z.string().min(1).max(20),
+  field: z.string().min(1).max(100),
+  grade: z.string().max(200).optional(), // 20 se 200 kar diya
   currently_studying: z.boolean().optional()
 });
 

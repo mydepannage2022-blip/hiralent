@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "../src/context/Providers";
 import ConditionalLayout from "../src/components/layout/ConditionalLayout";
-
+import { Toaster } from 'react-hot-toast';
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -54,11 +54,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    
         <Providers>
           <ConditionalLayout>
-            {children}
+   <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            className:
+              "bg-neutral-800 text-white text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-3 rounded-lg shadow-lg",
+            success: {
+              className:
+                "bg-green-500 text-white text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-3 rounded-lg shadow-lg",
+            },
+            error: {
+              className:
+                "bg-red-500 text-white text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-3 rounded-lg shadow-lg",
+            },
+          }}
+        />
+
+        
+        {children}
           </ConditionalLayout>
         </Providers>
       </body>

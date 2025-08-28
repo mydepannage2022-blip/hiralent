@@ -129,17 +129,17 @@ const handleSave = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <User className="w-4 h-4 text-blue-600" />
+            <User className="w-3 h-3 lg:w-4 lg:h-4 text-blue-600" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Personal Information</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" />
             Edit
           </button>
         ) : (
@@ -147,17 +147,17 @@ const handleSave = () => {
             <button
               onClick={handleCancel}
               disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3 h-3 lg:w-4 lg:h-4" />
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3 h-3 lg:w-4 lg:h-4" />
               {isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -168,25 +168,25 @@ const handleSave = () => {
       {!isEditing ? (
         <div className="space-y-6">
           {/* Personal Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
-              <p className="text-gray-900">{firstName || 'Add'}</p>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">First name</label>
+              <p className="text-xs lg:text-sm text-gray-900">{firstName || 'Add'}</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
-              <p className="text-gray-900">{lastName || 'Add'}</p>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Last name</label>
+              <p className="text-xs lg:text-sm text-gray-900">{lastName || 'Add'}</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-              <p className="text-gray-900">{phone || 'Add'}</p>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+              <p className="text-xs lg:text-sm text-gray-900">{phone || 'Add'}</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <p className="text-gray-900">{location || 'Add'}</p>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Location</label>
+              <p className="text-xs lg:text-sm text-gray-900">{location || 'Add'}</p>
             </div>
           </div>
 
@@ -194,13 +194,13 @@ const handleSave = () => {
           <div className="border-t border-gray-200 pt-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <User className="w-4 h-4 text-green-600" />
+                <User className="w-3 h-3 lg:w-4 lg:h-4 text-green-600" />
               </div>
-              <h4 className="text-lg font-semibold text-gray-900">About me</h4>
+              <h4 className="text-xs lg:text-lg font-semibold text-gray-900">About me</h4>
             </div>
             
             {hasAboutContent ? (
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs lg:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {aboutMe}
               </p>
             ) : (
@@ -208,10 +208,10 @@ const handleSave = () => {
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                   <Plus className="w-6 h-6 text-gray-400" />
                 </div>
-                <p className="text-gray-500 text-sm">Add something about yourself</p>
+                <p className="text-gray-500 text-xs lg:text-sm">Add something about yourself</p>
                 <button
                   onClick={handleEdit}
-                  className="mt-3 text-blue-600 text-sm font-medium hover:text-blue-700"
+                  className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
                 >
                   About me
                 </button>
@@ -224,7 +224,7 @@ const handleSave = () => {
           {/* Personal Info Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Full Name</label>
               <input
                 type="text"
                 name="full_name"
@@ -236,7 +236,7 @@ const handleSave = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
               <input
                 type="tel"
                 name="phone_number"
@@ -248,10 +248,10 @@ const handleSave = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Location</label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
-                  <IoLocationOutline className="text-lg text-gray-400" />
+                  <IoLocationOutline className="text-xs lg:text-lg text-gray-400" />
                 </div>
                 <div className="pl-10">
                   <Select
@@ -272,7 +272,7 @@ const handleSave = () => {
 
           {/* About Me Field */}
           <div className="border-t border-gray-200 pt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">
               About me
             </label>
             <textarea

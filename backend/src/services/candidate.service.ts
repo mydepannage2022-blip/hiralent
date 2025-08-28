@@ -529,7 +529,7 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     // Build summary
     const summary: CandidateProfileSummary = {
       basic_info: basicInfo,
-      skills, // Now populated skills instead of JSON
+      skills, 
       documents,
       profile_completeness: profileCompleteness,
       career_prediction: candidate.careerPredictions[0] ? {

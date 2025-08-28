@@ -198,11 +198,14 @@ const MetaSection: React.FC = () => {
 
   const headlineOrEmail = getHeadlineOrEmail();
 
+
+
+  
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full flex justify-start items-center gap-4 p-3 ring ring-[#EDEDED] rounded-xl mb-6"
+      className="w-full flex justify-start items-center gap-4 p-none lg:p-3 ring ring-[#EDEDED] rounded-xl mb-6"
     >
       {/* Profile Picture Section */}
       <div className="relative">
@@ -211,7 +214,7 @@ const MetaSection: React.FC = () => {
             <img 
               src={getProfileImage()} 
               alt="User Profile" 
-              className="w-32 h-32 rounded-xl object-cover"
+              className="w-32 h-32 rounded-xl object-cover hidden lg:block  "
             />
             <div 
               onClick={handleStartEdit}
@@ -288,7 +291,7 @@ const MetaSection: React.FC = () => {
         <div>
           {/* User Name with Verification Icon */}
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg text-[#222]">
+            <h3 className="font-semibold text-sm lg:text-lg text-[#222]">
               {getUserName()}
             </h3>
             {getVerificationIcon()}
@@ -296,7 +299,7 @@ const MetaSection: React.FC = () => {
           
           {/* Headline or Email */}
           {headlineOrEmail && (
-            <p className="text-gray-600 text-sm leading-relaxed">
+            <p className="text-gray-600 text-[10px] lg:text-sm leading-relaxed">
               {headlineOrEmail}
             </p>
           )}

@@ -86,7 +86,7 @@ const DashboardProfilePercentage = () => {
   return (
     <div className="w-full relative">
       <div
-        className="w-full flex justify-start sm:justify-between flex-col sm:flex-row items-start p-6 bg-white lg:p-4 xl:p-8 rounded-xl lg:gap-2 xl:gap-8 text-[#222] cursor-pointer transition-all duration-200 hover:shadow-lg"
+        className="w-full flex justify-start sm:justify-between flex-col sm:flex-row items-start p-6 bg-white lg:p-4 xl:p-8 rounded-xl lg:gap-2 xl:gap-4 text-[#222] cursor-pointer transition-all duration-200 hover:shadow-lg"
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
@@ -94,10 +94,10 @@ const DashboardProfilePercentage = () => {
           <img
             src={getProfileImage()}
             alt="User Profile"
-            className="w-60 h-60 rounded-full object-cover"
+            className="w-30 h-30 rounded-full object-cover"
           />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col lg:flex-row lg:justify-start gap-8">
           <div className="flex flex-col justify-start items-start gap-1">
             <h2 className="font-bold lg:text-sm xl:text-xl">
               <span className="text-[#005DDC]">{completionPercentage}%</span> of

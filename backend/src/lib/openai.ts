@@ -168,16 +168,22 @@ Resume: ${userPrompt.substring(0, 1000)}`;
 
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
-   const systemPrompt = `You are an expert HR analyst. Extract structured information from the following CV/resume text.
+const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.
 
-Return ONLY a valid JSON object in this exact format:
+CATEGORIZATION RULES:
+- SKILLS: Only professional technical and soft skills
+- EDUCATION: Degrees, certifications, courses, training programs  
+- LANGUAGES: Spoken/written languages with proficiency levels
+- EXPERIENCE: Job history and work experience
+
+Return ONLY valid JSON:
 
 {
   "headline": "Professional headline (max 120 characters)",
   "skills": [
     {
       "name": "skill name",
-      "category": "technical | soft | language | certification",
+      "category": "technical | soft",
       "proficiency": "beginner | intermediate | advanced | expert",
       "years_experience": number
     }
@@ -186,36 +192,41 @@ Return ONLY a valid JSON object in this exact format:
     {
       "job_title": "title",
       "company": "company name",
-      "duration": "e.g., Jan 2022 - May 2023",
+      "duration": "e.g., Jan 2022 - May 2023", 
       "years": number,
       "description": "brief summary of work"
     }
   ],
   "education": [
     {
-      "degree": "degree name",
-      "institution": "institution name",
-      "year": "graduation year or range",
-      "field": "field of study"
+      "degree": "degree or certification name",
+      "institution": "institution/provider name",
+      "year": "completion year or range",
+      "field": "field of study or specialization"
+    }
+  ],
+  "languages": [
+    {
+      "language": "language name",
+      "proficiency": "native | fluent | intermediate | basic",
+      "notes": "additional context if any"
     }
   ],
   "summary": "2–3 sentence professional summary"
 }
 
-Instructions for headline:
-- Create a professional headline like LinkedIn (max 120 characters)
-- Include current/target role and key expertise
-- Examples: "Senior Software Engineer | Full-Stack Developer | React & Node.js Expert"
-- Examples: "Digital Marketing Specialist | SEO & Content Strategy | Growth Hacker"
-- Make it compelling and industry-focused
-- If unclear, use most recent job title + key skills
+SKILLS (Include only these):
+- Technical: Programming languages, software tools, frameworks
+- Soft: Leadership, communication, problem-solving, teamwork
 
-Instructions for other fields:
-- Be accurate and extract only explicitly stated information.
-- Categorize each skill carefully.
-- For missing data, omit the field (do not use 'Not Available').
-- Do NOT include any explanation or text outside the JSON.
-`;
+EDUCATION (Include certifications here):
+- Degrees: Bachelor's, Master's, PhD
+- Certifications: AWS Certified, Google Analytics, PMP, CISSP
+- Courses: Online courses, bootcamps, training programs
+
+LANGUAGES (Extract separately):
+- English, Urdu, Arabic, Spanish, French, etc.
+- Include proficiency level if mentioned`;
 
     const userPrompt = `Extract skills, headline, and information from this CV text:\n\n${text}`;
 

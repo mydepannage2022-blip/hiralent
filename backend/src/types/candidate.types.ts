@@ -50,7 +50,15 @@ export interface AIExtractionResult {
   skills: ExtractedSkill[];
   experience: ExtractedExperience[];
   education: ExtractedEducation[];
+  languages: ExtractedLanguage[];  // Add this line
   summary: string;
+}
+
+// Add new interface after AIExtractionResult:
+export interface ExtractedLanguage {
+  language: string;
+  proficiency: 'native' | 'fluent' | 'intermediate' | 'basic';
+  notes?: string;
 }
 
 // Career prediction types
@@ -332,6 +340,7 @@ export interface UpdateSkillsInput {
 }
 
 export interface CandidateSkillInput {
+  skill_id?: string;
   skill_name: string;
   skill_category: 'technical' | 'soft' | 'language' | 'certification';
   proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';

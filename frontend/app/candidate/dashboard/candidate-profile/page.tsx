@@ -26,10 +26,6 @@ const page = () => {
     description: user?.profile?.about_me || '',
   };
 
-  const skillsData = profileData?.data?.skills || [];
-  const experienceData = profileData?.data?.experience || [];
-  const educationData = profileData?.data?.education || [];
-  const linksData = profileData?.data?.links || [];
   const jobBenefitsData = profileData?.data?.job_benefits || [];
 
   if (isLoading) {
@@ -60,9 +56,9 @@ const page = () => {
   }
 
   return (
-    <div className='w-full flex justify-start items-start gap-3'>
+    <div className='w-full flex flex-col lg:flex-row justify-start items-start gap-3'>
       {/* Left Column - Main Profile Sections */}
-      <div className='w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-4 p-3'>
+      <div className='w-full  lg: w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-2 lg:gap-4 p-1 lg:p-3'>
         {/* Existing Meta Component */}
         <Meta />
         
@@ -77,26 +73,28 @@ const page = () => {
         </div>
         
         {/* Work Experience Section */}
-        <div className="w-full">
-          <ExperienceSection data={experienceData} />
-        </div>
-        
-        {/* Education Section */}
-        <div className="w-full">
-          <EducationSection data={educationData} />
+        <div className="w-full flex flex-col lg:flex-row gap-4">
+          <div className='w-full lg:w-1/2'>
+
+          <ExperienceSection/>
+          </div>
+          <div className='w-full lg:w-1/2'>
+
+          <EducationSection/>
+          </div>
         </div>
         
         {/* Social Links Section */}
         <div className="w-full">
-          <LinksSection data={linksData} />
+          <LinksSection/>
         </div>
         
         {/* Job Benefits Section */}
         <div className="w-full">
-          <JobBenefitsSection data={jobBenefitsData} />
+          <JobBenefitsSection />
         </div>
         
-        {/* Profile Completeness Indicator */}
+        {/* Profile Completeness Indicator
         {profileData?.data?.overall_score !== undefined && (
           <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
             <div className="flex items-center justify-between mb-3">
@@ -117,11 +115,12 @@ const page = () => {
               Complete your profile to improve your job matching and visibility to employers.
             </p>
           </div>
-        )}
+        )} */}
+      
       </div>
       
       {/* Right Column - Resume Related Components */}
-      <div className='w-1/3 flex flex-col justify-start items-start gap-2'>
+      <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>
         {/* <ResumeQuality /> */}
         <ResumeUpload 
           uploadType="application_specific"

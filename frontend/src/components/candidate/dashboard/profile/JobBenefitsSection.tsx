@@ -1,18 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Gift, X, Check, Plus, Trash2 } from 'lucide-react';
 import { useUpdateJobBenefits } from '@/src/lib/profile.queries';
 import { JobBenefitData } from '@/src/lib/profile.api';
+import { useProfile } from '@/src/context/ProfileContext';
 
-interface JobBenefitsProps {
-  data: JobBenefitData[];
-}
-
-const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
+const JobBenefitsSection: React.FC = () => {
+  const { profileData, setProfileData } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [benefits, setBenefits] = useState<JobBenefitData[]>(data);
+  const [benefits, setBenefits] = useState<JobBenefitData[]>([]);
   const [newBenefit, setNewBenefit] = useState<JobBenefitData>({
     benefit_type: 'health_insurance',
     importance: 'preferred',
@@ -21,14 +19,45 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
 
   const { mutate: updateJobBenefits, isPending: isUpdating } = useUpdateJobBenefits();
 
+  // Parse job benefits data from profile context
+  const getJobBenefitsData = (): JobBenefitData[] => {
+    if (!profileData?.job_benefits) return [];
+    
+    try {
+      let benefitsArray = [];
+      
+      if (typeof profileData.job_benefits === 'string') {
+        benefitsArray = JSON.parse(profileData.job_benefits);
+      } else if (Array.isArray(profileData.job_benefits)) {
+        benefitsArray = profileData.job_benefits;
+      }
+      
+      return benefitsArray.map((benefit: any) => ({
+        benefit_type: benefit.benefit_type || 'health_insurance',
+        importance: benefit.importance || 'preferred',
+        notes: benefit.notes || ''
+      }));
+    } catch (error) {
+      console.error('Error parsing job benefits data:', error);
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const benefitsData = getJobBenefitsData();
+    setBenefits(benefitsData);
+  }, [profileData]);
+
   const handleEdit = () => {
     setIsEditing(true);
-    setBenefits([...data]);
+    const benefitsData = getJobBenefitsData();
+    setBenefits([...benefitsData]);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setBenefits([...data]);
+    const benefitsData = getJobBenefitsData();
+    setBenefits([...benefitsData]);
     setNewBenefit({
       benefit_type: 'health_insurance',
       importance: 'preferred',
@@ -37,9 +66,22 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
   };
 
   const handleSave = () => {
-    updateJobBenefits(benefits, {
+    // Sanitize data before sending
+    const sanitizedBenefits = benefits.map(benefit => ({
+      ...benefit,
+      notes: (benefit.notes || '').substring(0, 200) // Limit notes to 200 chars as per backend schema
+    }));
+    
+    updateJobBenefits(sanitizedBenefits, {
       onSuccess: () => {
         setIsEditing(false);
+        setProfileData({
+          ...profileData,
+          job_benefits: [...sanitizedBenefits],
+        });
+      },
+      onError: (error) => {
+        console.error("API Error:", error);
       }
     });
   };
@@ -77,13 +119,35 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
   const getBenefitIcon = (benefitType: string) => {
     switch (benefitType) {
       case 'health_insurance': return '🏥';
-      case 'remote_work': return '🏠';
+      case 'dental_insurance': return '🦷';
+      case 'vision_insurance': return '👁️';
+      case 'retirement_401k': return '💰';
+      case 'paid_time_off': return '🏖️';
       case 'flexible_hours': return '⏰';
+      case 'remote_work': return '🏠';
       case 'professional_development': return '📚';
-      case 'stock_options': return '📈';
-      case 'vacation_time': return '🏖️';
       case 'gym_membership': return '💪';
-      case 'free_meals': return '🍽️';
+      case 'stock_options': return '📈';
+      case 'bonus_structure': return '💎';
+      case 'parental_leave': return '👶';
+      case 'mental_health_support': return '🧠';
+      case 'life_insurance': return '🛡️';
+      case 'disability_insurance': return '♿';
+      case 'commuter_benefits': return '🚌';
+      case 'food_allowance': return '🍽️';
+      case 'education_reimbursement': return '🎓';
+      case 'conference_allowance': return '🎤';
+      case 'wellness_programs': return '🌱';
+      case 'childcare_assistance': return '🧸';
+      case 'relocation_assistance': return '📦';
+      case 'phone_internet_allowance': return '📱';
+      case 'coworking_space_access': return '💼';
+      case 'sabbatical_leave': return '🌍';
+      case 'pet_insurance': return '🐕';
+      case 'legal_assistance': return '⚖️';
+      case 'employee_discounts': return '🏷️';
+      case 'team_building_events': return '🎉';
+      case 'flexible_pto': return '📅';
       default: return '🎁';
     }
   };
@@ -92,7 +156,7 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const hasContent = data && data.length > 0;
+  const hasContent = getJobBenefitsData().length > 0;
 
   return (
     <motion.div 
@@ -104,17 +168,17 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Gift className="w-4 h-4 text-purple-600" />
+            <Gift className="w-2 h-2 lg:w-4 lg:h-4 text-purple-600" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">Preferred Job Benefits</h3>
+          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Preferred Job Benefits</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
             Edit
           </button>
         ) : (
@@ -122,17 +186,17 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              <X className="w-4 h-4" />
+              <X className="w-2 h-2 lg:w-4 lg:h-4" />
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-2 h-2 lg:w-4 lg:h-4" />
               {isUpdating ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -144,7 +208,7 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
         <div>
           {hasContent ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {data.map((benefit, index) => (
+              {getJobBenefitsData().map((benefit: any, index: number) => (
                 <div
                   key={index}
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
@@ -152,15 +216,15 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
                   <span className="text-lg">{getBenefitIcon(benefit.benefit_type)}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-900 text-sm">
+                      <h4 className="font-medium text-gray-900 text-xs lg:text-sm">
                         {formatBenefitType(benefit.benefit_type)}
                       </h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImportanceColor(benefit.importance)}`}>
+                      <span className={`px-2 py-1 rounded-full text-[9px] lg:text-xs font-medium ${getImportanceColor(benefit.importance)}`}>
                         {benefit.importance.replace('_', ' ')}
                       </span>
                     </div>
                     {benefit.notes && (
-                      <p className="text-gray-600 text-xs">{benefit.notes}</p>
+                      <p className="text-gray-600 text-[10px] lg:text-xs">{benefit.notes}</p>
                     )}
                   </div>
                 </div>
@@ -171,10 +235,10 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                 <Plus className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-sm">Add your preferred job benefits</p>
+              <p className="text-gray-500 text-xs lg:text-sm">Add your preferred job benefits</p>
               <button
                 onClick={handleEdit}
-                className="mt-3 text-blue-600 text-sm font-medium hover:text-blue-700"
+                className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
               >
                 Job benefits
               </button>
@@ -191,18 +255,18 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
                 <select
                   value={benefit.benefit_type}
                   onChange={(e) => handleBenefitChange(index, 'benefit_type', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
                   <option value="health_insurance">Health Insurance</option>
                   <option value="remote_work">Remote Work</option>
                   <option value="flexible_hours">Flexible Hours</option>
                   <option value="professional_development">Professional Development</option>
                   <option value="stock_options">Stock Options</option>
-                  <option value="vacation_time">Vacation Time</option>
+                  <option value="paid_time_off">Paid Time Off</option>
                   <option value="gym_membership">Gym Membership</option>
-                  <option value="free_meals">Free Meals</option>
-                  <option value="retirement_plan">Retirement Plan</option>
-                  <option value="parental_leave">Parental Leave</option>
+                  <option value="retirement_401k">Retirement 401k</option>
+                  <option value="bonus_structure">Bonus Structure</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
               
@@ -211,7 +275,7 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
                 <select
                   value={benefit.importance}
                   onChange={(e) => handleBenefitChange(index, 'importance', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
                   <option value="required">Required</option>
                   <option value="preferred">Preferred</option>
@@ -224,16 +288,22 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
                 <input
                   type="text"
                   value={benefit.notes || ''}
-                  onChange={(e) => handleBenefitChange(index, 'notes', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  onChange={(e) => {
+                    if (e.target.value.length <= 200) {
+                      handleBenefitChange(index, 'notes', e.target.value);
+                    }
+                  }}
+                  maxLength={200}
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="Additional details..."
                 />
+                <span className="text-xs text-gray-400">{(benefit.notes || '').length}/200</span>
               </div>
               
               <div className="flex items-end">
                 <button
                   onClick={() => handleRemoveBenefit(index)}
-                  className="w-full px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm flex items-center justify-center gap-1"
+                  className="w-full px-2 py-1 text-red-600 hover:bg-red-50 rounded text-xs lg:text-sm flex items-center justify-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
                   Remove
@@ -249,18 +319,18 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
               <select
                 value={newBenefit.benefit_type}
                 onChange={(e) => setNewBenefit({...newBenefit, benefit_type: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
               >
                 <option value="health_insurance">Health Insurance</option>
                 <option value="remote_work">Remote Work</option>
                 <option value="flexible_hours">Flexible Hours</option>
                 <option value="professional_development">Professional Development</option>
                 <option value="stock_options">Stock Options</option>
-                <option value="vacation_time">Vacation Time</option>
+                <option value="paid_time_off">Paid Time Off</option>
                 <option value="gym_membership">Gym Membership</option>
-                <option value="free_meals">Free Meals</option>
-                <option value="retirement_plan">Retirement Plan</option>
-                <option value="parental_leave">Parental Leave</option>
+                <option value="retirement_401k">Retirement 401k</option>
+                <option value="bonus_structure">Bonus Structure</option>
+                <option value="other">Other</option>
               </select>
             </div>
             
@@ -269,7 +339,7 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
               <select
                 value={newBenefit.importance}
                 onChange={(e) => setNewBenefit({...newBenefit, importance: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
               >
                 <option value="required">Required</option>
                 <option value="preferred">Preferred</option>
@@ -282,16 +352,22 @@ const JobBenefitsSection: React.FC<JobBenefitsProps> = ({ data = [] }) => {
               <input
                 type="text"
                 value={newBenefit.notes || ''}
-                onChange={(e) => setNewBenefit({...newBenefit, notes: e.target.value})}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                onChange={(e) => {
+                  if (e.target.value.length <= 200) {
+                    setNewBenefit({...newBenefit, notes: e.target.value});
+                  }
+                }}
+                maxLength={200}
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 placeholder="Additional details..."
               />
+              <span className="text-xs text-gray-400">{(newBenefit.notes || '').length}/200</span>
             </div>
             
             <div className="flex items-end">
               <button
                 onClick={handleAddBenefit}
-                className="w-full px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm flex items-center justify-center gap-1"
+                className="w-full px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs lg:text-sm flex items-center justify-center gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Add
