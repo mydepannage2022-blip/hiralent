@@ -11,7 +11,7 @@ import Button from '@/src/components/layout/Button';
 
 const MetaSection: React.FC = () => {
   const { user } = useAuth(); // ✅ Only for user info (name, email verification)
-  const { profileData } = useProfile(); // ✅ For profile data (picture, headline, etc.)
+  const { profileData } = useProfile(); // ✅ For profile data (picture, headline, resume_application_url)
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -139,51 +139,13 @@ const MetaSection: React.FC = () => {
     setIsEditing(true);
   };
 
-  // Resume actions (these use auth token from localStorage)
-  const handleViewResume = async () => {
-    try {
-      const response = await fetch('/api/candidates/resume/download', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.download_url) {
-          window.open(data.data.download_url, '_blank');
-        }
-      } else {
-        console.log('No resume found');
-      }
-    } catch (error) {
-      console.error('Error viewing resume:', error);
-    }
-  };
-
-  const handleDownloadResume = async () => {
-    try {
-      const response = await fetch('/api/candidates/resume/download', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.download_url) {
-          const link = document.createElement('a');
-          link.href = data.data.download_url;
-          link.download = data.data.file_name || 'resume.pdf';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      } else {
-        console.log('No resume found for download');
-      }
-    } catch (error) {
-      console.error('Error downloading resume:', error);
+  // ✅ Updated resume handler - uses profileData.resume_application_url
+  const handleViewResume = () => {
+    if (profileData?.resume_application_url) {
+      window.open(profileData.resume_application_url, '_blank');
+    } else {
+      console.log('No resume URL found in profile data');
+      alert('Resume not available. Please upload your resume first.');
     }
   };
 
@@ -197,9 +159,6 @@ const MetaSection: React.FC = () => {
   }, [previewUrl]);
 
   const headlineOrEmail = getHeadlineOrEmail();
-
-
-
   
   return (
     <motion.div 
@@ -214,7 +173,7 @@ const MetaSection: React.FC = () => {
             <img 
               src={getProfileImage()} 
               alt="User Profile" 
-              className="w-32 h-32 rounded-xl object-cover hidden lg:block  "
+              className="w-32 h-32 rounded-xl object-cover hidden lg:block"
             />
             <div 
               onClick={handleStartEdit}
@@ -305,19 +264,13 @@ const MetaSection: React.FC = () => {
           )}
         </div>
       
-        {/* Resume Buttons */}
-        <div className="flex justify-start gap-3 mt-2">
+        {/* ✅ Single Resume Button */}
+        <div className="flex justify-start mt-2">
           <Button 
             text="View Resume" 
             variant="dark" 
             animation={false}
             onClick={handleViewResume}
-          />
-          <Button 
-            text="Download PDF Resume" 
-            variant="light" 
-            animation={false}
-            onClick={handleDownloadResume}
           />
         </div>
       </div>
