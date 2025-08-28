@@ -22,7 +22,7 @@ function SecurityAccount() {
   };
 
   return (
-    <div className="border border-gray-300 p-4 rounded-lg mb-4">
+    <div className="border border-gray-300 p-4 rounded-lg  mb-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <ShieldAlert />
