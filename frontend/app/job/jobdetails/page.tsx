@@ -26,7 +26,7 @@ const JobDetailsPage = ({ params }: JobDetailsProps) => {
 
     return (
         <div className="sm:mt-40 mt-30 mb-20">
-            <div className="mx-21">
+            <div className="mx-4.5 sm:mx-10 md:mx-13 lg:mx-21">
                 <CompanyDetailsCard {...companyData} />
                 <div className="w-full mx-auto bg-white space-y-6 mt-12">
                     {/* Overview */}
