@@ -69,15 +69,15 @@ export const addSkillSchema = skillSchema;
 // In candidate.schema.ts
 export const experienceSchema = z.object({
   job_title: z.string().min(1, "Job title is required").max(100),
-  company: z.string().min(1, "Company name is required").max(100),  
-  duration: z.string().min(1, "Duration is required").max(50),
-  years: z.coerce.number().min(0).max(50), // 👈 z.coerce.number() string ko number me convert karega
-  description: z.string().min(10).max(1000),
-  currently_working: z.coerce.boolean().optional(), // 👈 boolean coercion
-  start_date: z.string().optional(),
-  end_date: z.string().optional()
-});
+  company: z.string().min(1, "Company name is required").max(100),
 
+  duration: z.string().max(50).nullable().optional(),
+  years: z.coerce.number().min(0).max(50).nullable().optional(),
+  description: z.string().min(10).max(1000).nullable().optional(),
+  currently_working: z.coerce.boolean().nullable().optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
+});
 // Experience Update Schema
 export const updateExperienceSchema = z.object({
   experiences: z.array(experienceSchema)
@@ -90,12 +90,13 @@ export const addExperienceSchema = experienceSchema;
 
 // Single Education Schema
 export const educationSchema = z.object({
-  degree: z.string().min(1).max(100),
-  institution: z.string().min(1).max(150),
-  year: z.string().min(1).max(20),
-  field: z.string().min(1).max(100),
-  grade: z.string().max(200).optional(), // 20 se 200 kar diya
-  currently_studying: z.boolean().optional()
+  degree: z.string().min(1, "Degree is required").max(100),
+  institution: z.string().min(1, "Institution is required").max(150),
+
+  year: z.string().max(20).nullable().optional(),
+  field: z.string().max(100).nullable().optional(),
+  grade: z.string().max(200).nullable().optional(),
+  currently_studying: z.coerce.boolean().nullable().optional(),
 });
 
 // Education Update Schema
