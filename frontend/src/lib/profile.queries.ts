@@ -17,6 +17,7 @@ import { getProfileCompleteness,
   updateJobBenefits,
   uploadProfilePicture,
   bulkUpdateProfile,
+  uploadApplicationResume,
   BasicInfoData,
   SkillData,
   ExperienceData,
@@ -405,6 +406,29 @@ export const useBulkUpdateProfile = () => {
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Failed to update profile';
       console.error('Bulk update failed:', errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+};
+
+
+export const useUploadApplicationResume = () => {
+  const queryClient = useQueryClient();
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
+  
+  return useMutation({
+    mutationFn: uploadApplicationResume,
+    onSuccess: async (data) => {
+      console.log('Application resume uploaded:', data);
+      toast.success('Application resume uploaded successfully!');
+      
+      // Refresh profile data to get updated resume_application_url
+      await refreshProfileData(setProfileData, updateUser);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to upload application resume';
+      console.error('Application resume upload failed:', errorMessage);
       toast.error(errorMessage);
     },
   });

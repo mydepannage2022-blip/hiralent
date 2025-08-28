@@ -21,9 +21,11 @@ import {
   BulkProfileUpdateResult,
   SocialLink,
   JobBenefit,
-  CandidateServiceError
+  CandidateServiceError,
+  APIResponse
 } from "../types/candidate.types";
-
+import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 
 // Import heavy operations from separate service
 import {
@@ -32,6 +34,9 @@ import {
   processEducationUpdate,
   validateProfileData
 } from "./candidate/profileSection.service";
+import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
+
+
 
 const prisma = new PrismaClient();
 
@@ -599,5 +604,91 @@ export const bulkUpdateProfile = async (
   } catch (error) {
     console.error("Error in bulk profile update:", error);
     throw new Error(`Failed to update profile: ${error.message || "Unknown error"}`);
+  }
+};
+
+
+// backend/src/services/candidate.service.ts - Add this function
+
+export const uploadApplicationResume = async (
+  candidateId: string,
+  file: Express.Multer.File
+): Promise<APIResponse<{ resume_application_url: string; file_name: string }>> => {
+  try {
+    // Validate inputs
+    if (!candidateId) {
+      throw new Error("Candidate ID is required");
+    }
+
+    if (!file || !fs.existsSync(file.path)) {
+      throw new Error("File not found after upload");
+    }
+
+    console.log(`Processing application resume upload for candidate: ${candidateId}`);
+
+    // Get existing profile to check for old application resume
+    const existingProfile = await prisma.candidateProfile.findUnique({
+      where: { candidate_id: candidateId },
+      select: { resume_application_url: true },
+    });
+
+    const oldApplicationResumeUrl = existingProfile?.resume_application_url;
+
+    // Upload to Cloudinary  
+    console.log("Uploading application resume to Cloudinary...");
+    const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
+      folder: "hiralent-candidate/application-resumes",
+      public_id: `application_resume_${candidateId}_${Date.now()}`,
+      resource_type: "raw", // For PDF/DOC files
+      access_mode: 'public',
+      type: 'upload'
+    });
+
+    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+    // Update candidate profile with new application resume URL
+    console.log("Updating database...");
+    const updatedProfile = await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        resume_application_url: cloudinaryResult.secure_url,
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        resume_application_url: cloudinaryResult.secure_url,
+      },
+    });
+
+    console.log("Database updated successfully");
+
+    // Clean up temporary file
+    cleanupTempFile(file.path);
+
+    // Delete old application resume from Cloudinary if exists
+    if (oldApplicationResumeUrl && oldApplicationResumeUrl !== cloudinaryResult.secure_url) {
+      await cleanupOldApplicationResume(candidateId, oldApplicationResumeUrl);
+    }
+
+    return {
+      success: true,
+      data: {
+        resume_application_url: cloudinaryResult.secure_url,
+        file_name: file.originalname,
+      },
+      message: "Application resume uploaded successfully",
+    };
+
+  } catch (error) {
+    console.error("Service error - Application resume upload:", error);
+
+    // Clean up temporary file in case of error
+    if (file && fs.existsSync(file.path)) {
+      cleanupTempFile(file.path);
+    }
+
+    // Re-throw with more context
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Application resume upload failed: ${errorMessage}`);
   }
 };

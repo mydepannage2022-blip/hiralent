@@ -494,6 +494,7 @@ model CandidateProfile {
   profile_picture_url   String?
   headline             String?  @db.VarChar(120)
   about_me             String?  @db.VarChar(500)   
+  resume_application_url String? 
 
   skills               String[]
   education            String?

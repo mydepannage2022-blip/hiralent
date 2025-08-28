@@ -386,3 +386,61 @@ export const bulkUpdateProfileController = async (req: Request, res: Response): 
     } as APIResponse);
   }
 };
+
+export const uploadApplicationResumeController = async (
+  req: Request, 
+  res: Response
+): Promise<void> => {
+  try {
+    // User is guaranteed to exist due to checkAuth middleware
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error_code: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    // File is guaranteed to exist due to validation middleware
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'No resume file provided',
+        error_code: 'NO_FILE'
+      } as APIResponse);
+      return;
+    }
+
+    console.log(`Application resume upload initiated for user: ${req.user.user_id}`);
+    console.log(`File details:`, {
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+    // Upload to Cloudinary and update database
+    const result = await profileService.uploadApplicationResume(
+      req.user.user_id, 
+      req.file
+    );
+
+    console.log(`Application resume upload completed for user: ${req.user.user_id}`);
+
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      message: 'Application resume uploaded successfully'
+    } as APIResponse);
+
+  } catch (error) {
+    console.error('Controller error - Application resume upload:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload application resume',
+      error_code: 'UPLOAD_FAILED',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};

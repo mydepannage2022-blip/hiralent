@@ -2,83 +2,61 @@
 
 // src/components/profile/resume-upload/ResumeUpload.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
 import Button from '@/src/components/layout/Button';
 import { DropZone } from './DropZone';
-import { FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { FileText, CheckCircle, AlertCircle, Loader, Download } from 'lucide-react';
+import { useUploadApplicationResume } from '@/src/lib/profile.queries';
+import { useProfile } from '@/src/context/ProfileContext';
 
 interface ResumeUploadProps {
-  uploadType?: 'profile_building' | 'application_specific';
-  onUploadComplete?: (file: File) => void;
   className?: string;
 }
 
 export const ResumeUpload: React.FC<ResumeUploadProps> = ({
-  uploadType = 'application_specific', // Changed default
-  onUploadComplete,
   className = ''
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [uploadMessage, setUploadMessage] = useState<string>('');
+  const uploadMutation = useUploadApplicationResume();
+  const { profileData } = useProfile();
+
+  // Get existing application resume info
+  const existingResumeUrl = profileData?.resume_application_url;
+  const existingFileName = existingResumeUrl ? 
+    decodeURIComponent(existingResumeUrl.split('/').pop()?.split('_').slice(2).join('_') || 'Resume') 
+    : null;
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
-    setUploadStatus('idle');
-    setUploadMessage('');
     setUploadProgress(0);
   };
 
   const removeSelectedFile = () => {
     setSelectedFile(null);
-    setUploadStatus('idle');
-    setUploadMessage('');
     setUploadProgress(0);
-  };
-
-  const simulateUpload = async () => {
-    if (!selectedFile) return;
-
-    setUploadStatus('uploading');
-    setUploadMessage('Uploading resume...');
-
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-
-    // Simulate upload completion
-    setTimeout(() => {
-      setUploadStatus('success');
-      setUploadMessage('Resume uploaded successfully!');
-      onUploadComplete?.(selectedFile);
-    }, 500);
   };
 
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + 10;
+      });
+    }, 200);
+
     try {
-      // Here you would implement actual upload logic
-      // For now, we'll simulate it
-      await simulateUpload();
-      
-      // Real implementation would be:
-      // const formData = new FormData();
-      // formData.append('resume', selectedFile);
-      // formData.append('uploadType', uploadType);
-      // const response = await fetch('/api/resume/upload', {
-      //   method: 'POST',
-      //   body: formData
-      // });
-      
+      await uploadMutation.mutateAsync(selectedFile);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      setSelectedFile(null); // Clear selected file after successful upload
     } catch (error) {
-      setUploadStatus('error');
-      setUploadMessage('Upload failed. Please try again.');
-      console.error('Upload error:', error);
+      clearInterval(progressInterval);
+      setUploadProgress(0);
     }
   };
 
@@ -91,16 +69,30 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
   };
 
   const getStatusIcon = () => {
-    switch (uploadStatus) {
-      case 'uploading':
-        return <Loader className="h-5 w-5 text-blue-500 animate-spin" />;
-      case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
-      default:
-        return null;
+    if (uploadMutation.isPending) {
+      return <Loader className="h-5 w-5 text-blue-500 animate-spin" />;
     }
+    if (uploadMutation.isSuccess) {
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
+    }
+    if (uploadMutation.isError) {
+      return <AlertCircle className="h-5 w-5 text-red-500" />;
+    }
+    return null;
+  };
+
+  const getStatusMessage = () => {
+    if (uploadMutation.isPending) return 'Uploading resume...';
+    if (uploadMutation.isSuccess) return 'Resume uploaded successfully!';
+    if (uploadMutation.isError) return 'Upload failed. Please try again.';
+    return '';
+  };
+
+  const getStatusColor = () => {
+    if (uploadMutation.isPending) return 'text-blue-600';
+    if (uploadMutation.isSuccess) return 'text-green-600';
+    if (uploadMutation.isError) return 'text-red-600';
+    return '';
   };
 
   return (
@@ -115,14 +107,49 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Show Existing Resume if Available */}
+        {existingResumeUrl && !selectedFile && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <FileText className="h-8 w-8 text-green-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {existingFileName}
+                </p>
+                <p className="text-xs text-green-600">
+                  Current application resume
+                </p>
+              </div>
+              <a
+                href={existingResumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 hover:bg-green-100 rounded-full transition-colors"
+                title="Download resume"
+              >
+                <Download className="h-4 w-4 text-green-600" />
+              </a>
+            </div>
+            
+            <Button
+              text="Upload new resume"
+              onClick={() => setSelectedFile({} as File)} // Trigger file selection
+              variant="dark"
+              className="w-full"
+            />
+          </div>
+        )}
+
         {/* Drop Zone or Selected File */}
-        {!selectedFile ? (
+        {(!existingResumeUrl || selectedFile) && !selectedFile && (
           <DropZone
             onFileSelect={handleFileSelect}
             acceptedTypes={['.pdf', '.doc', '.docx']}
             maxSizeMB={10}
           />
-        ) : (
+        )}
+
+        {selectedFile && selectedFile.name && (
           <div className="space-y-4">
             {/* Selected File Display */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
@@ -135,7 +162,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
                   {formatFileSize(selectedFile.size)}
                 </p>
               </div>
-              {uploadStatus === 'idle' && (
+              {!uploadMutation.isPending && (
                 <button
                   onClick={removeSelectedFile}
                   className="p-1 hover:bg-gray-200 rounded-full transition-colors"
@@ -147,7 +174,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
             </div>
 
             {/* Upload Progress */}
-            {uploadStatus === 'uploading' && (
+            {uploadMutation.isPending && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Uploading...</span>
@@ -163,30 +190,35 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
             )}
 
             {/* Status Message */}
-            {uploadMessage && (
+            {(uploadMutation.isPending || uploadMutation.isSuccess || uploadMutation.isError) && (
               <div className="flex items-center gap-2 text-sm">
                 {getStatusIcon()}
-                <span className={`
-                  ${uploadStatus === 'success' ? 'text-green-600' : ''}
-                  ${uploadStatus === 'error' ? 'text-red-600' : ''}
-                  ${uploadStatus === 'uploading' ? 'text-blue-600' : ''}
-                `}>
-                  {uploadMessage}
+                <span className={getStatusColor()}>
+                  {getStatusMessage()}
                 </span>
               </div>
             )}
           </div>
         )}
 
-        {/* Upload Button */}
-        {selectedFile && uploadStatus !== 'success' && (
-          <Button
-            text={uploadStatus === 'uploading' ? 'Uploading...' : 'Upload resume'}
-            onClick={handleUpload}
-            variant="dark"
-            animation={false}
-            className="w-full"
+        {/* Show Drop Zone again if "Upload new resume" was clicked */}
+        {existingResumeUrl && selectedFile && !selectedFile.name && (
+          <DropZone
+            onFileSelect={handleFileSelect}
+            acceptedTypes={['.pdf', '.doc', '.docx']}
+            maxSizeMB={10}
           />
+        )}
+
+        {/* Upload Button */}
+        {selectedFile && selectedFile.name && !uploadMutation.isSuccess && (
+      <Button
+        text={uploadMutation.isPending ? 'Uploading...' : 'Upload resume'}
+        onClick={handleUpload}
+        variant="dark"
+        animation={false}
+        className="w-full"
+      />
         )}
       </CardContent>
     </Card>

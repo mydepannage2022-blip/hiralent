@@ -30,7 +30,8 @@ import {
   addLinkController,
   deleteLinkController,
   updateJobBenefitsController,
-  bulkUpdateProfileController
+  bulkUpdateProfileController,
+  uploadApplicationResumeController
 } from '../controller/candidate/profile.controller';
 
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
@@ -268,6 +269,13 @@ router.put(
   '/profile/bulk',
   [checkAuth, validateBody(bulkProfileUpdateSchema)],
   bulkUpdateProfileController
+);
+
+router.post(
+  '/application-resume',
+  uploadCVMiddleware, // Uses same middleware as profile-upload (handles file validation)
+  handleUploadError,  // Handles multer errors
+  uploadApplicationResumeController
 );
 
 export default router;

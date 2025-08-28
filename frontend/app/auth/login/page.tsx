@@ -144,10 +144,11 @@ const handleSubmit = (e: React.FormEvent) => {
 
   // Submit if form is valid
   if (Object.keys(newErrors).length === 0) {
- loginMutation.mutate({
-  email: formData.email,
-  password: formData.password,
-});
+    // ✅ Email ko lowercase normalize kar ke API call
+    loginMutation.mutate({
+      email: formData.email.toLowerCase().trim(), // 👈 CHANGE: normalize email
+      password: formData.password,
+    });
   }
 };
   const getInputClassName = (fieldName: keyof FormData) => {

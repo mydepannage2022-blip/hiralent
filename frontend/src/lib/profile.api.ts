@@ -188,3 +188,13 @@ export const bulkUpdateProfile = async (data: {
   const response = await api.put('/candidates/profile/bulk', data);
   return response.data;
 };
+
+export const uploadApplicationResume = async (resume: File) => {
+  const formData = new FormData();
+  formData.append('cv', resume); // ✅ Same field name as profile-upload ('cv')
+
+  const response = await api.post('/candidates/application-resume', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};

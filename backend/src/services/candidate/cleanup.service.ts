@@ -190,3 +190,36 @@ export const cleanupCandidateData = async (candidateId: string): Promise<void> =
     throw error;
   }
 };
+
+
+export const cleanupOldApplicationResume = async (
+  candidateId: string, 
+  oldApplicationResumeUrl?: string
+): Promise<void> => {
+  try {
+    if (!oldApplicationResumeUrl || !oldApplicationResumeUrl.includes('cloudinary.com')) {
+      return;
+    }
+
+    // Extract public_id from old application resume URL
+    const urlParts = oldApplicationResumeUrl.split("/");
+    const publicIdWithExt = urlParts[urlParts.length - 1];
+    const publicId = `hiralent-candidate/application-resumes/${publicIdWithExt.split(".")[0]}`;
+
+    console.log("Attempting to delete old application resume from Cloudinary:", publicId);
+    
+    const deleteResult = await cloudinary.uploader.destroy(publicId, { 
+      resource_type: 'raw', 
+      type: 'upload' 
+    });
+    
+    if (deleteResult.result === 'ok') {
+      console.log(`✅ Old application resume deleted from Cloudinary: ${publicId}`);
+    } else {
+      console.warn(`⚠️ Application resume deletion result: ${deleteResult.result}`);
+    }
+
+  } catch (error) {
+    console.warn("Failed to delete old application resume:", error);
+  }
+};
