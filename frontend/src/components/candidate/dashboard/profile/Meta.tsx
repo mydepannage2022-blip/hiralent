@@ -5,13 +5,13 @@ import { motion } from 'framer-motion';
 import { Upload, Camera, Check, X } from 'lucide-react';
 import { HiCheckBadge, HiExclamationTriangle } from 'react-icons/hi2';
 import { useAuth } from '@/src/context/AuthContext';
-import { useProfile } from '@/src/context/ProfileContext'; // ✅ Added profile context
+import { useProfile } from '@/src/context/ProfileContext'; //Added profile context
 import { useUploadProfilePicture } from '@/src/lib/profile.queries';
 import Button from '@/src/components/layout/Button';
 
 const MetaSection: React.FC = () => {
-  const { user } = useAuth(); // ✅ Only for user info (name, email verification)
-  const { profileData } = useProfile(); // ✅ For profile data (picture, headline, resume_application_url)
+  const { user } = useAuth(); //Only for user info (name, email verification)
+  const { profileData } = useProfile(); //For profile data (picture, headline, resume_application_url)
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -23,7 +23,7 @@ const MetaSection: React.FC = () => {
   // Get profile picture with fallback
   const getProfileImage = () => {
     if (previewUrl) return previewUrl;
-    if (profileData?.profile_picture_url) { // ✅ From profile context
+    if (profileData?.profile_picture_url) { //From profile context
       return profileData.profile_picture_url;
     }
     return "/images/candidate.jpg";
@@ -36,10 +36,10 @@ const MetaSection: React.FC = () => {
 
   // Get headline with email fallback
   const getHeadlineOrEmail = () => {
-    if (profileData?.headline) { // ✅ From profile context
+    if (profileData?.headline) { //From profile context
       return profileData.headline;
     }
-    if (user?.email) { // ✅ Fallback to auth context email
+    if (user?.email) { //Fallback to auth context email
       return user.email;
     }
     return null;
@@ -139,7 +139,7 @@ const MetaSection: React.FC = () => {
     setIsEditing(true);
   };
 
-  // ✅ Updated resume handler - uses profileData.resume_application_url
+  //Updated resume handler - uses profileData.resume_application_url
   const handleViewResume = () => {
     if (profileData?.resume_application_url) {
       window.open(profileData.resume_application_url, '_blank');
@@ -264,7 +264,7 @@ const MetaSection: React.FC = () => {
           )}
         </div>
       
-        {/* ✅ Single Resume Button */}
+        {/* Single Resume Button */}
         <div className="flex justify-start mt-2">
           <Button 
             text="View Resume" 

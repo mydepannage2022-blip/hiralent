@@ -1256,9 +1256,6 @@ model PlatformEvolution {
 }
 
 // UPDATED USER MODEL WITH NEW RELATIONS
-// Adding new relations to existing User model
-// (This would be added to the existing User model relations section)
-
 enum QuestionType {
   MCQ
   CODING
