@@ -7,13 +7,17 @@ import JobCard from '@/src/components/company/public-profile/JobCard';
 
 interface JobDetailsPageProps {
     params: Promise<{ id: string }>;
+<<<<<<< HEAD
 <<<<<<< HEAD:frontend/app/job/jobdetails/[id]/page.tsx
+=======
+>>>>>>> origin
 }
 
 const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
     const { id } = use(params);
 
     // Mock data (replace with API fetch using id later)
+<<<<<<< HEAD
 =======
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
@@ -23,6 +27,8 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
     const { id } = await params;
     
 >>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec:frontend/app/job/jobdetails/page.tsx
+=======
+>>>>>>> origin
     const companyData = {
         name: 'Figma',
         logo: '/images/companyicon.png',

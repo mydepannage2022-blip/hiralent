@@ -422,10 +422,17 @@ const getInputClassName = (fieldName: keyof FormData) => {
         <motion.button
           type="submit"
 <<<<<<< HEAD
+<<<<<<< HEAD
           className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm cursor-pointer"
 =======
           className="w-full bg-[#1B73E8] text-white py-3 mb-1 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm"
 >>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec
+=======
+          className="w-full bg-[#1B73E8] text-white py-3 mb-1 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm"
+=======
+          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm cursor-pointer"
+>>>>>>> azlanbaig
+>>>>>>> origin
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.3 }}
@@ -439,10 +446,17 @@ const getInputClassName = (fieldName: keyof FormData) => {
         <motion.button
           type="button"
 <<<<<<< HEAD
+<<<<<<< HEAD
           className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer "
 =======
           className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 mb-2"
 >>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec
+=======
+          className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 mb-2"
+=======
+          className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer "
+>>>>>>> azlanbaig
+>>>>>>> origin
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.3 }}
