@@ -21,7 +21,7 @@ interface ProgressStepsProps {
 const ProgressSteps: React.FC<ProgressStepsProps> = ({ currentStep, steps }) => {
   return (
     <motion.div
-      className="flex justify-center items-center gap-3 p-8 lg:p-4 xl:p-8"
+      className="flex justify-center items-center gap-3 px-8 py-4 lg:px-4 lg:py-2  xl:px-8 xl:py-2 "
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.2, duration: 0.5 }}
@@ -41,7 +41,7 @@ const ProgressSteps: React.FC<ProgressStepsProps> = ({ currentStep, steps }) => 
             {isClickable ? (
               <SmartLink
                 href={step.path}
-                className={`block py-[1px] px-3 md:px-10 lg:px-12 rounded-2xl transition-all duration-300 ${
+                className={`block py-[1px] px-3 md:px-10 lg:px-8 rounded-2xl transition-all duration-300 ${
                   isActive
                     ? "bg-[#005DDC] text-white shadow-lg"
                     : isCompleted
@@ -54,7 +54,7 @@ const ProgressSteps: React.FC<ProgressStepsProps> = ({ currentStep, steps }) => 
               </SmartLink>
             ) : (
               <div
-                className="py-[1px] px-3 md:px-10 lg:px-12 rounded-lg bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
+                className="py-[1px] px-3 md:px-10 lg:px-8 rounded-lg bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
                 title={`Complete previous steps to unlock ${step.label}`}
               >
                 <span className="text-sm font-medium">{step.id}</span>

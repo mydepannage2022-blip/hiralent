@@ -1,7 +1,9 @@
+import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
 import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
+import { useProfile } from '../context/ProfileContext';
 
 export const useSignup = () => {
   const { login } = useAuth();
@@ -10,32 +12,53 @@ export const useSignup = () => {
   return useMutation({
     mutationFn: signup,
     onSuccess: (data) => {
-      // console.log("✅ Signup response:", data); 
+if (data.error === true || data.success === false) {
+        const errorMessage = data.message || 'Login failed';
+        toast.error(errorMessage);
+        return;
+      }
+      toast.success('Account created successfully!');
       login(data.user, data.token);
       router.push('/auth/signup/location');
     },
     onError: (error: any) => {
-      console.error('Signup failed:', error?.response?.data?.message || error.message);
-      // Show toast or error state
+      const errorMessage = error?.response?.data?.message || error.message || 'Signup failed';
+      console.error('Signup failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
 
 export const useLogin = () => {
   const { login } = useAuth();
+  const { setProfileData } = useProfile(); 
   const router = useRouter();
 
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
+      if (data.error === true || data.success === false) {
+        const errorMessage = data.message || 'Login failed';
+        toast.error(errorMessage);
+        return;
+      }
+      toast.success('Login successful!');
       login(data.user, data.token);
-      console.log(data.user , data.token)
-       const redirectPath = localStorage.getItem('redirectAfterLogin');
+      
+      if (data.profile) {
+        setProfileData(data.profile); 
+        console.log('Profile data set in context:', data.profile);
+      }
+
+      console.log('User:', data.user);
+      console.log('Profile:', data.profile);
+      console.log('Token:', data.token);
+
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
         router.push(redirectPath);
       } else {
-        // Role-based fallback
         if (data.user.role === 'candidate') {
           router.push('/candidate/dashboard');
         } else if (data.user.role === 'company') {
@@ -43,13 +66,14 @@ export const useLogin = () => {
         } else if (data.user.role === 'agency') {
           router.push('/agency/dashboard');
         } else {
-          router.push('/'); // fallback
+          router.push('/');
         }
       }
     },
     onError: (error: any) => {
-      console.error('Login failed:', error?.response?.data?.message || error.message);
-      // Optionally show toast here
+      const errorMessage = error?.response?.data?.message || error.message || 'Login failed';
+      console.error('Login failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
@@ -61,14 +85,17 @@ export const useUpdateLocation = () => {
     mutationFn: (data: { location: string; postalCode: number }) => {
       return updateLocation({
         location: data.location,
-        postalCode: Number(data.postalCode), // convert string to number
+        postalCode: Number(data.postalCode),
       });
     },
     onSuccess: () => {
+      toast.success('Location updated successfully!');
       router.push("/auth/signup/salary");
     },
-    onError: (err) => {
-      console.error("Location update failed:", err);
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update location';
+      console.error("Location update failed:", errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
@@ -80,30 +107,30 @@ export const useUpdateSalary = () => {
     mutationFn: (data: { minimumSalary: number; paymentPeriod: string }) =>
       updateSalary(data),
     onSuccess: () => {
+      toast.success('Salary preferences updated successfully!');
       router.push("/auth/signup/profile-picture");
     },
-    onError: (err) => {
-      console.error("Salary update failed:", err);
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update salary preferences';
+      console.error("Salary update failed:", errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
 
-
 export const useUploadResume = () => {
   const router = useRouter();
-
   return useMutation({
     mutationFn: uploadResume,
     onSuccess: () => {
       console.log('Resume uploaded successfully');
+      toast.success('Resume uploaded successfully!');
       router.push("/auth/logout");
     },
     onError: (error: any) => {
-      console.error('Upload failed:', error);
-      console.error('Error details:', error?.response?.data);
-      console.error('Status:', error?.response?.status);
-      // Show user-friendly error message
-      alert(`Upload failed: ${error?.response?.data?.message || error.message}`);
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to upload resume';
+      console.error('Upload failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
@@ -115,7 +142,8 @@ export const useVerifyEmail = () => {
   return useMutation({
     mutationFn: verifyEmail,
     onSuccess: (data) => {
-      console.log("✅ Email verified successfully:", data);
+      console.log("Email verified successfully:", data);
+      toast.success('Email verified successfully!');
       
       if (data.success && data.user && data.token) {
         login(data.user, data.token);
@@ -123,7 +151,9 @@ export const useVerifyEmail = () => {
       }
     },
     onError: (error: any) => {
-      console.error('Email verification failed:', error?.response?.data?.message || error.message);
+      const errorMessage = error?.response?.data?.message || error.message || 'Email verification failed';
+      console.error('Email verification failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
@@ -132,19 +162,18 @@ export const useResendVerificationEmail = () => {
   return useMutation({
     mutationFn: resendVerificationEmail,
     onSuccess: (data) => {
-      console.log("✅ Verification email sent:", data);
+      console.log("Verification email sent:", data);
       if (data.success) {
-        alert(data.message || "Verification email sent! Please check your inbox.");
+        toast.success(data.message || "Verification email sent! Please check your inbox.");
       }
     },
     onError: (error: any) => {
-      console.error('Resend verification failed:', error?.response?.data?.message || error.message);
-      const message = error?.response?.data?.message || error.message;
-      alert(`Failed to send email: ${message}`);
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to send verification email';
+      console.error('Resend verification failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };
-
 
 export const useUploadProfilePicture = () => {
   const router = useRouter();
@@ -153,11 +182,13 @@ export const useUploadProfilePicture = () => {
     mutationFn: uploadProfilePicture,
     onSuccess: () => {
       console.log('Profile picture uploaded successfully');
-      router.push("/auth/signup/uploadresume"); // ya jahan jana ho
+      toast.success('Profile picture uploaded successfully!');
+      router.push("/auth/signup/uploadresume");
     },
     onError: (error: any) => {
-      console.error('Upload failed:', error);
-      alert(`Upload failed: ${error?.response?.data?.message || error.message}`);
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to upload profile picture';
+      console.error('Upload failed:', errorMessage);
+      toast.error(errorMessage);
     },
   });
 };

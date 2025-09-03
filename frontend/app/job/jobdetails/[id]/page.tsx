@@ -7,12 +7,22 @@ import JobCard from '@/src/components/company/public-profile/JobCard';
 
 interface JobDetailsPageProps {
     params: Promise<{ id: string }>;
+<<<<<<< HEAD:frontend/app/job/jobdetails/[id]/page.tsx
 }
 
 const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
     const { id } = use(params);
 
     // Mock data (replace with API fetch using id later)
+=======
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
+    // Await params to get the actual id
+    const { id } = await params;
+    
+>>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec:frontend/app/job/jobdetails/page.tsx
     const companyData = {
         name: 'Figma',
         logo: '/images/companyicon.png',
@@ -126,9 +136,10 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
                         </a>
                     </div>
 
-                    <p className="text-gray-700">Slack Technologies, Inc. is a prominent software company headquartered in San Francisco, California. Founded in 2009 by Stewart Butterfield, Eric Costello, Cal Henderson, and Serguei Mourachov, the company has revolutionized team communication and collaboration with its innovative platform, Slack.
-                        Slack offers various subscription plans to cater to the needs of different businesses, from small startups to large enterprises. These plans include free, standard, plus, and enterprise versions, each with its own set of features and capabilities. Since its official launch in 2013, Slack has experienced remarkable growth and adoption across various industries...</p>
-
+                    <p className="text-gray-700">
+                        Slack Technologies, Inc. is a prominent software company headquartered in San Francisco, California. Founded in 2009 by Stewart Butterfield, Eric Costello, Cal Henderson, and Serguei Mourachov, the company has revolutionized team communication and collaboration with its innovative platform, Slack.
+                        Slack offers various subscription plans to cater to the needs of different businesses, from small startups to large enterprises. These plans include free, standard, plus, and enterprise versions, each with its own set of features and capabilities. Since its official launch in 2013, Slack has experienced remarkable growth and adoption across various industries...
+                    </p>
 
                     {/* Jobs Section */}
                     <div className="pt-6 sm:pt-8">

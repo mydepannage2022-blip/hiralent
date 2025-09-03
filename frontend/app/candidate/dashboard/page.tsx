@@ -8,16 +8,16 @@ import SavedJobs from "@/src/components/candidate/dashboard/home/SavedJobs";
 
 export default function DashboardHome() {
   return (
-    <div className='w-full flex justify-start items-start gap-3'>
-      <div className='w-2/3 flex flex-col justify-start items-center gap-2'>
+    <div className='w-full flex justify-start items-start flex-col lg:flex-row gap-3'>
+      <div className='w-full md:w-2/3 flex flex-col justify-start items-center gap-2'>
         <DashboardProfilePercentage />
         <DashboardJobStatistics />
+        <DashboardStatus showOn="mobile"/>
         <SavedJobs />
       </div>
-      <div className='w-1/3 flex flex-col justify-start items-start gap-2'>
-        <DashboardStatus/>
-        <MessagesModule
-        />
+      <div className='w-full md:w-1/3 flex flex-col justify-start items-start gap-2'>
+        <DashboardStatus showOn="desktop"/>
+        <MessagesModule />
       </div>
     </div>
   );

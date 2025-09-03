@@ -48,12 +48,18 @@ export const signup = async (input: SignupInput) => {
 
 export const login = async ({ email, password }: LoginInput): Promise<LoginResponse> => {
   try {
-    // Find user with their profile based on role
-    const user: UserWithProfiles | null = await prisma.user.findUnique({ 
+    // Find user with their profile based on role + skills for candidates
+    const user: UserWithProfiles | null = await prisma.user.findUnique({
       where: { email },
       include: {
         candidateProfile: true,
-        companyProfile: true,    // Updated field name
+        candidateSkills: { // Add skills for candidates
+          orderBy: [
+            { is_verified: 'desc' },
+            { created_at: 'desc' }
+          ]
+        },
+        companyProfile: true,
         agencyAdminProfile: true,
         agency: {
           select: {
@@ -78,7 +84,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       agency_id: user.agency_id,
     });
 
-    // Clean user object - remove sensitive fields
+    // Clean user object - same structure as getCandidateProfile
     const cleanUser: CleanUser = {
       user_id: user.user_id,
       email: user.email,
@@ -90,19 +96,80 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       linkedin_url: user.linkedin_url,
       agency_id: user.agency_id,
       agency: user.agency,
-      profile: null // Will be set based on role
     };
 
-    // Add profile based on user role
+    // Extract profile based on user role
+    let profileData = null;
+    
     if (user.role === 'candidate') {
-      cleanUser.profile = user.candidateProfile;
+      // For candidates: populate skills like getCandidateProfile
+      const populatedSkills = user.candidateSkills.map(skill => ({
+        skill_id: skill.skill_id,
+        skill_name: skill.skill_name,
+        skill_category: skill.skill_category,
+        proficiency: skill.proficiency,
+        years_experience: skill.years_experience,
+        confidence_score: skill.confidence_score,
+        source_type: skill.source_type,
+        is_verified: skill.is_verified
+      }));
+
+      if (user.candidateProfile) {
+        profileData = {
+          ...user.candidateProfile,
+          // Convert dates to ISO strings to match getCandidateProfile format
+          created_at: user.candidateProfile.created_at.toISOString(),
+          updated_at: user.candidateProfile.updated_at.toISOString(),
+          // Replace skill IDs with populated skills - same as getCandidateProfile
+          skills: populatedSkills
+        };
+      } else {
+        // If no profile exists, return basic structure - same as getCandidateProfile
+        profileData = {
+          candidate_id: user.user_id,
+          about_me: null,
+          city: null,
+          created_at: new Date().toISOString(),
+          education: null,
+          experience: null,
+          headline: null,
+          job_benefits: null,
+          languages: null,
+          links: null,
+          location: null,
+          minimum_salary_amount: null,
+          payment_period: null,
+          postal_code: null,
+          preferred_locations: null,
+          profile_picture_url: null,
+          resume_url: null,
+          skills: populatedSkills, // Empty skills array for new profile
+          updated_at: new Date().toISOString(),
+          video_intro_url: null,
+        };
+      }
     } else if (user.role === 'company') {
-      cleanUser.profile = user.companyProfile;
+      // For companies: return profile as-is (no skills to populate)
+      profileData = user.companyProfile ? {
+        ...user.companyProfile,
+        created_at: user.companyProfile.created_at.toISOString(),
+        updated_at: user.companyProfile.updated_at.toISOString()
+      } : null;
     } else if (user.role === 'agency') {
-      cleanUser.profile = user.agencyAdminProfile;
+      // For agencies: return profile as-is (no skills to populate)
+      profileData = user.agencyAdminProfile ? {
+        ...user.agencyAdminProfile,
+        created_at: user.agencyAdminProfile.created_at.toISOString(),
+        updated_at: user.agencyAdminProfile.updated_at.toISOString()
+      } : null;
     }
 
-    return { user: cleanUser, token };
+    // Return same structure as getCandidateProfile
+    return {
+      user: cleanUser,
+      profile: profileData, // Now with populated skills for candidates
+      token
+    };
 
   } catch (error: any) {
     console.error("❌ Login Error:", error);

@@ -50,7 +50,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   location: {
-    backgroundImage: "/images/location.jpg",
+    backgroundImage: "/images/signup.jpg",
     testimonials: [
       {
         id: 1,
@@ -66,7 +66,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
 
   salary: {
-    backgroundImage: "/images/salary.jpg",
+    backgroundImage: "/images/signup.jpg",
     testimonials: [
       {
         id: 1,
@@ -82,7 +82,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   profilePicture: {
-    backgroundImage: "/images/profile-setup.jpg",
+    backgroundImage: "/images/signup.jpg",
     testimonials: [
       {
         id: 1,
@@ -98,7 +98,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   uploadresume: {
-    backgroundImage: "/images/resume.jpg",
+    backgroundImage: "/images/signup.jpg",
     testimonials: [
       {
         id: 1,

@@ -8,9 +8,9 @@ import {
   getAssessmentResults,
   getAssessmentHistory,
   getRecommendations
-} from '../services/candidate/assessment.service';
-import { startAssessmentSchema } from '../validation/assessment.validation';
-import { submitAnswerSchema } from '../validation/assessment.validation';
+} from '../../services/candidate/assessment.service';
+import { startAssessmentSchema } from '../../validation/assessment.validation';
+import { submitAnswerSchema } from '../../validation/assessment.validation';
 
 // Start a new assessment
 export const startAssessmentController = async (req: Request, res: Response) => {

@@ -20,6 +20,8 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Fixed generateGeminiJSON function in openai.ts
+
 export async function generateGeminiJSON(systemPrompt: string, userPrompt: string, retries: number = 3): Promise<any> {
   let lastError: any;
   
@@ -27,59 +29,133 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
     try {
       console.log(`Attempt ${attempt}/${retries} for Gemini API call`);
       
-      // Updated model name - use one of these available models:
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash', // or 'gemini-1.5-pro' for better quality
+        model: 'gemini-1.5-flash',
         generationConfig: {
-          temperature: 0.3,
+          temperature: 0.1, // Lower temperature for better JSON consistency
           topK: 1,
-          topP: 1,
-          maxOutputTokens: 2048,
+          topP: 0.95,
+          maxOutputTokens: 4096, // Increased token limit
         }
       });
 
       const fullPrompt = `
-System:
-${systemPrompt}
+      ${systemPrompt}
 
-User:
-${userPrompt}
+      ${userPrompt}
 
-Please respond with valid JSON only.
-`.trim();
+      CRITICAL: Return ONLY valid JSON. No explanations, no markdown, no code blocks. Start with { and end with }. Do not include any text outside the JSON object.
+      `.trim();
 
       const result = await model.generateContent(fullPrompt);
-      const text = result.response.text();
+      let text = result.response.text();
 
-      // Clean up the response to extract JSON
-      let jsonText = text.trim();
+      console.log("Raw Gemini response (first 200 chars):", text.substring(0, 200));
+      console.log("Raw Gemini response (last 200 chars):", text.substring(Math.max(0, text.length - 200)));
+
+      // Aggressive JSON cleanup
+      text = text.trim();
       
-      // Remove markdown code blocks if present
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/```json\n?/, '').replace(/\n?```$/, '');
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```\n?/, '').replace(/\n?```$/, '');
+      // Remove markdown code blocks
+      if (text.startsWith('```json')) {
+        text = text.replace(/```json\s*/, '').replace(/\s*```$/, '');
+      } else if (text.startsWith('```')) {
+        text = text.replace(/```[a-z]*\s*/, '').replace(/\s*```$/, '');
       }
+      
+      // Remove any text before first { and after last }
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        text = text.substring(firstBrace, lastBrace + 1);
+      }
+      
+      // Clean up common JSON issues
+      text = text
+        .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
+        .replace(/:\s*([^",\[\]{}\s]+)([,}\]])/g, ':"$1"$2') // Quote unquoted string values
+        .replace(/:\s*'([^']*?)'/g, ':"$1"') // Replace single quotes with double quotes
+        .replace(/\\n/g, ' ') // Replace newlines with spaces
+        .replace(/\\\\/g, '\\') // Fix double backslashes
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove control characters
 
-      return JSON.parse(jsonText);
+      console.log("Cleaned JSON (first 200 chars):", text.substring(0, 200));
+      console.log("Cleaned JSON (last 200 chars):", text.substring(Math.max(0, text.length - 200)));
+
+      // Additional safety - try to fix malformed JSON
+      try {
+        const parsed = JSON.parse(text);
+        console.log("✅ JSON parsing successful");
+        return parsed;
+      } catch (parseErr: any) {
+        console.log("First parse failed, trying JSON repair...");
+        
+        // Try to fix common JSON issues
+        let repairedText = text
+          .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas again
+          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":') // Quote all unquoted keys
+          .replace(/:\s*([^",\[\]{}\s][^,}\]]*[^",}\]\s])([,}\]])/g, ':"$1"$2'); // Quote complex unquoted values
+        
+        const repairParsed = JSON.parse(repairedText);
+        console.log("✅ JSON repair successful");
+        return repairParsed;
+      }
       
     } catch (err: any) {
       lastError = err;
       console.error(`Attempt ${attempt} failed:`, err.message);
       
-      // Check if it's a rate limit or overload error
-      if (err.message?.includes('overloaded') || err.message?.includes('503') || err.message?.includes('rate limit')) {
-        if (attempt < retries) {
-          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-          console.log(`Waiting ${delay}ms before retry...`);
-          await sleep(delay);
-          continue;
+      // For JSON parsing errors, try with a much simpler prompt
+      if (err.message?.includes('JSON') && attempt < retries) {
+        console.log("Trying with minimal JSON structure...");
+        
+        try {
+          const model = genAI.getGenerativeModel({ 
+            model: 'gemini-1.5-flash',
+            generationConfig: {
+              temperature: 0.01, // Very low temperature
+              maxOutputTokens: 1500,
+            }
+          });
+
+          // Much simpler and more constrained prompt
+          const minimalPrompt = `Extract from resume and return exactly this JSON:
+{"headline":"title","skills":[{"name":"skill","category":"technical","proficiency":"intermediate"}],"experience":[{"job_title":"job","company":"co","duration":"time","years":1,"description":"desc"}],"education":[{"degree":"deg","institution":"inst","year":"year","field":"field"}],"summary":"summary"}
+
+Resume: ${userPrompt.substring(0, 1000)}`; 
+
+          const result = await model.generateContent(minimalPrompt);
+          let text = result.response.text().trim();
+          
+          // Extract JSON more aggressively
+          const firstBrace = text.indexOf('{');
+          const lastBrace = text.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+            text = text.substring(firstBrace, lastBrace + 1);
+          }
+          
+          // Remove any non-JSON content
+          text = text.replace(/[^\{\}"\[\]:,0-9a-zA-Z\s\-\.]/g, '');
+          
+          const parsed = JSON.parse(text);
+          console.log("✅ Minimal JSON parsing successful");
+          return parsed;
+          
+        } catch (minimalErr) {
+          console.error("Minimal approach also failed:", minimalErr);
         }
       }
       
-      // If it's not a retryable error, break
-      if (attempt >= retries) {
-        break;
+      // Rate limiting backoff
+      if (err.message?.includes('overloaded') || err.message?.includes('503') || err.message?.includes('rate limit')) {
+        if (attempt < retries) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`Rate limited, waiting ${delay}ms...`);
+          await sleep(delay);
+          continue;
+        }
       }
     }
   }
@@ -88,102 +164,26 @@ Please respond with valid JSON only.
   throw new Error(`Failed to get response from Gemini after ${retries} attempts: ${lastError?.message || 'Unknown error'}`);
 }
 
-// ---------------------- extractSkillsFromText ----------------------
-
-// export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
-//   try {
-//    const systemPrompt = `You are an expert HR analyst. Extract structured information from the following CV/resume text.
-
-// Return ONLY a valid JSON object in this exact format:
-
-// {
-//   "skills": [
-//     {
-//       "name": "skill name",
-//       "category": "technical | soft | language | certification",
-//       "proficiency": "beginner | intermediate | advanced | expert",
-//       "years_experience": number
-//     }
-//   ],
-//   "experience": [
-//     {
-//       "job_title": "title",
-//       "company": "company name",
-//       "duration": "e.g., Jan 2022 - May 2023",
-//       "years": number,
-//       "description": "brief summary of work"
-//     }
-//   ],
-//   "education": [
-//     {
-//       "degree": "degree name",
-//       "institution": "institution name",
-//       "year": "graduation year or range",
-//       "field": "field of study"
-//     }
-//   ],
-//   "summary": "2–3 sentence professional summary"
-// }
-
-// Instructions:
-// - Be accurate and extract only explicitly stated information.
-// - Categorize each skill carefully.
-// - For missing data, omit the field (do not use 'Not Available').
-// - Do NOT include any explanation or text outside the JSON.
-// `;
-
-//     const userPrompt = `Extract skills and information from this CV text:\n\n${text}`;
-
-//     return await generateGeminiJSON(systemPrompt, userPrompt);
-//   } catch (error: any) {
-//     console.error('Error extracting skills from text:', error);
-    
-//     // Return a fallback structure if AI fails
-//     console.log('Returning fallback structure due to AI service unavailability');
-//     return {
-//       skills: [
-//         {
-//           name: "Communication",
-//           category: "soft",
-//           proficiency: "intermediate",
-//           years_experience: 2
-//         }
-//       ],
-//       experience: [
-//         {
-//           job_title: "Not Available",
-//           company: "Not Available",
-//           duration: "Not Available",
-//           years: 0,
-//           description: "AI service temporarily unavailable"
-//         }
-//       ],
-//       education: [
-//         {
-//           degree: "Not Available",
-//           institution: "Not Available",
-//           year: "Not Available",
-//           field: "Not Available"
-//         }
-//       ],
-//       summary: "AI service temporarily unavailable. Please try again later."
-//     } as AIExtractionResult;
-//   }
-// }
 
 
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
-   const systemPrompt = `You are an expert HR analyst. Extract structured information from the following CV/resume text.
+const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.
 
-Return ONLY a valid JSON object in this exact format:
+CATEGORIZATION RULES:
+- SKILLS: Only professional technical and soft skills
+- EDUCATION: Degrees, certifications, courses, training programs  
+- LANGUAGES: Spoken/written languages with proficiency levels
+- EXPERIENCE: Job history and work experience
+
+Return ONLY valid JSON:
 
 {
   "headline": "Professional headline (max 120 characters)",
   "skills": [
     {
       "name": "skill name",
-      "category": "technical | soft | language | certification",
+      "category": "technical | soft",
       "proficiency": "beginner | intermediate | advanced | expert",
       "years_experience": number
     }
@@ -192,36 +192,41 @@ Return ONLY a valid JSON object in this exact format:
     {
       "job_title": "title",
       "company": "company name",
-      "duration": "e.g., Jan 2022 - May 2023",
+      "duration": "e.g., Jan 2022 - May 2023", 
       "years": number,
       "description": "brief summary of work"
     }
   ],
   "education": [
     {
-      "degree": "degree name",
-      "institution": "institution name",
-      "year": "graduation year or range",
-      "field": "field of study"
+      "degree": "degree or certification name",
+      "institution": "institution/provider name",
+      "year": "completion year or range",
+      "field": "field of study or specialization"
+    }
+  ],
+  "languages": [
+    {
+      "language": "language name",
+      "proficiency": "native | fluent | intermediate | basic",
+      "notes": "additional context if any"
     }
   ],
   "summary": "2–3 sentence professional summary"
 }
 
-Instructions for headline:
-- Create a professional headline like LinkedIn (max 120 characters)
-- Include current/target role and key expertise
-- Examples: "Senior Software Engineer | Full-Stack Developer | React & Node.js Expert"
-- Examples: "Digital Marketing Specialist | SEO & Content Strategy | Growth Hacker"
-- Make it compelling and industry-focused
-- If unclear, use most recent job title + key skills
+SKILLS (Include only these):
+- Technical: Programming languages, software tools, frameworks
+- Soft: Leadership, communication, problem-solving, teamwork
 
-Instructions for other fields:
-- Be accurate and extract only explicitly stated information.
-- Categorize each skill carefully.
-- For missing data, omit the field (do not use 'Not Available').
-- Do NOT include any explanation or text outside the JSON.
-`;
+EDUCATION (Include certifications here):
+- Degrees: Bachelor's, Master's, PhD
+- Certifications: AWS Certified, Google Analytics, PMP, CISSP
+- Courses: Online courses, bootcamps, training programs
+
+LANGUAGES (Extract separately):
+- English, Urdu, Arabic, Spanish, French, etc.
+- Include proficiency level if mentioned`;
 
     const userPrompt = `Extract skills, headline, and information from this CV text:\n\n${text}`;
 

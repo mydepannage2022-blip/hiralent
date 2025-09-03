@@ -181,42 +181,44 @@ const SignupInfoPage = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
 
-    const allTouched: FormTouched = {
-      fullName: true,
-      email: true,
-      password: true,
-      confirmPassword: true,
-    };
-    setTouched(allTouched);
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) newErrors[fieldName] = error;
-    });
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      const { fullName, email, password } = formData;
-
-      signupMutation.mutate({
-        email,
-        password,
-        full_name: fullName,
-        role: 'candidate',
-      });
-    }
+  const allTouched: FormTouched = {
+    fullName: true,
+    email: true,
+    password: true,
+    confirmPassword: true,
   };
+  setTouched(allTouched);
 
-  const getInputClassName = (fieldName: keyof FormData) => {
-    const baseClass =
-      "w-full px-4 py-3 border rounded-lg focus:outline-none text-sm text-[#757575]";
-    const hasError = touched[fieldName] && errors[fieldName];
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) newErrors[fieldName] = error;
+  });
+
+  setErrors(newErrors);
+
+  if (Object.keys(newErrors).length === 0) {
+    const { fullName, email, password } = formData;
+
+    // ✅ Email ko lowercase normalize kar ke API call
+    signupMutation.mutate({
+      email: email.toLowerCase().trim(), // 👈 CHANGE: normalize email
+      password,
+      full_name: fullName,
+      role: 'candidate',
+    });
+  }
+};
+
+const getInputClassName = (fieldName: keyof FormData) => {
+  const baseClass =
+    "w-full px-4 py-2 border rounded-lg focus:outline-none text-xs text-[#757575]";
+  const hasError = touched[fieldName] && errors[fieldName];
 
     if (hasError) {
       return `${baseClass} border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent`;
@@ -241,8 +243,9 @@ const SignupInfoPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs  mb-1">
             Full Name<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -268,8 +271,9 @@ const SignupInfoPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs  mb-1">
             Email<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -295,8 +299,9 @@ const SignupInfoPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Password<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -356,8 +361,9 @@ const SignupInfoPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9, duration: 0.5 }}
+          className={"mb-2"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Confirm Password<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -415,7 +421,11 @@ const SignupInfoPage = () => {
         {/* Submit Button */}
         <motion.button
           type="submit"
+<<<<<<< HEAD
           className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm cursor-pointer"
+=======
+          className="w-full bg-[#1B73E8] text-white py-3 mb-1 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm"
+>>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.3 }}
@@ -423,12 +433,16 @@ const SignupInfoPage = () => {
           {signupMutation.isPending ? 'Signing up...' : 'Sign Up'}
         </motion.button>
 
-        <div className="text-center text-gray-500 text-sm">OR</div>
+        <div className="text-center text-gray-500 text-sm mb-2">OR</div>
 
         {/* Google Sign Up Button */}
         <motion.button
           type="button"
+<<<<<<< HEAD
           className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer "
+=======
+          className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 mb-2"
+>>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.3 }}

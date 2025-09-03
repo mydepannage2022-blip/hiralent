@@ -8,6 +8,7 @@ import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 
+
 // Types
 interface FormData {
   email: string;
@@ -119,40 +120,40 @@ const LoginPage = () => {
     setPasswordVisibility((prev) => !prev);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      email: true,
-      password: true,
-    };
-    setTouched(allTouched);
-
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) {
-        newErrors[fieldName] = error;
-      }
-    });
-
-    setErrors(newErrors);
-
-    // Submit if form is valid
-    if (Object.keys(newErrors).length === 0) {
-      loginMutation.mutate({
-        email: formData.email,
-        password: formData.password,
-      });
-    }
+  // Mark all fields as touched
+  const allTouched: FormTouched = {
+    email: true,
+    password: true,
   };
+  setTouched(allTouched);
 
+  // Validate all fields
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) {
+      newErrors[fieldName] = error;
+    }
+  });
+
+  setErrors(newErrors);
+
+  // Submit if form is valid
+  if (Object.keys(newErrors).length === 0) {
+    // ✅ Email ko lowercase normalize kar ke API call
+    loginMutation.mutate({
+      email: formData.email.toLowerCase().trim(), // 👈 CHANGE: normalize email
+      password: formData.password,
+    });
+  }
+};
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass =
-      "w-full px-4 py-3 border rounded-lg focus:outline-none text-sm text-[#757575]";
+      "w-full px-4 py-3 border rounded-lg focus:outline-none text-xs text-[#757575]";
     const hasError = touched[fieldName] && errors[fieldName];
 
     if (hasError) {
@@ -170,15 +171,16 @@ const LoginPage = () => {
       subtitle={pageConfig.subtitle}
       showTabs={true}
       activeTab="candidate"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
+    > 
+    <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs  mb-1">
             Email<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -204,8 +206,9 @@ const LoginPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.5 }}
+          className={"mb-1"}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Password<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -261,8 +264,8 @@ const LoginPage = () => {
         </motion.div>
 
         {/* Forgot Password Link */}
-        <div className="text-right">
-          <SmartLink href="/auth/forgot-password" className="text-[#1B73E8] hover:underline text-sm">
+        <div className="text-right mb-1">
+          <SmartLink href="/auth/forgot-password" className="text-[#1B73E8] hover:underline text-xs">
             Forgot your password?
           </SmartLink>
         </div>

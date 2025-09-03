@@ -8,15 +8,31 @@ import * as aiAssessment from './aiAssessment.service';
 
 export const startAssessment = async (params: StartAssessmentParams): Promise<any> => {
   const { candidateId, skillCategory, assessmentType, difficulty } = params;
-  const candidateProfile = await prisma.candidateProfile.findUnique({
-    where: { candidate_id: candidateId },
+  
+  // Get candidate profile WITH skills (populated)
+  const candidateWithProfile = await prisma.user.findUnique({
+    where: { user_id: candidateId },
+    include: {
+      candidateProfile: true,
+      candidateSkills: true // Get actual skills instead of IDs
+    }
   });
-  if (!candidateProfile) throw new Error('Candidate profile not found');
+  
+  if (!candidateWithProfile?.candidateProfile) {
+    throw new Error('Candidate profile not found');
+  }
+
+  const candidateProfile = candidateWithProfile.candidateProfile;
+  const candidateSkills = candidateWithProfile.candidateSkills;
+  
+  // Build AI profile with actual skills data
   const aiProfile = {
     experienceLevel: candidateProfile.experience || '',
-    existingSkills: candidateProfile.skills ? candidateProfile.skills.split(',').map(s => s.trim()) : [],
+    // Use actual skill names from CandidateSkill table instead of JSON parsing
+    existingSkills: candidateSkills.map(skill => skill.skill_name),
     industry: '',
   };
+  
   const questionCount = 20;
   const questions = await aiAssessment.generateQuestions({
     skillCategory,
@@ -24,6 +40,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
     questionCount,
     candidateProfile: aiProfile,
   });
+  
   const assessment = await prisma.skillAssessment.create({
     data: {
       candidate_id: candidateId,
@@ -38,6 +55,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
       answers: [] as Json,
     } as any,
   });
+  
   const firstQuestion = questions[0] ? {
     questionId: questions[0].questionId || 'q1',
     questionText: questions[0].questionText,
@@ -45,6 +63,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
     options: questions[0].options || [],
     timeLimit: questions[0].timeLimit || 90,
   } : null;
+  
   return {
     success: true,
     data: {

@@ -2,13 +2,16 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import Loader from '../components/layout/Loader';
+
 interface AuthContextType {
   user: any;
   token: string | null;
   login: (userData: any, token: string) => void;
   logout: () => void;
+  updateUser: (userData: any) => void;
+  updateToken: (token: string) => void; 
   loading: boolean;
-  isHydrated: boolean; // Add this
+  isHydrated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,7 +20,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isHydrated, setIsHydrated] = useState(false); // Add this
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     // Check if we're on the client side
@@ -61,6 +64,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // ✅ NEW: Only update user data
+  const updateUser = (userData: any) => {
+    console.log('✅ Updating user only:', userData);
+    setUser(userData);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authUser', JSON.stringify(userData));
+    }
+  };
+
+  // ✅ NEW: Only update token
+  const updateToken = (newToken: string) => {
+    console.log('✅ Updating token only:', newToken);
+    setToken(newToken);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', newToken);
+    }
+  };
+
   const logout = () => {
     console.log('Logout called'); // Debug
     
@@ -79,7 +102,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, isHydrated }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      updateUser,   // ✅ NEW
+      updateToken,  // ✅ NEW
+      loading, 
+      isHydrated 
+    }}>
       {children}
     </AuthContext.Provider>
   );

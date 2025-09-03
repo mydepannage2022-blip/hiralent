@@ -30,7 +30,7 @@ const SalaryPage = () => {
       outline: "none",
       boxShadow: "none",
       border: "none",
-      fontSize: "14px",
+      fontSize: "12px",
     }),
     option: (base: any, state: any) => ({
       ...base,
@@ -69,7 +69,7 @@ const SalaryPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Minimum Salary Amount<span className="text-red-500">*</span>
           </label>
           <motion.input
@@ -77,7 +77,7 @@ const SalaryPage = () => {
             name="minSalary"
             id="minSalary"
             placeholder="Enter minimum salary amount"
-            className="w-full outline-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-sm text-[#757575]"
+            className="w-full outline-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-xs text-[#757575]"
             required
             value={minSalary}
             onChange={(e) => setMinSalary(e.target.value)}
@@ -91,7 +91,7 @@ const SalaryPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.5 }}
         >
-          <label className="block text-[#222] font-medium text-xs lg:text-sm mb-2">
+          <label className="block text-[#222] font-medium text-xs mb-1">
             Payment Period<span className="text-red-500">*</span>
           </label>
           <motion.div whileFocus={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
@@ -101,7 +101,7 @@ const SalaryPage = () => {
               id="paymentPeriod"
               placeholder="Select Payment Period"
               isSearchable
-              className="w-full text-sm text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
+              className="w-full text-xs text-[#757575] border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#063B82] focus:border-transparent rounded-lg"
               classNamePrefix="select"
               styles={customStyles}
               required

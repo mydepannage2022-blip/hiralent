@@ -370,7 +370,6 @@ export const uploadProfilePictureController = async (
   }
 };
 
-
 // Update candidate headline controller
 export const updateHeadlineController = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -403,7 +402,6 @@ export const updateHeadlineController = async (req: Request, res: Response): Pro
   }
 };
 
-// Get candidate headline controller
 export const getHeadlineController = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -432,6 +430,34 @@ export const getHeadlineController = async (req: Request, res: Response): Promis
     res.status(500).json({
       success: false,
       message: 'Failed to get headline',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+export const getProfileController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const candidateId = req.params.candidateId || req.user.user_id;
+    const profile = await candidateService.getCandidateProfile(candidateId);
+
+    res.status(200).json({
+      success: true,
+      data: profile,
+      message: 'Profile retrieved successfully'
+    } as APIResponse);
+  } catch (error) {
+    console.error('Error getting candidate profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get profile',
       error: error instanceof Error ? error.message : 'Unknown error'
     } as APIResponse);
   }

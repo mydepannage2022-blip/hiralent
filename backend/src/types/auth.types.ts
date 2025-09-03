@@ -2,7 +2,7 @@ export interface SignupInput {
   email: string;
   password: string;
   full_name: string;
-  role: "candidate" | "company" | "agency"; // Updated: removed "recruiter", "admin"
+  role: "candidate" | "company" | "agency";
   agency_id?: string;
 }
 
@@ -46,6 +46,23 @@ export interface UserWithProfiles {
   candidateProfile?: any;
   companyProfile?: any;
   agencyAdminProfile?: any;
+  
+  // Add candidateSkills relation for login function
+  candidateSkills?: Array<{
+    skill_id: string;
+    candidate_id: string;
+    skill_name: string;
+    skill_category: string | null;
+    proficiency: string | null;
+    years_experience: number | null;
+    confidence_score: number | null;
+    source_type: string;
+    source_document_id: string | null;
+    is_verified: boolean;
+    created_at: Date;
+    updated_at: Date;
+  }>;
+  
   agency?: {
     agency_id: string;
     name: string;
@@ -55,7 +72,7 @@ export interface UserWithProfiles {
   };
 }
 
-// Clean user response (no sensitive data)
+// ✅ UPDATED: Clean user response (no profile inside)
 export interface CleanUser {
   user_id: string;
   email: string;
@@ -73,20 +90,95 @@ export interface CleanUser {
     logo_url: string | null;
     status: string;
   };
-  profile: any; // Will contain candidateProfile, companyProfile, or agencyAdminProfile
+  // ❌ REMOVED: profile field
 }
 
-// Success login response
+// ✅ NEW: Profile types based on role
+export interface CandidateProfile {
+  candidate_id: string;
+  resume_url?: string | null;
+  video_intro_url?: string | null;
+  profile_picture_url?: string | null;
+  headline?: string | null;
+  about_me?: string | null;
+  skills?: any; // Changed: Can be string[] (IDs) or PopulatedSkill[] depending on context
+  education?: string | null;
+  experience?: string | null;
+  languages?: string | null;
+  location?: string | null;
+  city?: string | null;
+  postal_code?: number | null;
+  preferred_locations?: string | null;
+  minimum_salary_amount?: number | null;
+  payment_period?: string | null;
+  job_benefits?: string | null;
+  links?: string | null;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
+}
+
+export interface CompanyProfile {
+  company_id: string;
+  company_name?: string | null;
+  display_name?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  website?: string | null;
+  headquarters?: string | null;
+  founded_year?: number | null;
+  description?: string | null;
+  contact_number?: string | null;
+  linkedin_profile?: string | null;
+  twitter_handle?: string | null;
+  facebook_page?: string | null;
+  business_type?: string | null;
+  registration_number?: string | null;
+  tax_id?: string | null;
+  employee_count?: number | null;
+  annual_revenue?: string | null;
+  hiring_volume?: string | null;
+  typical_roles?: string[] | null;
+  hiring_regions?: string[] | null;
+  remote_policy?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
+  verified: boolean;
+  verification_date?: Date | null;
+  rating?: number | null;
+  total_jobs_posted?: number | null;
+  active_jobs_count?: number | null;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
+}
+
+export interface AgencyAdminProfile {
+  admin_id: string;
+  phone_number?: string | null;
+  position?: string | null;
+  linkedin_url?: string | null;
+  company_role?: string | null;
+  branding_notes?: string | null;
+  license_details?: string | null;
+  specialization?: string[] | null;
+  languages?: string[] | null;
+  years_experience?: number | null;
+  certifications?: string[] | null;
+  created_at: string; // Changed to string for ISO format consistency
+  updated_at: string; // Changed to string for ISO format consistency
+}
+
+// ✅ UPDATED: Success login response with separate profile
 export interface LoginSuccess {
   user: CleanUser;
+  profile: CandidateProfile | CompanyProfile | AgencyAdminProfile | null; // ✅ Separate profile object
   token: string;
 }
 
-// Error login response
+// Error login response (unchanged)
 export interface LoginError {
   error: true;
   message: string;
 }
 
-// Union type for login response
+// Union type for login response (unchanged)
 export type LoginResponse = LoginSuccess | LoginError;
