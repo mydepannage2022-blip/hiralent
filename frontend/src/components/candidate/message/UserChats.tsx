@@ -174,13 +174,13 @@ function UserChats() {
               {msg.type === "voice" && msg.audioUrl && (
                 <VoiceMessage
                   audioUrl={msg.audioUrl}
-                  isSender={msg.sender === "Ana amiri"} 
+                  isSender={msg.sender === "Ana amiri"}
                   avatarUrl={
                     msg.sender !== "Ana amiri"
                       ? "https://i.pravatar.cc/100"
                       : ""
-                  } 
-                  time={msg.time} 
+                  }
+                  time={msg.time}
                 />
               )}
 
