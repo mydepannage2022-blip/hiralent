@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { use } from "react";
 import Image from 'next/image';
 import CompanyInfoCard from '@/src/components/company/public-profile/CompanyInfoCard';
 import Tabs from '@/src/components/company/public-profile/PublicProfileTabs';
@@ -9,7 +9,12 @@ import OverviewCard from '@/src/components/company/public-profile/OverviewCard';
 import { ChevronRight } from "lucide-react";
 import JobCard from '@/src/components/company/public-profile/JobCard';
 
-const publicProfile = () => {
+interface PublicProfilePageProps {
+    params: Promise<{ id: string }>;
+}
+
+const publicProfile = ({ params }: PublicProfilePageProps) => {
+    const { id } = use(params);
     return (
         <div className="text-black">
             <div className="mt-30 md:mt-35 mb-20">

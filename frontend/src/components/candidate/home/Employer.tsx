@@ -65,7 +65,7 @@ const Employer = () => {
               whileTap={{ scale: 0.95 }}
             >
               <motion.span
-                className="bg-white bg-clip-text text-transparent"
+                className="bg-white bg-clip-text text-transparent cursor-pointer"
                 whileHover={{
                   backgroundPosition: ["0% 50%", "100% 50%"],
                 }}

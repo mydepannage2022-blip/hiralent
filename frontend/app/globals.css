@@ -184,6 +184,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -204,4 +205,40 @@
   height: 20px;
   border-style: double;
   border-width: 0px 0 0px 15px;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* index.css or globals.css */
+@import "swiper/css";
+@import "swiper/css/pagination";
+
+.swiper-pagination {
+  position: relative !important;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.swiper-pagination-bullet {
+  background-color: white  !important;
+  border: 1px solid #000000 !important;
+  /* inactive */
+  opacity: 1;
+}
+
+.swiper-pagination-bullet-active {
+  background-color: #000000 !important;
+  /* active */
 }
