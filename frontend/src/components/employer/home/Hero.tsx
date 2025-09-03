@@ -1,10 +1,8 @@
 "use client"
 import React from 'react'
-import { locationOptions } from "../../../constants/groupedLocationOptions";
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import JobSearch from '../../job/JobSearch';
 
 const Hero = () => {
   const [jobTitle, setJobTitle] = useState('');
@@ -13,7 +11,6 @@ const Hero = () => {
 
   // Array of hero images that will change
   const heroImages = [
-    "/images/expressive-young-girl-posing-2.png",
     "https://ru.readkong.com/static/9f/fe/9ffe688d413d394d3b873a0de26798a7/edinoe-reshenie-po-kartam-i-kasse-s-1-iyulya-2018-1168016-4.jpg",
     "/images/679922-middle.png",
     "/images/Marina.png"
@@ -29,32 +26,6 @@ const Hero = () => {
 
     return () => clearInterval(interval);
   }, []);
-
-
-  const handleSearch = (title: string, location: any) => {
-    console.log("Searching for:", title, location?.value);
-    // Implement actual search logic or route navigation here
-  };
-
-  const customStyles = {
-    control: (base: any) => ({
-      ...base,
-      padding: "0px 8px", // Adjusted to py-2 equivalent (8px vertical), px-2 (8px horizontal)
-      borderRadius: "8px",
-      borderColor: "transparent",
-      outline: "none",
-      boxShadow: "none",
-      border: "none",
-      fontSize: "14px", // Slightly smaller font for slim look
-    }),
-    option: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
-      color: "#111",
-      padding: "8px", // Slimmer options
-      fontWeight: state.isSelected ? "bold" : "normal",
-    }),
-  };
 
   // Animation variants
   const fadeInUp = {
@@ -78,7 +49,7 @@ const Hero = () => {
   };
 
   return (
-    <div className='w-full flex justify-center pt-30 pb-8 md:pt-32 md:pb-18 lg:pt-26 lg:pb-20 items-center bg-[#EFF5FF]'>
+    <div className='w-full flex justify-center pt-30 pb-8 md:pt-32 md:pb-18 lg:pt-26 lg:pb-20 items-center bg-[#F4F4F4]'>
       <div className='lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col lg:flex-row justify-between items-center gap-8 lg:gap-0'>
         {/* Left Content */}
         <motion.div
@@ -91,12 +62,12 @@ const Hero = () => {
             className='text-4xl md:text-4xl text-[#222] lg:text-5xl xl:text-7xl font-bold'
             variants={fadeInUp}
           >
-            Your Future Starts with
+            Hire Smarter, Grow Faster with
             <motion.span
               className='text-[#005DDC]'
               transition={{ duration: 2, repeat: Infinity }}
             >
-              {" "}Talenta
+              {" "}JOBLIN!
             </motion.span>
           </motion.h1>
 
@@ -104,50 +75,8 @@ const Hero = () => {
             className='text-[#757575] text-sm md:text-base lg:text-sm xl:text-lg w-full lg:w-4/5'
             variants={fadeInUp}
           >
-            Discover jobs that match your skills and passion. Type and explore!
+            Post your job openings on JOBLIN and connect with thousands of top professionals. With advanced tools, smart matching systems, and a user-friendlyr
           </motion.p>
-
-          <JobSearch
-            locationOptions={locationOptions}
-            onSearch={handleSearch}
-            customStyles={customStyles}
-          />
-
-          <motion.div
-            className='flex justify-center lg:justify-start items-center gap-2 mt-2'
-            variants={fadeInUp}
-          >
-            <div className='flex -space-x-2 md:-space-x-3 lg:-space-x-4'>
-              <motion.img
-                src="/images/frame-1890165341.png"
-                alt="image"
-                className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-full"
-                whileHover={{ scale: 1.1, zIndex: 10 }}
-                transition={{ duration: 0.3 }}
-              />
-              <motion.img
-                src="/images/frame-2147225745.png"
-                alt="image"
-                className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-full"
-                whileHover={{ scale: 1.1, zIndex: 10 }}
-                transition={{ duration: 0.3 }}
-              />
-              <motion.img
-                src="/images/frame-2147225746.png"
-                alt="image"
-                className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-full"
-                whileHover={{ scale: 1.1, zIndex: 10 }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-            <motion.span
-              className="ml-2 md:ml-4 text-xs md:text-sm text-[#222]"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              Over <span className="font-bold text-[#005DDC]">999+</span> jobseekers are successfully hired.
-            </motion.span>
-          </motion.div>
         </motion.div>
 
         {/* Right Image Section */}
@@ -167,19 +96,11 @@ const Hero = () => {
           {/* Main Hero Image - Light Animation */}
           <div className='w-full z-10 relative'>
             <motion.img
-              src={heroImages[0]}
+              src="/images/expressive-young-girl-posing-3.png"
               alt="Hero Image"
-              className='w-full max-w-[300px] md:max-w-[400px] lg:max-w-none mx-auto z-10 relative'
-              animate={{
-                y: [-8, 8, -8],
-                scale: [1, 1.02, 1],
-              }}
-              transition={{
-                duration: 6,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+              className="mx-auto z-10 relative w-full"
             />
+
           </div>
 
           {/* Floating Icon Animations - Hidden on small screens, visible on lg+ */}

@@ -1,27 +1,32 @@
 'use client'
 
-import React from 'react';
-import CompanyDetailsCard from "../../../src/components/job/jobdetails/CompanyDetailsCard"
-import { ChevronRight } from "lucide-react";
+import React, { use } from "react";
+import CompanyDetailsCard from '@/src/components/job/jobdetails/CompanyDetailsCard';
+import { ChevronRight } from 'lucide-react';
 import JobCard from '@/src/components/company/public-profile/JobCard';
 
-interface JobDetailsProps {
-    params: { id: string };
+interface JobDetailsPageProps {
+    params: Promise<{ id: string }>;
 }
 
-const JobDetailsPage = ({ params }: JobDetailsProps) => {
+const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
+    const { id } = use(params);
+
+    // Mock data (replace with API fetch using id later)
     const companyData = {
-        name: "Figma",
-        logo: "/images/companyicon.png",
-        role: "UI/UX Designer",
-        shortDescription: "A Senior UX Designer is a pivotal member of product development teams, responsible for ensuring that digital",
-        employmentType: "Full-Time",
-        experienceLevel: "2-3 Years",
-        location: "Los Angeles, CA",
-        salary: "$500",
-        profileImage: "/images/candidate.png",
-        resumeProgress: "5%",
-        resumeMessage: "Almost there! Just a little more effort to make it perfect.",
+        name: 'Figma',
+        logo: '/images/companyicon.png',
+        role: 'UI/UX Designer',
+        shortDescription:
+            'A Senior UX Designer is a pivotal member of product development teams, responsible for ensuring that digital',
+        employmentType: 'Full-Time',
+        experienceLevel: '2-3 Years',
+        location: 'Los Angeles, CA',
+        salary: '$500',
+        profileImage: '/images/candidate.png',
+        resumeProgress: '5%',
+        resumeMessage:
+            'Almost there! Just a little more effort to make it perfect.',
     };
 
     return (
