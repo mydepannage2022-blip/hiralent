@@ -7,6 +7,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 import SmartLink from "@/src/components/layout/SmartLink";
+import { useSignup } from "../../../src/lib/auth.queries";
+
 
 // Types
 interface FormData {
@@ -32,6 +34,7 @@ interface FormTouched {
 
 const CompanyRegisterPage = () => {
   const pageConfig = getAuthPageConfig('companyRegister');
+  const signupMutation = useSignup();
   
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
@@ -118,53 +121,87 @@ const CompanyRegisterPage = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  //   setIsSubmitting(true);
 
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      fullName: true,
-      email: true,
-      password: true,
-      confirmPassword: true,
-    };
-    setTouched(allTouched);
+  //   // Mark all fields as touched
+  //   const allTouched: FormTouched = {
+  //     fullName: true,
+  //     email: true,
+  //     password: true,
+  //     confirmPassword: true,
+  //   };
+    
+  //   setTouched(allTouched);
 
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) newErrors[fieldName] = error;
-    });
+  //   // Validate all fields
+  //   const newErrors: FormErrors = {};
+  //   Object.keys(formData).forEach((key) => {
+  //     const fieldName = key as keyof FormData;
+  //     const error = validateField(fieldName, formData[fieldName]);
+  //     if (error) newErrors[fieldName] = error;
+  //   });
 
-    setErrors(newErrors);
+  //   setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        // TODO: Implement company admin registration API call
-        console.log("Company admin registration data:", {
-          fullName: formData.fullName,
-          email: formData.email.toLowerCase().trim(),
-          password: formData.password,
-          role: 'company'
-        });
+  //   if (Object.keys(newErrors).length === 0) {
+  //     try {
+  //       // TODO: Implement company admin registration API call
+  //       console.log("Company admin registration data:", {
+  //         fullName: formData.fullName,
+  //         email: formData.email.toLowerCase().trim(),
+  //         password: formData.password,
+  //         role: 'company'
+  //       });
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  //       // Simulate API call
+  //       await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Redirect to company info step
-        window.location.href = '/auth/companyRegister/info';
-      } catch (error) {
-        console.error("Registration failed:", error);
-        alert("Registration failed. Please try again.");
-      }
-    }
+  //       // Redirect to company info step
+  //       window.location.href = '/auth/companyRegister/info';
+  //     } catch (error) {
+  //       console.error("Registration failed:", error);
+  //       alert("Registration failed. Please try again.");
+  //     }
+  //   }
 
-    setIsSubmitting(false);
+  //   setIsSubmitting(false);
+  // };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  // Mark all fields as touched
+  const allTouched: FormTouched = {
+    fullName: true,
+    email: true,
+    password: true,
+    confirmPassword: true,
   };
+  
+  setTouched(allTouched);
 
+  // Validate all fields
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) newErrors[fieldName] = error;
+  });
+
+  setErrors(newErrors);
+
+  if (Object.keys(newErrors).length === 0) {
+    // ✅ Use existing signup mutation
+    signupMutation.mutate({
+      email: formData.email.toLowerCase().trim(),
+      password: formData.password,
+      full_name: formData.fullName,
+      role: 'company_admin'
+    });
+  }
+};
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass = "w-full px-4 py-2 border rounded-lg focus:outline-none text-xs text-[#757575]";
     const hasError = touched[fieldName] && errors[fieldName];
@@ -352,11 +389,11 @@ const CompanyRegisterPage = () => {
           whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
           whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
           transition={{ duration: 0.3 }}
-          disabled={isSubmitting}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          disabled={signupMutation.isPending}
         >
-          {isSubmitting ? "Processing..." : "Proceed"}
+{signupMutation.isPending ? "Processing..." : "Proceed"}
         </motion.button>
 
         {/* Login Link */}

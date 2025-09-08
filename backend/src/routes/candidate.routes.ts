@@ -148,7 +148,6 @@ router.get('/skills', getExtractedSkillsController);
 
 router.get('/skills/:candidateId', getExtractedSkillsController);
 
-// ==================== WEEK 2 APIs: AI Job Matching Engine ====================
 
 router.get('/match-jobs', getJobRecommendationsController);
 
@@ -158,42 +157,29 @@ router.post('/update-vector', updateCandidateVectorController);
 
 router.post('/update-vector/:candidateId', updateCandidateVectorController);
 
-// ==================== WEEK 3 APIs: AI Skill Assessment ====================
 
-// Start a new assessment
 router.post('/start-assessment', startAssessmentController);
 
-// Get next question (adaptive)
 router.get('/assessment/:assessmentId/question', validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
 
-// Submit answer
 router.post('/assessment/:assessmentId/answer', validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
 
-// Get assessment progress
 router.get('/assessment/:assessmentId/progress', validateAssessmentOwnership, getProgressController);
 
-// Complete assessment
 router.post('/assessment/:assessmentId/complete', validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
 
-// Get assessment results
 router.get('/assessment/:assessmentId/results', validateAssessmentOwnership, getResultsController);
 
-// Get assessment history
 router.get('/assessments/history', getHistoryController);
 
-// Get skill recommendations
 router.get('/skill-recommendations', getRecommendationsController);
 
-// ==================== NEW PROFILE MANAGEMENT ROUTES ====================
-
-// Basic Info Management
 router.put(
   '/profile/basic-info',
   [checkAuth, validateBody(updateBasicInfoSchema)],
   updateBasicInfoController
 );
 
-// Skills Management
 router.put(
   '/profile/skills',
   [checkAuth, validateBody(updateSkillsSchema)],
@@ -212,7 +198,6 @@ router.delete(
   deleteSkillController
 );
 
-// Experience Management
 router.put(
   '/profile/experience',
   [checkAuth, validateBody(updateExperienceSchema)],

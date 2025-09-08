@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../context/ProfileContext';
 
+
 export const useSignup = () => {
   const { login } = useAuth();
   const router = useRouter();
@@ -12,14 +13,26 @@ export const useSignup = () => {
   return useMutation({
     mutationFn: signup,
     onSuccess: (data) => {
-if (data.error === true || data.success === false) {
+      if (data.error === true || data.success === false) {
         const errorMessage = data.message || 'Login failed';
         toast.error(errorMessage);
+        console.error('Signup failed:', errorMessage);
         return;
       }
+
       toast.success('Account created successfully!');
       login(data.user, data.token);
-      router.push('/auth/signup/location');
+      
+      // Role-based redirect
+      if (data.user.role === 'company_admin') {
+        router.push('/auth/companyRegister/info'); // Step 2: Company details
+      } else if (data.user.role === 'candidate') {
+        router.push('/auth/signup/location'); // Step 2: Location
+      } else if (data.user.role === 'agency') {
+        router.push('/agency/setup'); // Agency setup
+      } else {
+        router.push('/'); // Fallback
+      }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Signup failed';
@@ -28,6 +41,7 @@ if (data.error === true || data.success === false) {
     },
   });
 };
+
 
 export const useLogin = () => {
   const { login } = useAuth();
@@ -61,7 +75,7 @@ export const useLogin = () => {
       } else {
         if (data.user.role === 'candidate') {
           router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company') {
+        } else if (data.user.role === 'company_admin') {
           router.push('/company/dashboard');
         } else if (data.user.role === 'agency') {
           router.push('/agency/dashboard');
