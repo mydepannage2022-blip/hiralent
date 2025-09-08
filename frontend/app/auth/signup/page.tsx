@@ -57,7 +57,7 @@ const validationRules = {
 const SignupInfoPage = () => {
   const signupMutation = useSignup();
   const pageConfig = getAuthPageConfig('info');
-  
+
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
@@ -182,43 +182,43 @@ const SignupInfoPage = () => {
   };
 
 
-const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const allTouched: FormTouched = {
-    fullName: true,
-    email: true,
-    password: true,
-    confirmPassword: true,
-  };
-  setTouched(allTouched);
+    const allTouched: FormTouched = {
+      fullName: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+    };
+    setTouched(allTouched);
 
-  const newErrors: FormErrors = {};
-  Object.keys(formData).forEach((key) => {
-    const fieldName = key as keyof FormData;
-    const error = validateField(fieldName, formData[fieldName]);
-    if (error) newErrors[fieldName] = error;
-  });
-
-  setErrors(newErrors);
-
-  if (Object.keys(newErrors).length === 0) {
-    const { fullName, email, password } = formData;
-
-    // Email ko lowercase normalize kar ke API call
-    signupMutation.mutate({
-      email: email.toLowerCase().trim(), // 👈 CHANGE: normalize email
-      password,
-      full_name: fullName,
-      role: 'candidate',
+    const newErrors: FormErrors = {};
+    Object.keys(formData).forEach((key) => {
+      const fieldName = key as keyof FormData;
+      const error = validateField(fieldName, formData[fieldName]);
+      if (error) newErrors[fieldName] = error;
     });
-  }
-};
 
-const getInputClassName = (fieldName: keyof FormData) => {
-  const baseClass =
-    "w-full px-4 py-2 border rounded-lg focus:outline-none text-xs text-[#757575]";
-  const hasError = touched[fieldName] && errors[fieldName];
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length === 0) {
+      const { fullName, email, password } = formData;
+
+      // Email ko lowercase normalize kar ke API call
+      signupMutation.mutate({
+        email: email.toLowerCase().trim(), // 👈 CHANGE: normalize email
+        password,
+        full_name: fullName,
+        role: 'candidate',
+      });
+    }
+  };
+
+  const getInputClassName = (fieldName: keyof FormData) => {
+    const baseClass =
+      "w-full px-4 py-2 border rounded-lg focus:outline-none text-xs text-[#757575]";
+    const hasError = touched[fieldName] && errors[fieldName];
 
     if (hasError) {
       return `${baseClass} border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent`;
@@ -428,9 +428,8 @@ const getInputClassName = (fieldName: keyof FormData) => {
         >
           {signupMutation.isPending ? 'Signing up...' : 'Sign Up'}
         </motion.button>
-
+        
         <div className="text-center text-gray-500 text-sm mb-2">OR</div>
-
         {/* Google Sign Up Button */}
         <motion.button
           type="button"
