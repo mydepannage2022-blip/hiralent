@@ -348,7 +348,7 @@ const CompanyRegisterPage = () => {
         {/* Submit Button */}
         <motion.button
           type="submit"
-          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed mt-4"
           whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
           whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
           transition={{ duration: 0.3 }}
@@ -377,7 +377,7 @@ const CompanyRegisterPage = () => {
         >
           Do you already have an account?{" "}
           <SmartLink href="/auth/login" className="text-[#1B73E8] hover:underline font-medium">
-            Login as Company
+            Login
           </SmartLink>
         </motion.div>
       </form>
