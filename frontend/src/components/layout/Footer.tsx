@@ -53,7 +53,7 @@ const Footer = () => {
        
       </div>
        <div className='w-full flex justify-center items-center lg:items-start pt-16  text-center'>
-          <p className='text-xs lg:text-sm text-[#353535] text-center'>© 2025 Talenta. All rights reserved.</p>
+          <p className='text-xs lg:text-sm text-[#353535] text-center'>© 2025 hiralent. All rights reserved.</p>
         </div>
     </div>
     </div>
