@@ -1,9 +1,9 @@
-// components/layouts/AuthLayout.tsx
+// src/components/layout/AuthLayout.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ProgressSteps, { signupSteps } from "../auth/ProgressSteps";
+import ProgressSteps, { signupSteps, companySteps } from "../auth/ProgressSteps";
 import TabSelector from "../auth/TabSelector";
 
 // Types
@@ -15,6 +15,14 @@ interface Testimonial {
   image: string;
 }
 
+interface Step {
+  id: number;
+  path: string;
+  label: string;
+  isCompleted?: boolean;
+  isActive?: boolean;
+}
+
 interface AuthLayoutProps {
   children: React.ReactNode;
   backgroundImage: string;
@@ -24,6 +32,7 @@ interface AuthLayoutProps {
   currentStep?: number;
   showTabs?: boolean;
   activeTab?: 'candidate' | 'company';
+  steps?: Step[]; // Custom steps prop
 }
 
 // Testimonial Slider Component
@@ -104,8 +113,18 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   subtitle,
   currentStep,
   showTabs = true,
-  activeTab = 'candidate'
+  activeTab = 'candidate',
+  steps
 }) => {
+  // Determine which steps to use
+  const getStepsToUse = () => {
+    if (steps) return steps; // Custom steps provided
+    if (activeTab === 'company') return companySteps; // Company flow
+    return signupSteps; // Default candidate flow
+  };
+
+  const stepsToUse = getStepsToUse();
+
   return (
     <div className="w-full min-h-screen bg-[#FFFFFF]">
       <div className="w-full h-screen flex flex-col lg:flex-row">
@@ -120,7 +139,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
             {/* Progress Steps */}
             {currentStep && (
               <div className="flex justify-center mb-2">
-                <ProgressSteps currentStep={currentStep} steps={signupSteps} />
+                <ProgressSteps currentStep={currentStep} steps={stepsToUse} />
               </div>
             )}
 
@@ -162,36 +181,24 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="w-full">
               {children}
             </div>
-
-            {/* Spacer for mobile to ensure content doesn't stick to bottom */}
-            <div className="h-8 lg:hidden"></div>
           </div>
         </motion.div>
 
-        {/* Right Column - Image and Testimonials (Sticky) */}
+        {/* Right Column - Background & Testimonials */}
         <motion.div
-          className="hidden lg:block lg:w-1/2 lg:h-screen lg:sticky lg:top-0 relative overflow-hidden"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          {/* Background Image */}
-          <motion.img
-            src={backgroundImage}
-            alt="Auth background"
-            className="absolute inset-0 w-full h-full object-cover"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.2 }}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${backgroundImage})` }}
           />
-          
-          {/* Overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-blue-800/10 to-transparent" />
           
           {/* Testimonials */}
-          <div className="relative z-10 h-full">
-            <TestimonialSlider testimonials={testimonials} />
-          </div>
+          <TestimonialSlider testimonials={testimonials} />
         </motion.div>
       </div>
     </div>

@@ -40,17 +40,43 @@ export const commonTestimonials: Testimonial[] = [
   },
 ];
 
+// Company-specific testimonials
+export const companyTestimonials: Testimonial[] = [
+  {
+    id: 1,
+    name: "Novadge Marketing",
+    role: "Marketing Agency",
+    text: "This platform has completely transformed how we handle client campaigns. Simple, elegant, and exactly what we needed to scale efficiently.",
+    image: "https://i1.rgstatic.net/ii/profile.image/277785684791316-1443240676661_Q512/Sara-Johnson-18.jpg",
+  },
+  {
+    id: 2,
+    name: "Michael Rodriguez",
+    role: "HR Director",
+    text: "Finding quality talent has never been easier. The AI matching saves us hours of screening time.",
+    image: "https://img.a.transfermarkt.technology/portrait/big/995642-1712863495.jpg?lm=1",
+  },
+  {
+    id: 3,
+    name: "TechCorp Solutions",
+    role: "Software Company",
+    text: "Excellent platform for recruitment. The candidate quality and matching accuracy exceeded our expectations.",
+    image: "https://resize-elle.ladmedia.fr/r/400,279,ffffff,forcex,center-middle/img/var/plain_site/storage/images/people/la-vie-des-people/news/emma-watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-emma-roberts-3979994/95896063-1-fre-FR/Emma-Watson-son-amusante-reaction-apres-avoir-ete-confondue-avec-Emma-Roberts.jpg",
+  },
+];
+
 // Page-specific configurations
 export const authPagesConfig: Record<string, AuthPageConfig> = {
+  // Candidate pages
   info: {
-    backgroundImage: "/images/signup.jpg",
+    backgroundImage: "/images/signup.webp",
     testimonials: commonTestimonials,
     title: "Give us your information",
     subtitle: "Please enter your personal details to set up your account and personalize your experience"
   },
   
   location: {
-    backgroundImage: "/images/signup.jpg",
+    backgroundImage: "/images/signup.webp",
     testimonials: [
       {
         id: 1,
@@ -66,7 +92,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
 
   salary: {
-    backgroundImage: "/images/signup.jpg",
+    backgroundImage: "/images/signup.webp",
     testimonials: [
       {
         id: 1,
@@ -82,7 +108,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   profilePicture: {
-    backgroundImage: "/images/signup.jpg",
+    backgroundImage: "/images/signup.webp",
     testimonials: [
       {
         id: 1,
@@ -98,7 +124,7 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
   },
   
   uploadresume: {
-    backgroundImage: "/images/signup.jpg",
+    backgroundImage: "/images/signup.webp",
     testimonials: [
       {
         id: 1,
@@ -111,6 +137,45 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
     ],
     title: "Upload your CV/Resume",
     subtitle: "Upload your CV or resume to complete your profile and connect with job opportunities."
+  },
+
+  // Company pages
+  companyRegister: {
+    backgroundImage: "/images/company.webp",
+    testimonials: companyTestimonials,
+    title: "Give us Company information",
+    subtitle: "Please enter your personal details to set up your account and personalize your experience"
+  },
+
+  companyInfo: {
+    backgroundImage: "/images/company.webp",
+    testimonials: [
+      {
+        id: 1,
+        name: "TechStart Inc",
+        role: "Startup Company",
+        text: "Setting up our company profile was seamless. Now we're finding great candidates faster than ever.",
+        image: "https://i1.rgstatic.net/ii/profile.image/277785684791316-1443240676661_Q512/Sara-Johnson-18.jpg",
+      },
+      ...companyTestimonials.slice(1)
+    ],
+    title: "Tell us about your company",
+    subtitle: "Provide your company details to create an attractive profile for potential candidates."
+  },
+
+  // Auth pages
+  login: {
+    backgroundImage: "/images/signup.webp",
+    testimonials: commonTestimonials,
+    title: "Welcome back",
+    subtitle: "Please enter your credentials to access your account"
+  },
+
+  companyLogin: {
+    backgroundImage: "/images/company.webp",
+    testimonials: companyTestimonials,
+    title: "Company Login",
+    subtitle: "Access your company dashboard to manage jobs and candidates"
   }
 };
 
