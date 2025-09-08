@@ -1,34 +1,14 @@
 'use client'
-
 import React, { use } from "react";
 import CompanyDetailsCard from '@/src/components/job/jobdetails/CompanyDetailsCard';
 import { ChevronRight } from 'lucide-react';
 import JobCard from '@/src/components/company/public-profile/JobCard';
-
 interface JobDetailsPageProps {
     params: Promise<{ id: string }>;
-<<<<<<< HEAD
-<<<<<<< HEAD:frontend/app/job/jobdetails/[id]/page.tsx
-=======
->>>>>>> origin
 }
-
 const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
     const { id } = use(params);
-
     // Mock data (replace with API fetch using id later)
-<<<<<<< HEAD
-=======
-    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
-    // Await params to get the actual id
-    const { id } = await params;
-    
->>>>>>> 7442e5ba2b5643fd15516d240eca9d14d4994cec:frontend/app/job/jobdetails/page.tsx
-=======
->>>>>>> origin
     const companyData = {
         name: 'Figma',
         logo: '/images/companyicon.png',
@@ -44,7 +24,6 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
         resumeMessage:
             'Almost there! Just a little more effort to make it perfect.',
     };
-
     return (
         <div className="sm:mt-40 mt-30 mb-20">
             <div className="mx-4.5 sm:mx-10 md:mx-13 lg:mx-21">
@@ -62,7 +41,6 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
                             seamless and satisfying user experience.
                         </p>
                     </div>
-
                     {/* Job Description */}
                     <div>
                         <h2 className="text-xl font-semibold mb-2">Job Description</h2>
@@ -86,7 +64,6 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
                             </li>
                         </ul>
                     </div>
-
                     {/* What we offer */}
                     <div>
                         <h2 className="text-xl font-semibold mb-2">What we offer</h2>
@@ -111,7 +88,6 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
                             </li>
                         </ul>
                     </div>
-
                     {/* Bottom Tags */}
                     <div className="flex flex-wrap gap-2 pt-4">
                         {[
@@ -129,7 +105,6 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
                             </span>
                         ))}
                     </div>
-
                     <div className="flex justify-between items-center mb-8">
                         <h2 className="text-xl font-bold">
                             About Company
@@ -141,12 +116,10 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
                             />
                         </a>
                     </div>
-
                     <p className="text-gray-700">
                         Slack Technologies, Inc. is a prominent software company headquartered in San Francisco, California. Founded in 2009 by Stewart Butterfield, Eric Costello, Cal Henderson, and Serguei Mourachov, the company has revolutionized team communication and collaboration with its innovative platform, Slack.
                         Slack offers various subscription plans to cater to the needs of different businesses, from small startups to large enterprises. These plans include free, standard, plus, and enterprise versions, each with its own set of features and capabilities. Since its official launch in 2013, Slack has experienced remarkable growth and adoption across various industries...
                     </p>
-
                     {/* Jobs Section */}
                     <div className="pt-6 sm:pt-8">
                         <div className="flex justify-between items-center mb-8">
@@ -222,5 +195,4 @@ const JobDetailsPage = async ({ params }: JobDetailsPageProps) => {
         </div>
     );
 }
-
 export default JobDetailsPage;

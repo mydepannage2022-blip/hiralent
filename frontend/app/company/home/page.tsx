@@ -1,13 +1,13 @@
 'use client'
 
 import React from 'react'
-import Hero from '../../../src/components/employer/home/Hero'
-import RatingCard from "../../../src/components/employer/home/RatingCard";
-import CompanyLogo from "../../../src/components/employer/home/CompanyLogo";
-import SolutionsCard from "../../../src/components/employer/home/SolutionsCard";
-import HiringStrategyCard from "../../../src/components/employer/home/HiringStrategyCard";
-import TestimonialSlider from "../../../src/components/employer/home/TestimonialSlider";
-import PlansSection from "../../../src/components/employer/home/PlansSection";
+import Hero from '../../../src/components/company/home/Hero'
+import RatingCard from "../../../src/components/company/home/RatingCard";
+import CompanyLogo from "../../../src/components/company/home/CompanyLogo";
+import SolutionsCard from "../../../src/components/company/home/SolutionsCard";
+import HiringStrategyCard from "../../../src/components/company/home/HiringStrategyCard";
+import TestimonialSlider from "../../../src/components/company/home/TestimonialSlider";
+import PlansSection from "../../../src/components/company/home/PlansSection";
 import { ChevronRight } from 'lucide-react';
 import Marquee from "react-fast-marquee";
 
