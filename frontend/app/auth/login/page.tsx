@@ -169,7 +169,7 @@ const handleSubmit = (e: React.FormEvent) => {
       testimonials={pageConfig.testimonials}
       title={pageConfig.title}
       subtitle={pageConfig.subtitle}
-      showTabs={true}
+      showTabs={false}
       activeTab="candidate"
     > 
     <form onSubmit={handleSubmit} className="space-y-4">

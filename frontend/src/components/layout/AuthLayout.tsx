@@ -127,15 +127,15 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   return (
     <div className="w-full min-h-screen bg-[#FFFFFF]">
-      <div className="w-full h-screen flex flex-col lg:flex-row">
+      <div className="w-full h-screen flex flex-col lg:flex-row ">
         {/* Left Column - Form Content (Scrollable) */}
         <motion.div
-          className="w-full lg:w-1/2 flex flex-col justify-start items-center overflow-y-auto h-screen p-3 py-6 lg:py-8"
+          className="w-full lg:w-1/2 flex flex-col justify-start items-center overflow-y-auto h-screen p-3 py-6 lg:py-8 "
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="w-full max-w-md space-y-6 lg:space-y-8 mb-2">
+          <div className="w-full max-w-md flex flex-col items-center gap-2 lg:gap-4 xl:gap-6">
             {/* Progress Steps */}
             {currentStep && (
               <div className="flex justify-center mb-2">
