@@ -10,6 +10,9 @@ import SmartLink from "@/src/components/layout/SmartLink";
 import { locationOptions } from "@/src/constants/groupedLocationOptions";
 // Types
 import { industryOptions } from "@/src/constants/groupedIndustriesOptions";
+import { useCreateCompanyProfile } from "@/src/lib/auth.queries";
+
+
 interface FormData {
   companyName: string;
   industry: string;
@@ -57,7 +60,7 @@ const CompanyInfoPage = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<FormTouched>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const createProfileMutation = useCreateCompanyProfile();
 
 
   const companySizeOptions: OptionType[] = [
@@ -203,51 +206,43 @@ const CompanyInfoPage = () => {
       [fieldName]: error,
     }));
   };
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Mark all fields as touched
-    const allTouched: FormTouched = {
-      companyName: true,
-      industry: true,
-      companySize: true,
-      website: true,
-      location: true,
-      description: true,
-    };
-    setTouched(allTouched);
-
-    // Validate all fields
-    const newErrors: FormErrors = {};
-    Object.keys(formData).forEach((key) => {
-      const fieldName = key as keyof FormData;
-      const error = validateField(fieldName, formData[fieldName]);
-      if (error) newErrors[fieldName] = error;
-    });
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      try {
-        // TODO: Implement company info registration API call
-        console.log("Company info data:", formData);
-
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Redirect to success page or company dashboard
-        alert("Company registration successful!");
-        window.location.href = '/company/dashboard';
-      } catch (error) {
-        console.error("Company registration failed:", error);
-        alert("Registration failed. Please try again.");
-      }
-    }
-
-    setIsSubmitting(false);
+  // Mark all fields as touched
+  const allTouched: FormTouched = {
+    companyName: true,
+    industry: true,
+    companySize: true,
+    website: true,
+    location: true,
+    description: true,
   };
+  setTouched(allTouched);
+
+  // Validate all fields
+  const newErrors: FormErrors = {};
+  Object.keys(formData).forEach((key) => {
+    const fieldName = key as keyof FormData;
+    const error = validateField(fieldName, formData[fieldName]);
+    if (error) newErrors[fieldName] = error;
+  });
+
+  setErrors(newErrors);
+
+  if (Object.keys(newErrors).length === 0) {
+createProfileMutation.mutate({
+  company_name: formData.companyName,
+  industry: formData.industry,
+  company_size: formData.companySize,
+  website: formData.website || undefined,
+  location: formData.location,
+  description: formData.description
+});
+    console.log('Sending data:', formData);
+  }
+};
+
 
   const getInputClassName = (fieldName: keyof FormData) => {
     const baseClass = "w-full px-4 py-2 border rounded-lg focus:outline-none text-xs text-[#757575]";
@@ -466,11 +461,10 @@ const CompanyInfoPage = () => {
           whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
           whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
           transition={{ duration: 0.3 }}
-          disabled={isSubmitting}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          disabled={createProfileMutation.isPending}
         >
-          {isSubmitting ? "Registering Company..." : "Register Company"}
+{createProfileMutation.isPending ? "Creating Profile..." : "Register Company"}
+
         </motion.button>
 
         {/* Back to Step 1 Link */}
