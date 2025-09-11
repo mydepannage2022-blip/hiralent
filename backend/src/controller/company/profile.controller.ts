@@ -1,8 +1,6 @@
-  // backend/src/controller/company.controller.ts
 import { Request, Response } from 'express';
 import * as companyService from '../../services/company.service';
 
-// ==================== COMPANY PROFILE CONTROLLERS ====================
 
 export const createProfileController = async (req: Request, res: Response): Promise<void> => {
   try {
