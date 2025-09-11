@@ -1,30 +1,54 @@
 "use client";
 
-import { FaQuestionCircle, FaUserShield, FaBriefcase, FaRegEdit } from "react-icons/fa";
-import SearchBar from "../../../src/components/footer/SearchBar";
-import HelpCardGrid from "../../../src/components/footer/HelpCardGrid";
-import ContactBox from "../../../src/components/footer/ContactBox";
-import FAQSection from "../../../src/components/footer/FAQSection";
+import SearchBar from "../../../src/components/footer/helpcenter/SearchBar";
+import HelpCardGrid from "../../../src/components/footer/helpcenter/HelpCardGrid";
+import ContactBox from "../../../src/components/footer/helpcenter/ContactBox";
+import FAQSection from "../../../src/components/footer/helpcenter/FAQSection";
 
 const HelpCenterPage = () => {
     const helpCards = [
-        { icon: <FaQuestionCircle />, title: "Can I try free trial now?", description: "Lorem ipsum dolor sit amet..." },
-        { icon: <FaBriefcase />, title: "How to search for jobs?", description: "We understand your unique needs..." },
-        { icon: <FaRegEdit />, title: "How to set-up and edit your Profile?", description: "We help you customize hiring..." },
-        { icon: <FaUserShield />, title: "Account Settings and Security", description: "Manage your account securely..." },
-        { icon: <FaUserShield />, title: "Account Settings and Security", description: "Manage your account securely..." },
-        { icon: <FaUserShield />, title: "Account Settings and Security", description: "Manage your account securely..." },
+        {
+            icon: "/images/help1.png",
+            title: "Can i try free trial now?",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
+        {
+            icon: "/images/help2.png",
+            title: "How to Follow a Company on Joblin?",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
+        {
+            icon: "/images/help3.png",
+            title: "Activate your Joblin account?",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
+        {
+            icon: "/images/help4.png",
+            title: "How to search for jobs?",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
+        {
+            icon: "/images/help5.png",
+            title: "How to set-up and edit your Profile?",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
+        {
+            icon: "/images/help6.png",
+            title: "Account Settings and Security",
+            description: "We understand your unique needs and provide customized hiring strategies to ensure the perfect match"
+        },
     ];
 
     const faqItems = [
         { question: "Can I upgrade or downgrade my plan at any time?", answer: "Yes, you can easily switch plans..." },
-        { question: "Can I try the plans before purchasing?", answer: "We offer a free trial period..." },
+        { question: "Can I try the plans before purchasing?", answer: "Yes! We offer a free trial period that allows you to explore all the features of your chosen plan before making a commitment. During this trial, you can test the functionality, evaluate the performance, and determine if it meets your needs. There are no charges during the trial period, and you can cancel anytime before it ends without being billed." },
         { question: "Are taxes included in the pricing?", answer: "Taxes are calculated at checkout..." },
-        { question: "Do you offer refunds if not satisfied?", answer: "Yes, we provide a refund policy..." },
+        { question: "Do you offer refunds if I’m not satisfied with the service?", answer: "Yes, we provide a refund policy..." },
+        { question: "What payment methods do you accept?", answer: "Yes, we provide a refund policy..." },
     ];
 
     return (
-        <main className="max-w-6xl mx-auto px-4 py-12 mt-30 md:mt-35 mb-20">
+        <main className="px-4 sm:p-0 max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-5xl xl:max-w-7xl mx-auto mt-30 md:mt-35 mb-20">
             <SearchBar />
             <HelpCardGrid cards={helpCards} />
             <ContactBox />
