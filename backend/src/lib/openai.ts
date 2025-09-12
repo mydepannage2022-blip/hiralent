@@ -165,7 +165,6 @@ Resume: ${userPrompt.substring(0, 1000)}`;
 }
 
 
-
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
 const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.

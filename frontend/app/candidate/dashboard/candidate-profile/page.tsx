@@ -1,21 +1,47 @@
 "use client"
-import Meta from '@/src/components/candidate/dashboard/profile/Meta'
-import { ResumeLink } from '@/src/components/candidate/dashboard/profile/resume-link/ResumeLink'
-import { ResumeQuality } from '@/src/components/candidate/dashboard/profile/resume-quality/ResumeQuality'
-import { ResumeUpload } from '@/src/components/candidate/dashboard/profile/resume-upload/ResumeUpload'
-
-// Import our new profile sections
-import Personal from '@/src/components/candidate/dashboard/profile/PersonalInfoSection'
-import AboutMeSection from '@/src/components/candidate/dashboard/profile/AboutMeSection'
-import SkillsSection from '@/src/components/candidate/dashboard/profile/SkillsSection'
-import ExperienceSection from '@/src/components/candidate/dashboard/profile/ExperienceSection'
-import EducationSection from '@/src/components/candidate/dashboard/profile/EducationSection'
-import LinksSection from '@/src/components/candidate/dashboard/profile/LinksSection'
-import JobBenefitsSection from '@/src/components/candidate/dashboard/profile/JobBenefitsSection'
-
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/src/context/AuthContext'
 import { useProfileCompleteness } from '@/src/lib/profile.queries'
 import React from 'react'
+
+// Lazy load all heavy components
+const Meta = dynamic(() => import('@/src/components/candidate/dashboard/profile/Meta'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl mb-4"></div>
+});
+
+const ResumeLink = dynamic(() => 
+  import('@/src/components/candidate/dashboard/profile/resume-link/ResumeLink').then(mod => ({ default: mod.ResumeLink })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl"></div>
+});
+
+const ResumeUpload = dynamic(() => 
+  import('@/src/components/candidate/dashboard/profile/resume-upload/ResumeUpload').then(mod => ({ default: mod.ResumeUpload })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>
+});
+
+const Personal = dynamic(() => import('@/src/components/candidate/dashboard/profile/PersonalInfoSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-40 rounded-xl mb-4"></div>
+});
+
+const SkillsSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/SkillsSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-56 rounded-xl mb-4"></div>
+});
+
+const ExperienceSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/ExperienceSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>
+});
+
+const EducationSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/EducationSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>
+});
+
+const LinksSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/LinksSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl mb-4"></div>
+});
+
+const JobBenefitsSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/JobBenefitsSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl mb-4"></div>
+});
 
 const page = () => {
   const { user } = useAuth();
@@ -75,12 +101,10 @@ const page = () => {
         {/* Work Experience Section */}
         <div className="w-full flex flex-col lg:flex-row gap-4">
           <div className='w-full lg:w-1/2'>
-
-          <ExperienceSection/>
+            <ExperienceSection/>
           </div>
           <div className='w-full lg:w-1/2'>
-
-          <EducationSection/>
+            <EducationSection/>
           </div>
         </div>
         
@@ -93,31 +117,7 @@ const page = () => {
         <div className="w-full">
           <JobBenefitsSection />
         </div>
-        
-        {/* Profile Completeness Indicator
-        {profileData?.data?.overall_score !== undefined && (
-          <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-blue-900">Profile Completeness</h3>
-              <span className="text-2xl font-bold text-blue-600">
-                {Math.round(profileData.data.overall_score)}%
-              </span>
             </div>
-            
-            <div className="w-full bg-blue-200 rounded-full h-2 mb-3">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${profileData.data.overall_score}%` }}
-              ></div>
-            </div>
-            
-            <p className="text-sm text-blue-700">
-              Complete your profile to improve your job matching and visibility to employers.
-            </p>
-          </div>
-        )} */}
-      
-      </div>
       
       {/* Right Column - Resume Related Components */}
       <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>

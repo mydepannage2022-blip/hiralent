@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from 'next/dynamic';
 import { motion } from "framer-motion";
 import { useLogin } from "../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
