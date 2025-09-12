@@ -4,7 +4,7 @@ import React from "react";
 
 const page = () => {
     return (
-        <div className="px-4 sm:p-0 max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-5xl xl:max-w-7xl mx-auto mt-30 md:mt-35 mb-20">
+        <div className="px-4 sm:p-0 sm:max-w-2xl sm:mx-10 md:mx-13 sm:max-w-5xl xl:max-w-7xl lg:mx-auto mt-30 md:mt-35 mb-20">
             {/* Title */}
             <div className="flex flex-col justify-center items-center">
                 <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold w-full max-w-sm sm:max-w-md lg:max-w-lg text-center">
