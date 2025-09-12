@@ -4,13 +4,14 @@ import JobFormCard from "./JobFormCard";
 export default function PlansSection() {
     return (
         <section
-            className="relative bg-[#1a1a1a] py-8 px-4 sm:p-16 md:p-13 lg:p-20 text-white"
+            className="relative bg-[#1a1a1a] py-8 px-4 sm:p-10 md:p-13 lg:p-20 text-white"
             style={{
                 backgroundImage: "url('/images/bg-pattern.png')",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
             }}
         >
+            {/* mdkcmd */}
             <div className="max-w-5xl xl:max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 items-center">
                 {/* Left Side */}
                 <div className="mb-8 md:mb-0 max-w-[350px] sm:max-w-[425px] lg:max-w-[768px] justify-center">
