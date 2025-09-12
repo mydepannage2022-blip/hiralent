@@ -20,9 +20,12 @@ app.use(cors({
   // routes
   import authRoutes from './routes/auth.routes';
   import candidateRoutes from './routes/candidate.routes';
+  import companyRoutes from './routes/company.routes';
 
+  // Use routes
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/candidates', candidateRoutes);
+  app.use('/api/v1/company', companyRoutes);
 
   app.get('/', (req: Request, res: Response) => {
     res.send("backend running successfully");

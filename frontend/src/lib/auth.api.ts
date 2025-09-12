@@ -90,3 +90,21 @@ export const uploadProfilePicture = async (image: File) => {
   });
   return response.data;
 };
+
+export const createCompanyProfile = async (data: {
+  company_name: string;
+  industry: string;
+  company_size: string;
+  website?: string;
+  location: string;
+  description: string;
+}) => {
+    try {
+    console.log('API data:', data); // ✅ Add this
+    const response = await api.post('/company/create-profile', data);
+    return response.data;
+  } catch (error : any) {
+    console.error('API Error:', error.response?.data); // ✅ Add this
+    throw error;
+  }
+};

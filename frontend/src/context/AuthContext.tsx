@@ -64,7 +64,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ NEW: Only update user data
   const updateUser = (userData: any) => {
     console.log('✅ Updating user only:', userData);
     setUser(userData);
@@ -74,7 +73,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ NEW: Only update token
   const updateToken = (newToken: string) => {
     console.log('✅ Updating token only:', newToken);
     setToken(newToken);
@@ -84,19 +82,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    console.log('Logout called'); // Debug
+const logout = () => {
+  console.log('Logout called - clearing all data'); 
+  
+  setUser(null);
+  setToken(null);
+  
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
     
-    setUser(null);
-    setToken(null);
+    localStorage.removeItem('profileData');
+    localStorage.removeItem('profileCompleteness');
     
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-    }
-  };
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('profile');
+    localStorage.removeItem('redirectAfterLogin');
+    
+    console.log('All localStorage cleared');
+  }
+};
 
-  // Don't render children until hydrated to avoid mismatch
   if (!isHydrated) {
     return <Loader/>; // Or your loading component
   }

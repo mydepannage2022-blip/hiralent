@@ -14,6 +14,7 @@ interface ProfileContextType {
   
   // Utility functions
   refreshProfile: () => void;
+  clearProfile: () => void; // ✅ YEH INTERFACE ME HAI
   loading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -80,6 +81,18 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
+  const clearProfile = () => {
+    console.log('Clearing profile data');
+    
+    setProfileCompleteness(null);
+    setProfileData(null);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('profileData');
+      localStorage.removeItem('profileCompleteness');
+    }
+  };
+
   return (
     <ProfileContext.Provider 
       value={{ 
@@ -88,6 +101,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
         profileData,
         setProfileData,
         refreshProfile,
+        clearProfile, // ✅ AB THEEK HAI
         loading,
         setLoading
       }}

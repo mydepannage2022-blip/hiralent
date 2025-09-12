@@ -18,16 +18,16 @@ const Footer = () => {
         </div>
         <div className='w-full lg:w-1/4 flex flex-col justify-center items-center lg:items-start gap-4 text-[#353535]'>
           <h3 className='font-bold text-base'>Our Services</h3>
-          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Find job</Link></p>
+          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/job/jobsearch"}>Find job</Link></p>
           <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Create resume</Link></p>
-          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Search company</Link></p>
-          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Pricing Plan</Link></p>
+          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/company/discover"}>Search company</Link></p>
+          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/company/pricing"}>Pricing Plan</Link></p>
           <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>About us</Link></p>
         </div>
         <div className='w-full lg:w-1/4 flex flex-col justify-center items-center lg:items-start gap-4 text-[#353535]'>
           <h3 className='font-bold text-base'>Links</h3>
           <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Blog</Link></p>
-          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Help Center</Link></p>
+          <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/footer/helpcenter"}>Help Center</Link></p>
           <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Contact us</Link></p>
           <p className='text-xs lg:text-sm cursor-pointer'> <Link href={"/"}>Privacy Policy</Link></p>
         </div>
@@ -53,7 +53,7 @@ const Footer = () => {
        
       </div>
        <div className='w-full flex justify-center items-center lg:items-start pt-16  text-center'>
-          <p className='text-xs lg:text-sm text-[#353535] text-center'>© 2025 Talenta. All rights reserved.</p>
+          <p className='text-xs lg:text-sm text-[#353535] text-center'>© 2025 hiralent. All rights reserved.</p>
         </div>
     </div>
     </div>

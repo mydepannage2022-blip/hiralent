@@ -2,8 +2,7 @@ export interface SignupInput {
   email: string;
   password: string;
   full_name: string;
-  role: "candidate" | "company" | "agency";
-  agency_id?: string;
+  role: "candidate" | "company_admin" | "agency_admin";
 }
 
 export interface LoginInput {

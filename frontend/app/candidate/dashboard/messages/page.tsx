@@ -1,6 +1,15 @@
-import MessageProfile from '@/src/components/candidate/message/MessageProfile'
-import UserChats from '@/src/components/candidate/message/UserChats'
+"use client"
+import dynamic from 'next/dynamic';
 import React from 'react'
+
+// Lazy load message components
+const MessageProfile = dynamic(() => import('@/src/components/candidate/message/MessageProfile'), {
+  loading: () => <div className="animate-pulse bg-gray-200 w-80 h-full rounded-xl"></div>
+});
+
+const UserChats = dynamic(() => import('@/src/components/candidate/message/UserChats'), {
+  loading: () => <div className="animate-pulse bg-gray-200 flex-1 h-96 rounded-xl"></div>
+});
 
 const page = () => {
   return (

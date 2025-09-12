@@ -4,8 +4,7 @@ export const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   full_name: z.string().min(2),
-  role: z.enum(["candidate", "recruiter", "admin", "agency"]),
-  agency_id: z.string().uuid().optional(), // required only for recruiters/agency
+  role: z.enum(["candidate", "company_admin", "admin", "agency_admin"]),
 });
 
 export const LoginSchema = z.object({

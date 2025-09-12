@@ -1,9 +1,10 @@
 import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture} from './auth.api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile} from './auth.api';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../context/ProfileContext';
+
 
 export const useSignup = () => {
   const { login } = useAuth();
@@ -12,14 +13,25 @@ export const useSignup = () => {
   return useMutation({
     mutationFn: signup,
     onSuccess: (data) => {
-if (data.error === true || data.success === false) {
+      if (data.error === true || data.success === false) {
         const errorMessage = data.message || 'Login failed';
         toast.error(errorMessage);
+        console.error('Signup failed:', errorMessage);
         return;
       }
+
       toast.success('Account created successfully!');
       login(data.user, data.token);
-      router.push('/auth/signup/location');
+      
+      if (data.user.role === 'company_admin') {
+        router.push('/auth/companyRegister/info');
+      } else if (data.user.role === 'candidate') {
+        router.push('/auth/signup/location'); 
+      } else if (data.user.role === 'agency') {
+        router.push('/agency/setup'); 
+      } else {
+        router.push('/'); 
+      }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Signup failed';
@@ -29,43 +41,103 @@ if (data.error === true || data.success === false) {
   });
 };
 
+
+// export const useLogin = () => {
+//   const { login } = useAuth();
+//   const { setProfileData } = useProfile(); 
+//   const router = useRouter();
+
+//   return useMutation({
+//     mutationFn: loginapi,
+//     onSuccess: (data) => {
+//       if (data.error === true || data.success === false) {
+//         const errorMessage = data.message || 'Login failed';
+//         toast.error(errorMessage);
+//         return;
+//       }
+//       toast.success('Login successful!');
+//       login(data.user, data.token);
+      
+//       if (data.profile) {
+//         setProfileData(data.profile); 
+//         console.log('Profile data set in context:', data.profile);
+//       }
+
+//       console.log('User:', data.user);
+//       console.log('Profile:', data.profile);
+//       console.log('Token:', data.token);
+
+//       const redirectPath = localStorage.getItem('redirectAfterLogin');
+//       if (redirectPath) {
+//         localStorage.removeItem('redirectAfterLogin');
+//         router.push(redirectPath);
+//       } else {
+//         if (data.user.role === 'candidate') {
+//           router.push('/candidate/dashboard');
+//         } else if (data.user.role === 'company_admin') {
+//           router.push('/company/dashboard');
+//         } else if (data.user.role === 'agency') {
+//           router.push('/agency/dashboard');
+//         } else {
+//           router.push('/');
+//         }
+//       }
+//     },
+//     onError: (error: any) => {
+//       const errorMessage = error?.response?.data?.message || error.message || 'Login failed';
+//       console.error('Login failed:', errorMessage);
+//       toast.error(errorMessage);
+//     },
+//   });
+// };
 export const useLogin = () => {
   const { login } = useAuth();
-  const { setProfileData } = useProfile(); 
+  const { setProfileData } = useProfile();
   const router = useRouter();
 
+  
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
+
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+
       if (data.error === true || data.success === false) {
         const errorMessage = data.message || 'Login failed';
         toast.error(errorMessage);
         return;
       }
+      
       toast.success('Login successful!');
       login(data.user, data.token);
-      
       if (data.profile) {
-        setProfileData(data.profile); 
+        setProfileData(data.profile);
         console.log('Profile data set in context:', data.profile);
       }
-
-      console.log('User:', data.user);
-      console.log('Profile:', data.profile);
-      console.log('Token:', data.token);
 
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
+        console.log('Redirecting to stored path:', redirectPath);
         router.push(redirectPath);
       } else {
+        // YEH BHI LOG KARO
+        console.log('No stored redirect, checking role:', data.user.role);
+        
         if (data.user.role === 'candidate') {
+          console.log('Redirecting to candidate dashboard');
           router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company') {
+        } else if (data.user.role === 'company_admin') {
+          console.log('Redirecting to company dashboard');
           router.push('/company/dashboard');
         } else if (data.user.role === 'agency') {
+          console.log('Redirecting to agency dashboard');
           router.push('/agency/dashboard');
         } else {
+          console.log('Unknown role, redirecting to home');
           router.push('/');
         }
       }
@@ -77,7 +149,6 @@ export const useLogin = () => {
     },
   });
 };
-
 export const useUpdateLocation = () => {
   const router = useRouter();
 
@@ -190,5 +261,17 @@ export const useUploadProfilePicture = () => {
       console.error('Upload failed:', errorMessage);
       toast.error(errorMessage);
     },
+  });
+};
+
+
+export const useCreateCompanyProfile = () => {
+  const router = useRouter();
+  return useMutation({
+    mutationFn: createCompanyProfile,
+    onSuccess: () => {
+      toast.success('Company profile created!');
+      router.push('/auth/logout');
+    }
   });
 };
