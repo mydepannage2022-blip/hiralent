@@ -5,7 +5,7 @@ import OverviewCard from '@/src/components/company/public-profile/OverviewCard';
 
 const CustomerReviews = () => {
     return (
-        <section className="w-full px-4">
+        <section className="w-full px-4 mx-auto max-w-[1440px]">
             <div className="text-center mb-8 items-center flex flex-col">
                 <h1 className="text-2xl sm:text-4xl font-medium mb-2">Customer Reviews & Feedback</h1>
                 <p className="text-sm sm:text-base text-[#757575] max-w-[450px]">See what our users say about our pricing plans and share your own experience!.</p>

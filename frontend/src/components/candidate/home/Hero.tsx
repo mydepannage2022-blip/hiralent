@@ -96,7 +96,7 @@ const Hero = () => {
               className='text-[#005DDC]'
               transition={{ duration: 2, repeat: Infinity }}
             >
-              {" "}Talenta
+              {" "}Hiralent
             </motion.span>
           </motion.h1>
 

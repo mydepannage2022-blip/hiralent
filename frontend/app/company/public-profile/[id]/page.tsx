@@ -46,7 +46,7 @@ const publicProfile = ({ params }: PublicProfilePageProps) => {
                     </div>
                 </div>
 
-                <div className="sm:mx-6 md:mx-9 lg:mx-28 xl:mx-16 px-4">
+                <div className="sm:mx-6 md:mx-9 lg:mx-auto px-4 w-full max-w-[1312px]">
                     <Tabs />
                     {/* People Section */}
                     <div className="py-6 sm:py-8 sm:mb-8">

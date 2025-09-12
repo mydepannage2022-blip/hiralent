@@ -67,7 +67,7 @@ const Hero = () => {
               className='text-[#005DDC]'
               transition={{ duration: 2, repeat: Infinity }}
             >
-              {" "}JOBLIN!
+              {" "}Hiralent!
             </motion.span>
           </motion.h1>
 
@@ -98,7 +98,7 @@ const Hero = () => {
             <motion.img
               src="/images/expressive-young-girl-posing-3.png"
               alt="Hero Image"
-              className="mx-auto z-10 relative w-full"
+              className="w-full max-w-[300px] xl:max-w-[400px] mx-auto z-10 relative"
             />
 
           </div>
