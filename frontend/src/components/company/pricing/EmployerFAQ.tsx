@@ -27,7 +27,7 @@ const faqItems: AccordionItem[] = [
 
 const EmployerFAQ = () => {
     return (
-        <section className="max-w-4xl lg:max-w-5xl mx-auto mb-20 md:p-0 p-4">
+        <section className="max-w-4xl md:max-w-5xl xl:max-w-7xl sm:mx-6 md:mx-13 lg:mx-auto mb-20 md:p-0 p-4">
             <div className="text-center mb-8 items-center flex flex-col">
                 <h1 className="text-2xl sm:text-4xl font-medium mb-2">Pricing FAQs – Everything You Need to Know</h1>
                 <p className="text-sm sm:text-base text-[#757575] max-w-[450px]">Find answers to common questions about our plans, payments, and policies.</p>

@@ -11,7 +11,7 @@ const CustomerReviews = () => {
                 <p className="text-sm sm:text-base text-[#757575] max-w-[450px]">See what our users say about our pricing plans and share your own experience!.</p>
             </div>
 
-            <div className="sm:mx-12 md:mx-18 lg:mx-24">
+            <div className="sm:mx-6 md:mx-9 lg:mx-28 xl:mx-16">
                 {/* Overview Section */}
                 <div className="py-6 sm:py-8 sm:mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

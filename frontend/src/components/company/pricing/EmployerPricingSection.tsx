@@ -36,7 +36,7 @@ const EmployerPricingSection = () => {
             </div>
 
             {/* Cards — Free & Starter narrower, Standard centered & wider */}
-            <div className="mx-auto flex max-w-5xl flex-col gap-4 md:gap-0 lg:gap-4 md:flex-row md:items-stretch md:justify-center">
+            <div className="md:mx-8 lg:mx-auto flex max-w-5xl flex-col gap-4 md:gap-0 lg:gap-4 md:flex-row md:items-stretch md:justify-center">
                 {/* Free (narrower) */}
                 <div className="flex w-full max-w-[300px] items-stretch mx-auto">
                     <PricingCard

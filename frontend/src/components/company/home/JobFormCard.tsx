@@ -31,7 +31,7 @@ export default function JobFormCard() {
                     <button
                         type="button"
                         onClick={() => setShowJobTitle(!showJobTitle)}
-                        className="ml-2 text-[#282828] hover:text-black cursor-pointer"
+                        className="ml-2 lg:-ml-3 xl:ml-2 text-[#282828] hover:text-black cursor-pointer"
                     >
                         {showJobTitle ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
@@ -51,7 +51,7 @@ export default function JobFormCard() {
                     <button
                         type="button"
                         onClick={() => setShowJobType(!showJobType)}
-                        className="ml-2 text-[#282828] hover:text-black cursor-pointer"
+                        className="ml-2 lg:-ml-3 xl:ml-2 text-[#282828] hover:text-black cursor-pointer"
                     >
                         {showJobType ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>

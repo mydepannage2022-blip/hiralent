@@ -59,7 +59,7 @@ const Page = () => {
     return (
         <div className="mt-30 md:mt-35 mb-20">
             {/* Back button */}
-            <div className="max-w-4xl lg:max-w-6xl mx-auto mb-6 hidden md:block">
+            <div className="max-w-4xl lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 hidden md:block">
                 <button className="flex items-center gap-2 text-xl text-blue-600 hover:underline font-medium cursor-pointer">
                     <ArrowLeft className="h-5 w-5" />
                     Back
@@ -75,7 +75,7 @@ const Page = () => {
             </div>
 
             {/* MAIN FLEX LAYOUT */}
-            <div className="max-w-5xl mx-auto px-4 flex flex-col lg:flex-row gap-24 lg:items-start items-center">
+            <div className="max-w-5xl mx-auto px-4 sm:p-0 flex flex-col lg:flex-row gap-24 lg:items-start items-center">
                 {/* LEFT: Payment form */}
                 <div className="flex-1">
                     <h2 className="text-center lg:text-left text-xl font-semibold mb-6">

@@ -19,7 +19,7 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
     company,
 }) => {
     return (
-        <div className="bg-[#F9F9F9] rounded-lg p-7 md:p-8 flex flex-col h-full relative">
+        <div className="bg-[#F9F9F9] rounded-lg p-4 xl:p-8 flex flex-col h-full relative">
             {/* Quote Icon */}
             <img
                 src="/images/quoteblack.png"
@@ -28,7 +28,7 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
             />
 
             {/* Testimonial Text */}
-            <p className="text-sm md:text-base text-black">{description}</p>
+            <p className="text-sm xl:text-base text-black">{description}</p>
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-4"></div>

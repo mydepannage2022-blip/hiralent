@@ -176,12 +176,12 @@ const page = () => {
     return (
         <div className="w-full relative">
             <Hero />
-            <div className="mt-6 mb-12 p-4 flex flex-col items-center">
+            <div className="mt-6 mb-12 p-4 flex flex-col items-center sm:mx-6 md:mx-9 lg:mx-28 xl:mx-16">
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Trused by 2K companies</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575]">Comments from companies that have hired you</p>
                 </div>
-                <div className="sm:max-w-[600px] lg:max-w-[900px] max-w-[300px] w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <RatingCard
                         title="Review"
                         value="1M"
@@ -206,7 +206,7 @@ const page = () => {
                 </div>
             </div>
 
-            <div className="mt-6 mb-12 p-4">
+            <div className="mt-6 mb-12 p-4 sm:mx-6 md:mx-9 lg:m-0">
                 <div className="mb-6 flex flex-col items-center">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">
                         Built for companies of all sizes
@@ -275,7 +275,7 @@ const page = () => {
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Efficient solutions for hiring success</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575] w-full max-w-[450px]">"Optimize your recruitment with powerful tools for search, performance, efficiency, and visibility"</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:p-4 sm:mx-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:mx-1 md:mx-9 lg:mx-26 xl:mx-16">
                     <SolutionsCard
                         image="/images/solution1.png"
                         title="Robust Resume Search"
@@ -299,12 +299,12 @@ const page = () => {
                 </div>
             </div>
 
-            <div className="mt-6 mb-12 p-4">
+            <div className="mt-6 mb-12 p-4 sm:mx-2 md:mx-5 lg:mx-24 xl:mx-12">
                 <div className="mb-6 flex flex-col items-center">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Elevate your hiring strategy</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575] w-full max-w-[450px]">"Treamline your recruitment process with innovative solutions for sourcing, job posts, career events, and flexible hiring"</p>
                 </div>
-                <div className="sm:mx-12 mt-12 sm:p-4">
+                <div className="mt-12 sm:p-4">
                     {/* Hiring strategy cards block */}
                     <div className="flex flex-col lg:flex-row lg:items-stretch gap-6">
                         {/* First card - wider on lg, has the button (pass buttonText only here) */}
