@@ -74,7 +74,7 @@ const JobSearchPage = () => {
                         onClose={() => setSidebarOpen(false)}
                     />
 
-                    <div className='flex flex-col gap-4 sm:mx-11 md:mx-22 lg:mx-0 mx-2 lg:w-[780px] xl:w-[925px] w-full'>
+                    <div className='flex flex-col gap-4 sm:mx-10 md:mx-13 lg:mx-0 mx-4 lg:w-[720px] xl:w-[975px] w-full'>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <JsJobCard
                                 logo="/images/jobco1.jpg"

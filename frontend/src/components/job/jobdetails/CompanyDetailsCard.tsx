@@ -136,7 +136,7 @@ const CompanyDetailsCard = ({
         </div>
       </div>
       {/* Bottom Container */}
-      <div className="w-full flex sm:flex-row flex-col justify-center items-center sm:space-x-7.5 md:space-x-14 lg:space-x-22 xl:space-x-28.5 p-4 mt-8 border-t border-[#CBCBCB] pt-16 text-sm text-gray-600">
+      <div className="w-full flex sm:flex-row flex-col justify-center items-center sm:space-x-7.5 md:space-x-14 lg:space-x-18 xl:space-x-28.5 p-4 mt-8 border-t border-[#CBCBCB] pt-16 text-sm text-gray-600">
         <div className="flex items-center space-x-2 mb-4 sm:mb-0">
           <Clock size={36} color="black" className="w-7 h-7 md:w-9 md:h-9" />
           <div>

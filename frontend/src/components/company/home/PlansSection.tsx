@@ -4,7 +4,7 @@ import JobFormCard from "./JobFormCard";
 export default function PlansSection() {
     return (
         <section
-            className="relative bg-[#1a1a1a] py-8 px-4 sm:p-16 md:p-13 lg:p-20 text-white"
+            className="relative bg-[#1a1a1a] py-8 px-4 sm:p-10 md:p-13 lg:p-20 text-white"
             style={{
                 backgroundImage: "url('/images/bg-pattern.png')",
                 backgroundSize: "cover",

@@ -48,7 +48,7 @@ const HelpCenterPage = () => {
     ];
 
     return (
-        <main className="px-4 sm:p-0 max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-5xl xl:max-w-7xl mx-auto mt-30 md:mt-35 mb-20">
+        <main className="px-4 sm:p-0 sm:max-w-2xl sm:mx-10 md:mx-13 sm:max-w-5xl xl:max-w-7xl lg:mx-auto mt-30 md:mt-35 mb-20">
             <SearchBar />
             <HelpCardGrid cards={helpCards} />
             <ContactBox />
