@@ -40,8 +40,9 @@ export const startAssessmentController = async (req: Request, res: Response) => 
 
 // Get the next question
 export const getQuestionController = async (req: Request, res: Response) => {
-  try {
-    const assessmentId = req.params.assessmentId;
+  const assessmentId = req.params.assessmentId;
+  console.log('🔍 Service: getNextQuestion called with ID:', assessmentId);
+  try {    
     if (!assessmentId) {
       return res.status(400).json({ success: false, error: 'Missing assessmentId' });
     }

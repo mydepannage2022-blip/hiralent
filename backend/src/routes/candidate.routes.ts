@@ -76,6 +76,7 @@ import {
   updateJobBenefitsSchema,
   bulkProfileUpdateSchema
 } from '../validation/candidate.schema';
+import { startAssessmentSchema } from '../validation/assessment.validation';
 
 const router = Router();
 
@@ -158,11 +159,20 @@ router.post('/update-vector', updateCandidateVectorController);
 router.post('/update-vector/:candidateId', updateCandidateVectorController);
 
 
-router.post('/start-assessment', startAssessmentController);
+// ==================== ASSESSMENT ROUTES ====================
+router.post('/start-assessment', [checkAuth, validateBody(startAssessmentSchema)], startAssessmentController);
 
-router.get('/assessment/:assessmentId/question', validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
+// router.get('/assessment/:assessmentId/question', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
 
-router.post('/assessment/:assessmentId/answer', validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
+router.get('/assessment/:assessmentId/question',
+  checkAuth, 
+  validateAssessmentOwnership, 
+  checkAssessmentStatus,
+  getQuestionController
+);
+
+
+router.post('/assessment/:assessmentId/answer', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
 
 router.get('/assessment/:assessmentId/progress', validateAssessmentOwnership, getProgressController);
 
@@ -173,6 +183,8 @@ router.get('/assessment/:assessmentId/results', validateAssessmentOwnership, get
 router.get('/assessments/history', getHistoryController);
 
 router.get('/skill-recommendations', getRecommendationsController);
+
+
 
 router.put(
   '/profile/basic-info',
