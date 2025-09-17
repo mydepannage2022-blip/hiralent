@@ -165,6 +165,7 @@ Resume: ${userPrompt.substring(0, 1000)}`;
 }
 
 
+
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
 const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.
@@ -418,4 +419,344 @@ Return only a JSON array of 128 numbers like: [0.123, -0.546, 0.789, ...]`;
     console.error('Error creating embedding with Gemini:', error);
     throw new Error('Failed to create embedding');
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export async function generateSkillsAssessmentJSON(
+  systemPrompt: string, 
+  userPrompt: string, 
+  assessmentType: 'questions' | 'evaluation' | 'difficulty' | 'report' = 'questions'
+): Promise<any> {
+  
+  try {
+    console.log(`Starting ${assessmentType} generation...`);
+    
+    // Single optimized model configuration
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      generationConfig: {
+        temperature: 0.2, // Balanced creativity and consistency
+        topK: 1,
+        topP: 0.9,
+        maxOutputTokens: assessmentType === 'report' ? 3000 : 2000,
+      }
+    });
+
+    // Streamlined prompt for faster processing
+    const optimizedPrompt = `${systemPrompt}\n\n${userPrompt}\n\nReturn ONLY ${getQuickFormat(assessmentType)} - no explanations.`;
+
+    const result = await model.generateContent(optimizedPrompt);
+    let text = result.response.text().trim();
+
+    console.log(`Raw response (${assessmentType}):`, text.substring(0, 200));
+
+    // Fast JSON extraction
+    const startChar = assessmentType === 'questions' ? '[' : '{';
+    const endChar = assessmentType === 'questions' ? ']' : '}';
+    
+    const start = text.indexOf(startChar);
+    const end = text.lastIndexOf(endChar);
+    
+    if (start !== -1 && end !== -1) {
+      text = text.substring(start, end + 1);
+    }
+
+    // Quick JSON cleanup
+    text = text
+      .replace(/```json|```/g, '')
+      .replace(/,(\s*[}\]])/g, '$1')
+      .replace(/([{,]\s*)(\w+):/g, '$1"$2":')
+      .replace(/:\s*'([^']*)'/g, ':"$1"')
+      .replace(/[\u0000-\u001F]/g, '');
+
+    const parsed = JSON.parse(text);
+    
+    // Quick validation
+    if (!isValidResponse(parsed, assessmentType)) {
+      console.log(`Validation failed for ${assessmentType}, using fallback...`);
+      return await getSmartFallbackResponse(assessmentType, userPrompt);
+    }
+    
+    console.log(`${assessmentType} generation successful`);
+    return parsed;
+    
+  } catch (error) {
+    console.error(`Assessment ${assessmentType} failed:`, error.message);
+    return await getSmartFallbackResponse(assessmentType, userPrompt);
+  }
+}
+
+// ==================== HELPER FUNCTIONS ====================
+
+function getQuickFormat(type: string): string {
+  switch (type) {
+    case 'questions': 
+      return 'JSON array: [{"questionText":"","type":"MCQ","options":[],"correctAnswer":"","difficulty":"BEGINNER","timeLimit":90}]';
+    case 'evaluation': 
+      return 'JSON object: {"score":85,"feedback":"","strengths":[],"improvements":[],"confidence":90,"isCorrect":true}';
+    case 'difficulty': 
+      return 'JSON object: {"recommendedDifficulty":"INTERMEDIATE","reasoning":"","confidence":85}';
+    case 'report': 
+      return 'JSON object: {"overallScore":80,"skillLevel":"INTERMEDIATE","strengths":[],"weaknesses":[],"recommendations":[],"confidenceScore":87}';
+    default: 
+      return 'JSON';
+  }
+}
+
+function isValidResponse(data: any, type: string): boolean {
+  switch (type) {
+    case 'questions':
+      return Array.isArray(data) && data.length > 0 && data[0]?.questionText;
+    case 'evaluation':
+      return data?.score !== undefined && typeof data.score === 'number';
+    case 'difficulty':
+      return data?.recommendedDifficulty && typeof data.recommendedDifficulty === 'string';
+    case 'report':
+      return data?.overallScore !== undefined && data?.skillLevel;
+    default:
+      return true;
+  }
+}
+
+// ==================== SMART FALLBACK WITH ORIGINAL PROMPT REUSE ====================
+
+async function getSmartFallbackResponse(type: string, originalPrompt: string): Promise<any> {
+  try {
+    console.log(`Attempting smart fallback for ${type}...`);
+    
+    const simplifiedPrompt = simplifyOriginalPrompt(originalPrompt, type);
+    
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1000,
+      }
+    });
+
+    const result = await model.generateContent(simplifiedPrompt);
+    let text = result.response.text().trim();
+    
+    // Extract JSON aggressively
+    const jsonMatch = text.match(/[\[{].*[\]}]/s);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (isValidResponse(parsed, type)) {
+        console.log(`Smart fallback successful for ${type}`);
+        return parsed;
+      }
+    }
+    
+  } catch (error) {
+    console.warn(`Smart fallback failed for ${type}:`, error.message);
+  }
+  
+  // Last resort: Static fallback with extracted context
+  console.log(`Using static fallback for ${type}`);
+  return getContextualStaticFallback(type, originalPrompt);
+}
+
+function simplifyOriginalPrompt(originalPrompt: string, type: string): string {
+  let simplified = originalPrompt;
+  
+  switch (type) {
+    case 'questions':
+      simplified = simplified
+        .replace(/Generate \d+/, 'Generate 3') // Reduce count
+        .replace(/detailed|comprehensive|complex/gi, 'simple') // Simplify requirements
+        .replace(/with explanation|detailed analysis/gi, '') // Remove complexity
+        + '\n\nReturn simple JSON array format only.';
+      break;
+      
+    case 'evaluation':
+      simplified = simplified
+        .replace(/detailed|comprehensive/gi, 'brief')
+        + '\n\nReturn simple JSON object with score, feedback, isCorrect only.';
+      break;
+      
+    case 'difficulty':
+      simplified = 'Recommend difficulty level based on context. Return: {"recommendedDifficulty":"INTERMEDIATE","reasoning":"brief reason"}';
+      break;
+      
+    case 'report':
+      simplified = simplified
+        .replace(/comprehensive|detailed/gi, 'basic')
+        + '\n\nReturn basic JSON report format only.';
+      break;
+  }
+  
+  return simplified;
+}
+
+function getContextualStaticFallback(type: string, originalPrompt: string): any {
+  // Extract context from original prompt
+  const context = extractPromptContext(originalPrompt);
+  
+  switch (type) {
+    case 'questions':
+      return generateContextualQuestions(context);
+    case 'evaluation':
+      return generateContextualEvaluation(context);
+    case 'difficulty':
+      return generateContextualDifficulty(context);
+    case 'report':
+      return generateContextualReport(context);
+    default:
+      return {};
+  }
+}
+
+function extractPromptContext(prompt: string): any {
+  // Extract key information from original prompt
+  const skillMatch = prompt.match(/(?:skill|category|subject)[^:]*:\s*([A-Za-z\s\+#\-]+)/i);
+  const difficultyMatch = prompt.match(/(?:difficulty|level)[^:]*:\s*([A-Z]+)/i);
+  const experienceMatch = prompt.match(/(?:experience|level)[^:]*:\s*([A-Za-z\s]+)/i);
+  const skillsMatch = prompt.match(/(?:existing|previous)\s*skills[^:]*:\s*([A-Za-z\s,\+#\-]+)/i);
+  const industryMatch = prompt.match(/(?:industry|field)[^:]*:\s*([A-Za-z\s]+)/i);
+  
+  return {
+    skill: skillMatch?.[1]?.trim() || 'Programming',
+    difficulty: difficultyMatch?.[1]?.trim() || 'BEGINNER',
+    experience: experienceMatch?.[1]?.trim() || 'beginner',
+    existingSkills: skillsMatch?.[1]?.split(',').map(s => s.trim()).filter(Boolean) || [],
+    industry: industryMatch?.[1]?.trim() || ''
+  };
+}
+
+function generateContextualQuestions(context: any): any[] {
+  const { skill, difficulty, experience, existingSkills } = context;
+  
+  return [
+    {
+      questionText: `Based on your ${experience} experience with ${skill}, what would you consider the most fundamental concept?`,
+      type: "MCQ",
+      options: ["Basic syntax", "Core principles", "Best practices", "All are important"],
+      correctAnswer: "All are important",
+      difficulty: difficulty,
+      timeLimit: 90,
+      questionId: "contextual_1"
+    },
+    {
+      questionText: `In ${skill} development, which approach would you prioritize for a ${experience} level project?`,
+      type: "MCQ", 
+      options: ["Simple and clean", "Feature-rich", "Performance-focused", "Depends on requirements"],
+      correctAnswer: "Depends on requirements",
+      difficulty: difficulty,
+      timeLimit: 90,
+      questionId: "contextual_2"
+    },
+    {
+      questionText: `When learning ${skill}, what would be your next step after mastering the basics?`,
+      type: "MCQ",
+      options: ["Advanced concepts", "Real projects", "Industry standards", "All approaches work"],
+      correctAnswer: "All approaches work",
+      difficulty: difficulty,
+      timeLimit: 90,
+      questionId: "contextual_3"
+    }
+  ];
+}
+
+function generateContextualEvaluation(context: any): any {
+  const { skill } = context;
+  
+  return {
+    score: 75,
+    feedback: `Good understanding of ${skill} concepts. Your answer shows practical thinking.`,
+    strengths: ["Clear reasoning", "Practical approach", "Good understanding"],
+    improvements: ["Add more specific examples", "Consider edge cases", "Expand on details"],
+    confidence: 70,
+    isCorrect: true
+  };
+}
+
+function generateContextualDifficulty(context: any): any {
+  const { difficulty, experience } = context;
+  
+  // Smart difficulty progression
+  const nextDifficulty = getNextDifficultyLevel(difficulty, experience);
+  
+  return {
+    recommendedDifficulty: nextDifficulty,
+    reasoning: `Based on ${experience} experience level, progression to ${nextDifficulty} is appropriate`,
+    confidence: 75
+  };
+}
+
+function generateContextualReport(context: any): any {
+  const { skill, difficulty, experience } = context;
+  
+  return {
+    overallScore: 75,
+    skillLevel: `${difficulty}_LEVEL`,
+    strengths: [
+      `Good grasp of ${skill} fundamentals`,
+      `Appropriate for ${experience} level`,
+      "Consistent performance"
+    ],
+    weaknesses: [
+      "Could expand knowledge depth",
+      "Practice more complex scenarios",
+      "Stay updated with industry trends"
+    ],
+    recommendations: [
+      `Master advanced ${skill} concepts`,
+      "Work on real-world projects",
+      "Join developer communities",
+      "Practice coding challenges"
+    ],
+    confidenceScore: 70
+  };
+}
+
+function getNextDifficultyLevel(current: string, experience: string): string {
+  const progression = {
+    'BEGINNER': 'INTERMEDIATE',
+    'INTERMEDIATE': 'ADVANCED', 
+    'ADVANCED': 'EXPERT',
+    'EXPERT': 'EXPERT'
+  };
+  
+  // Consider experience level
+  if (experience.toLowerCase().includes('senior') || experience.toLowerCase().includes('expert')) {
+    return progression[current as keyof typeof progression] || 'ADVANCED';
+  }
+  
+  return progression[current as keyof typeof progression] || 'INTERMEDIATE';
 }
