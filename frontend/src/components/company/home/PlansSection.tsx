@@ -11,6 +11,7 @@ export default function PlansSection() {
                 backgroundPosition: "center",
             }}
         >
+            {/* mdkcmd */}
             <div className="max-w-5xl xl:max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 items-center">
                 {/* Left Side */}
                 <div className="mb-8 md:mb-0 max-w-[350px] sm:max-w-[425px] lg:max-w-[768px] justify-center">
