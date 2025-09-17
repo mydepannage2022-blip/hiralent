@@ -39,11 +39,11 @@ const ContactPage = () => {
     const [message, setMessage] = useState("");
 
     return (
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-16 mt-30 md:mt-35 mb-20">
+        <div className="max-w-[608px] sm:max-w-[723px] md:max-w-[985px] lg:max-w-[1090px] xl:max-w-[1348px] w-full mx-auto px-4 md:px-8 py-16 mt-30 md:mt-35 mb-20">
             {/* HEADER */}
             <div className="text-center mb-12">
                 <h1 className="text-4xl sm:text-6xl font-bold mb-4">Contact Hiralent</h1>
-                <p className="text-gray-600 text-xl max-w-xl mx-auto font-medium">
+                <p className="text-gray-600 text-[10px] sm:text-xl max-w-xl mx-auto font-medium">
                     We’d love to hear from you! Whether you have a question, feedback, or
                     just want to say hello, feel free to reach out. Our team is here to
                     assist you.
@@ -54,7 +54,7 @@ const ContactPage = () => {
             <div className="flex flex-col lg:flex-row gap-12">
                 {/* LEFT SIDE with BACKGROUND IMAGE */}
                 <div
-                    className="w-full lg:w-1/3 relative rounded-lg min-h-[768px] flex-shrink-0"
+                    className="w-full lg:w-1/3 relative rounded-lg min-h-[625px] lg:min-h-[925px] flex-shrink-0"
                     style={{
                         backgroundImage: "url('/images/contact-left.png')", // 🔹 replace with your image path
                         backgroundSize: "cover",
@@ -62,19 +62,19 @@ const ContactPage = () => {
                     }}
                 >
                     {/* Overlay text */}
-                    <div className="absolute bottom-6 left-0 right-0 space-y-4 px-4">
-                        <p className="flex items-center justify-center lg:justify-start gap-2 text-black font-medium">
-                            <MapPin className="w-5 h-5" /> 1500 Marilla St, Dallas, TX 75201
+                    <div className="absolute bottom-6 left-0 right-0 space-y-4 pb-3 sm:pb-12 xl:px-6">
+                        <p className="flex items-center justify-start gap-2 text-black font-medium text-sm sm:text-lg xl:text-xl px-4">
+                            <MapPin className="w-4 h-4 sm:w-8 sm:h-8" /> 1500 Marilla St, Dallas, TX 75201
                         </p>
-                        <p className="flex items-center justify-center lg:justify-start gap-2 text-black font-medium">
-                            <Phone className="w-5 h-5" /> 1(647)558-5560
+                        <p className="flex items-center justify-start gap-2 text-black font-medium text-sm sm:text-lg xl:text-xl px-4">
+                            <Phone className="w-4 h-4 sm:w-8 sm:h-8" /> 1(647)558-5560
                         </p>
                     </div>
                 </div>
 
                 {/* RIGHT SIDE (FORM) - VERTICALLY CENTERED */}
                 <div className="flex-1 flex items-center justify-center">
-                    <form className="space-y-6 w-full max-w-lg">
+                    <form className="space-y-8 w-full">
                         <LabeledInput
                             label="First name"
                             placeholder="Type your first name here"
@@ -108,7 +108,7 @@ const ContactPage = () => {
                         {/* Button */}
                         <button
                             type="submit"
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md text-lg font-medium transition"
+                            className="w-full bg-[#005DDC] hover:bg-blue-700 text-white py-3 rounded-md text-lg font-medium transition mt-8"
                         >
                             Send Message
                         </button>
