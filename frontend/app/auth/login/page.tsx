@@ -8,8 +8,6 @@ import { useLogin } from "../../../src/lib/auth.queries";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";
-
-
 // Types
 interface FormData {
   email: string;
