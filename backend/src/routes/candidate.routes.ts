@@ -171,18 +171,17 @@ router.get('/assessment/:assessmentId/question',
   getQuestionController
 );
 
-
 router.post('/assessment/:assessmentId/answer', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
 
-router.get('/assessment/:assessmentId/progress', validateAssessmentOwnership, getProgressController);
+router.get('/assessment/:assessmentId/progress', checkAuth, validateAssessmentOwnership, getProgressController);
 
-router.post('/assessment/:assessmentId/complete', validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
+router.post('/assessment/:assessmentId/complete', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
 
-router.get('/assessment/:assessmentId/results', validateAssessmentOwnership, getResultsController);
+router.get('/assessment/:assessmentId/results', checkAuth, validateAssessmentOwnership, getResultsController);
 
-router.get('/assessments/history', getHistoryController);
+router.get('/assessments/history', checkAuth, getHistoryController);
 
-router.get('/skill-recommendations', getRecommendationsController);
+router.get('/skill-recommendations', checkAuth, getRecommendationsController);
 
 
 
