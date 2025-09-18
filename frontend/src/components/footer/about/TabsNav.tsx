@@ -22,14 +22,14 @@ export default function TabsNav() {
     };
 
     return (
-        <nav className="border-b border-gray-200 flex justify-center gap-6 flex-wrap">
+        <nav className="border-b border-[#CBCBCB] flex justify-center gap-12 flex-wrap">
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => handleScroll(tab.id)}
-                    className={`pb-2 text-sm md:text-base ${active === tab.id
-                            ? "border-b-2 border-blue-600 text-blue-600 font-medium"
-                            : "text-gray-600 hover:text-gray-900"
+                    className={`pb-2 md:text-lg font-medium ${active === tab.id
+                            ? "border-b-2 border-[#005DDC] text-[#005DDC]"
+                            : "text-[#515151] hover:text-[#005DDC] hover:order-b-2 hover:border-[#005DDC]"
                         }`}
                 >
                     {tab.label}
