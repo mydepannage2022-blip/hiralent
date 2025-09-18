@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as candidateService from '../services/candidate.service';
+import { generateCareerPrediction , updateCandidateVector} from '../services/candidate/documentProcessor.service'; 
 import { AuthUser } from '../types/express';
 import { 
   APIResponse, 
@@ -10,7 +11,10 @@ import {
   JobRecommendation,
   HealthCheckResponse,
   UpdateLocationInput,
-  UpdateSalaryInput
+  UpdateSalaryInput,
+  ProfilePictureUploadResponse,
+  UpdateHeadlineInput,        // NEW - Add this import
+  HeadlineUpdateResult 
 } from '../types/candidate.types';
 
 
@@ -131,7 +135,7 @@ export const generateCareerPredictionController = async (req: Request, res: Resp
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
-    const prediction = await candidateService.generateCareerPrediction(candidateId);
+    const prediction = await generateCareerPrediction(candidateId);
 
     res.status(200).json({
       success: true,
@@ -194,7 +198,7 @@ export const updateCandidateVectorController = async (req: Request, res: Respons
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
-    const result = await candidateService.updateCandidateVector(candidateId);
+    const result = await updateCandidateVector(candidateId);
 
     res.status(200).json({
       success: true,
@@ -307,3 +311,154 @@ export async function updateSalaryHandler(req: Request, res: Response) {
     });
   }
 }
+
+export const uploadProfilePictureController = async (
+  req: Request, 
+  res: Response
+): Promise<void> => {
+  try {
+    // User is guaranteed to exist due to checkAuth middleware
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error_code: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    // File is guaranteed to exist due to validateUploadedImage middleware
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'No image file provided',
+        error_code: 'NO_FILE'
+      } as APIResponse);
+      return;
+    }
+
+    console.log(`Profile picture upload initiated for user: ${req.user.user_id}`);
+    console.log(`File details:`, {
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+    // Upload to Cloudinary and update database
+    const result = await candidateService.uploadProfilePicture(
+      req.user.user_id, 
+      req.file
+    );
+
+    console.log(`Profile picture upload completed for user: ${req.user.user_id}`);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Profile picture uploaded successfully'
+    } as APIResponse<ProfilePictureUploadResponse>);
+
+  } catch (error) {
+    console.error('Controller error - Profile picture upload:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload profile picture',
+      error_code: 'UPLOAD_FAILED',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+// Update candidate headline controller
+export const updateHeadlineController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const userId = req.user.user_id;
+    const input: UpdateHeadlineInput = req.body;
+    
+    const result = await candidateService.updateCandidateHeadline(userId, input);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Headline updated successfully',
+    } as APIResponse<HeadlineUpdateResult>);
+    
+  } catch (error: any) {
+    console.error('Error updating headline:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update headline',
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+export const getHeadlineController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const candidateId = req.params.candidateId || req.user.user_id;
+    
+    // Use existing service to get profile summary which now includes headline
+    const summary = await candidateService.getProfileSummary(candidateId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        headline: summary.basic_info.headline || null
+      },
+      message: 'Headline retrieved successfully'
+    } as APIResponse);
+    
+  } catch (error: any) {
+    console.error('Error getting headline:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get headline',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+export const getProfileController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      } as APIResponse);
+      return;
+    }
+
+    const candidateId = req.params.candidateId || req.user.user_id;
+    const profile = await candidateService.getCandidateProfile(candidateId);
+
+    res.status(200).json({
+      success: true,
+      data: profile,
+      message: 'Profile retrieved successfully'
+    } as APIResponse);
+  } catch (error) {
+    console.error('Error getting candidate profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get profile',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};

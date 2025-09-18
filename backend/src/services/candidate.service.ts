@@ -1,51 +1,86 @@
-import { PrismaClient } from '../generated/prisma';
-import { extractSkillsFromText, predictCareerPath, createEmbedding, generateJobMatchReasoning } from '../lib/openai';
-import { storeCandidateVector, findSimilarJobs, storeJobVector } from '../lib/pinecone';
-import { parseDocument, preprocessText, extractContactInfo } from '../utils/documentParser.util';
-import { 
+import { PrismaClient } from "@prisma/client";
+import {
+  generateJobMatchReasoning,
+} from "../lib/openai";
+import {
+  findSimilarJobs,
+} from "../lib/pinecone";
+import {
   CVUploadResponse,
-  AIExtractionResult,
-  CareerPredictionResult,
   JobRecommendation,
   ProfileCompletenessScore,
   CandidateProfileSummary,
-  CandidateServiceError
-} from '../types/candidate.types';
-import fs from 'fs';
-import path from 'path';
-import { any, number } from 'zod';
-import { UpdateLocationInput, UpdateSalaryInput } from '../types/candidate.types';
+  CandidateServiceError,
+  ProfilePictureUploadResult,
+  APIResponse,
+  UpdateLocationInput,
+  UpdateSalaryInput,
+  UpdateHeadlineInput, 
+  HeadlineUpdateResult
+} from "../types/candidate.types";
+import { generateToken } from "../utils/jwt.util";
+import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
+
+// Import our separated services
+import { processDocumentAsync } from "./candidate/documentProcessor.service";
+import { cleanupOldResume, cleanupTempFile, cleanupOldProfilePicture } from "./candidate/cleanup.service";
+
 const prisma = new PrismaClient();
+cloudinary.config({
+  cloudinary_url: process.env.CLOUDINARY_URL,
+});
 
 
-// Upload and process CV
-export const uploadAndProcessCV = async (candidateId: string, file: Express.Multer.File): Promise<CVUploadResponse> => {
+export const uploadAndProcessCV = async (
+  candidateId: string,
+  file: Express.Multer.File
+): Promise<CVUploadResponse> => {
   try {
     // Check if file exists
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
-    // Check if file path exists
     if (!fs.existsSync(file.path)) {
-      throw new Error('File not found after upload');
+      throw new Error("File not found after upload");
     }
 
+    // Step 1: Clean up old resume and related data
+    await cleanupOldResume(candidateId);
+
+    // Step 2: Upload to Cloudinary
+    console.log("Uploading resume to Cloudinary...");
+    const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
+      folder: "hiralent-candidate/resumes",
+      public_id: `resume_${candidateId}_${Date.now()}`,
+      resource_type: "raw", // Changed from "auto" to "raw" for better PDF handling
+      access_mode: 'public',
+      type: 'upload' // Removed access_control array
+    });
+
+    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+    // Step 3: Create new document record with direct Cloudinary URL
     const document = await prisma.candidateDocument.create({
       data: {
         candidate_id: candidateId,
         file_name: file.originalname,
-        file_path: file.path,
+        file_path: cloudinaryResult.secure_url, // Use direct secure_url instead of complex URL generation
         file_type: file.mimetype,
         file_size: file.size,
-        upload_status: 'uploaded',
-        extraction_status: 'pending'
-      }
+        upload_status: "uploaded",
+        extraction_status: "pending",
+      },
     });
 
-    // Don't read file content immediately - let it process async
-    processDocumentAsync(document.document_id, candidateId);
+    // Step 4: Clean up temporary local file
+    cleanupTempFile(file.path);
 
+    // Step 5: Start background processing using separated service
+    processDocumentAsync(document.document_id, candidateId, cloudinaryResult.secure_url);
+
+    // Step 6: Return response with download URL
     return {
       success: true,
       document_id: document.document_id,
@@ -54,304 +89,114 @@ export const uploadAndProcessCV = async (candidateId: string, file: Express.Mult
         upload_status: document.upload_status,
         extraction_status: document.extraction_status,
         candidate_id: candidateId,
-        // Remove this line - don't read file content here
-        // whole_document: fs.readFileSync(document.file_path, 'utf-8')
+        whole_document: undefined,
       },
-      message: 'CV uploaded successfully. Processing in background.'
+      message: "CV uploaded successfully to Cloudinary. Processing in background.",
     };
   } catch (error) {
-    console.error('Error uploading CV:', error);
+    console.error("Error uploading CV:", error);
+    
+    // Clean up temporary file on error
+    if (file && fs.existsSync(file.path)) {
+      cleanupTempFile(file.path);
+    }
+    
     throw error;
   }
 };
 
-// Process document in background
-const processDocumentAsync = async (documentId: string, candidateId: string): Promise<void> => {
+export const getResumeDownloadUrl = async (
+  candidateId: string
+): Promise<APIResponse<{ download_url: string; file_name: string }>> => {
   try {
-    // Update status to processing
-    await prisma.candidateDocument.update({
-      where: { document_id: documentId },
-      data: { extraction_status: 'processing' }
-    });
-
-    // Get document info
-    const document = await prisma.candidateDocument.findUnique({
-      where: { document_id: documentId }
+    const document = await prisma.candidateDocument.findFirst({
+      where: { candidate_id: candidateId },
+      orderBy: { created_at: "desc" }, // Get latest resume
     });
 
     if (!document) {
-      throw new Error('Document not found');
+      return {
+        success: false,
+        message: "No resume found for this candidate",
+      };
     }
 
-    // Parse document text
-    const parsedDoc = await parseDocument(document.file_path, document.file_type);
-    const processedText = preprocessText(parsedDoc.text);
-    console.log('Processed Text:', processedText);
-    // Update document with extracted text
-    await prisma.candidateDocument.update({
-      where: { document_id: documentId },
-      data: { 
-        processed_text: processedText,
-        extraction_status: 'completed'
-      }
-    });
-
-    // Create skill extraction record
-    const skillExtraction = await prisma.skillExtraction.create({
+    return {
+      success: true,
       data: {
-        document_id: documentId,
-        candidate_id: candidateId,
-        status: 'processing',
-        ai_provider: 'openai'
-      }
-    });
-    console.log('Skill Extraction Record:', skillExtraction);
-    // Extract skills using AI
-    const startTime = Date.now();
-    const extractedData: AIExtractionResult = await extractSkillsFromText(processedText);
-    const processingTime = Date.now() - startTime;
-
-          // Update skill extraction record
-      await prisma.skillExtraction.update({
-        where: { extraction_id: skillExtraction.extraction_id },
-        data: {
-          status: 'completed',
-          raw_response: JSON.stringify(extractedData),
-          extracted_skills: JSON.stringify(extractedData),
-          processing_time: processingTime
-        }
-      });
-
-    // Save extracted skills
-    if (extractedData.skills && Array.isArray(extractedData.skills)) {
-      for (const skill of extractedData.skills) {
-        await prisma.candidateSkill.create({
-          data: {
-            candidate_id: candidateId,
-            skill_name: skill.name,
-            skill_category: skill.category || 'technical',
-            proficiency: skill.proficiency || 'intermediate',
-            years_experience: skill.years_experience || 0,
-            confidence_score: 0.8, // Default confidence
-            source_type: 'cv_extraction',
-            source_document_id: documentId
-          }
-        });
-      }
-    }
-    console.log('Extracted Skills:', extractedData.skills);
-    // Update candidate profile with extracted data
-    await updateCandidateProfile(candidateId, extractedData);
-
-    // Generate career prediction
-    await generateCareerPrediction(candidateId);
-
-    // Create/update candidate vector for job matching
-    await updateCandidateVector(candidateId);
-
-    // Calculate profile completeness
-    await calculateProfileCompleteness(candidateId);
-
-  } catch (error) {
-    console.error('Error processing document:', error);
-    
-    // Update extraction status to failed
-    await prisma.skillExtraction.updateMany({
-      where: { 
-        document_id: documentId,
-        status: 'processing'
+        download_url: document.file_path, // This is now Cloudinary URL
+        file_name: document.file_name,
       },
-      data: {
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error'
-      }
-    });
-  }
-};
-
-// Update candidate profile with extracted data
-const  updateCandidateProfile = async (candidateId: string, extractedData: AIExtractionResult): Promise<void> => {
-  try {
-    const existingProfile = await prisma.candidateProfile.findUnique({
-      where: { candidate_id: candidateId }
-    });
-
-    const profileData = {
-      skills: JSON.stringify(extractedData.skills || []),
-      education: JSON.stringify(extractedData.education || []),
-      experience: JSON.stringify(extractedData.experience || [])
+      message: "Resume download URL retrieved successfully",
     };
-
-    if (existingProfile) {
-      await prisma.candidateProfile.update({
-        where: { candidate_id: candidateId },
-        data: profileData
-      });
-    } else {
-      await prisma.candidateProfile.create({
-        data: {
-          candidate_id: candidateId,
-          ...profileData
-        }
-      });
-    }
   } catch (error) {
-    console.error('Error updating candidate profile:', error);
-  }
-};
-
-// Generate AI career prediction
-export const generateCareerPrediction = async (candidateId: string): Promise<CareerPredictionResult> => {
-  try {
-    // Get candidate data
-    const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
-      include: {
-        candidateProfile: true,
-        candidateSkills: true
-      }
-    });
-
-    if (!candidate) {
-      throw new Error('Candidate not found');
-    }
-
-    // Prepare data for AI prediction
-    const candidateData = {
-      skills: candidate.candidateSkills.map(s => ({
-        name: s.skill_name,
-        category: (s.skill_category as 'technical' | 'soft' | 'language' | 'certification') || 'technical',
-        proficiency: (s.proficiency as 'beginner' | 'intermediate' | 'advanced' | 'expert') || 'intermediate',
-        years_experience: s.years_experience || 0
-      })),
-      education: candidate.candidateProfile?.education ? JSON.parse(candidate.candidateProfile.education) : [],
-      experience: candidate.candidateProfile?.experience ? JSON.parse(candidate.candidateProfile.experience) : []
+    console.error("Error getting resume download URL:", error);
+    return {
+      success: false,
+      message: "Failed to get resume download URL",
     };
-
-    // Generate prediction using AI
-    const prediction: CareerPredictionResult = await predictCareerPath(candidateData);
-
-    // Save prediction
-    await prisma.careerPrediction.create({
-      data: {
-        candidate_id: candidateId,
-        current_role: prediction.current_role,
-        predicted_roles: JSON.stringify(prediction.predicted_roles),
-        career_path: JSON.stringify(prediction.career_path),
-        skill_gaps: JSON.stringify(prediction.skill_gaps),
-        salary_prediction: JSON.stringify(prediction.salary_prediction),
-        confidence_score: prediction.confidence_score || 0.7,
-        ai_model_version: 'gemini-0.5',
-        input_data_summary: `Skills: ${candidateData.skills.length}, Experience: ${candidateData.experience.length}`
-      }
-    });
-
-    return prediction;
-  } catch (error) {
-    console.error('Error generating career prediction:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to generate career prediction');
-    serviceError.code = 'PREDICTION_FAILED';
-    serviceError.statusCode = 500;
-    throw serviceError;
   }
 };
 
-// Create/update candidate vector for job matching
-export const updateCandidateVector = async (candidateId: string): Promise<{ success: boolean }> => {
+export const deleteResume = async (
+  candidateId: string
+): Promise<APIResponse<{}>> => {
   try {
-    const candidate = await prisma.user.findUnique({
-      where: { user_id: candidateId },
-      include: {
-        candidateProfile: true,
-        candidateSkills: true
-      }
+    const hasResume = await prisma.candidateDocument.findFirst({
+      where: { candidate_id: candidateId },
     });
 
-    if (!candidate) {
-      throw new Error('Candidate not found');
+    if (!hasResume) {
+      return {
+        success: false,
+        message: "No resume found to delete",
+      };
     }
 
-    // Create text representation for embedding
-    const skillsText = candidate.candidateSkills
-      .map(s => `${s.skill_name} (${s.proficiency})`)
-      .join(', ');
-
-    const experienceText = candidate.candidateProfile?.experience 
-      ? JSON.parse(candidate.candidateProfile.experience)
-          .map((exp: any) => `${exp.job_title} at ${exp.company}`)
-          .join(', ')
-      : '';
-
-    const educationText = candidate.candidateProfile?.education
-      ? JSON.parse(candidate.candidateProfile.education)
-          .map((edu: any) => `${edu.degree} in ${edu.field}`)
-          .join(', ')
-      : '';
-
-    const combinedText = `Skills: ${skillsText}. Experience: ${experienceText}. Education: ${educationText}`;
-
-    // Create embeddings
-    const combinedVector = await createEmbedding(combinedText);
-    const skillVector = skillsText ? await createEmbedding(skillsText) : [];
-    const experienceVector = experienceText ? await createEmbedding(experienceText) : [];
-    const educationVector = educationText ? await createEmbedding(educationText) : [];
-
-    // Save to database
-    const existingVector = await prisma.candidateVector.findUnique({
-      where: { candidate_id: candidateId }
-    });
-
-    const vectorData = {
-      skill_vector: skillVector,
-      experience_vector: experienceVector,
-      education_vector: educationVector,
-      combined_vector: combinedVector,
-      vector_version: 'v1.0'
+    // Use cleanup function to remove everything
+    await cleanupOldResume(candidateId);
+    
+    // Recalculate profile completeness after deletion
+    await calculateProfileCompleteness(candidateId);
+    
+    return {
+      success: true,
+      data: {},
+      message: "Resume and all related data deleted successfully",
     };
-
-    if (existingVector) {
-      await prisma.candidateVector.update({
-        where: { candidate_id: candidateId },
-        data: vectorData
-      });
-    } else {
-      await prisma.candidateVector.create({
-        data: {
-          candidate_id: candidateId,
-          ...vectorData
-        }
-      });
-    }
-
-    // Store in Pinecone
-    await storeCandidateVector(candidateId, combinedVector, {
-      skills_count: candidate.candidateSkills.length,
-      full_name: candidate.full_name,
-      email: candidate.email
-    });
-
-    return { success: true };
   } catch (error) {
-    console.error('Error updating candidate vector:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to update candidate vector');
-    serviceError.code = 'VECTOR_UPDATE_FAILED';
-    serviceError.statusCode = 500;
-    throw serviceError;
+    console.error("Error deleting resume:", error);
+    return {
+      success: false,
+      message: "Failed to delete resume",
+    };
   }
 };
 
-// Get job recommendations for candidate
-export const getJobRecommendations = async (candidateId: string, limit: number = 20): Promise<JobRecommendation[]> => {
+export const hasExistingResume = async (candidateId: string): Promise<boolean> => {
+  try {
+    const count = await prisma.candidateDocument.count({
+      where: { candidate_id: candidateId },
+    });
+    return count > 0;
+  } catch (error) {
+    console.error("Error checking existing resume:", error);
+    return false;
+  }
+};
+
+export const getJobRecommendations = async (
+  candidateId: string,
+  limit: number = 20
+): Promise<JobRecommendation[]> => {
   try {
     // Get candidate vector
     const candidateVector = await prisma.candidateVector.findUnique({
-      where: { candidate_id: candidateId }
+      where: { candidate_id: candidateId },
     });
 
     if (!candidateVector) {
-      // If no vector exists, create one first
-      await updateCandidateVector(candidateId);
-      return getJobRecommendations(candidateId, limit);
+      throw new Error("Candidate vector not found. Please upload CV first.");
     }
 
     const combinedVector = candidateVector.combined_vector as number[];
@@ -361,7 +206,7 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
 
     // Get candidate skills for detailed matching
     const candidateSkills = await prisma.candidateSkill.findMany({
-      where: { candidate_id: candidateId }
+      where: { candidate_id: candidateId },
     });
 
     // Process each job recommendation
@@ -370,13 +215,13 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
       const jobId = match.metadata?.job_id;
       if (!jobId) continue;
 
-      // Get job details
-      const job = await prisma.recruiterJob.findUnique({
+      // Get job details - Updated to use CompanyJob
+      const job = await prisma.companyJob.findUnique({
         where: { job_id: jobId },
         include: {
-          recruiter: { select: { full_name: true } },
-          agency: { select: { name: true } }
-        }
+          company: { select: { full_name: true } },  // Updated from 'recruiter' to 'company'
+          agency: { select: { name: true } },
+        },
       });
 
       if (!job) continue;
@@ -386,17 +231,20 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
         title: job.title,
         required_skills: job.required_skills,
         description: job.description,
-        location: job.location
+        location: job.location,
       };
 
-      const matchReasoning = await generateJobMatchReasoning(candidateSkills, jobRequirements);
+      const matchReasoning = await generateJobMatchReasoning(
+        candidateSkills,
+        jobRequirements
+      );
 
       // Save recommendation
       const existing = await prisma.jobRecommendation.findFirst({
         where: {
           candidate_id: candidateId,
-          job_id: jobId
-        }
+          job_id: jobId,
+        },
       });
 
       if (!existing) {
@@ -406,41 +254,43 @@ export const getJobRecommendations = async (candidateId: string, limit: number =
             job_id: jobId,
             match_score: match.score || 0,
             skill_match: JSON.stringify(matchReasoning),
-            ai_reasoning: matchReasoning.reasoning
-          }
+            ai_reasoning: matchReasoning.reasoning,
+          },
         });
       }
 
       recommendations.push({
         job_id: jobId,
         title: job.title,
-        company: job.agency.name,
+        company: job.company.full_name,  // Updated to use company relation
         location: job.location,
         salary_range: job.salary_range || undefined,
         match_score: match.score || 0,
         match_reasoning: matchReasoning,
-        created_at: job.created_at
+        created_at: job.created_at,
       });
     }
 
     return recommendations;
   } catch (error) {
-    console.error('Error getting job recommendations:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to get job recommendations');
-    serviceError.code = 'RECOMMENDATIONS_FAILED';
+    console.error("Error getting job recommendations:", error);
+    const serviceError: CandidateServiceError = new Error(
+      "Failed to get job recommendations"
+    );
+    serviceError.code = "RECOMMENDATIONS_FAILED";
     serviceError.statusCode = 500;
     throw serviceError;
   }
 };
 
-// Calculate profile completeness
+// Updated calculateProfileCompleteness function in candidate.service.ts
 export const calculateProfileCompleteness = async (candidateId: string): Promise<ProfileCompletenessScore> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: true,
+        candidateSkills: true, // Get actual skills from relation
         candidateDocuments: true
       }
     });
@@ -449,130 +299,173 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
       throw new Error('Candidate not found');
     }
 
+    const profile = candidate.candidateProfile;
     let totalScore = 0;
+    const maxScore = 100;
     const missingFields: string[] = [];
     const suggestions: string[] = [];
 
-    // Basic info score (20 points)
+    // Basic Info Score (25 points)
     let basicInfoScore = 0;
-    if (candidate.full_name) basicInfoScore += 5;
-    if (candidate.email) basicInfoScore += 5;
-    if (candidate.phone_number) basicInfoScore += 5;
-    if (candidate.candidateProfile?.resume_url) basicInfoScore += 5;
+    if (candidate.full_name?.trim()) basicInfoScore += 8;
+    else missingFields.push('full_name');
+    
+    if (candidate.email?.trim()) basicInfoScore += 5;
+    
+    if (candidate.phone_number?.trim()) basicInfoScore += 4;
+    else missingFields.push('phone_number');
+    
+    if (profile?.location?.trim()) basicInfoScore += 4;
+    else missingFields.push('location');
+    
+    if (profile?.about_me?.trim()) basicInfoScore += 4;
+    else missingFields.push('about_me');
+
     totalScore += basicInfoScore;
 
-    if (!candidate.phone_number) {
-      missingFields.push('phone_number');
-      suggestions.push('Add your phone number for better contact');
+    // Headline Score (10 points)
+    let headlineScore = 0;
+    if (profile?.headline?.trim()) {
+      headlineScore = 10;
+    } else {
+      missingFields.push('headline');
+      suggestions.push('Add a professional headline to attract employers');
     }
+    totalScore += headlineScore;
 
-    // Skills score (25 points)
-    const skillsCount = candidate.candidateSkills.length;
-    const skillsScore = Math.min(25, skillsCount * 2.5);
+    // Skills Score (25 points) - Updated to use actual skills count
+    let skillsScore = 0;
+    const skillsCount = candidate.candidateSkills.length; // Use actual skills from relation
+    
+    if (skillsCount > 0) {
+      if (skillsCount >= 8) skillsScore = 25;
+      else if (skillsCount >= 5) skillsScore = 20;
+      else if (skillsCount >= 3) skillsScore = 15;
+      else skillsScore = 10;
+    } else {
+      missingFields.push('skills');
+      suggestions.push('Add at least 5 relevant skills to improve your profile');
+    }
     totalScore += skillsScore;
 
-    if (skillsCount < 10) {
-      missingFields.push('skills');
-      suggestions.push('Add more skills to improve your profile');
-    }
-
-    // Experience score (25 points)
+    // Experience Score (20 points)
     let experienceScore = 0;
-    try {
-      const experience = candidate.candidateProfile?.experience 
-        ? JSON.parse(candidate.candidateProfile.experience) 
-        : [];
-      experienceScore = Math.min(25, experience.length * 8.33);
-    } catch (e) {
-      experienceScore = 0;
+    if (profile?.experience) {
+      try {
+        const experiences = JSON.parse(profile.experience);
+        if (Array.isArray(experiences) && experiences.length > 0) {
+          if (experiences.length >= 3) experienceScore = 20;
+          else if (experiences.length >= 2) experienceScore = 15;
+          else experienceScore = 10;
+        }
+      } catch (e) {
+        // Handle parsing error
+      }
+    }
+    if (experienceScore === 0) {
+      missingFields.push('experience');
+      suggestions.push('Add your work experience to show your background');
     }
     totalScore += experienceScore;
 
-    if (experienceScore < 15) {
-      missingFields.push('experience');
-      suggestions.push('Add more work experience details');
-    }
-
-    // Education score (15 points)
+    // Education Score (10 points)
     let educationScore = 0;
-    try {
-      const education = candidate.candidateProfile?.education 
-        ? JSON.parse(candidate.candidateProfile.education) 
-        : [];
-      educationScore = Math.min(15, education.length * 7.5);
-    } catch (e) {
-      educationScore = 0;
+    if (profile?.education) {
+      try {
+        const education = JSON.parse(profile.education);
+        if (Array.isArray(education) && education.length > 0) {
+          educationScore = 10;
+        }
+      } catch (e) {
+        // Handle parsing error
+      }
     }
-    totalScore += educationScore;
-
-    if (educationScore < 10) {
+    if (educationScore === 0) {
       missingFields.push('education');
       suggestions.push('Add your educational background');
     }
+    totalScore += educationScore;
 
-    // Document score (15 points)
-    const documentScore = candidate.candidateDocuments.length > 0 ? 15 : 0;
+    // Profile Picture Score (5 points)
+    let profilePictureScore = 0;
+    if (profile?.profile_picture_url?.trim()) {
+      profilePictureScore = 5;
+    } else {
+      missingFields.push('profile_picture');
+      suggestions.push('Add a professional profile picture');
+    }
+    totalScore += profilePictureScore;
+
+    // Document Score (5 points)
+    let documentScore = 0;
+    const hasResume = candidate.candidateDocuments.some(doc => 
+      doc.upload_status === 'completed' && doc.extraction_status === 'completed'
+    );
+    if (hasResume) {
+      documentScore = 5;
+    } else {
+      missingFields.push('resume_document');
+      suggestions.push('Upload your resume for better profile analysis');
+    }
     totalScore += documentScore;
 
-    if (documentScore === 0) {
-      missingFields.push('cv_document');
-      suggestions.push('Upload your CV/Resume');
-    }
-
-    // Save completeness data
-    const completenessData: ProfileCompletenessScore = {
-      overall_score: Math.round(totalScore),
-      basic_info_score: basicInfoScore,
-      skills_score: skillsScore,
-      experience_score: experienceScore,
-      education_score: educationScore,
-      document_score: documentScore,
+    // Calculate section scores as percentages
+    const completenessData = {
+      overall_score: Math.round((totalScore / maxScore) * 100),
+      basic_info_score: Math.round((basicInfoScore / 25) * 100),
+      headline_score: Math.round((headlineScore / 10) * 100),
+      skills_score: Math.round((skillsScore / 25) * 100),
+      experience_score: Math.round((experienceScore / 20) * 100),
+      education_score: Math.round((educationScore / 10) * 100),
+      profile_picture_score: Math.round((profilePictureScore / 5) * 100),
+      document_score: Math.round((documentScore / 5) * 100),
       missing_fields: missingFields,
       suggestions: suggestions
     };
 
-    const existing = await prisma.profileCompleteness.findUnique({
-      where: { candidate_id: candidateId }
+    // Save to database
+    await prisma.profileCompleteness.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        ...completenessData,
+        last_calculated: new Date()
+      },
+      create: {
+        candidate_id: candidateId,
+        ...completenessData,
+        last_calculated: new Date()
+      }
     });
 
-    if (existing) {
-      await prisma.profileCompleteness.update({
-        where: { candidate_id: candidateId },
-        data: completenessData
-      });
-    } else {
-      await prisma.profileCompleteness.create({
-        data: {
-          candidate_id: candidateId,
-          ...completenessData
-        }
-      });
-    }
-
     return completenessData;
+
   } catch (error) {
     console.error('Error calculating profile completeness:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to calculate profile completeness');
-    serviceError.code = 'COMPLETENESS_CALCULATION_FAILED';
-    serviceError.statusCode = 500;
-    throw serviceError;
+    throw new Error('Failed to calculate profile completeness');
   }
 };
 
-// Get candidate profile summary
+
 export const getProfileSummary = async (candidateId: string): Promise<CandidateProfileSummary> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: true,
-        candidateDocuments: true,
+        candidateSkills: { // Get actual skills instead of JSON
+          orderBy: [
+            { is_verified: 'desc' },
+            { created_at: 'desc' }
+          ]
+        },
+        candidateDocuments: {
+          orderBy: { created_at: 'desc' }
+        },
+        profileCompleteness: true,
         careerPredictions: {
           orderBy: { created_at: 'desc' },
           take: 1
-        },
-        profileCompleteness: true
+        }
       }
     });
 
@@ -580,23 +473,65 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       throw new Error('Candidate not found');
     }
 
-    return {
-      basic_info: {
-        name: candidate.full_name,
-        email: candidate.email,
-        phone: candidate.phone_number || undefined
-      },
-      skills: candidate.candidateSkills,
-      profile_completeness: candidate.profileCompleteness ? {
+    // Basic info
+    const basicInfo = {
+      name: candidate.full_name,
+      email: candidate.email,
+      phone: candidate.phone_number || undefined,
+      headline: candidate.candidateProfile?.headline || undefined,
+      about_me: candidate.candidateProfile?.about_me || undefined,
+      city: candidate.candidateProfile?.city || undefined,
+      location: candidate.candidateProfile?.location || undefined
+    };
+
+    // Transform skills to populated format
+    const skills = candidate.candidateSkills.map(skill => ({
+      skill_id: skill.skill_id,
+      skill_name: skill.skill_name,
+      skill_category: skill.skill_category || undefined,
+      proficiency: skill.proficiency || undefined,
+      years_experience: skill.years_experience || undefined,
+      confidence_score: skill.confidence_score || undefined,
+      source_type: skill.source_type,
+      is_verified: skill.is_verified
+    }));
+
+    // Documents info
+    const documents = candidate.candidateDocuments.map(doc => ({
+      id: doc.document_id,
+      name: doc.file_name,
+      upload_status: doc.upload_status,
+      extraction_status: doc.extraction_status || undefined
+    }));
+
+    // Transform profile completeness - Fix type issue
+    let profileCompleteness: ProfileCompletenessScore | undefined;
+    if (candidate.profileCompleteness) {
+      profileCompleteness = {
         overall_score: candidate.profileCompleteness.overall_score,
         basic_info_score: candidate.profileCompleteness.basic_info_score,
         skills_score: candidate.profileCompleteness.skills_score,
         experience_score: candidate.profileCompleteness.experience_score,
+        profile_picture_score: candidate.profileCompleteness.profile_picture_score,
         education_score: candidate.profileCompleteness.education_score,
         document_score: candidate.profileCompleteness.document_score,
-        missing_fields: candidate.profileCompleteness.missing_fields as string[],
-        suggestions: candidate.profileCompleteness.suggestions as string[]
-      } : undefined,
+        headline_score: candidate.profileCompleteness.headline_score,
+        // Type safe JSON parsing
+        missing_fields: Array.isArray(candidate.profileCompleteness.missing_fields) 
+          ? candidate.profileCompleteness.missing_fields as string[]
+          : JSON.parse(candidate.profileCompleteness.missing_fields as string),
+        suggestions: Array.isArray(candidate.profileCompleteness.suggestions)
+          ? candidate.profileCompleteness.suggestions as string[]
+          : JSON.parse(candidate.profileCompleteness.suggestions as string)
+      };
+    }
+
+    // Build summary
+    const summary: CandidateProfileSummary = {
+      basic_info: basicInfo,
+      skills, 
+      documents,
+      profile_completeness: profileCompleteness,
       career_prediction: candidate.careerPredictions[0] ? {
         current_role: candidate.careerPredictions[0].current_role || '',
         predicted_roles: JSON.parse(candidate.careerPredictions[0].predicted_roles as string),
@@ -604,52 +539,323 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
         skill_gaps: JSON.parse(candidate.careerPredictions[0].skill_gaps as string),
         salary_prediction: JSON.parse(candidate.careerPredictions[0].salary_prediction as string),
         confidence_score: candidate.careerPredictions[0].confidence_score
-      } : undefined,
-      documents: candidate.candidateDocuments.map(doc => ({
-        id: doc.document_id,
-        name: doc.file_name,
-        upload_status: doc.upload_status,
-        extraction_status: doc.extraction_status || undefined
-      }))
+      } : undefined
     };
+
+    return summary;
   } catch (error) {
     console.error('Error getting profile summary:', error);
-    const serviceError: CandidateServiceError = new Error('Failed to get profile summary');
-    serviceError.code = 'PROFILE_SUMMARY_FAILED';
+    throw new Error('Failed to get profile summary');
+  }
+};
+
+export const updateCandidateHeadline = async (
+  candidateId: string,
+  data: UpdateHeadlineInput
+): Promise<HeadlineUpdateResult> => {
+  try {
+    // Validate headline length
+    if (!data.headline || data.headline.trim().length === 0) {
+      throw new Error("Headline is required");
+    }
+
+    if (data.headline.length > 120) {
+      throw new Error("Headline cannot exceed 120 characters");
+    }
+
+    // Update headline in database
+    const updatedProfile = await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        headline: data.headline.trim(),
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        headline: data.headline.trim(),
+      },
+    });
+
+    // Recalculate profile completeness (async, don't wait)
+    calculateProfileCompleteness(candidateId).catch((error) => {
+      console.warn("Failed to recalculate profile completeness:", error);
+    });
+
+    return {
+      success: true,
+      headline: updatedProfile.headline || data.headline,
+      message: "Headline updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating candidate headline:", error);
+    throw new Error(
+      `Failed to update headline: ${error.message || "Unknown error"}`
+    );
+  }
+};
+
+
+export async function updateCandidateLocation(
+  userId: string,
+  data: UpdateLocationInput
+) {
+  try {
+    console.log("📛 userId in updateCandidateLocation: ", userId);
+
+    const result = await prisma.candidateProfile.upsert({
+      where: { candidate_id: userId },
+      update: {
+        location: data.location,
+        postal_code: data.postalCode,
+      },
+      create: {
+        candidate_id: userId,
+        location: data.location,
+        postal_code: data.postalCode,
+      },
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error updating candidate location:", error);
+    throw new Error(
+      `Failed to update candidate location: ${error.message || "Unknown error"}`
+    );
+  }
+}
+
+export async function updateCandidateSalary(
+  userId: string,
+  data: UpdateSalaryInput
+) {
+  try {
+    const result = await prisma.candidateProfile.upsert({
+      where: { candidate_id: userId },
+      update: {
+        minimum_salary_amount: data.minimumSalary,
+        payment_period: data.paymentPeriod,
+      },
+      create: {
+        candidate_id: userId,
+        minimum_salary_amount: data.minimumSalary,
+        payment_period: data.paymentPeriod,
+      },
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error updating candidate salary:", error);
+    throw new Error(
+      `Failed to update candidate salary: ${error.message || "Unknown error"}`
+    );
+  }
+}
+
+export const uploadProfilePicture = async (
+  candidateId: string,
+  file: Express.Multer.File
+): Promise<ProfilePictureUploadResult> => {
+  let tempFilePath: string | null = null;
+
+  try {
+    // Validate inputs
+    if (!candidateId) {
+      throw new Error("Candidate ID is required");
+    }
+
+    if (!file || !fs.existsSync(file.path)) {
+      throw new Error("File not found after upload");
+    }
+
+    tempFilePath = file.path;
+    console.log(
+      `Processing profile picture upload for candidate: ${candidateId}`
+    );
+    console.log(`File path: ${tempFilePath}`);
+
+    // Get existing profile to check for old picture
+    const existingProfile = await prisma.candidateProfile.findUnique({
+      where: { candidate_id: candidateId },
+      select: { profile_picture_url: true },
+    });
+
+    const oldPictureUrl = existingProfile?.profile_picture_url;
+
+    // Upload to Cloudinary with optimizations
+    console.log("Uploading to Cloudinary...");
+    const cloudinaryResult = await cloudinary.uploader.upload(tempFilePath, {
+      folder: "hiralent/profile-pictures",
+      public_id: `candidate_${candidateId}_${Date.now()}`,
+      transformation: [
+        {
+          width: 400,
+          height: 400,
+          crop: "fill",
+          gravity: "face",
+          quality: "auto:good",
+          format: "webp", // Convert to WebP for better compression
+        },
+      ],
+      resource_type: "image",
+    });
+
+    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+    // Update database with new profile picture URL
+    console.log("Updating database...");
+    const updatedProfile = await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        profile_picture_url: cloudinaryResult.secure_url,
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        profile_picture_url: cloudinaryResult.secure_url,
+      },
+    });
+
+    console.log("Database updated successfully");
+
+    // Clean up temporary file
+    cleanupTempFile(tempFilePath);
+
+    // Delete old Cloudinary image if exists (using separated service)
+    if (oldPictureUrl && oldPictureUrl !== cloudinaryResult.secure_url) {
+      await cleanupOldProfilePicture(candidateId, oldPictureUrl);
+    }
+
+    // Recalculate profile completeness (async, don't wait)
+    calculateProfileCompleteness(candidateId).catch((error) => {
+      console.warn("Failed to recalculate profile completeness:", error);
+    });
+
+    return {
+      success: true,
+      profile_picture_url: cloudinaryResult.secure_url,
+      old_picture_url: oldPictureUrl || undefined,
+      message: "Profile picture uploaded and optimized successfully",
+    };
+  } catch (error) {
+    console.error("Service error - Profile picture upload:", error);
+
+    // Clean up temporary file in case of error
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      cleanupTempFile(tempFilePath);
+    }
+
+    // Re-throw with more context
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Profile picture upload failed: ${errorMessage}`);
+  }
+};
+
+
+export const getCandidateProfile = async (candidateId: string) => {
+  try {
+    // Get user with profile data AND skills - extended from login query
+    const user = await prisma.user.findUnique({
+      where: { user_id: candidateId },
+      include: {
+        candidateProfile: true,
+        candidateSkills: { // Added skills relation
+          orderBy: [
+            { is_verified: 'desc' },
+            { created_at: 'desc' }
+          ]
+        },
+        agency: {
+          select: {
+            agency_id: true,
+            name: true,
+            website: true,
+            logo_url: true,
+            status: true
+          }
+        }
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Clean user object - same structure as login response
+    const cleanUser = {
+      user_id: user.user_id,
+      email: user.email,
+      is_email_verified: user.is_email_verified,
+      full_name: user.full_name,
+      role: user.role,
+      phone_number: user.phone_number,
+      position: user.position,
+      linkedin_url: user.linkedin_url,
+      agency_id: user.agency_id,
+      agency: user.agency,
+    };
+
+    // Transform skills to populated format
+    const populatedSkills = user.candidateSkills.map(skill => ({
+      skill_id: skill.skill_id,
+      skill_name: skill.skill_name,
+      skill_category: skill.skill_category,
+      proficiency: skill.proficiency,
+      years_experience: skill.years_experience,
+      confidence_score: skill.confidence_score,
+      source_type: skill.source_type,
+      is_verified: skill.is_verified
+    }));
+
+    // Extract profile data
+    let profileData = null;
+    if (user.candidateProfile) {
+      profileData = {
+        ...user.candidateProfile,
+        // Convert dates to ISO strings to match login response format
+        created_at: user.candidateProfile.created_at.toISOString(),
+        updated_at: user.candidateProfile.updated_at.toISOString(),
+        // Replace skill IDs with populated skills
+        skills: populatedSkills // Populated skills instead of IDs array
+      };
+    } else {
+      // If no profile exists, return basic structure with candidate_id
+      profileData = {
+        candidate_id: candidateId,
+        about_me: null,
+        city: null,
+        created_at: new Date().toISOString(),
+        education: null,
+        experience: null,
+        headline: null,
+        job_benefits: null,
+        languages: null,
+        links: null,
+        location: null,
+        minimum_salary_amount: null,
+        payment_period: null,
+        postal_code: null,
+        preferred_locations: null,
+        profile_picture_url: null,
+        resume_url: null,
+        skills: populatedSkills, // Empty skills array for new profile
+        updated_at: new Date().toISOString(),
+        video_intro_url: null,
+      };
+    }
+
+    // ✅ Return user, profile, and token - exactly like login response but with populated skills
+    return {
+      user: cleanUser,
+      profile: profileData,
+    };
+  } catch (error) {
+    console.error("Error getting candidate profile:", error);
+    const serviceError: CandidateServiceError = new Error(
+      "Failed to get candidate profile"
+    );
+    serviceError.code = "PROFILE_FETCH_FAILED";
     serviceError.statusCode = 500;
     throw serviceError;
   }
-};  
-
-
-export async function updateCandidateLocation(userId: string, data: UpdateLocationInput) {
-  console.log("📛 userId in updateCandidateLocation: ", userId); 
-  return prisma.candidateProfile.upsert({
-    where: { candidate_id: userId },
-    update: {
-      location: data.location,
-      postal_code: data.postalCode,
-    },
-    create: {
-      candidate_id: userId,
-      location: data.location,
-      postal_code: data.postalCode,
-    }
-  });
-}
-
-
-export async function updateCandidateSalary(userId: string, data: UpdateSalaryInput) {
-  return prisma.candidateProfile.upsert({
-    where: { candidate_id: userId },
-    update: {
-      minimum_salary_amount: data.minimumSalary,
-      payment_period: data.paymentPeriod,
-    },
-    create: {
-      candidate_id: userId,
-      minimum_salary_amount: data.minimumSalary,
-      payment_period: data.paymentPeriod,
-    }
-  });
-}
+};

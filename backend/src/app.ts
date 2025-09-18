@@ -1,25 +1,34 @@
-import express, { Request, Response } from 'express';
-import dotenv from 'dotenv';
-import cors from "cors";
+  import express, { Request, Response } from 'express';
+  import dotenv from 'dotenv';
+  import cors from "cors";
 
-dotenv.config();
-const app = express();
+  dotenv.config();
+  const app = express();
+
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://hiralent.vercel.app'
+  ];
 
 app.use(cors({
-  origin: `http://localhost:3000`, // ✅ allow your frontend
-  credentials: true,                // ✅ allow cookies, auth headers if needed
+  origin: allowedOrigins
 }));
-app.use(express.json()); // for JSON request body
 
-// routes
-import authRoutes from './routes/auth.routes';
-import candidateRoutes from './routes/candidate.routes';
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/candidates', candidateRoutes);
+  app.use(express.json()); // for JSON request body
 
-app.get('/', (req: Request, res: Response) => {
-  res.send("backend running successfully");
-});
+  // routes
+  import authRoutes from './routes/auth.routes';
+  import candidateRoutes from './routes/candidate.routes';
+  import companyRoutes from './routes/company.routes';
 
-export default app;
+  // Use routes
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/candidates', candidateRoutes);
+  app.use('/api/v1/company', companyRoutes);
+
+  app.get('/', (req: Request, res: Response) => {
+    res.send("backend running successfully");
+  });
+
+  export default app;
