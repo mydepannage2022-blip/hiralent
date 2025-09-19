@@ -1,7 +1,9 @@
 'use client'
+
+import React from "react";
 import PeopleCard from "./PeopleCard"
 
-export default function WhoWeAre() {
+const OurTeam = () => {
     return (
         <section id="our-team" className="py-12 mx-auto">
             <h2 className="text-2xl md:text-4xl font-medium text-center mb-3">Our Team</h2>
@@ -12,9 +14,9 @@ export default function WhoWeAre() {
                 {/* Row + column gaps controlled separately */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-12 items-start">
                     <PeopleCard
-                        image="/images/people1.png"
-                        name="Cameron Williamson"
-                        role="Product Analyst"
+                        image="/images/people6.png"
+                        name="Setareh Kazemi"
+                        role="UI/UX Designer"
                         socials={[
                             { type: 'linkedin', href: '#' },
                             { type: 'dribbble', href: '#' },
@@ -22,9 +24,9 @@ export default function WhoWeAre() {
                         ]}
                     />
                     <PeopleCard
-                        image="/images/people2.png"
-                        name="Cody Fisher"
-                        role="Data Analyst Lead"
+                        image="/images/people7.png"
+                        name="Hossien Kordipour"
+                        role="UI/UX Designer"
                         socials={[
                             { type: 'linkedin', href: '#' },
                             { type: 'dribbble', href: '#' },
@@ -32,9 +34,9 @@ export default function WhoWeAre() {
                         ]}
                     />
                     <PeopleCard
-                        image="/images/people3.png"
-                        name="Brooklyn Simmons"
-                        role="Senior Interaction Designer"
+                        image="/images/people8.png"
+                        name="Mahsa Haddadha"
+                        role="UI/UX Designer"
                         socials={[
                             { type: 'linkedin', href: '#' },
                             { type: 'dribbble', href: '#' },
@@ -42,9 +44,9 @@ export default function WhoWeAre() {
                         ]}
                     />
                     <PeopleCard
-                        image="/images/people4.png"
-                        name="Kristin Watson"
-                        role="Head of Product Design"
+                        image="/images/people9.png"
+                        name="Fateme Kamali"
+                        role="UI/UX Designer"
                         socials={[
                             { type: 'linkedin', href: '#' },
                             { type: 'dribbble', href: '#' },
@@ -52,9 +54,9 @@ export default function WhoWeAre() {
                         ]}
                     />
                     <PeopleCard
-                        image="/images/people5.png"
-                        name="Darrell Steward"
-                        role="Head of Engineering"
+                        image="/images/people10.png"
+                        name="Fateme Ghaemi"
+                        role="UI/UX Designer"
                         socials={[
                             { type: 'linkedin', href: '#' },
                             { type: 'dribbble', href: '#' },
@@ -65,4 +67,6 @@ export default function WhoWeAre() {
             </div>
         </section>
     );
-}
+};
+
+export default OurTeam;

@@ -1,6 +1,9 @@
+'use client'
+
+import React from "react";
 import Image from "next/image";
 
-export default function AboutSection() {
+const AboutSection = () => {
     return (
         <section id="about" className="py-12 mx-auto">
             <h2 className="text-2xl md:text-4xl font-medium text-center mb-3">About us</h2>
@@ -8,7 +11,7 @@ export default function AboutSection() {
 
             <div className="grid md:grid-cols-2 gap-20 items-center">
                 {/* Left Content */}
-                <div className="text-[#757575] leading-relaxed text-xl">
+                <div className="text-[#757575] leading-relaxed md:text-sm lg:text-base xl:text-xl">
                     <p>
                         At <span className="font-semibold text-[#222222]">Hiralent</span>,
                     </p>
@@ -31,7 +34,7 @@ export default function AboutSection() {
                 {/* Right Image with breakout badges */}
                 <div className="relative w-full h-64 md:h-80 lg:h-96">
                     {/* Image container */}
-                    <div className="w-full max-w-[540px] h-full rounded-xl overflow-hidden relative">
+                    <div className="w-full mx-auto max-w-[475px] sm:max-w-[375px] lg:max-w-[425px] xl:max-w-[540px] h-full rounded-xl overflow-hidden relative">
                         <Image
                             src="/images/About-us1.png"
                             alt="About Hiralent"
@@ -41,7 +44,7 @@ export default function AboutSection() {
                     </div>
 
                     {/* Top-right card — half in, half out */}
-                    <div className="absolute top-6 right-0">
+                    <div className="absolute top-6 -right-2 sm:right-24 md:right-0">
                         <div className="bg-[#F9F9F9] rounded-lg px-4 py-2 text-center">
                             <p className="text-[#515151] text-xs md:text-sm mb-2">Monthly employed</p>
                             <p className="text-base md:text-xl font-semibold text-[#222222]">
@@ -51,7 +54,7 @@ export default function AboutSection() {
                     </div>
 
                     {/* Bottom-left reviews card — half in, half out */}
-                    <div className="absolute bottom-6 -left-12">
+                    <div className="absolute bottom-6 -left-2 sm:left-24 md:-left-12">
                         <div className="bg-[#F9F9F9] rounded-lg px-4 py-2 flex flex-col items-center">
                             {/* Row 1: avatars + plus */}
                             <div className="flex items-center">
@@ -84,4 +87,6 @@ export default function AboutSection() {
             </div>
         </section>
     );
-}
+};
+
+export default AboutSection;

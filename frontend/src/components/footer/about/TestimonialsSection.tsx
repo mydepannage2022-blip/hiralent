@@ -2,70 +2,94 @@
 
 import React from "react";
 import Image from "next/image";
-import TestimonialsSlider from "./TestimonialSlider";
+import TestimonialsSlider from "./TestimonialsSlider";
 
-interface TestimonialData {
-    name: string;
-    role: string;
-    avatar: string;
-    text: string;
-    rating?: number;
-    likes?: number;
-    dislikes?: number;
-}
+const testimonials = [
+    {
+        name: "Marvin McKinney",
+        role: "Job Seeker",
+        avatar: "/images/avatar7.png",
+        text: "When I applied for a position at BMW, I knew I was about to experience one of the most challenging job interviews of my career. But what I didn’t expect was the incredible combination of professionalism, creativity, and team culture throughout the process.",
+        rating: 4.5,
+        likes: 14,
+        dislikes: 0,
+    },
+    {
+        name: "Marvin McKinney",
+        role: "Job Seeker",
+        avatar: "/images/avatar7.png",
+        text: "When I applied for a position at BMW, I knew I was about to experience one of the most challenging job interviews of my career. But what I didn’t expect was the incredible combination of professionalism, creativity, and team culture throughout the process.",
+        rating: 4.5,
+        likes: 14,
+        dislikes: 0,
+    },
+    {
+        name: "Marvin McKinney",
+        role: "Job Seeker",
+        avatar: "/images/avatar7.png",
+        text: "When I applied for a position at BMW, I knew I was about to experience one of the most challenging job interviews of my career. But what I didn’t expect was the incredible combination of professionalism, creativity, and team culture throughout the process.",
+        rating: 4.5,
+        likes: 14,
+        dislikes: 0,
+    },
+    {
+        name: "Marvin McKinney",
+        role: "Job Seeker",
+        avatar: "/images/avatar7.png",
+        text: "When I applied for a position at BMW, I knew I was about to experience one of the most challenging job interviews of my career. But what I didn’t expect was the incredible combination of professionalism, creativity, and team culture throughout the process.",
+        rating: 4.5,
+        likes: 14,
+        dislikes: 0,
+    },
+    {
+        name: "Marvin McKinney",
+        role: "Job Seeker",
+        avatar: "/images/avatar7.png",
+        text: "When I applied for a position at BMW, I knew I was about to experience one of the most challenging job interviews of my career. But what I didn’t expect was the incredible combination of professionalism, creativity, and team culture throughout the process.",
+        rating: 4.5,
+        likes: 14,
+        dislikes: 0,
+    }
+];
 
-interface Props {
-    testimonials?: TestimonialData[];
-}
-
-const TestimonialsSection: React.FC<Props> = ({ testimonials }) => {
-    // fallback dummy testimonials
-    const defaultTestimonials: TestimonialData[] = [
-        {
-            name: "John Doe",
-            role: "Software Engineer",
-            avatar: "/images/user1.jpg",
-            text: "This platform helped me land my dream job quickly!",
-            rating: 4.8,
-            likes: 124,
-            dislikes: 3,
-        },
-        {
-            name: "Jane Smith",
-            role: "HR Manager",
-            avatar: "/images/user2.jpg",
-            text: "We’ve hired excellent candidates thanks to this site.",
-            rating: 4.6,
-            likes: 98,
-            dislikes: 2,
-        },
-    ];
-
-    const data = testimonials && testimonials.length > 0 ? testimonials : defaultTestimonials;
-
+const TestimonialsSection = () => {
     return (
-        <section className="relative py-20 px-4">
-            <div className="max-w-7xl mx-auto relative">
-                {/* BACKGROUND CONTAINER */}
-                <div className="bg-[#F5F5F6] rounded-2xl w-full h-full py-12 lg:py-20 px-6 lg:px-12 relative z-10">
+        <section id="people-says" className="relative py-12">
+            <h2 className="text-2xl md:text-4xl font-medium text-center mb-3">What our people says</h2>
+            <p className="text-center text-[#757575] mb-12 mx-auto">What people have said about us</p>
+
+            <div className="mx-auto relative sm:mt-20">
+                {/* Background container */}
+                <div className="sm:bg-[#F5F5F6] rounded-lg w-full sm:pt-4 sm:pb-2 sm:px-13 lg:px-8 xl:px-26 relative z-10">
+                    {/* Mobile image above slider */}
+                    <div className="block lg:hidden mb-12 flex justify-center">
+                        <Image
+                            src="/images/peoplesays1.png"
+                            alt="Testimonial visual"
+                            width={320}
+                            height={320}
+                            className="object-cover rounded-2xl"
+                        />
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                        {/* LEFT side reserved for image */}
+                        {/* Left space only for desktop */}
                         <div className="hidden lg:block"></div>
 
-                        {/* RIGHT side: slider INSIDE container */}
+                        {/* Right slider */}
                         <div>
-                            <TestimonialsSlider testimonials={data} />
+                            <TestimonialsSlider testimonials={testimonials} />
                         </div>
                     </div>
                 </div>
 
-                {/* LEFT IMAGE floating ABOVE container */}
-                <div className="absolute top-0 left-0 -mt-16 lg:-mt-100 z-20">
+                {/* Floating left image (desktop only) */}
+                <div className="absolute top-0 lg:left-8 xl:left-26 lg:-mt-8 z-20 hidden lg:block">
                     <Image
                         src="/images/peoplesays1.png"
                         alt="Testimonial visual"
-                        width={640}
-                        height={640}
+                        width={425}
+                        height={425}
                         className="object-cover rounded-2xl"
                     />
                 </div>

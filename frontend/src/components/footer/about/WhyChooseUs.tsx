@@ -1,3 +1,6 @@
+'use client'
+
+import React from "react";
 import HelpCardGrid from "../about/HelpCardGrid";
 
 const helpCards = [
@@ -33,7 +36,7 @@ const helpCards = [
     },
 ];
 
-export default function WhoWeAre() {
+const WhoWeAre = () => {
     return (
         <section id="why-choose-us" className="py-12 mx-auto">
             <h2 className="text-2xl md:text-4xl font-medium text-center mb-3">Why choose us</h2>
@@ -42,4 +45,6 @@ export default function WhoWeAre() {
             <HelpCardGrid cards={helpCards} />
         </section>
     );
-}
+};
+
+export default WhoWeAre;

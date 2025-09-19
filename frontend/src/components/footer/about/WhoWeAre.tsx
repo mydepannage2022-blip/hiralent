@@ -1,3 +1,6 @@
+'use client'
+
+import React from "react";
 import { Briefcase } from "lucide-react";
 
 const stats = [
@@ -6,7 +9,7 @@ const stats = [
     { id: 3, label: "Companies", value: "97,354", icon: Briefcase },
 ];
 
-export default function WhoWeAre() {
+const WhoWeAre = () => {
     return (
         <section id="who-we-are" className="py-12 mx-auto">
             <h2 className="text-2xl md:text-4xl font-medium text-center mb-3">Who we are</h2>
@@ -15,7 +18,7 @@ export default function WhoWeAre() {
             <div className="grid md:grid-cols-2 gap-12 items-center">
                 {/* Left Content */}
                 <div>
-                    <h3 className="text-2xl md:text-5xl font-semibold mb-12">
+                    <h3 className="text-2xl sm:text-5xl md:text-4xl xl:text-5xl font-semibold mb-12">
                         We’re highly skilled and professionals team.
                     </h3>
                     <p className="text-[#222222] leading-relaxed text-lg">
@@ -49,4 +52,6 @@ export default function WhoWeAre() {
             </div>
         </section>
     );
-}
+};
+
+export default WhoWeAre;

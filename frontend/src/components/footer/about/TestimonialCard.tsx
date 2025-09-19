@@ -14,7 +14,7 @@ interface TestimonialCardProps {
     dislikes: number;
 }
 
-const TestimonialCard: React.FC<TestimonialCardProps> = ({
+const TestimonialCard = ({
     name,
     role,
     avatar,
@@ -22,12 +22,12 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
     text,
     likes,
     dislikes,
-}) => {
+}: TestimonialCardProps) => {
     return (
-        <div className="bg-white border border-[#EDEDED] rounded-lg p-6 flex flex-col justify-between h-full shadow-sm">
+        <div className="bg-white border border-[#EDEDED] rounded-lg p-6 flex flex-col justify-between">
             {/* Top section */}
             <div className="flex items-start gap-3 sm:gap-5">
-                {/* Big Quote Mark Image */}
+                {/* Quote mark */}
                 <Image
                     src="/images/quote.png"
                     alt="quote"
@@ -36,16 +36,18 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
                     className="object-contain flex-shrink-0 sm:mt-1"
                 />
 
-                {/* Avatar + Name/Role + Rating */}
+                {/* Avatar + Info + Rating */}
                 <div className="flex flex-1 items-start justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <img
                             src={avatar}
                             alt={name}
                             className="w-10 h-10 rounded-full object-cover"
                         />
                         <div>
-                            <p className="text-sm sm:text-lg font-semibold text-gray-900">{name}</p>
+                            <p className="text-sm sm:text-lg font-semibold text-gray-900">
+                                {name}
+                            </p>
                             <p className="text-sm text-[#A5A5A5]">{role}</p>
                         </div>
                     </div>
@@ -58,7 +60,13 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
                             fill="#F6B500"
                             className="w-4 h-4"
                         >
-                            <path d="M12 2.5l2.9 5.88 6.5.95-4.7 4.58 1.1 6.44L12 17.77l-5.8 3.05 1.1-6.44-4.7-4.58 6.5-.95L12 2.5z" />
+                            <path
+                                d="M12 2.5l2.9 5.88 6.5.95-4.7 4.58 1.1 6.44L12 17.77l-5.8 3.05 1.1-6.44-4.7-4.58 6.5-.95L12 2.5z"
+                                stroke="#F6B500"
+                                strokeWidth="2"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                            />
                         </svg>
                         <span className="text-sm font-medium text-[#515151]">
                             {rating.toFixed(1)}
@@ -67,19 +75,18 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({
                 </div>
             </div>
 
-            {/* Review Text */}
+            {/* Review text */}
             <p className="text-base sm:text-lg mt-4 text-[#222222] leading-relaxed">
                 {text}
             </p>
 
             {/* Footer */}
-            <div className="mt-6 flex items-center text-[#222222]">
+            <div className="mt-4 flex items-center text-[#222222]">
                 <div className="flex items-center gap-2">
                     <ThumbsUp className="w-5 h-5" />
                     <span>{likes}</span>
                 </div>
 
-                {/* Tall black divider */}
                 <div className="w-px bg-[#222222] mx-4 self-stretch"></div>
 
                 <div className="flex items-center gap-2">
