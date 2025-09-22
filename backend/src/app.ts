@@ -21,6 +21,11 @@ app.use(cors({
   import authRoutes from './routes/auth.routes';
   import candidateRoutes from './routes/candidate.routes';
   import companyRoutes from './routes/company.routes';
+  
+  import ocrRoutes from './routes/ocr.routes';
+
+  // mount OCR
+  app.use('/api/ocr', ocrRoutes);
 
   // Use routes
   app.use('/api/v1/auth', authRoutes);

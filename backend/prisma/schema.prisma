@@ -1263,24 +1263,116 @@ enum QuestionType {
   TRUE_FALSE
   SCENARIO
 }
-// Company Verification Process
-model CompanyVerification {
-  verification_id   String @id @default(uuid())
-  company_id        String
-  status           String // pending, approved, rejected
-  documents        Json   // Business registration, tax docs
-  verified_by      String?
-  verification_date DateTime?
+// Add these enums first
+enum VerificationSubjectType {
+  COMPANY
+  AGENCY
 }
 
-// Agency Verification Process  
-model AgencyVerification {
-  verification_id   String @id @default(uuid())
-  agency_id         String
-  license_status    String // pending, verified, expired
-  verification_documents Json
+enum VerificationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationDecision {
+  APPROVE
+  REJECT
+  MANUAL_REVIEW
+  NO_DECISION
+}
+
+enum VerificationCaseStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+// Verification Run table
+model VerificationRun {
+  run_id        String                  @id @default(uuid())
+  subject_type  VerificationSubjectType
+  subject_id    String
+  status        VerificationRunStatus
+  started_at    DateTime                @default(now())
+  ended_at      DateTime?
+  risk_score    Float?
+  decision      VerificationDecision?
+  reason_codes  String[]                @default([])
+
+  signals  VerificationSignal[]
+  snapshot VerificationSnapshot?
+
+  companyLatestOf CompanyVerification? @relation("CompanyLatestRun")
+  agencyLatestOf  AgencyVerification?  @relation("AgencyLatestRun")
+}
+
+// Verification Signal table
+model VerificationSignal {
+  signal_id   String   @id @default(uuid())
+  run_id      String
+  signal_type String
+  passed      Boolean
+  score       Float?
+  explanation String?
+  raw_payload Json?
+
+  run VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+// Verification Snapshot table
+model VerificationSnapshot {
+  snapshot_id String   @id @default(uuid())
+  run_id      String   @unique
+  profile     Json
+  documents   Json
+  created_at  DateTime @default(now())
+
+  run VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+// Updated Company Verification with new fields
+model CompanyVerification {
+  verification_id   String                 @id @default(uuid())
+  company_id        String
+  status            VerificationCaseStatus @default(DRAFT)
+  documents         Json
   verified_by       String?
   verification_date DateTime?
+
+  latest_run_id String? @unique
+  risk_score    Float?
+  reason_codes  String[] @default([])
+
+  latest_run VerificationRun? @relation("CompanyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([company_id])
+  @@index([status])
+}
+
+// Updated Agency Verification with new fields
+model AgencyVerification {
+  verification_id        String                 @id @default(uuid())
+  agency_id              String
+  license_status         String
+  verification_documents Json
+  verified_by            String?
+  verification_date      DateTime?
+
+  status        VerificationCaseStatus @default(DRAFT)
+  latest_run_id String? @unique
+  risk_score    Float?
+  reason_codes  String[] @default([])
+
+  latest_run VerificationRun? @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([agency_id])
+  @@index([status])
 }
 
 // Super Admin Management
