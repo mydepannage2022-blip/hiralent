@@ -137,19 +137,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
 
   return (
     <div className={`w-full  ${className}`}>
-      {/* Confetti Effect */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-10 flex items-center justify-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="text-6xl"
-          >
-            🎉
-          </motion.div>
-        </div>
-      )}
-
       {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

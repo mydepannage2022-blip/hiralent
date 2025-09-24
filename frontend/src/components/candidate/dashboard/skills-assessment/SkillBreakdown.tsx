@@ -115,7 +115,7 @@ const SkillBreakdown: React.FC<SkillBreakdownProps> = ({
   };
 
   return (
-    <div className={`max-w-6xl mx-auto space-y-6 ${className}`}>
+    <div className={`w-full space-y-6 ${className}`}>
       {/* Overall Score Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
