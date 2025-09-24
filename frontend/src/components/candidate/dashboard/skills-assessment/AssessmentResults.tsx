@@ -136,10 +136,10 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   const difficultyStats = getDifficultyStats();
 
   return (
-    <div className={`max-w-6xl mx-auto ${className}`}>
+    <div className={`w-full  ${className}`}>
       {/* Confetti Effect */}
       {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
+        <div className="fixed inset-0 pointer-events-none z-10 flex items-center justify-center">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}

@@ -256,7 +256,7 @@ const AssessmentResultsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-[#222] mb-2">Analyzing Your Performance</h2>
@@ -267,10 +267,10 @@ const AssessmentResultsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full bg-gray-50">
       {/* Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 py-4">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 rounded-xl shadow-sm">
+        <div className="w-full px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button
@@ -293,10 +293,10 @@ const AssessmentResultsPage = () => {
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key as any)}
-                    className={`pb-2 border-b-2 transition-colors ${
+                    className={`border transition-colors px-4 py-2 rounded-md font-normal cursor-pointer ${
                       activeTab === tab.key
-                        ? 'border-[#005DDC] text-[#005DDC] font-medium'
-                        : 'border-transparent text-[#757575] hover:text-[#222]'
+                        ? 'border-[#005DDC] text-[#005DDC]'
+                        : 'border-[#757575] text-[#757575] hover:text-[#222]'
                     }`}
                   >
                     {tab.label}
@@ -309,7 +309,7 @@ const AssessmentResultsPage = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="w-full p-6">
         {activeTab === 'results' && (
           <AssessmentResults
             results={mockResults}
