@@ -101,6 +101,9 @@ model User {
   generatedContent         GeneratedContent[]        @relation("GeneratedContent")
   userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
   aiFeedback               AIFeedback[]              @relation("AIFeedback")
+  
+  // back-relation: one user -> many uploaded docs
+  uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -1381,4 +1384,37 @@ model SuperAdmin {
   user_id          String
   permissions      String[]
   created_at       DateTime @default(now())
+}
+
+// Uploads file metadata
+model UploadedDocument {
+  document_id   String   @id @default(uuid())
+  uploaded_by   String
+  subject_type  String // "COMPANY" | "AGENCY"
+  subject_id    String // company_id or agency_id
+  // File attributes
+  file_name     String
+  storage_key   String // key/path inside S3 bucket
+  url           String? // optional canonical URL (not public)
+  mime_type     String
+  file_ext      String?
+  file_size     Int
+  sha256        String
+  // Business metadata
+  document_type String // "registration_cert", "tax", "license", ...
+  status        String   @default("pending") // "pending" | "approved" | "rejected" | "expired"
+  notes         String?
+  // Derivatives
+  preview_key   String? // low-res preview key
+  preview_ready Boolean  @default(false)
+  // Audit
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // named relation to User
+  uploader User @relation("UserUploadedDocuments", fields: [uploaded_by], references: [user_id])
+
+  @@index([subject_type, subject_id])
+  @@index([uploaded_by])
+  @@index([document_type])
 }

@@ -21,6 +21,7 @@ app.use(cors({
   import authRoutes from './routes/auth.routes';
   import candidateRoutes from './routes/candidate.routes';
   import companyRoutes from './routes/company.routes';
+  import uploadRoutes from "./routes/upload.routes";
   
   import ocrRoutes from './routes/ocr.routes';
 
@@ -31,6 +32,7 @@ app.use(cors({
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/candidates', candidateRoutes);
   app.use('/api/v1/company', companyRoutes);
+  app.use("/api/v1/uploads", uploadRoutes); // → POST /api/v1/uploads/company/:companyId
 
   app.get('/', (req: Request, res: Response) => {
     res.send("backend running successfully");
