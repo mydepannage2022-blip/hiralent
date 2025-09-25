@@ -16,11 +16,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <ProtectedRoute>
       <div className="w-full bg-[#F9F9F9] flex justify-center items-center">
         <div className="w-full xl:max-w-9/10 flex justify-center items-start p-4 md:p-8 gap-4 md:gap-8">
-          
           {/* Desktop Sticky Sidebar */}
           <div className='hidden lg:flex justify-start items-start sticky top-8 self-start'>
             <DashboardSidebar 
-              isOpen={isOpen} 
+              isOpen={isOpen}
               setIsOpen={setIsOpen}
               isMobile={false}
               isMobileMenuOpen={false}
