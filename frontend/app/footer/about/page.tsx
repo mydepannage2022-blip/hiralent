@@ -1,4 +1,4 @@
-import TabsNav from "../../../src/components/footer/";
+import TabsNav from "@/src/components/footer/about/TabsNav";
 import AboutSection from "../../../src/components/footer/about/AboutSection";
 import WhoWeAre from "../../../src/components/footer/about/WhoWeAre";
 

@@ -21,11 +21,10 @@ export const evaluateAnswer = async (params: any): Promise<any> => {
     .replace('{expectedAnswer}', params.expectedAnswer || '')
     .replace('{userAnswer}', params.userAnswer);
   
-  // ✅ ADD assessmentType parameter for evaluation
   return await generateSkillsAssessmentJSON(
     'You are an expert skill assessment AI.', 
     prompt, 
-    'evaluation'  // ← ADD THIS LINE
+    'evaluation'  
   );
 };
 
@@ -34,7 +33,7 @@ export const adjustDifficulty = async (params: any): Promise<any> => {
     .replace('{currentDifficulty}', params.currentDifficulty)
     .replace('{recentScores}', params.recentAnswers?.map((a: any) => a.partialScore || a.score || 0).join(', ') || '')
     .replace('{avgTimePerQuestion}', params.avgTimePerQuestion?.toString() || '');
-  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt);
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'difficulty');
 };
 
 export const generateReport = async (params: any): Promise<any> => {
@@ -44,5 +43,5 @@ export const generateReport = async (params: any): Promise<any> => {
     .replace('{overallScore}', params.assessment.overall_score?.toString() || '')
     .replace('{totalTime}', params.totalTime?.toString() || '')
     .replace('{performanceData}', JSON.stringify(params.results || []));
-  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt);
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'report');
 };

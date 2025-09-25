@@ -113,6 +113,11 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           title: 'Analytics',
           description: 'Track your job search progress and performance metrics'
         };
+        case '/candidate/dashboard/skills-assessment':
+        return {
+          title: 'Skills Assessment',
+          description: 'Evaluate your skills and identify areas for improvement'
+        };
       default:
         return {
           title: 'Dashboard',
