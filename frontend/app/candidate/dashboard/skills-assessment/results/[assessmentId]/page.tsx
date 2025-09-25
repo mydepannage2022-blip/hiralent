@@ -269,7 +269,7 @@ const AssessmentResultsPage = () => {
   return (
     <div className="w-full bg-gray-50">
       {/* Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 rounded-xl shadow-sm mb-8">
+      <div className="bg-white border-b border-gray-200 rounded-xl shadow-sm mb-8">
         <div className="w-full px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -287,7 +287,6 @@ const AssessmentResultsPage = () => {
               <div className="flex gap-6">
                 {[
                   { key: 'results', label: 'Results Overview' },
-                  { key: 'breakdown', label: 'Skill Analysis' },
                   { key: 'recommendations', label: 'Recommendations' }
                 ].map(tab => (
                   <button
@@ -321,19 +320,6 @@ const AssessmentResultsPage = () => {
             showCelebration={true}
           />
         )}
-
-        {activeTab === 'breakdown' && (
-          <SkillBreakdown
-            skillName={mockSkillBreakdown.skillName}
-            overallScore={mockSkillBreakdown.overallScore}
-            skillLevel={mockSkillBreakdown.skillLevel}
-            strengths={mockSkillBreakdown.strengths}
-            weaknesses={mockSkillBreakdown.weaknesses}
-            recommendations={mockSkillBreakdown.recommendations}
-            marketInsights={mockSkillBreakdown.marketInsights}
-          />
-        )}
-
         {activeTab === 'recommendations' && (
           <RecommendationsCard
             skillName={mockRecommendations.skillName}

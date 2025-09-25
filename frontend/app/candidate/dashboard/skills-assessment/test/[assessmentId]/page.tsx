@@ -214,7 +214,7 @@ const AssessmentTestPage = () => {
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#757575]">Loading question...</p>
@@ -224,7 +224,7 @@ const AssessmentTestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Security Monitor */}
       <SecurityMonitor
         isActive={true}
@@ -236,8 +236,8 @@ const AssessmentTestPage = () => {
       />
 
       {/* Header with Timer and Progress */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto p-4">
+      <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="w-full p-4">
           <div className="flex items-center justify-between">
             {/* Progress Info */}
             <div className="flex items-center gap-4">
@@ -271,7 +271,7 @@ const AssessmentTestPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-full py-6">
         <motion.div
           key={currentQuestionIndex}
           initial={{ opacity: 0, x: 20 }}

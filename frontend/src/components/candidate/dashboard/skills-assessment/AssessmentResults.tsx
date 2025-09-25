@@ -141,43 +141,32 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`border rounded-lg p-8 mb-6 ${getScoreColor(results.overallScore)}`}
+        className={`rounded-lg p-8 mb-6 shadow-md ${getScoreColor(results.overallScore)}`}
       >
         <div className="text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="mb-4"
-          >
-            {getSkillLevelIcon(results.skillLevel)}
-          </motion.div>
-          
           <h1 className="text-3xl font-bold mb-2 text-[#222]">
             Assessment Completed!
           </h1>
-          <p className="text-[#757575] mb-6">
+          <p className="text-[#757575] mb-6 text-xs">
             {results.skillName} • {results.assessmentType} Assessment
           </p>
           
-          {/* Score Display */}
           <div className="flex items-center justify-center gap-8 mb-4">
             <div className="text-center">
-              <div className="text-5xl font-bold text-[#005DDC] mb-2">
+              <div className="text-base font-normal text-[#005DDC] mb-2">
                 {results.overallScore}%
               </div>
-              <div className="text-sm text-[#757575]">Overall Score</div>
+              <div className="text-xs text-[#757575] font-normal">Overall Score</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-semibold text-[#222] mb-2 flex items-center gap-2">
-                {getSkillLevelIcon(results.skillLevel)}
+              <div className="text-base font-normal text-[#222] mb-2 flex items-center gap-2">
                 {results.skillLevel}
               </div>
-              <div className="text-sm text-[#757575]">Skill Level</div>
+              <div className="text-xs text-[#757575] font-normal">Skill Level</div>
             </div>
           </div>
           
-          <div className="text-sm text-[#757575]">
+          <div className="text-xs text-[#757575] font-normal">
             Completed on {new Date(results.completedAt).toLocaleDateString()}
           </div>
         </div>
@@ -190,21 +179,21 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         transition={{ delay: 0.1 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
       >
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-[#005DDC] mb-1">{results.correctAnswers}</div>
-          <div className="text-xs text-[#757575]">Correct Answers</div>
+        <div className="bg-white border border-gray-200 rounded-lg py-2 text-center">
+          <div className="text-base font-normal text-[#005DDC] mb-1">{results.correctAnswers}</div>
+          <div className="text-[10px] text-[#757575]">Correct Answers</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600 mb-1">{accuracyRate}%</div>
-          <div className="text-xs text-[#757575]">Accuracy Rate</div>
+        <div className="bg-white border border-gray-200 rounded-lg py-2 text-center">
+          <div className="text-base font-normal text-[#005DDC] mb-1">{accuracyRate}%</div>
+          <div className="text-[10px] text-[#757575]">Accuracy Rate</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-orange-600 mb-1">{formatTime(results.timeSpent)}</div>
-          <div className="text-xs text-[#757575]">Time Spent</div>
+        <div className="bg-white border border-gray-200 rounded-lg py-2 text-center">
+          <div className="text-base font-normal text-[#005DDC] mb-1">{formatTime(results.timeSpent)}</div>
+          <div className="text-[10px] text-[#757575]">Time Spent</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600 mb-1">{averageTimePerQuestion}s</div>
-          <div className="text-xs text-[#757575]">Avg per Question</div>
+        <div className="bg-white border border-gray-200 rounded-lg py-2 text-center">
+          <div className="text-base font-normal text-[#005DDC] mb-1">{averageTimePerQuestion}s</div>
+          <div className="text-[10px] text-[#757575]">Avg per Question</div>
         </div>
       </motion.div>
 
@@ -243,34 +232,34 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               {/* Performance Summary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-[#222] mb-4">Performance Summary</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-[#222] mb-4">Performance Summary</h3>
+                  <div className="space-y-3 text-xs">
                     <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-green-700">Correct Answers</span>
-                      <span className="font-semibold text-green-600">{results.correctAnswers}/{results.totalQuestions}</span>
+                      <span className="text-green-700 ">Correct Answers</span>
+                      <span className="font-normal text-green-600">{results.correctAnswers}/{results.totalQuestions}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                       <span className="text-red-700">Incorrect Answers</span>
-                      <span className="font-semibold text-red-600">{results.incorrectAnswers}</span>
+                      <span className="font-normal text-red-600">{results.incorrectAnswers}</span>
                     </div>
                     {results.partialAnswers > 0 && (
                       <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
                         <span className="text-yellow-700">Partial Credit</span>
-                        <span className="font-semibold text-yellow-600">{results.partialAnswers}</span>
+                        <span className="font-normal text-yellow-600">{results.partialAnswers}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-[#222] mb-4">Difficulty Breakdown</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-[#222] mb-4">Difficulty Breakdown</h3>
+                  <div className="space-y-3 text-xs">
                     {Object.entries(difficultyStats).map(([level, stats]) => (
                       stats.total > 0 && (
                         <div key={level} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                           <span className="text-gray-700 capitalize">{level.toLowerCase()}</span>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-600">{stats.correct}/{stats.total}</span>
+                            <span className="font-normal text-gray-600">{stats.correct}/{stats.total}</span>
                             <span className="text-xs text-gray-500">
                               ({Math.round((stats.correct / stats.total) * 100)}%)
                             </span>
@@ -285,28 +274,26 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               {/* Strengths & Weaknesses */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-[#222] mb-4 flex items-center gap-2">
-                    <Star className="h-5 w-5 text-green-500" />
+                  <h3 className="text-sm font-semibold text-[#222] mb-4 flex items-center gap-2">
                     Strengths
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-xs">
                     {results.strengths.map((strength, index) => (
                       <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800">{strength}</p>
+                        <p className="text-green-800">{strength}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-[#222] mb-4 flex items-center gap-2">
-                    <Target className="h-5 w-5 text-orange-500" />
+                  <h3 className="text-sm font-semibold text-[#222] mb-4 flex items-center gap-2">
                     Areas for Improvement
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-xs">
                     {results.weaknesses.map((weakness, index) => (
                       <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <p className="text-sm text-orange-800">{weakness}</p>
+                        <p className="text-orange-800">{weakness}</p>
                       </div>
                     ))}
                   </div>
@@ -322,9 +309,9 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              <h3 className="text-lg font-semibold text-[#222] mb-4">Detailed Question Analysis</h3>
+              <h3 className="text-sm font-semibold text-[#222] mb-4">Detailed Question Analysis</h3>
               
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="space-y-4 overflow-y-auto">
                 {results.questionResults.map((question, index) => (
                   <div
                     key={question.questionId}
@@ -339,7 +326,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
                         <h4 className="font-medium text-[#222] mb-1">
                           Question {index + 1}
                         </h4>
-                        <p className="text-sm text-[#757575] mb-2">{question.questionText}</p>
+                        <p className="text-xs text-[#757575] font-normal mb-2">{question.questionText}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {question.isCorrect ? (
@@ -347,7 +334,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
                         ) : (
                           <div className="h-5 w-5 border-2 border-red-500 rounded-full"></div>
                         )}
-                        <span className={`text-sm font-semibold ${
+                        <span className={`text-sm font-normal ${
                           question.isCorrect ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {question.score}%
@@ -385,19 +372,18 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
           {activeTab === 'insights' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
               className="space-y-6"
+              animate={{ opacity: 1, y: 0 }}
             >
               {/* Recommendations */}
               <div>
-                <h3 className="text-lg font-semibold text-[#222] mb-4 flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-[#005DDC]" />
+                <h3 className="text-sm font-semibold text-[#222] mb-4 flex items-center gap-2">
                   Personalized Recommendations
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-3 text-xs">
                   {results.recommendations.map((recommendation, index) => (
                     <div key={index} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800">{recommendation}</p>
+                      <p className="text-blue-800">{recommendation}</p>
                     </div>
                   ))}
                 </div>
@@ -406,28 +392,27 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               {/* Market Insights */}
               {results.marketInsights && (
                 <div>
-                  <h3 className="text-lg font-semibold text-[#222] mb-4 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-purple-500" />
+                  <h3 className="text-sm font-semibold text-[#222] mb-4 flex items-center gap-2">
                     Market Insights
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600 mb-1">
+                    <div className="text-center p-4 bg-white rounded-lg shadow-md">
+                      <div className="text-base font-semibold mb-1 text-[#005DDC]">
                         {results.marketInsights.salaryRange}
                       </div>
-                      <div className="text-sm text-purple-700">Salary Range</div>
+                      <div className="text-xs">Salary Range</div>
                     </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600 mb-1 capitalize">
+                    <div className="text-center p-4 bg-white rounded-lg shadow-md">
+                      <div className="text-base font-semibold mb-1 text-[#005DDC] capitalize">
                         {results.marketInsights.demandLevel}
                       </div>
-                      <div className="text-sm text-green-700">Demand Level</div>
+                      <div className="text-xs">Demand Level</div>
                     </div>
-                    <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600 mb-1">
+                    <div className="text-center p-4 bg-white rounded-lg shadow-md">
+                      <div className="text-base font-semibold mb-1 text-[#005DDC]">
                         {results.marketInsights.jobOpenings.toLocaleString()}
                       </div>
-                      <div className="text-sm text-orange-700">Job Openings</div>
+                      <div className="text-xs">Job Openings</div>
                     </div>
                   </div>
                 </div>
@@ -444,68 +429,63 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         transition={{ delay: 0.3 }}
         className="bg-white border border-gray-200 rounded-lg p-6"
       >
-        <h3 className="text-lg font-semibold text-[#222] mb-4">What's Next?</h3>
+        <h3 className="text-sm font-semibold text-[#222] mb-4">What's Next?</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={onViewRecommendations}
-            className="flex items-center gap-3 p-4 border border-[#005DDC] bg-blue-50 text-[#005DDC] rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex items-center gap-3 p-4 bg-blue-50 text-[#005DDC] rounded-lg hover:bg-blue-100 transition-colors"
           >
-            <BookOpen className="h-5 w-5" />
             <div className="text-left">
-              <div className="font-medium">View Learning Resources</div>
-              <div className="text-xs opacity-75">Personalized recommendations</div>
+              <div className="font-semibold text-sm">View Learning Resources</div>
+              <div className="text-[10px] opacity-75">Personalized recommendations</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
           </button>
 
           <button
             onClick={onRetakeAssessment}
-            className="flex items-center gap-3 p-4 border border-orange-500 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors"
+            className="flex items-center gap-3 p-4  bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors"
           >
-            <RefreshCw className="h-5 w-5" />
             <div className="text-left">
-              <div className="font-medium">Retake Assessment</div>
-              <div className="text-xs opacity-75">Improve your score</div>
+              <div className="font-semibold text-sm">Retake Assessment</div>
+              <div className="text-[10px] opacity-75">Improve your score</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
           </button>
 
           <button
             onClick={onDownloadReport}
-            className="flex items-center gap-3 p-4 border border-green-500 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+            className="flex items-center gap-3 p-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
           >
-            <Download className="h-5 w-5" />
             <div className="text-left">
-              <div className="font-medium">Download Report</div>
-              <div className="text-xs opacity-75">PDF certificate</div>
+              <div className="font-semibold text-sm">Download Report</div>
+              <div className="text-[10px] opacity-75">PDF certificate</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
           </button>
 
           <button
             onClick={onShareResults}
-            className="flex items-center gap-3 p-4 border border-purple-500 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
+            className="flex items-center gap-3 p-4  bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
           >
-            <Share2 className="h-5 w-5" />
             <div className="text-left">
-              <div className="font-medium">Share Results</div>
-              <div className="text-xs opacity-75">LinkedIn & social media</div>
+              <div className="font-semibold text-sm">Share Results</div>
+              <div className="text-[10px] opacity-75">LinkedIn & social media</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
           </button>
-
+{/* 
           <button
             onClick={onBackToDashboard}
-            className="flex items-center gap-3 p-4 border border-gray-300 bg-gray-50 text-[#757575] rounded-lg hover:bg-gray-100 transition-colors md:col-span-2 lg:col-span-2"
+            className="flex items-center gap-3 p-4 bg-gray-50 text-[#757575] rounded-lg hover:bg-gray-100 transition-colors md:col-span-2 lg:col-span-2"
           >
-            <Calendar className="h-5 w-5" />
             <div className="text-left">
-              <div className="font-medium">Back to Dashboard</div>
-              <div className="text-xs opacity-75">Continue your learning journey</div>
+              <div className="font-semibold text-sm">Back to Dashboard</div>
+              <div className="text-[10px] opacity-75">Continue your learning journey</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
-          </button>
+          </button> */}
         </div>
       </motion.div>
     </div>
