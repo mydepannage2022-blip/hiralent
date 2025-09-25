@@ -4,23 +4,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AssessmentCard from '@/src/components/candidate/dashboard/skills-assessment/AssessmentCard';
+import Button from '@/src/components/layout/Button';
 
 const AssessmentHubPage = () => {
   const router = useRouter();
 
   // Mock data - replace with actual API calls later
   const availableAssessments = [
-    {
-      id: 'react-assessment',
-      name: 'React',
-      description: 'Frontend development with React library, hooks, state management',
-      questionCount: 22,
-      timeEstimate: '25-30 mins',
-      difficulty: 'INTERMEDIATE' as const,
-      isRecommended: true,
-      isCompleted: false,
-      category: 'Frontend'
-    },
     {
       id: 'javascript-assessment',
       name: 'JavaScript',
@@ -33,17 +23,6 @@ const AssessmentHubPage = () => {
       lastScore: 78,
       category: 'Programming'
     },
-    {
-      id: 'nodejs-assessment',
-      name: 'Node.js',
-      description: 'Backend development, Express, APIs, database integration',
-      questionCount: 20,
-      timeEstimate: '25-30 mins',
-      difficulty: 'ADVANCED' as const,
-      isRecommended: false,
-      isCompleted: false,
-      category: 'Backend'
-    }
   ];
 
   const assessmentHistory = [
@@ -77,6 +56,9 @@ const AssessmentHubPage = () => {
     router.push(`/candidate/dashboard/skills-assessment/start?skill=${assessmentId}`);
   };
 
+  const handleNewAssessment = () => {
+    router.push('/candidate/dashboard/skills-assessment/start');
+  };
   const handleViewResults = (assessmentId: string) => {
     router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
   };
@@ -117,7 +99,13 @@ const AssessmentHubPage = () => {
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-medium text-[#222]">Available Assessments</h2>
-          <span className="text-sm text-[#757575]">{availableAssessments.length} assessments</span>
+          {/* <span className="text-sm text-[#757575]">{availableAssessments.length} assessments</span> */}
+         <Button
+          variant="dark"
+          text="Start New Assessment"
+          onClick={() => handleNewAssessment()}
+        />
+        
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
