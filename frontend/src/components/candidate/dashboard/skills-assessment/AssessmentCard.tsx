@@ -107,8 +107,6 @@ const AssessmentCard: React.FC<AssessmentCardProps> = ({
           <span>{timeEstimate}</span>
         </div>
       </div>
-
-
       {/* Last score (if completed) */}
       {isCompleted && lastScore !== undefined && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-md">
