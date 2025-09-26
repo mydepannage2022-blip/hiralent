@@ -2,9 +2,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { 
   Clock, 
   Target, 
@@ -16,19 +15,18 @@ import {
   Filter,
   Search,
   CheckCircle,
-  XCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  BarChart3
 } from 'lucide-react';
 import { useAssessmentHistory } from '@/src/lib/profile/assessment.queries';
-import { formatTimeSpent, getSkillLevelColor, getScoreColor } from '@/src/lib/profile/assessment.api';
 import { HistoryItem, AssessmentHistory } from '@/src/types/assessment.types';
 import SmartLink from '@/src/components/layout/SmartLink';
 
 const AssessmentHistoryPage = () => {
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'COMPLETED' | 'IN_PROGRESS' | 'ABANDONED'>('all');
   const [skillFilter, setSkillFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'score' | 'skill'>('date');
 
   const { 
     data: historyResponse, 
@@ -37,85 +35,75 @@ const AssessmentHistoryPage = () => {
     refetch 
   } = useAssessmentHistory();
 
-  // Simple type assertion - no complex casting needed
+  // Transform API response
   const historyData = historyResponse as AssessmentHistory | undefined;
   const assessments: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
-  const totalAssessments: number = historyData?.success ? historyData.data.total : 0;
-  const skillProgress = historyData?.success ? historyData.data.skillProgress : {};
 
-  // Get unique skills for filter dropdown
-  const availableSkills: string[] = Array.from(new Set(assessments.map((a: HistoryItem) => a.skillCategory)));
+  // Filtered assessments
+  const filteredAssessments = useMemo(() => {
+    return assessments.filter((assessment) => {
+      const matchesSearch = assessment.skillCategory.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSkill = skillFilter === 'all' || assessment.skillCategory === skillFilter;
+      return matchesSearch && matchesSkill;
+    });
+  }, [assessments, searchQuery, skillFilter]);
 
-  // Filter assessments based on search and filters
-  const filteredAssessments: HistoryItem[] = assessments.filter((assessment: HistoryItem) => {
-    const matchesSearch = assessment.skillCategory.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || assessment.status === statusFilter;
-    const matchesSkill = skillFilter === 'all' || assessment.skillCategory === skillFilter;
-    
-    return matchesSearch && matchesStatus && matchesSkill;
-  });
+  // Get unique skills for filter
+  const uniqueSkills = useMemo(() => {
+    return Array.from(new Set(assessments.map(a => a.skillCategory)));
+  }, [assessments]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'IN_PROGRESS':
-        return <Clock className="h-4 w-4 text-orange-600" />;
-      case 'ABANDONED':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'IN_PROGRESS':
-        return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'ABANDONED':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
-  };
+  // Calculate stats
+  const totalAssessments = assessments.length;
+  const completedCount = assessments.filter(a => a.overallScore > 0).length;
+  const averageScore = assessments.length > 0 
+    ? Math.round(assessments.reduce((sum, a) => sum + a.overallScore, 0) / assessments.length)
+    : 0;
 
   const handleViewResults = (assessmentId: string) => {
-    router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
+    window.location.href = `/candidate/dashboard/skills-assessment/results/${assessmentId}`;
   };
 
-  const calculateAverageScore = (): number => {
-    const completedAssessments = assessments.filter((a: HistoryItem) => a.status === 'COMPLETED');
-    if (completedAssessments.length === 0) return 0;
-    
-    const totalScore = completedAssessments.reduce((acc: number, a: HistoryItem) => acc + a.overallScore, 0);
-    return Math.round(totalScore / completedAssessments.length);
+  const handleRetakeAssessment = (skillName: string) => {
+    const skillId = skillName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    window.location.href = `/candidate/dashboard/skills-assessment/instructions?skill=${skillId}-assessment`;
   };
 
-  const getCompletedCount = (): number => {
-    return assessments.filter((a: HistoryItem) => a.status === 'COMPLETED').length;
+  const handleExportHistory = () => {
+    const csvData = assessments.map(a => ({
+      Skill: a.skillCategory,
+      Score: a.overallScore,
+      Level: a.skillLevel,
+      'Completed At': new Date(a.completedAt).toLocaleDateString(),
+      Improvement: a.improvement || 'N/A'
+    }));
+
+    const headers = Object.keys(csvData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(h => row[h as keyof typeof row]).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'assessment-history.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/3 mb-6"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg p-6">
-                  <div className="h-4 bg-gray-300 rounded w-2/3 mb-2"></div>
-                  <div className="h-6 bg-gray-300 rounded w-1/3"></div>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg p-6">
-                  <div className="h-4 bg-gray-300 rounded w-1/4 mb-2"></div>
-                  <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+            <div className="h-8 bg-gray-300 rounded w-1/3 mb-4"></div>
+            <div className="h-4 bg-gray-300 rounded w-1/2 mb-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-lg p-6 border border-gray-200">
+                  <div className="h-16 bg-gray-300 rounded"></div>
                 </div>
               ))}
             </div>
@@ -127,12 +115,12 @@ const AssessmentHistoryPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold text-[#222] mb-2">Failed to Load History</h2>
-            <p className="text-[#757575] mb-4">We couldn't load your assessment history</p>
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-[#222] mb-2">Unable to Load History</h2>
+            <p className="text-[#757575] mb-4">There was an error loading your assessment history.</p>
             <button
               onClick={() => refetch()}
               className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
@@ -146,203 +134,251 @@ const AssessmentHistoryPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-6xl mx-auto space-y-8">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-[#222]">Assessment History</h1>
-            <p className="text-[#757575] mt-1">
-              View your completed assessments and track your progress
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-[#222]">Assessment History</h1>
+              <p className="text-[#757575] mt-1">
+                View your completed assessments and track your progress
+              </p>
+            </div>
+            <div className="flex items-center gap-3 mt-4 lg:mt-0">
+              <button
+                onClick={handleExportHistory}
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-[#757575] rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              <SmartLink
+                href="/candidate/dashboard/skills-assessment"
+                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              >
+                Take New Assessment
+              </SmartLink>
+            </div>
           </div>
-          <SmartLink
-            href="/candidate/dashboard/skills-assessment"
-            className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
-          >
-            Take New Assessment
-          </SmartLink>
-        </div>
+        </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Target className="h-5 w-5 text-[#005DDC]" />
-              </div>
-              <div>
-                <p className="text-sm text-[#757575]">Total Assessments</p>
-                <p className="text-2xl font-bold text-[#222]">{totalAssessments}</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Target className="h-5 w-5 text-[#005DDC]" />
+                </div>
+                <div>
+                  <p className="text-sm text-[#757575]">Total Assessments</p>
+                  <p className="text-2xl font-bold text-[#222]">{totalAssessments}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-[#757575]">Completed</p>
-                <p className="text-2xl font-bold text-[#222]">{getCompletedCount()}</p>
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-[#757575]">Completed</p>
+                  <p className="text-2xl font-bold text-[#222]">{completedCount}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-50 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-[#757575]">Average Score</p>
-                <p className="text-2xl font-bold text-[#222]">{calculateAverageScore()}%</p>
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-50 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-[#757575]">Average Score</p>
+                  <p className="text-2xl font-bold text-[#222]">{averageScore}%</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg p-6 border border-gray-200 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
-              <input
-                type="text"
-                placeholder="Search skills..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-              />
-            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="bg-white rounded-lg p-6 border border-gray-200 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
+                <input
+                  type="text"
+                  placeholder="Search skills..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
+                />
+              </div>
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-            >
-              <option value="all">All Statuses</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="ABANDONED">Abandoned</option>
-            </select>
-
-            {/* Skill Filter */}
-            <select
-              value={skillFilter}
-              onChange={(e) => setSkillFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-            >
-              <option value="all">All Skills</option>
-              {availableSkills.map((skill: string) => (
-                <option key={skill} value={skill}>{skill}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Assessment List */}
-        <div className="space-y-4">
-          {filteredAssessments.length > 0 ? (
-            filteredAssessments.map((assessment: HistoryItem, index: number) => (
-              <motion.div
-                key={assessment.assessmentId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow"
+              {/* Skill Filter */}
+              <select
+                value={skillFilter}
+                onChange={(e) => setSkillFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-[#222]">
-                        {assessment.skillCategory}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(assessment.status)}`}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(assessment.status)}
-                          {assessment.status.replace('_', ' ').toLowerCase()}
-                        </div>
-                      </span>
-                      <span className={`px-2 py-1 text-xs rounded-md ${getSkillLevelColor(assessment.skillLevel)}`}>
-                        {assessment.skillLevel}
-                      </span>
-                    </div>
+                <option value="all">All Skills</option>
+                {uniqueSkills.map((skill) => (
+                  <option key={skill} value={skill}>
+                    {skill}
+                  </option>
+                ))}
+              </select>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-[#757575]">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4" />
-                        <span className={getScoreColor(assessment.overallScore)}>
-                          {assessment.overallScore}% Score
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        <span>{formatTimeSpent(assessment.timeSpent)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4" />
-                        <span>{assessment.totalQuestions} Questions</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(assessment.completedAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+              {/* Sort By */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
+              >
+                <option value="date">Sort by Date</option>
+                <option value="score">Sort by Score</option>
+                <option value="skill">Sort by Skill</option>
+              </select>
+            </div>
+          </div>
+        </motion.div>
 
-                    {assessment.improvement && (
-                      <div className="mt-2 text-sm text-green-600">
-                        <TrendingUp className="h-4 w-4 inline mr-1" />
-                        {assessment.improvement}
-                      </div>
-                    )}
-                  </div>
-
-                  {assessment.status === 'COMPLETED' && (
-                    <button
-                      onClick={() => handleViewResults(assessment.assessmentId)}
-                      className="flex items-center gap-2 px-4 py-2 text-[#005DDC] border border-[#005DDC] rounded-md hover:bg-blue-50 transition-colors"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Results
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            ))
+        {/* Assessment History Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          {filteredAssessments.length > 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Skill
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Score
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Level
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAssessments.map((assessment) => (
+                      <tr
+                        key={assessment.assessmentId}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-[#222]">
+                            {assessment.skillCategory}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-[#222]">
+                              {assessment.overallScore}%
+                            </span>
+                            <div className="w-16 h-2 rounded-full bg-gray-200">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  assessment.overallScore >= 80 ? 'bg-green-500' :
+                                  assessment.overallScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${assessment.overallScore}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            {assessment.skillLevel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#757575]">
+                          {new Date(assessment.completedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewResults(assessment.assessmentId)}
+                              className="text-[#005DDC] hover:text-[#004EB7] flex items-center gap-1"
+                            >
+                              <Eye className="h-4 w-4" />
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleRetakeAssessment(assessment.skillCategory)}
+                              className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              Retake
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
-            <div className="bg-white rounded-lg p-12 text-center border border-gray-200">
-              <div className="text-gray-400 text-6xl mb-4">📊</div>
-              <h3 className="text-lg font-semibold text-[#222] mb-2">No Assessments Found</h3>
+            <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+              <AlertCircle className="h-12 w-12 text-[#757575] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-[#222] mb-2">No Assessments Found</h3>
               <p className="text-[#757575] mb-6">
-                {searchQuery || statusFilter !== 'all' || skillFilter !== 'all' 
-                  ? 'No assessments match your current filters. Try adjusting your search criteria.' 
-                  : 'You haven\'t taken any assessments yet. Start your first assessment to track your progress!'
-                }
+                {searchQuery || skillFilter !== 'all'
+                  ? 'No assessments match your current filters.'
+                  : 'You haven\'t completed any assessments yet.'}
               </p>
-              {(!searchQuery && statusFilter === 'all' && skillFilter === 'all') && (
-                <SmartLink
-                  href="/candidate/dashboard/skills-assessment"
-                  className="px-6 py-3 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              {searchQuery || skillFilter !== 'all' ? (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSkillFilter('all');
+                  }}
+                  className="px-4 py-2 text-[#005DDC] border border-[#005DDC] rounded-md hover:bg-blue-50 transition-colors mr-4"
                 >
-                  Take Your First Assessment
-                </SmartLink>
-              )}
+                  Clear Filters
+                </button>
+              ) : null}
+              <SmartLink
+                href="/candidate/dashboard/skills-assessment"
+                className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              >
+                Take Assessment
+              </SmartLink>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Summary */}
-        {filteredAssessments.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-[#757575]">
-              Showing {filteredAssessments.length} of {totalAssessments} assessments
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

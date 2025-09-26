@@ -1,9 +1,15 @@
+// frontend/app/candidate/dashboard/skills-assessment/start/page.tsx
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 import AssessmentSetup from '@/src/components/candidate/dashboard/skills-assessment/AssessmentSetup';
 import { useProfile } from '@/src/context/ProfileContext';
+import { useStartAssessment } from '@/src/lib/profile/assessment.queries';
+import SmartLink from '@/src/components/layout/SmartLink';
+
 interface ProfileSkill {
   skill_id: string;
   skill_name: string;
@@ -33,6 +39,10 @@ const AssessmentStartPage = () => {
   const { profileData } = useProfile();
 
   const skillId = searchParams.get('skill');
+  
+  // REAL API HOOK
+  const startAssessmentMutation = useStartAssessment();
+
   // Helper functions for skill transformation
   const getQuestionCountByProficiency = (proficiency: string, category: string): number => {
     const baseCount = {
@@ -112,7 +122,6 @@ const AssessmentStartPage = () => {
       return [];
     }
 
-    // Filter and transform skills
     const transformedSkills: SkillCategory[] = profileData.skills
       .filter((skill: ProfileSkill) => skill.skill_name && skill.skill_category)
       .map((skill: ProfileSkill) => {
@@ -126,12 +135,11 @@ const AssessmentStartPage = () => {
           questionCount,
           timeEstimate,
           difficulty: mapProficiencyToDifficulty(skill.proficiency),
-          isRecommended: skill.proficiency === 'advanced' || skill.is_verified,
+          isRecommended: skill.confidence_score < 70 || !skill.is_verified,
           category: getCategoryDisplayName(skill.skill_category)
         };
       });
 
-    // Sort skills: recommended first, then by proficiency (advanced -> intermediate -> beginner)
     return transformedSkills.sort((a, b) => {
       if (a.isRecommended && !b.isRecommended) return -1;
       if (!a.isRecommended && b.isRecommended) return 1;
@@ -141,6 +149,7 @@ const AssessmentStartPage = () => {
     });
   };
 
+  // REAL API INTEGRATION
   const handleStartAssessment = async (skillId: string, assessmentType: string) => {
     setIsLoading(true);
     
@@ -148,25 +157,45 @@ const AssessmentStartPage = () => {
       // Find the selected skill
       const selectedSkill = profileData?.skills?.find((skill: ProfileSkill) => skill.skill_id === skillId);
       
+      if (!selectedSkill) {
+        toast.error('Selected skill not found');
+        setIsLoading(false);
+        return;
+      }
+
       console.log('Starting assessment:', { 
         skillId, 
         assessmentType, 
-        skillName: selectedSkill?.skill_name,
-        proficiency: selectedSkill?.proficiency 
+        skillName: selectedSkill.skill_name,
+        proficiency: selectedSkill.proficiency 
       });
+
+      // REAL API CALL
+      const result = await startAssessmentMutation.mutateAsync({
+        skillCategory: selectedSkill.skill_name,
+        assessmentType: assessmentType as 'QUICK_CHECK' | 'COMPREHENSIVE'
+      });
+
+      if (result.success) {
+        toast.success('Assessment started successfully!');
+        
+        // Navigate to test page with real assessment ID
+        router.push(`/candidate/dashboard/skills-assessment/test/${result.data.assessmentId}`);
+      } else {
+        throw new Error(result.message || 'Failed to start assessment');
+      }
       
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock assessment ID - would come from API response
-      const assessmentId = `assessment_${Date.now()}`;
-      
-      // Navigate to instructions page
-      router.push(`/candidate/dashboard/skills-assessment/instructions?id=${assessmentId}&skill=${skillId}&type=${assessmentType}`);
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start assessment:', error);
-      alert('Failed to start assessment. Please try again.');
+      
+      // Show specific error messages
+      if (error.message.includes('No questions available')) {
+        toast.error('No questions available for this skill. Please try another skill.');
+      } else if (error.message.includes('Assessment already in progress')) {
+        toast.error('You already have an assessment in progress.');
+      } else {
+        toast.error(error.message || 'Failed to start assessment. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -186,36 +215,41 @@ const AssessmentStartPage = () => {
   return (
     <div className="bg-gray-50">
       <div className="w-full mx-auto">
-        <div className="py-4">
-          <button
-            onClick={() => router.back()}
+        <div className="py-4 px-4">
+          <SmartLink
+            href="/candidate/dashboard/skills-assessment"
             className="flex items-center gap-2 text-[#757575] hover:text-[#222] transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Assessments
-          </button>
+          </SmartLink>
         </div>
 
-        {/* Show loading or no skills message */}
+        {/* Loading State */}
         {!profileData && (
           <div className="p-6 text-center">
             <div className="animate-pulse">
+              <div className="w-8 h-8 border-4 border-[#005DDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <div className="text-[#757575]">Loading your skills...</div>
             </div>
           </div>
         )}
 
+        {/* No Skills State */}
         {profileData && availableSkills.length === 0 && (
           <div className="p-6 text-center">
             <div className="text-[#757575] mb-4">No skills available for assessment</div>
-            <button
-              onClick={() => router.push('/candidate/dashboard/profile')}
-              className="text-[#005DDC] hover:underline"
+            <p className="text-sm text-[#757575] mb-6">
+              Add skills to your profile to get personalized assessments
+            </p>
+            <SmartLink
+              href="/candidate/dashboard/profile"
+              className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
             >
-              Add skills to your profile
-            </button>
+              Add Skills to Profile
+            </SmartLink>
           </div>
         )}
 
@@ -228,7 +262,7 @@ const AssessmentStartPage = () => {
           />
         )}
 
-        {/* Additional Information - Only show if skills are available */}
+        {/* Additional Information */}
         {availableSkills.length > 0 && (
           <div className="p-6">
             <div className="bg-white border border-gray-200 rounded-lg p-6">

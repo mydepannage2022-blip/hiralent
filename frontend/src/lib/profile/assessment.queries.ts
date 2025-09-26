@@ -29,46 +29,26 @@ import { useProfile } from '../../context/ProfileContext';
 
 export const useStartAssessment = () => {
   const router = useRouter();
-  const { setAssessmentState } = useProfile();
-
+  
   return useMutation({
     mutationFn: startAssessment,
     onSuccess: (data) => {
-      if (!data.success) {
-        toast.error(data.message || 'Failed to start assessment');
-        return;
-      }
-
-      const currentAssessment: CurrentAssessment = {
-        assessmentId: data.data.assessmentId,
-        skillCategory: data.data.skillCategory,
-        assessmentType: data.data.assessmentType,
-        totalQuestions: data.data.totalQuestions,
-        currentQuestionIndex: 0,
-        timeElapsed: 0,
-        status: 'IN_PROGRESS',
-        startedAt: new Date().toISOString(),
-      };
-
-      setAssessmentState({
-        currentAssessment,
-        loading: false,
-        error: null
-      });
-
-      toast.success('Assessment started successfully!');
-      router.push(`/candidate/dashboard/skills-assessment/test/${data.data.assessmentId}`);
+      console.log('Assessment started successfully:', data);
     },
     onError: (error: any) => {
       console.error('Start assessment failed:', error);
-      const errorMsg = error.message || 'Failed to start assessment';
-      toast.error(errorMsg);
       
-      setAssessmentState({
-        loading: false,
-        error: errorMsg
-      });
-    },
+      // Handle specific error cases
+      if (error?.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        router.push('/auth/login');
+      } else if (error?.response?.status === 400) {
+        // Handle validation errors
+        toast.error(error?.response?.data?.message || 'Invalid assessment data');
+      } else {
+        toast.error('Failed to start assessment. Please try again.');
+      }
+    }
   });
 };
 

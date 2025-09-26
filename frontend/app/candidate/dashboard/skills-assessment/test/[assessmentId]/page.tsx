@@ -19,24 +19,13 @@ import {
 import { useProfile } from '@/src/context/ProfileContext';
 import { Question, SecurityViolation } from '@/src/types/assessment.types';
 
-interface LocalQuestion {
-  id: string;
-  questionText: string;
-  type: 'MCQ' | 'CODING' | 'ESSAY' | 'TRUE_FALSE' | 'SCENARIO';
-  options?: Array<{ id: string; text: string }>;
-  timeLimit: number;
-  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
-  category: string;
-}
-
 const AssessmentTestPage = () => {
   const router = useRouter();
   const params = useParams();
   const assessmentId = params.assessmentId as string;
 
-  //REAL API STATE
+  // REAL API STATE
   const { assessmentState, updateAssessmentProgress } = useProfile();
-  const { currentAssessment } = assessmentState;
 
   // Local state
   const [selectedAnswer, setSelectedAnswer] = useState<string>('');
@@ -46,7 +35,7 @@ const AssessmentTestPage = () => {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  //REAL API HOOKS
+  // REAL API HOOKS ONLY
   const { 
     data: questionData, 
     isLoading: isLoadingQuestion,
@@ -62,44 +51,6 @@ const AssessmentTestPage = () => {
   const submitAnswerMutation = useSubmitAnswer();
   const completeAssessmentMutation = useCompleteAssessment();
 
-  //FALLBACK MOCK DATA (if API fails)
-  const mockQuestions: LocalQuestion[] = [
-    {
-      id: 'q1',
-      questionText: 'What is the correct way to create a functional component in React?',
-      type: 'MCQ',
-      options: [
-        { id: 'a', text: 'function MyComponent() { return <div>Hello</div>; }' },
-        { id: 'b', text: 'const MyComponent = () => <div>Hello</div>;' },
-        { id: 'c', text: 'class MyComponent extends React.Component { render() { return <div>Hello</div>; } }' },
-        { id: 'd', text: 'Both A and B are correct' }
-      ],
-      timeLimit: 90,
-      difficulty: 'BEGINNER',
-      category: 'React Basics'
-    },
-    {
-      id: 'q2',
-      questionText: 'Explain the concept of React Hooks and provide an example of useState.',
-      type: 'ESSAY',
-      timeLimit: 180,
-      difficulty: 'INTERMEDIATE',
-      category: 'React Hooks'
-    },
-    {
-      id: 'q3',
-      questionText: 'Write a function that removes duplicates from an array.',
-      type: 'CODING',
-      timeLimit: 300,
-      difficulty: 'INTERMEDIATE',
-      category: 'JavaScript'
-    }
-  ];
-
-  //MOCK FALLBACK STATE
-  const [mockMode, setMockMode] = useState<boolean>(false);
-  const [mockQuestionIndex, setMockQuestionIndex] = useState<number>(0);
-
   // Redirect if no assessment ID
   useEffect(() => {
     if (!assessmentId) {
@@ -109,52 +60,32 @@ const AssessmentTestPage = () => {
     }
   }, [assessmentId, router]);
 
-  //REAL API: Update current question when API data changes
+  // Update current question when API data changes
   useEffect(() => {
     if (questionData?.success && questionData.data.question) {
       setCurrentQuestion(questionData.data.question);
       setSelectedAnswer('');
       setIsSubmitted(false);
       setQuestionStartTime(Date.now());
-      setMockMode(false);
     }
   }, [questionData]);
 
-  //FALLBACK: Use mock data if API fails
+  // Handle question loading error
   useEffect(() => {
-    if (questionError && !mockMode) {
-      console.log('API failed, switching to mock mode');
-      setMockMode(true);
-      const mockQuestion: Question = {
-        questionId: mockQuestions[mockQuestionIndex].id,
-        questionText: mockQuestions[mockQuestionIndex].questionText,
-        type: mockQuestions[mockQuestionIndex].type,
-        options: mockQuestions[mockQuestionIndex].options,
-        timeLimit: mockQuestions[mockQuestionIndex].timeLimit,
-        difficulty: mockQuestions[mockQuestionIndex].difficulty,
-        category: mockQuestions[mockQuestionIndex].category
-      };
-      setCurrentQuestion(mockQuestion);
-      setSelectedAnswer('');
-      setIsSubmitted(false);
-      setQuestionStartTime(Date.now());
-      toast.error('Using demo mode - API unavailable');
-    }
-  }, [questionError, mockMode, mockQuestionIndex]);
-
-  //REAL API: Handle question loading error
-  useEffect(() => {
-    if (questionError && !mockMode) {
+    if (questionError) {
       console.error('Question error:', questionError);
       
-      if (questionError.message.includes('No more questions')) {
+      if (questionError.message.includes('No more questions') || 
+          questionError.message.includes('Assessment complete')) {
         handleCompleteAssessment();
+      } else if (questionError.message.includes('Assessment not found')) {
+        toast.error('Assessment not found');
+        router.push('/candidate/dashboard/skills-assessment');
       } else {
-        // Fallback to mock mode
-        setMockMode(true);
+        toast.error('Failed to load question. Please try again.');
       }
     }
-  }, [questionError, mockMode]);
+  }, [questionError]);
 
   // Handle violations
   const handleSecurityViolation = (violation: SecurityViolation) => {
@@ -174,7 +105,7 @@ const AssessmentTestPage = () => {
     }
   };
 
-  //HYBRID: Handle answer submission (Real API + Mock fallback)
+  // Handle answer submission - REAL API ONLY
   const handleSubmitAnswer = async () => {
     if (!selectedAnswer || isSubmitted || !currentQuestion) return;
 
@@ -183,59 +114,47 @@ const AssessmentTestPage = () => {
     setIsLoading(true);
 
     try {
-      if (mockMode) {
-        //MOCK MODE: Simulate API
-        console.log('Mock: Submitting answer:', {
+      await submitAnswerMutation.mutateAsync({
+        assessmentId,
+        answerData: {
           questionId: currentQuestion.questionId,
           answer: selectedAnswer,
           timeTaken
-        });
+        }
+      });
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Answer submitted (Demo mode)');
-
-        setTimeout(() => {
-          if (mockQuestionIndex < mockQuestions.length - 1) {
-            setMockQuestionIndex(prev => prev + 1);
-            setIsLoading(false);
-          } else {
-            handleCompleteAssessment();
-          }
-        }, 2000);
-
-      } else {
-        //REAL API MODE
-        await submitAnswerMutation.mutateAsync({
-          assessmentId,
-          answerData: {
-            questionId: currentQuestion.questionId,
-            answer: selectedAnswer,
-            timeTaken
-          }
-        });
-
-        setTimeout(() => {
-          refetchQuestion();
-          setIsLoading(false);
-        }, 2000);
-      }
+      toast.success('Answer submitted successfully!');
+      
+      // Wait before loading next question
+      setTimeout(() => {
+        refetchQuestion();
+        setIsLoading(false);
+      }, 1500);
 
     } catch (error: any) {
       console.error('Submit answer error:', error);
       setIsSubmitted(false);
       setIsLoading(false);
-      toast.error(error.message || 'Failed to submit answer');
+      
+      if (error.message.includes('Assessment complete')) {
+        handleCompleteAssessment();
+      } else if (error.message.includes('Time limit exceeded')) {
+        toast.error('Time limit exceeded for this question');
+        setTimeout(() => refetchQuestion(), 1000);
+      } else {
+        toast.error(error.message || 'Failed to submit answer');
+      }
     }
   };
 
-  //HYBRID: Handle time up
+  // Handle time up - REAL API ONLY
   const handleTimeUp = async () => {
     if (!isSubmitted && currentQuestion) {
       const timeTaken = currentQuestion.timeLimit;
       
       toast((t) => (
         <div className="flex items-center gap-2">
-          <span>Time expired! Submitting current answer...</span>
+          <span>Time expired! Auto-submitting answer...</span>
         </div>
       ), {
         duration: 2000,
@@ -245,52 +164,60 @@ const AssessmentTestPage = () => {
         }
       });
 
-      if (mockMode) {
-        // Mock mode time up
-        setTimeout(() => {
-          if (mockQuestionIndex < mockQuestions.length - 1) {
-            setMockQuestionIndex(prev => prev + 1);
-          } else {
-            handleCompleteAssessment();
-          }
-        }, 1500);
-      } else {
-        // Real API time up
+      setIsSubmitted(true);
+      setIsLoading(true);
+
+      try {
         await submitAnswerMutation.mutateAsync({
           assessmentId,
           answerData: {
             questionId: currentQuestion.questionId,
-            answer: selectedAnswer || '',
+            answer: selectedAnswer || '', // Submit whatever is selected or empty
             timeTaken
           }
         });
 
         setTimeout(() => {
           refetchQuestion();
+          setIsLoading(false);
         }, 1500);
+
+      } catch (error: any) {
+        console.error('Time up submit error:', error);
+        if (error.message.includes('Assessment complete')) {
+          handleCompleteAssessment();
+        } else {
+          setIsLoading(false);
+          toast.error('Failed to auto-submit answer');
+        }
       }
     }
   };
 
-  //HYBRID: Handle assessment completion
+  // Handle assessment completion - REAL API ONLY
   const handleCompleteAssessment = async () => {
     setIsLoading(true);
     
     try {
-      if (mockMode) {
-        // Mock completion
-        console.log('Mock: Completing assessment:', assessmentId);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        toast.success('Assessment completed (Demo mode)');
+      const result = await completeAssessmentMutation.mutateAsync(assessmentId);
+      
+      if (result.success) {
+        toast.success('Assessment completed successfully!');
+        
+        // Update context state
+        updateAssessmentProgress({
+          currentQuestionIndex: 0,
+          timeElapsed: 0
+        });
+        
+        // Navigate to results page
         router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
       } else {
-        // Real API completion
-        await completeAssessmentMutation.mutateAsync(assessmentId);
+        throw new Error(result.message || 'Failed to complete assessment');
       }
     } catch (error: any) {
       console.error('Complete assessment error:', error);
       toast.error(error.message || 'Failed to complete assessment');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -299,52 +226,86 @@ const AssessmentTestPage = () => {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = 'Are you sure you want to leave? Your assessment progress will be lost.';
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  //LOADING STATE
-  if ((isLoadingQuestion && !currentQuestion) || (!currentQuestion && !mockMode)) {
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      const confirmLeave = window.confirm('Are you sure you want to leave the assessment? Your progress will be lost.');
+      
+      if (!confirmLeave) {
+        window.history.pushState(null, '', window.location.pathname);
+      } else {
+        router.push('/candidate/dashboard/skills-assessment');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.history.pushState(null, '', window.location.pathname);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [router]);
+
+  // LOADING STATE
+  if ((isLoadingQuestion && !currentQuestion) || (!currentQuestion && !questionError)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#005DDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#222] font-medium">Loading assessment...</p>
+          <p className="text-[#222] font-medium">Loading your assessment...</p>
           <p className="text-sm text-[#757575] mt-2">Please wait while we prepare your questions</p>
         </div>
       </div>
     );
   }
 
-  //ERROR STATE
-  if (!currentQuestion && questionError && !mockMode) {
+  // ERROR STATE - No fallback to mock
+  if (!currentQuestion && questionError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-[#222] mb-2">Assessment Not Available</h2>
+          <h2 className="text-xl font-semibold text-[#222] mb-2">Assessment Unavailable</h2>
           <p className="text-[#757575] mb-4">
-            We couldn't load your assessment. Trying demo mode...
+            We couldn't load your assessment. This might be due to:
           </p>
-          <button
-            onClick={() => setMockMode(true)}
-            className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
-          >
-            Continue with Demo
-          </button>
+          <ul className="text-sm text-[#757575] mb-6 text-left">
+            <li>• Assessment has already been completed</li>
+            <li>• Session has expired</li>
+            <li>• Network connectivity issues</li>
+            <li>• Assessment not found</li>
+          </ul>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => router.push('/candidate/dashboard/skills-assessment')}
+              className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+            >
+              Back to Assessments
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 border border-gray-300 text-[#757575] rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const totalQuestions = questionData?.data.totalQuestions || currentAssessment?.totalQuestions || mockQuestions.length;
-  const currentQuestionIndex = questionData?.data.currentIndex || mockQuestionIndex;
-  const isLastQuestion = mockMode ? 
-    (mockQuestionIndex >= mockQuestions.length - 1) : 
-    !questionData?.data.hasNext;
+  const totalQuestions = questionData?.data.totalQuestions || progressData?.data.totalQuestions || 25;
+  const currentQuestionIndex = questionData?.data.currentIndex || (progressData?.data.currentQuestion ? progressData.data.currentQuestion - 1 : 0);
+  const isLastQuestion = !questionData?.data.hasNext || 
+                        (progressData?.data.currentQuestion === progressData?.data.totalQuestions);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -362,7 +323,7 @@ const AssessmentTestPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="text-lg font-semibold text-[#222]">
-                Assessment in Progress {mockMode && <span className="text-orange-600">(Demo)</span>}
+                Assessment in Progress
               </h1>
               <span className="text-sm text-[#757575]">
                 Question {currentQuestionIndex + 1} of {totalQuestions}
@@ -444,12 +405,14 @@ const AssessmentTestPage = () => {
       </div>
 
       {/* Loading Overlay */}
-      {(isLoading || completeAssessmentMutation.isPending) && (
+      {(isLoading || completeAssessmentMutation.isPending || submitAnswerMutation.isPending) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 text-center">
             <div className="w-8 h-8 border-4 border-[#005DDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-[#222] font-medium">
-              {isLastQuestion ? 'Completing Assessment...' : 'Processing Answer...'}
+              {isLastQuestion ? 'Completing Assessment...' : 
+               submitAnswerMutation.isPending ? 'Submitting Answer...' :
+               'Processing...'}
             </p>
           </div>
         </div>
