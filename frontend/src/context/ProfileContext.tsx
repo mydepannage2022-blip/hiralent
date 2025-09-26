@@ -1,7 +1,10 @@
+// frontend/src/context/ProfileContext.tsx
+
 "use client";
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { ProfileCompletenessResponse } from '../lib/profile.api';
+import { ProfileCompletenessResponse } from '../lib/profile/profile.api';
+import { AssessmentState , CurrentAssessment } from '../types/assessment.types'; 
 
 interface ProfileContextType {
   // Profile completeness data (API response with scores/metrics)
@@ -12,9 +15,15 @@ interface ProfileContextType {
   profileData: any;
   setProfileData: (data: any) => void;
   
+  // ✅ NEW: Assessment State Management
+  assessmentState: AssessmentState;
+  setAssessmentState: (state: Partial<AssessmentState>) => void;
+  updateAssessmentProgress: (progress: { currentQuestionIndex: number; timeElapsed: number }) => void;
+  clearAssessmentState: () => void;
+  
   // Utility functions
   refreshProfile: () => void;
-  clearProfile: () => void; // ✅ YEH INTERFACE ME HAI
+  clearProfile: () => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -25,6 +34,15 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
   const [profileCompleteness, setProfileCompleteness] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  
+  // ✅ NEW: Assessment State
+  const [assessmentState, setAssessmentStateInternal] = useState<AssessmentState>({
+    currentAssessment: null,
+    assessmentHistory: [],
+    skillRecommendations: [],
+    loading: false,
+    error: null
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -51,6 +69,18 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
           localStorage.removeItem('profileCompleteness');
         }
       }
+
+      // ✅ NEW: Load assessment state from localStorage
+      const savedAssessmentState = localStorage.getItem('assessmentState');
+      if (savedAssessmentState) {
+        try {
+          const assessmentData = JSON.parse(savedAssessmentState);
+          setAssessmentStateInternal(assessmentData);
+        } catch (error) {
+          console.error('Error parsing saved assessment state:', error);
+          localStorage.removeItem('assessmentState');
+        }
+      }
     }
   }, []);
 
@@ -68,13 +98,18 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, [profileCompleteness]);
 
+  // ✅ NEW: Save assessment state to localStorage when it changes
+  useEffect(() => {
+    if (assessmentState && typeof window !== 'undefined') {
+      localStorage.setItem('assessmentState', JSON.stringify(assessmentState));
+    }
+  }, [assessmentState]);
+
   // Function to trigger profile refresh
   const refreshProfile = () => {
-    // Clear both states to trigger re-fetch
     setProfileCompleteness(null);
     setProfileData(null);
     
-    // Clear localStorage
     if (typeof window !== 'undefined') {
       localStorage.removeItem('profileData');
       localStorage.removeItem('profileCompleteness');
@@ -93,6 +128,41 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
+  // ✅ NEW: Assessment State Management Functions
+  const setAssessmentState = (newState: Partial<AssessmentState>) => {
+    setAssessmentStateInternal(prevState => ({
+      ...prevState,
+      ...newState
+    }));
+  };
+
+  const updateAssessmentProgress = (progress: { currentQuestionIndex: number; timeElapsed: number }) => {
+    setAssessmentStateInternal(prevState => ({
+      ...prevState,
+      currentAssessment: prevState.currentAssessment ? {
+        ...prevState.currentAssessment,
+        currentQuestionIndex: progress.currentQuestionIndex,
+        timeElapsed: progress.timeElapsed
+      } : null
+    }));
+  };
+
+  const clearAssessmentState = () => {
+    const clearedState: AssessmentState = {
+      currentAssessment: null,
+      assessmentHistory: assessmentState.assessmentHistory, // Keep history
+      skillRecommendations: assessmentState.skillRecommendations, // Keep recommendations
+      loading: false,
+      error: null
+    };
+    
+    setAssessmentStateInternal(clearedState);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('assessmentState', JSON.stringify(clearedState));
+    }
+  };
+
   return (
     <ProfileContext.Provider 
       value={{ 
@@ -100,8 +170,13 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
         setProfileCompleteness,
         profileData,
         setProfileData,
+        // ✅ NEW: Assessment State Providers
+        assessmentState,
+        setAssessmentState,
+        updateAssessmentProgress,
+        clearAssessmentState,
         refreshProfile,
-        clearProfile, // ✅ AB THEEK HAI
+        clearProfile,
         loading,
         setLoading
       }}

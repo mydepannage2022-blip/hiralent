@@ -162,8 +162,6 @@ router.post('/update-vector/:candidateId', updateCandidateVectorController);
 // ==================== ASSESSMENT ROUTES ====================
 router.post('/start-assessment', [checkAuth, validateBody(startAssessmentSchema)], startAssessmentController);
 
-// router.get('/assessment/:assessmentId/question', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
-
 router.get('/assessment/:assessmentId/question',
   checkAuth, 
   validateAssessmentOwnership, 
@@ -183,8 +181,7 @@ router.get('/assessments/history', checkAuth, getHistoryController);
 
 router.get('/skill-recommendations', checkAuth, getRecommendationsController);
 
-
-
+// ==================== PROFILE MANAGEMENT ROUTES ====================
 router.put(
   '/profile/basic-info',
   [checkAuth, validateBody(updateBasicInfoSchema)],

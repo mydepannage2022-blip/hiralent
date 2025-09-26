@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Briefcase, X, Check, Plus, Trash2 } from 'lucide-react';
-import { useUpdateSkills, useAddSkill, useDeleteSkill } from '@/src/lib/profile.queries';
-import { SkillData } from '@/src/lib/profile.api';
+import { useUpdateSkills, useAddSkill, useDeleteSkill } from '@/src/lib/profile/profile.queries';
+import { SkillData } from '@/src/lib/profile/profile.api';
 import { useProfile } from '@/src/context/ProfileContext';
 
 const SkillsSection: React.FC = () => {
