@@ -1,28 +1,104 @@
+// frontend/app/candidate/dashboard/skills-assessment/results/[assessmentId]/page.tsx
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 import AssessmentResults from '@/src/components/candidate/dashboard/skills-assessment/AssessmentResults';
-import SkillBreakdown from '@/src/components/candidate/dashboard/skills-assessment/SkillBreakdown';
+import SkillRecommendationsTab from '@/src/components/candidate/dashboard/skills-assessment/SkillRecommendationsTab';
 import RecommendationsCard from '@/src/components/candidate/dashboard/skills-assessment/RecommendationsCard';
+import { useAssessmentResults, useSkillRecommendations } from '@/src/lib/profile/assessment.queries';
+import { AssessmentResults as AssessmentResultsType } from '@/src/types/assessment.types';
 
 const AssessmentResultsPage = () => {
   const router = useRouter();
   const params = useParams();
-  const assessmentId = params.id as string;
+  const assessmentId = params.assessmentId as string;
 
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'results' | 'breakdown' | 'recommendations'>('results');
 
-  // Mock results data - replace with API call
+  //REAL API INTEGRATION
+  const { 
+    data: resultsResponse, 
+    isLoading: isLoadingResults, 
+    error: resultsError 
+  } = useAssessmentResults(assessmentId, Boolean(assessmentId));
+
+  const { 
+    data: recommendationsResponse, 
+    isLoading: isLoadingRecommendations 
+  } = useSkillRecommendations();
+
+  // Handle no assessment ID
+  useEffect(() => {
+    if (!assessmentId) {
+      toast.error('Assessment ID not found');
+      router.push('/candidate/dashboard/skills-assessment');
+    }
+  }, [assessmentId, router]);
+
+  // Handle API errors
+  useEffect(() => {
+    if (resultsError) {
+      console.error('Results error:', resultsError);
+      if (resultsError.message.includes('not completed')) {
+        toast.error('Assessment not completed yet');
+        router.push(`/candidate/dashboard/skills-assessment/test/${assessmentId}`);
+      } else {
+        toast.error('Failed to load assessment results');
+      }
+    }
+  }, [resultsError, assessmentId, router]);
+
+  //TRANSFORM API DATA TO COMPONENT FORMAT with null safety
+  const transformResultsData = (apiData: AssessmentResultsType) => {
+    if (!apiData?.success || !apiData.data) return null;
+
+    return {
+      assessmentId: apiData.data.assessmentId || '',
+      skillName: apiData.data.skillCategory || 'Unknown Skill',
+      assessmentType: 'Comprehensive Assessment',
+      overallScore: apiData.data.overallScore || 0,
+      skillLevel: apiData.data.skillLevel || 'Beginner',
+      completedAt: apiData.data.completedAt || new Date().toISOString(),
+      timeSpent: apiData.data.timeSpent || 0,
+      totalQuestions: apiData.data.totalQuestions || 0,
+      correctAnswers: apiData.data.correctAnswers || 0,
+      incorrectAnswers: (apiData.data.totalQuestions || 0) - (apiData.data.correctAnswers || 0),
+      partialAnswers: 0,
+      strengths: apiData.data.strengths || [],
+      weaknesses: apiData.data.weaknesses || [],
+      recommendations: apiData.data.recommendations || [],
+      questionResults: (apiData.data.questions || []).map(q => ({
+        questionId: q.questionId || '',
+        questionText: q.questionText || '',
+        userAnswer: q.userAnswer || '',
+        correctAnswer: q.correctAnswer || '',
+        isCorrect: q.isCorrect || false,
+        score: q.score || 0,
+        timeTaken: q.timeTaken || 0,
+        difficulty: (q.difficulty as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT') || 'BEGINNER',
+        feedback: q.feedback || '',
+        category: q.category || ''
+      })),
+      marketInsights: {
+        salaryRange: '$60k - $120k',
+        demandLevel: 'high' as const,
+        jobOpenings: 15000
+      }
+    };
+  };
+
+  //FALLBACK MOCK DATA (when API fails)
   const mockResults = {
-    assessmentId: assessmentId,
+    assessmentId: assessmentId || 'mock-assessment',
     skillName: 'React',
     assessmentType: 'Comprehensive Assessment',
     overallScore: 78,
     skillLevel: 'Intermediate',
     completedAt: new Date().toISOString(),
-    timeSpent: 1680, // in seconds
+    timeSpent: 1680,
     totalQuestions: 25,
     correctAnswers: 19,
     incorrectAnswers: 5,
@@ -54,18 +130,6 @@ const AssessmentResultsPage = () => {
         difficulty: 'BEGINNER' as const,
         feedback: 'Excellent! You understand the different ways to create React components.',
         category: 'React Basics'
-      },
-      {
-        questionId: 'q2',
-        questionText: 'Explain the concept of React Hooks and provide an example of useState.',
-        userAnswer: 'Hooks are functions that let you use state and other React features in functional components.',
-        correctAnswer: 'Hooks are functions that allow functional components to use state and lifecycle features.',
-        isCorrect: false,
-        score: 65,
-        timeTaken: 120,
-        difficulty: 'INTERMEDIATE' as const,
-        feedback: 'Good basic understanding, but could provide more detailed examples.',
-        category: 'React Hooks'
       }
     ],
     marketInsights: {
@@ -75,174 +139,34 @@ const AssessmentResultsPage = () => {
     }
   };
 
-  // Mock skill breakdown data
-  const mockSkillBreakdown = {
-    skillName: 'React',
-    overallScore: 78,
-    skillLevel: 'Intermediate',
-    strengths: [
-      {
-        name: 'Component Architecture',
-        score: 92,
-        category: 'Architecture',
-        description: 'Excellent understanding of component design patterns',
-        confidence: 95
-      },
-      {
-        name: 'JSX & Rendering',
-        score: 88,
-        category: 'Core Concepts',
-        description: 'Strong grasp of JSX syntax and conditional rendering',
-        confidence: 90
-      }
-    ],
-    weaknesses: [
-      {
-        name: 'Performance Optimization',
-        score: 45,
-        category: 'Advanced',
-        description: 'Limited knowledge of React performance optimization techniques',
-        improvement: 'Practice React.memo, useMemo, and useCallback patterns',
-        priority: 'high' as const
-      },
-      {
-        name: 'Testing',
-        score: 52,
-        category: 'Quality Assurance',
-        description: 'Basic testing knowledge but lacks advanced testing strategies',
-        improvement: 'Learn Jest, React Testing Library, and component testing best practices',
-        priority: 'medium' as const
-      }
-    ],
-    recommendations: [
-      'Focus on React performance optimization techniques',
-      'Practice writing comprehensive unit tests',
-      'Learn advanced React patterns like render props and HOCs',
-      'Study React DevTools for debugging and profiling'
-    ],
-    marketInsights: {
-      salaryRange: '$75k - $120k',
-      demandLevel: 'high' as const,
-      trendDirection: 'up' as const,
-      jobOpenings: 15420
-    }
-  };
+  //DETERMINE DATA SOURCE (API or Mock) with null safety
+  const resultsData = (resultsResponse && resultsResponse.success 
+    ? transformResultsData(resultsResponse)
+    : mockResults) || mockResults;
 
-  // Mock recommendations data
-  const mockRecommendations = {
-    skillName: 'React',
-    currentLevel: 'Intermediate',
-    overallScore: 78,
-    learningResources: [
-      {
-        id: '1',
-        title: 'React Performance Optimization',
-        type: 'course' as const,
-        provider: 'React Training',
-        duration: '4 hours',
-        difficulty: 'ADVANCED' as const,
-        rating: 4.8,
-        url: 'https://example.com/react-performance',
-        price: 'paid',
-        description: 'Deep dive into React performance patterns and optimization techniques',
-        tags: ['performance', 'optimization', 'advanced']
-      },
-      {
-        id: '2',
-        title: 'Testing React Components',
-        type: 'course' as const,
-        provider: 'Testing Library',
-        duration: '3 hours',
-        difficulty: 'INTERMEDIATE' as const,
-        rating: 4.7,
-        url: 'https://example.com/react-testing',
-        price: 'free',
-        description: 'Learn to test React components effectively with modern testing tools',
-        tags: ['testing', 'jest', 'react-testing-library']
-      }
-    ],
-    skillRecommendations: [
-      {
-        skill: 'TypeScript with React',
-        reason: 'Enhance code reliability and developer experience',
-        priority: 'high' as const,
-        marketValue: '+15% salary potential',
-        timeToLearn: '4-6 weeks'
-      },
-      {
-        skill: 'Next.js Framework',
-        reason: 'Popular React framework for production applications',
-        priority: 'medium' as const,
-        marketValue: '+20% job opportunities',
-        timeToLearn: '3-4 weeks'
-      }
-    ],
-    careerPaths: [
-      {
-        id: '1',
-        title: 'Senior Frontend Developer',
-        description: 'Lead frontend development with advanced React skills',
-        steps: [
-          'Master React performance optimization',
-          'Learn advanced state management (Redux Toolkit)',
-          'Gain experience with React testing strategies',
-          'Understand micro-frontend architectures'
-        ],
-        timeEstimate: '8-12 months',
-        salaryRange: '$90k - $140k',
-        demandLevel: 'high' as const
-      }
-    ],
-    nextSteps: [
-      'Complete a React performance optimization course',
-      'Build a project using React.memo and useMemo',
-      'Write comprehensive tests for a React application',
-      'Learn and implement a state management solution',
-      'Study Next.js for full-stack React development'
-    ]
-  };
+  const isUsingMockData = !resultsResponse || !resultsResponse.success || !resultsData;
 
-  useEffect(() => {
-    // Mock API call to fetch results
-    const fetchResults = async () => {
-      try {
-        setLoading(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch results:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchResults();
-  }, [assessmentId]);
-
+  // Event handlers
   const handleRetakeAssessment = () => {
-    router.push(`/candidate/dashboard/skills-assessment/start?skill=react`);
+    router.push('/candidate/dashboard/skills-assessment/start');
   };
 
-  const handleDownloadReport = async () => {
-    // Mock download functionality
-    console.log('Downloading report for assessment:', assessmentId);
-    alert('Report download started! Check your downloads folder.');
+  const handleDownloadReport = () => {
+    toast.success('Report download started!');
+    // Implement actual download logic
   };
 
   const handleShareResults = () => {
-    const shareText = `I just completed a ${mockResults.skillName} assessment and scored ${mockResults.overallScore}%! 🎉`;
-    const shareUrl = window.location.href;
-    
+    const shareText = `I scored ${resultsData.overallScore}% on ${resultsData.skillName} assessment!`;
     if (navigator.share) {
       navigator.share({
         title: 'My Assessment Results',
         text: shareText,
-        url: shareUrl
+        url: window.location.href
       });
     } else {
-      // Fallback to copying to clipboard
-      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      alert('Results link copied to clipboard!');
+      navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+      toast.success('Results copied to clipboard!');
     }
   };
 
@@ -254,48 +178,54 @@ const AssessmentResultsPage = () => {
     router.push('/candidate/dashboard/skills-assessment');
   };
 
-  if (loading) {
+  // Loading state
+  if (isLoadingResults) {
     return (
-      <div className="w-full flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-[#222] mb-2">Analyzing Your Performance</h2>
-          <p className="text-[#757575]">Please wait while we prepare your detailed results...</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-[#005DDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-[#222] mb-2">Loading Your Results</h2>
+            <p className="text-[#757575]">Analyzing your performance and generating insights...</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  const tabs = [
+    { id: 'results', label: 'Results Overview' },
+    { id: 'breakdown', label: 'Skill Breakdown' },
+    { id: 'recommendations', label: 'Recommendations' }
+  ];
+
   return (
-    <div className="w-full bg-gray-50">
-      {/* Navigation */}
-      <div className="bg-white border-b border-gray-200 rounded-xl shadow-sm mb-8">
-        <div className="w-full px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <button
-                onClick={handleBackToDashboard}
-                className="flex items-center gap-2 text-[#757575] hover:text-[#222] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Assessments
-              </button>
-              
-              {/* Tab Navigation */}
-              <div className="flex gap-6">
-                {[
-                  { key: 'results', label: 'Results Overview' },
-                  { key: 'recommendations', label: 'Recommendations' }
-                ].map(tab => (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#222] mb-2">
+            Assessment Results
+            {isUsingMockData && <span className="text-orange-600 text-lg ml-2">(Demo Mode)</span>}
+          </h1>
+          <p className="text-[#757575]">
+            {resultsData.skillName} • Completed on {new Date(resultsData.completedAt).toLocaleDateString()}
+          </p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-sm mb-6">
+          <div className="border-b border-gray-200">
+            <div className="px-6 py-4">
+              <div className="flex space-x-8">
+                {tabs.map((tab) => (
                   <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as any)}
-                    className={`border transition-colors px-4 py-2 rounded-md font-normal cursor-pointer ${
-                      activeTab === tab.key
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
                         ? 'border-[#005DDC] text-[#005DDC]'
-                        : 'border-[#757575] text-[#757575] hover:text-[#222]'
+                        : 'border-transparent text-[#757575] hover:text-[#222] hover:border-gray-300'
                     }`}
                   >
                     {tab.label}
@@ -305,31 +235,91 @@ const AssessmentResultsPage = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="w-full">
-        {activeTab === 'results' && (
-          <AssessmentResults
-            results={mockResults}
-            onRetakeAssessment={handleRetakeAssessment}
-            onDownloadReport={handleDownloadReport}
-            onShareResults={handleShareResults}
-            onViewRecommendations={handleViewRecommendations}
-            onBackToDashboard={handleBackToDashboard}
-            showCelebration={true}
-          />
-        )}
-        {activeTab === 'recommendations' && (
-          <RecommendationsCard
-            skillName={mockRecommendations.skillName}
-            currentLevel={mockRecommendations.currentLevel}
-            overallScore={mockRecommendations.overallScore}
-            learningResources={mockRecommendations.learningResources}
-            skillRecommendations={mockRecommendations.skillRecommendations}
-            careerPaths={mockRecommendations.careerPaths}
-            nextSteps={mockRecommendations.nextSteps}
-          />
+        {/* Content with null safety */}
+        <div className="w-full">
+          {activeTab === 'results' && resultsData && (
+            <AssessmentResults
+              results={resultsData}
+              onRetakeAssessment={handleRetakeAssessment}
+              onDownloadReport={handleDownloadReport}
+              onShareResults={handleShareResults}
+              onViewRecommendations={handleViewRecommendations}
+              onBackToDashboard={handleBackToDashboard}
+              showCelebration={true}
+            />
+          )}
+          
+          {activeTab === 'breakdown' && resultsData && (
+            <div className="bg-white rounded-lg p-8 shadow-sm">
+              <h2 className="text-2xl font-bold text-[#222] mb-6">Detailed Skill Breakdown</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Strengths */}
+                <div>
+                  <h3 className="text-lg font-semibold text-green-600 mb-4">Strengths</h3>
+                  <div className="space-y-3">
+                    {resultsData.strengths.map((strength, index) => (
+                      <div key={index} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-green-800">{strength}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Areas for Improvement */}
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-600 mb-4">Areas for Improvement</h3>
+                  <div className="space-y-3">
+                    {resultsData.weaknesses.map((weakness, index) => (
+                      <div key={index} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <p className="text-orange-800">{weakness}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-[#222] mb-4">Learning Recommendations</h3>
+                <div className="space-y-3">
+                  {resultsData.recommendations.map((rec, index) => (
+                    <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-blue-800">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'recommendations' && (
+            <SkillRecommendationsTab />
+          )}
+
+          {/* No data fallback */}
+          {!resultsData && !isLoadingResults && (
+            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+              <div className="text-gray-400 text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-semibold text-[#222] mb-2">No Results Available</h3>
+              <p className="text-[#757575] mb-4">Unable to load assessment results</p>
+              <button
+                onClick={handleBackToDashboard}
+                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* API Status Indicator */}
+        {isUsingMockData && (
+          <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <p className="text-orange-800 text-sm">
+              <strong>Demo Mode:</strong> API results unavailable. Showing sample data for demonstration.
+            </p>
+          </div>
         )}
       </div>
     </div>

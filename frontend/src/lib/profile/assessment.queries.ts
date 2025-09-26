@@ -151,7 +151,7 @@ export const useCompleteAssessment = () => {
       queryClient.invalidateQueries({ queryKey: ['assessment-history'] });
       queryClient.invalidateQueries({ queryKey: ['profile-completeness'] });
       
-      router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
+       router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
     },
     onError: (error: any) => {
       console.error('Complete assessment failed:', error);
