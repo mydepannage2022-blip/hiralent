@@ -19,11 +19,12 @@ import {
   Download,
   BarChart3
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAssessmentHistory } from '@/src/lib/profile/assessment.queries';
 import { HistoryItem, AssessmentHistory } from '@/src/types/assessment.types';
-import SmartLink from '@/src/components/layout/SmartLink';
 
 const AssessmentHistoryPage = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [skillFilter, setSkillFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'score' | 'skill'>('date');
@@ -39,14 +40,27 @@ const AssessmentHistoryPage = () => {
   const historyData = historyResponse as AssessmentHistory | undefined;
   const assessments: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
 
-  // Filtered assessments
+  // Sorted and filtered assessments
   const filteredAssessments = useMemo(() => {
-    return assessments.filter((assessment) => {
+    let filtered = assessments.filter((assessment) => {
       const matchesSearch = assessment.skillCategory.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesSkill = skillFilter === 'all' || assessment.skillCategory === skillFilter;
       return matchesSearch && matchesSkill;
     });
-  }, [assessments, searchQuery, skillFilter]);
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      if (sortBy === 'date') {
+        return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
+      } else if (sortBy === 'score') {
+        return b.overallScore - a.overallScore;
+      } else {
+        return a.skillCategory.localeCompare(b.skillCategory);
+      }
+    });
+
+    return filtered;
+  }, [assessments, searchQuery, skillFilter, sortBy]);
 
   // Get unique skills for filter
   const uniqueSkills = useMemo(() => {
@@ -61,15 +75,17 @@ const AssessmentHistoryPage = () => {
     : 0;
 
   const handleViewResults = (assessmentId: string) => {
-    window.location.href = `/candidate/dashboard/skills-assessment/results/${assessmentId}`;
+    router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
   };
 
   const handleRetakeAssessment = (skillName: string) => {
     const skillId = skillName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    window.location.href = `/candidate/dashboard/skills-assessment/instructions?skill=${skillId}-assessment`;
+    router.push(`/candidate/dashboard/skills-assessment/instructions?skill=${skillId}-assessment`);
   };
 
   const handleExportHistory = () => {
+    if (assessments.length === 0) return;
+
     const csvData = assessments.map(a => ({
       Skill: a.skillCategory,
       Score: a.overallScore,
@@ -78,7 +94,7 @@ const AssessmentHistoryPage = () => {
       Improvement: a.improvement || 'N/A'
     }));
 
-    const headers = Object.keys(csvData[0] || {});
+    const headers = Object.keys(csvData[0]);
     const csvContent = [
       headers.join(','),
       ...csvData.map(row => headers.map(h => row[h as keyof typeof row]).join(','))
@@ -88,7 +104,7 @@ const AssessmentHistoryPage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'assessment-history.csv';
+    a.download = `assessment-history-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -97,7 +113,7 @@ const AssessmentHistoryPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
+          <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-300 rounded w-1/3 mb-4"></div>
             <div className="h-4 bg-gray-300 rounded w-1/2 mb-8"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -106,6 +122,9 @@ const AssessmentHistoryPage = () => {
                   <div className="h-16 bg-gray-300 rounded"></div>
                 </div>
               ))}
+            </div>
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <div className="h-64 bg-gray-300 rounded"></div>
             </div>
           </div>
         </div>
@@ -117,13 +136,13 @@ const AssessmentHistoryPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center">
+          <div className="text-center py-12">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-[#222] mb-2">Unable to Load History</h2>
-            <p className="text-[#757575] mb-4">There was an error loading your assessment history.</p>
+            <p className="text-[#757575] mb-6">There was an error loading your assessment history.</p>
             <button
               onClick={() => refetch()}
-              className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
             >
               Try Again
             </button>
@@ -135,7 +154,7 @@ const AssessmentHistoryPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="space-y-8">
 
         {/* Header */}
         <motion.div
@@ -150,116 +169,122 @@ const AssessmentHistoryPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
+              {assessments.length > 0 && (
+                <button
+                  onClick={handleExportHistory}
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-[#757575] rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </button>
+              )}
               <button
-                onClick={handleExportHistory}
-                className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-[#757575] rounded-md hover:bg-gray-50 transition-colors"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
-              <SmartLink
-                href="/candidate/dashboard/skills-assessment"
+                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
                 className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
               >
                 Take New Assessment
-              </SmartLink>
+              </button>
             </div>
           </div>
         </motion.div>
 
         {/* Stats Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Target className="h-5 w-5 text-[#005DDC]" />
+        {assessments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <Target className="h-5 w-5 text-[#005DDC]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#757575]">Total Assessments</p>
+                    <p className="text-2xl font-bold text-[#222]">{totalAssessments}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-[#757575]">Total Assessments</p>
-                  <p className="text-2xl font-bold text-[#222]">{totalAssessments}</p>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-50 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#757575]">Completed</p>
+                    <p className="text-2xl font-bold text-[#222]">{completedCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#757575]">Average Score</p>
+                    <p className="text-2xl font-bold text-[#222]">{averageScore}%</p>
+                  </div>
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
 
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+        {/* Filters - Only show if there are assessments */}
+        {assessments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="bg-white rounded-lg p-6 border border-gray-200 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
+                  <input
+                    type="text"
+                    placeholder="Search skills..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
+                  />
                 </div>
-                <div>
-                  <p className="text-sm text-[#757575]">Completed</p>
-                  <p className="text-2xl font-bold text-[#222]">{completedCount}</p>
-                </div>
+
+                {/* Skill Filter */}
+                <select
+                  value={skillFilter}
+                  onChange={(e) => setSkillFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
+                >
+                  <option value="all">All Skills</option>
+                  {uniqueSkills.map((skill) => (
+                    <option key={skill} value={skill}>
+                      {skill}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Sort By */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'date' | 'score' | 'skill')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
+                >
+                  <option value="date">Sort by Date</option>
+                  <option value="score">Sort by Score</option>
+                  <option value="skill">Sort by Skill</option>
+                </select>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-50 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-[#757575]">Average Score</p>
-                  <p className="text-2xl font-bold text-[#222]">{averageScore}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="bg-white rounded-lg p-6 border border-gray-200 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
-                <input
-                  type="text"
-                  placeholder="Search skills..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-                />
-              </div>
-
-              {/* Skill Filter */}
-              <select
-                value={skillFilter}
-                onChange={(e) => setSkillFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-              >
-                <option value="all">All Skills</option>
-                {uniqueSkills.map((skill) => (
-                  <option key={skill} value={skill}>
-                    {skill}
-                  </option>
-                ))}
-              </select>
-
-              {/* Sort By */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent"
-              >
-                <option value="date">Sort by Date</option>
-                <option value="score">Sort by Score</option>
-                <option value="skill">Sort by Skill</option>
-              </select>
-            </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Assessment History Table */}
         <motion.div
@@ -308,7 +333,7 @@ const AssessmentHistoryPage = () => {
                             </span>
                             <div className="w-16 h-2 rounded-full bg-gray-200">
                               <div
-                                className={`h-2 rounded-full ${
+                                className={`h-2 rounded-full transition-all ${
                                   assessment.overallScore >= 80 ? 'bg-green-500' :
                                   assessment.overallScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}
@@ -323,20 +348,24 @@ const AssessmentHistoryPage = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-[#757575]">
-                          {new Date(assessment.completedAt).toLocaleDateString()}
+                          {new Date(assessment.completedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleViewResults(assessment.assessmentId)}
-                              className="text-[#005DDC] hover:text-[#004EB7] flex items-center gap-1"
+                              className="text-[#005DDC] hover:text-[#004EB7] flex items-center gap-1 transition-colors"
                             >
                               <Eye className="h-4 w-4" />
                               View
                             </button>
                             <button
                               onClick={() => handleRetakeAssessment(assessment.skillCategory)}
-                              className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                              className="text-green-600 hover:text-green-700 flex items-center gap-1 transition-colors"
                             >
                               <RefreshCw className="h-4 w-4" />
                               Retake
@@ -352,13 +381,15 @@ const AssessmentHistoryPage = () => {
           ) : (
             <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
               <AlertCircle className="h-12 w-12 text-[#757575] mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-[#222] mb-2">No Assessments Found</h3>
+              <h3 className="text-lg font-medium text-[#222] mb-2">
+                {assessments.length === 0 ? 'No Assessments Yet' : 'No Assessments Found'}
+              </h3>
               <p className="text-[#757575] mb-6">
-                {searchQuery || skillFilter !== 'all'
-                  ? 'No assessments match your current filters.'
-                  : 'You haven\'t completed any assessments yet.'}
+                {assessments.length === 0 
+                  ? 'You haven\'t completed any assessments yet. Start your first assessment to track your progress.' 
+                  : 'No assessments match your current filters.'}
               </p>
-              {searchQuery || skillFilter !== 'all' ? (
+              {(searchQuery || skillFilter !== 'all') && assessments.length > 0 ? (
                 <button
                   onClick={() => {
                     setSearchQuery('');
@@ -369,12 +400,12 @@ const AssessmentHistoryPage = () => {
                   Clear Filters
                 </button>
               ) : null}
-              <SmartLink
-                href="/candidate/dashboard/skills-assessment"
+              <button
+                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
                 className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
               >
                 Take Assessment
-              </SmartLink>
+              </button>
             </div>
           )}
         </motion.div>
