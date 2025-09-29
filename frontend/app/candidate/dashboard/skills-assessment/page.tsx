@@ -57,30 +57,39 @@ const AssessmentHubPage = () => {
 
   // Update available assessments based on REAL profile data ONLY
   useEffect(() => {
-    if (profileData?.skills && profileData.skills.length > 0) {
-      const skillBasedAssessments = profileData.skills.map((skill: ProfileSkill) => {
-        // Check if already completed from real history
-        const completedAssessment = realAssessmentHistory.find(
-          history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
-        );
+    if (profileData?.skills && profileData.skills.length > 0 && realAssessmentHistory.length > 0) {
+      // ONLY show skills that have been assessed before (for retake)
+      const completedSkillsAssessments = profileData.skills
+        .filter((skill: ProfileSkill) => {
+          // Check if this skill has assessment history
+          return realAssessmentHistory.some(
+            history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
+          );
+        })
+        .map((skill: ProfileSkill) => {
+          // Find the completed assessment
+          const completedAssessment = realAssessmentHistory.find(
+            history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
+          );
 
-        return {
-          id: `${skill.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-assessment`,
-          name: skill.skill_name,
-          description: `${skill.skill_category.charAt(0).toUpperCase() + skill.skill_category.slice(1)} skill assessment covering ${skill.proficiency} level concepts with ${skill.years_experience} years experience`,
-          questionCount: skill.proficiency === 'beginner' ? 15 : skill.proficiency === 'intermediate' ? 20 : 25,
-          timeEstimate: skill.proficiency === 'beginner' ? '15-20 mins' : skill.proficiency === 'intermediate' ? '25-30 mins' : '35-40 mins',
-          difficulty: skill.proficiency.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED',
-          isRecommended: skill.confidence_score < 70 || !skill.is_verified,
-          isCompleted: Boolean(completedAssessment),
-          lastScore: completedAssessment?.overallScore,
-          category: skill.skill_category === 'technical' ? 'Programming' : 
-                   skill.skill_category === 'soft' ? 'Soft Skills' : 'Certification'
-        };
-      });
-      setAvailableAssessments(skillBasedAssessments);
+          return {
+            id: `${skill.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-assessment`,
+            name: skill.skill_name,
+            description: `${skill.skill_category.charAt(0).toUpperCase() + skill.skill_category.slice(1)} skill assessment covering ${skill.proficiency} level concepts with ${skill.years_experience} years experience`,
+            questionCount: skill.proficiency === 'beginner' ? 15 : skill.proficiency === 'intermediate' ? 20 : 25,
+            timeEstimate: skill.proficiency === 'beginner' ? '15-20 mins' : skill.proficiency === 'intermediate' ? '25-30 mins' : '35-40 mins',
+            difficulty: skill.proficiency.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED',
+            isRecommended: skill.confidence_score < 70 || !skill.is_verified,
+            isCompleted: true, // Always true since we're only showing completed ones
+            lastScore: completedAssessment?.overallScore,
+            category: skill.skill_category === 'technical' ? 'Programming' : 
+                     skill.skill_category === 'soft' ? 'Soft Skills' : 'Certification'
+          };
+        });
+      
+      setAvailableAssessments(completedSkillsAssessments);
     } else {
-      // Empty state - no mock data
+      // Empty state - no completed assessments
       setAvailableAssessments([]);
     }
   }, [profileData?.skills, realAssessmentHistory]);
@@ -121,10 +130,10 @@ const AssessmentHubPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto space-y-8">
 
-        {/* Header - ORIGINAL UI */}
+        {/* Header - ORIGINAL UI
         <motion.section
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,7 +146,7 @@ const AssessmentHubPage = () => {
               learning recommendations to advance your career.
             </p>
           </div>
-        </motion.section>
+        </motion.section> */}
 
         {/* Available Assessments - REAL DATA ONLY */}
         <motion.section
@@ -146,53 +155,13 @@ const AssessmentHubPage = () => {
           transition={{ delay: 0.1 }}
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-[#222]">Available Assessments</h2>
             <SmartLink
               href="/candidate/dashboard/skills-assessment/start"
               className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors text-sm"
             >
-              New Assessment
+              Start Assessments
             </SmartLink>
           </div>
-
-          {availableAssessments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableAssessments.map((assessment, index) => (
-                <motion.div
-                  key={assessment.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <AssessmentCard
-                    {...assessment}
-                    onClick={() => handleStartAssessment(assessment.id)}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
-              <div className="text-[#757575] mb-4">No skills found in your profile</div>
-              <p className="text-sm text-[#757575] mb-6">
-                Add skills to your profile to get personalized assessment recommendations
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <SmartLink
-                  href="/candidate/dashboard/profile"
-                  className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
-                >
-                  Add Skills to Profile
-                </SmartLink>
-                <SmartLink
-                  href="/candidate/dashboard/skills-assessment/start"
-                  className="px-6 py-2 border border-gray-300 text-[#757575] rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Browse All Assessments
-                </SmartLink>
-              </div>
-            </div>
-          )}
         </motion.section>
 
         {/* Recent History - REAL DATA ONLY */}
