@@ -1,21 +1,25 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "",
+  "main": "dist/server.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
   },
-  "module": "CommonJS",
-  "type": "commonjs",
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.1",
     "@google/generative-ai": "^0.5.0",
     "@pinecone-database/pinecone": "^6.1.1",
     "@prisma/client": "^6.16.2",
@@ -28,6 +32,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
+    "fastify": "^5.6.1",
     "file-type": "^18.7.0",
     "firebase-admin": "^13.4.0",
     "form-data": "^4.0.3",
@@ -45,7 +50,7 @@
     "sanitize-html": "^2.17.0",
     "sharp": "^0.34.4",
     "tesseract.js": "^6.0.1",
-    "zod": "^3.25.67"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -53,7 +58,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongodb": "^4.0.6",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.0.8",
+    "@types/node": "^24.5.2",
     "@types/nodemailer": "^6.4.17",
     "@types/passport": "^1.0.17",
     "@types/passport-facebook": "^3.0.3",
@@ -63,6 +68,7 @@
     "nodemon": "^3.1.10",
     "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }
