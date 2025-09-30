@@ -10,7 +10,7 @@ import SmartLink from "@/src/components/layout/SmartLink";
 import { locationOptions } from "@/src/constants/groupedLocationOptions";
 // Types
 import { industryOptions } from "@/src/constants/groupedIndustriesOptions";
-import { useCreateCompanyProfile } from "@/src/lib/auth.queries";
+import { useCreateCompanyProfile } from "@/src/lib/auth/auth.queries";
 
 
 interface FormData {

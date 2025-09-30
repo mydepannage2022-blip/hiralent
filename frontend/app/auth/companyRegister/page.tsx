@@ -7,7 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 import SmartLink from "@/src/components/layout/SmartLink";
-import { useSignup } from "../../../src/lib/auth.queries";
+import { useSignup } from "../../../src/lib/auth/auth.queries";
 
 
 // Types

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Edit2, User, X, Check, Plus } from 'lucide-react';
 import { IoLocationOutline } from "react-icons/io5"; // Added location icon
 import Select from "react-select"; // Added react-select
-import { useUpdateBasicInfo } from '@/src/lib/profile.queries';
+import { useUpdateBasicInfo } from '@/src/lib/profile/profile.queries';
 import { useAuth } from '@/src/context/AuthContext';
 import { useProfile } from '@/src/context/ProfileContext';
 import { locationOptions } from '@/src/constants/groupedLocationOptions';

@@ -54,7 +54,7 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String    // candidate, company, agency (removed recruiter)
+  role              String    // candidate, company_admin, agency_admin 
   is_email_verified Boolean 
   phone_number      String?
   position          String?

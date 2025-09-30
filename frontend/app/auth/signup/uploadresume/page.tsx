@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUploadResume } from '../../../../src/lib/auth.queries';
+import { useUploadResume } from '../../../../src/lib/auth/auth.queries';
 import { useRouter } from 'next/navigation';
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";

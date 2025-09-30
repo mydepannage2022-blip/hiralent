@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Briefcase, X, Check, Plus, Trash2, Calendar } from 'lucide-react';
-import { useUpdateExperience, useAddExperience } from '@/src/lib/profile.queries';
-import { ExperienceData } from '@/src/lib/profile.api';
+import { useUpdateExperience, useAddExperience } from '@/src/lib/profile/profile.queries';
+import { ExperienceData } from '@/src/lib/profile/profile.api';
 import { useProfile } from '@/src/context/ProfileContext';
 
 const ExperienceSection: React.FC = () => {

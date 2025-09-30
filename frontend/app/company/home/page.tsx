@@ -176,7 +176,7 @@ const page = () => {
     return (
         <div className="w-full relative">
             <Hero />
-            <div className="mt-6 mb-12 p-4 flex flex-col items-center sm:mx-6 md:mx-9 lg:mx-28 xl:mx-auto max-w-[1315px]">
+            <div className="mt-6 mb-24 p-4 flex flex-col items-center sm:mx-6 md:mx-9 lg:mx-28 xl:mx-auto max-w-[1315px]">
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Trused by 2K companies</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575]">Comments from companies that have hired you</p>
@@ -206,7 +206,7 @@ const page = () => {
                 </div>
             </div>
 
-            <div className="mt-6 mb-12 p-4 sm:mx-6 md:mx-9 lg:m-0">
+            <div className="mt-6 mb-24 p-4 sm:mx-6 md:mx-9 lg:m-0">
                 <div className="mb-6 flex flex-col items-center">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">
                         Built for companies of all sizes
@@ -270,7 +270,7 @@ const page = () => {
                 </div>
             </div>
 
-            <div className="mt-6 mb-12 p-4">
+            <div className="mt-12 mb-24 p-4">
                 <div className="mb-6 flex flex-col items-center">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Efficient solutions for hiring success</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575] w-full max-w-[450px]">"Optimize your recruitment with powerful tools for search, performance, efficiency, and visibility"</p>
@@ -299,7 +299,7 @@ const page = () => {
                 </div>
             </div>
 
-            <div className="mt-6 mb-12 p-4 sm:mx-2 md:mx-5 lg:mx-24 xl:mx-auto max-w-[1350px]">
+            <div className="mt-6 mb-24 p-4 sm:mx-2 md:mx-5 lg:mx-24 xl:mx-auto max-w-[1350px]">
                 <div className="mb-6 flex flex-col items-center">
                     <h1 className="text-2xl sm:text-4xl font-medium text-center mb-3">Elevate your hiring strategy</h1>
                     <p className="text-xs sm:text-base text-center text-[#757575] w-full max-w-[450px]">"Treamline your recruitment process with innovative solutions for sourcing, job posts, career events, and flexible hiring"</p>
