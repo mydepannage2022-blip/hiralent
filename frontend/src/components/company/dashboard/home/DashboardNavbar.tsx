@@ -15,9 +15,9 @@ interface DashboardNavbarProps {
   setIsMobileMenuOpen?: (open: boolean) => void;
 }
 
-const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ 
-  isMobileMenuOpen = false, 
-  setIsMobileMenuOpen = () => {} 
+const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
+  isMobileMenuOpen = false,
+  setIsMobileMenuOpen = () => { }
 }) => {
   const { user } = useAuth(); // ✅ Only for user info (name, email verification)
   const { profileData } = useProfile(); // ✅ For profile data (picture, headline)
@@ -72,8 +72,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     } else {
       return (
         <SmartLink href='/auth/verify-email' >
-          <HiExclamationTriangle 
-            className="w-3 h-3 text-orange-500 flex-shrink-0" 
+          <HiExclamationTriangle
+            className="w-3 h-3 text-orange-500 flex-shrink-0"
             title="Email Not Verified"
           />
         </SmartLink>
@@ -84,11 +84,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   // Dynamic page titles and descriptions based on pathname
   const getPageInfo = () => {
     switch (pathname) {
-      case '/company/dashboard':
-        return {
-          title: 'Activity',
-          description: 'Updating your information will offer you the most relevant content'
-        };
       case '/candidate/dashboard/candidate-profile':
         return {
           title: 'Profile',
@@ -113,6 +108,16 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         return {
           title: 'Analytics',
           description: 'Track your job search progress and performance metrics'
+        };
+      case '/company/dashboard':
+        return {
+          title: 'Activity',
+          description: 'Updating your information will offer you the most relevant content'
+        };
+      case '/company/dashboard/postjob':
+        return {
+          title: 'Post Job',
+          description: 'Updating your information will offer you the most relevent content'
         };
       default:
         return {
@@ -144,20 +149,20 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
       {/* Right Section */}
       <div className='w-full sm:w-1/2 lg:w-2/3 xl:w-1/2 flex items-center justify-between sm:justify-end gap-3 sm:gap-4 lg:gap-8'>
-        
+
         {/* Search Form */}
-        <form 
+        <form
           onSubmit={handleSearchSubmit}
           className='flex justify-between items-center bg-white p-2 sm:p-3 rounded-lg w-full sm:w-2/3 lg:w-2/3'
         >
-          <input 
-            type="text" 
-            name="Search" 
-            placeholder='Search' 
+          <input
+            type="text"
+            name="Search"
+            placeholder='Search'
             className='outline-none text-sm sm:text-base w-full'
           />
           <button type="submit" className="cursor-pointer">
-            <CiSearch className='text-xl sm:text-2xl hover:text-gray-600 transition-colors'/>
+            <CiSearch className='text-xl sm:text-2xl hover:text-gray-600 transition-colors' />
           </button>
         </form>
 
@@ -166,26 +171,26 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           onClick={handleNotificationClick}
           className="cursor-pointer hover:text-gray-600 transition-colors"
         >
-          <IoIosNotificationsOutline className='text-2xl sm:text-3xl lg:text-4xl xl:text-2xl'/>
+          <IoIosNotificationsOutline className='text-2xl sm:text-3xl lg:text-4xl xl:text-2xl' />
         </button>
-        
+
         {/* User Profile Section */}
         <div className='flex justify-center items-center gap-2'>
-          <img 
-            src={getProfileImage()} 
-            alt="User Image" 
+          <img
+            src={getProfileImage()}
+            alt="User Image"
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
           />
           <div className='hidden lg:hidden xl:flex flex-col justify-center items-start'>
             {/* User Name with Verification Icon */}
             <div className='flex items-center gap-1'>
               <h3 className='text-[#222] text-sm lg:text-base'>
-                {user?.full_name || 'Guest User'}  
+                {user?.full_name || 'Guest User'}
               </h3>
               {/* Verification Icon */}
               {getVerificationIcon()}
             </div>
-            
+
             {/* Headline or Email */}
             <span className='text-xs lg:text-sm text-[#A5A5A5] max-w-48 truncate' title={getUserHeadlineOrEmail()}>
               {getUserHeadlineOrEmail()}
