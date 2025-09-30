@@ -88,23 +88,29 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
     }
     
     const firstQuestion = questions[0] ? {
-      questionId: questions[0].questionId || 'q1',
-      questionText: questions[0].questionText,
-      type: questions[0].type,
-      options: questions[0].options || [],
-      timeLimit: questions[0].timeLimit || 90,
-    } : null;
+    questionId: questions[0].questionId || 'q1',
+    questionText: questions[0].questionText,
+    type: questions[0].type,
+    options: questions[0].options?.map((opt: string, idx: number) => ({
+      id: `opt-${idx + 1}`,
+      text: opt
+    })) || [],
+    timeLimit: questions[0].timeLimit || 90,
+    difficulty: questions[0].difficulty || difficulty,
+  } : null;
     
-    return {
-      success: true,
-      data: {
-        assessmentId: assessment.assessment_id,
-        totalQuestions: assessment.total_questions,
-        timeLimit: assessment.time_limit,
-        status: assessment.status,
-        firstQuestion,
-      },
-    };
+   return {
+    success: true,
+    data: {
+      assessmentId: assessment.assessment_id,
+      skillCategory: assessment.skill_category,      
+      assessmentType: assessment.assessment_type,    
+      totalQuestions: assessment.total_questions,
+      timeLimit: assessment.time_limit,
+      status: assessment.status,
+      firstQuestion,
+    },
+  };
     
   } catch (error: any) {
     console.error('Error in startAssessment:', error);
@@ -112,7 +118,7 @@ export const startAssessment = async (params: StartAssessmentParams): Promise<an
   }
 };
 
-export const getNextQuestion = async (assessmentId: string): Promise<Question> => {
+export const getNextQuestion = async (assessmentId: string): Promise<any> => {
   try {
     if (!assessmentId) {
       throw new Error('Assessment ID is required');
@@ -166,19 +172,29 @@ export const getNextQuestion = async (assessmentId: string): Promise<Question> =
         });
       } catch (dbError: any) {
         console.warn('Failed to update assessment status to IN_PROGRESS:', dbError);
-        // Continue anyway, this is not critical
       }
     }
     
+    // ✅ Return proper format with nested structure
     return {
-      questionId: q.questionId || `q${idx + 1}`,
-      questionText: q.questionText,
-      type: q.type,
-      options: q.options || [],
-      difficulty: q.difficulty,
-      timeLimit: q.timeLimit || 90,
-      aiGenerated: true,
-      adaptedReason: '',
+      success: true,
+      data: {
+        question: {
+          questionId: q.questionId || `q${idx + 1}`,
+          questionText: q.questionText,
+          type: q.type,
+          options: q.options || [],
+          difficulty: q.difficulty,
+          timeLimit: q.timeLimit || 90,
+          aiGenerated: true,
+          adaptedReason: '',
+          category: assessment.skill_category,  
+          correctAnswer: q.correctAnswer || '' // Optional
+        },
+        currentIndex: idx,
+        totalQuestions: questions.length,
+        hasNext: idx + 1 < questions.length
+      }
     };
     
   } catch (error: any) {
@@ -289,12 +305,15 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
         isCorrect: aiEval.isCorrect,
         score: aiEval.score,
         feedback: aiEval.feedback,
+        currentIndex: idx,  
         nextQuestion: nextQ
           ? {
               questionId: nextQ.questionId || `q${idx + 2}`,
               questionText: nextQ.questionText,
               type: nextQ.type,
+              options: nextQ.options || [],  // ✅ Already exists
               timeLimit: nextQ.timeLimit || 90,
+              difficulty: nextQ.difficulty || assessment.difficulty || 'INTERMEDIATE', 
             }
           : null,
         completed: isLastQuestion,
@@ -488,11 +507,20 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
     
     const questionBreakdown = answers.map((a: any, idx: number) => ({
       questionId: a.questionId || `q${idx + 1}`,
+      questionText: questions[idx]?.questionText || '',  
+      userAnswer: a.userAnswer || '',  
+      correctAnswer: questions[idx]?.correctAnswer || '',  
+      isCorrect: a.aiEvaluation?.isCorrect || false,  
       score: a.aiEvaluation?.score || 0,
       difficulty: questions[idx]?.difficulty || 'BEGINNER',
       timeTaken: a.timeTaken,
       feedback: a.aiEvaluation?.feedback || '',
+      category: assessment.skill_category  
     }));
+    
+    const totalQuestions = questions.length;
+    const correctAnswers = answers.filter((a: any) => a.aiEvaluation?.isCorrect).length;
+    const totalTimeSpent = answers.reduce((sum: number, a: any) => sum + (a.timeTaken || 0), 0);
     
     return {
       success: true,
@@ -501,11 +529,15 @@ export const getAssessmentResults = async (assessmentId: string): Promise<any> =
         skillCategory: assessment.skill_category,
         overallScore: assessment.overall_score,
         skillLevel: assessment.skill_level_result,
+        completedAt: assessment.completed_at?.toISOString() || new Date().toISOString(),  
+        totalQuestions,  
+        correctAnswers,  
+        timeSpent: totalTimeSpent,  
         strengths: assessment.strengths || [],
         weaknesses: assessment.weaknesses || [],
         recommendations: assessment.recommendations || [],
         aiAnalysis,
-        questionBreakdown,
+        questions: questionBreakdown,
       },
     };
     
@@ -538,6 +570,13 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
         const diff = (a.overall_score || 0) - (assessments[idx + 1].overall_score || 0);
         improvement = diff > 0 ? `+${diff.toFixed(1)} points from last attempt` : `${diff.toFixed(1)} points from last attempt`;
       }
+      
+      const answers = Array.isArray(a.answers) ? a.answers : [];
+      const totalTimeSpent = answers.reduce((sum: number, ans: any) => sum + (ans.timeTaken || 0), 0);
+      
+      const totalQuestions = a.total_questions || 0;
+      const correctAnswers = answers.filter((ans: any) => ans.aiEvaluation?.isCorrect).length;
+      
       return {
         assessmentId: a.assessment_id,
         skillCategory: a.skill_category,
@@ -545,6 +584,18 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
         skillLevel: a.skill_level_result,
         completedAt: a.completed_at,
         improvement,
+        
+        totalQuestions,
+        correctAnswers,
+        incorrectAnswers: totalQuestions - correctAnswers,
+        timeSpent: totalTimeSpent, // seconds
+        difficulty: a.difficulty,
+        provider: a.provider,
+        
+        strengths: a.strengths || [],
+        weaknesses: a.weaknesses || [],
+        recommendations: a.recommendations || [],
+        confidenceScore: a.confidence_score,
       };
     });
     
@@ -557,10 +608,16 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
           trend: 'STABLE',
           lastScore: a.overall_score,
           previousScore: undefined,
+          totalAttempts: 1,
+          bestScore: a.overall_score,
+          averageScore: a.overall_score,
         };
       } else {
+        skillProgress[cat].totalAttempts++;
         skillProgress[cat].previousScore = a.overall_score;
         skillProgress[cat].trend = (a.overall_score || 0) > (skillProgress[cat].lastScore || 0) ? 'IMPROVING' : 'DECLINING';
+        skillProgress[cat].bestScore = Math.max(skillProgress[cat].bestScore, a.overall_score || 0);
+        skillProgress[cat].averageScore = (skillProgress[cat].averageScore * (skillProgress[cat].totalAttempts - 1) + (a.overall_score || 0)) / skillProgress[cat].totalAttempts;
       }
     }
     
@@ -569,6 +626,14 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
       data: {
         assessments: history,
         skillProgress,
+        summary: {
+          totalAssessments: assessments.length,
+          uniqueSkills: Object.keys(skillProgress).length,
+          averageScore: assessments.length > 0 
+            ? assessments.reduce((sum, a) => sum + (a.overall_score || 0), 0) / assessments.length 
+            : 0,
+          totalTimeSpent: history.reduce((sum, h) => sum + h.timeSpent, 0),
+        }
       },
     };
     
@@ -578,39 +643,87 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
   }
 };
 
+
+
+
+
+
+
 export const getRecommendations = async (candidateId: string): Promise<any> => {
   try {
     if (!candidateId) {
       throw new Error('Candidate ID is required');
     }
     
-    // This could be enhanced with AI-based recommendations
+    const candidate = await prisma.user.findUnique({
+      where: { user_id: candidateId },
+      include: {
+        candidateProfile: true,
+        candidateSkills: true
+      }
+    });
+    
+    if (!candidate) {
+      throw new Error('Candidate not found');
+    }
+    
+    const assessments = await prisma.skillAssessment.findMany({
+      where: { candidate_id: candidateId, status: 'COMPLETED' },
+      orderBy: { completed_at: 'desc' },
+      take: 5
+    });
+    
+    let aiRecommendations;
+    try {
+      aiRecommendations = await aiAssessment.generateRecommendations({
+        currentSkills: candidate.candidateSkills.map(s => s.skill_name),
+        assessmentHistory: assessments.map(a => ({
+          skill: a.skill_category,
+          score: a.overall_score,
+          level: a.skill_level_result
+        })),
+        experienceLevel: candidate.candidateProfile?.experience || 'Intermediate',
+        careerGoals: 'General Development'  // ✅ Fixed - hardcoded fallback
+      });
+    } catch (aiError: any) {
+      console.error('AI recommendations error:', aiError);
+      
+      aiRecommendations = {
+        recommendations: [{
+          skillName: 'Professional Development',
+          priority: 'MEDIUM',
+          reason: 'Continue skill growth',
+          description: 'Expand your technical expertise',
+          estimatedTime: '2-4 weeks',
+          difficulty: 'INTERMEDIATE'
+        }],
+        careerPaths: ['Software Developer'],
+        marketReadiness: 'Developing'
+      };
+    }
+    
     return {
       success: true,
       data: {
-        recommendations: [
-          {
-            skillCategory: 'React',
-            reason: 'High demand in your job preferences',
-            difficulty: 'INTERMEDIATE',
-            estimatedTime: '2-3 weeks',
-            marketValue: '15% salary increase potential',
-          },
-        ],
-        learningPath: [
-          {
-            step: 1,
-            skill: 'Advanced JavaScript',
-            duration: '1 week',
-            resources: ['MDN Documentation', "You Don't Know JS"],
-          },
-        ],
-      },
+        recommendations: aiRecommendations.recommendations || [],
+        learningPath: aiRecommendations.recommendations?.map((rec: any, idx: number) => ({
+          skill: rec.skillName,
+          reason: rec.reason,
+          difficulty: rec.difficulty,
+          estimatedTime: rec.estimatedTime,
+          marketValue: `Potential ${rec.priority} impact`,
+          resources: [
+            'Online Documentation',
+            'Practice Projects',
+            'Community Forums'
+          ]
+        })) || []
+      }
     };
     
   } catch (error: any) {
     console.error('Error in getRecommendations:', error);
-    throw new Error(error.message || 'Failed to get recommendations');
+    throw new Error(error.message || 'Failed to generate recommendations');
   }
 };
 

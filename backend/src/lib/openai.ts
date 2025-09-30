@@ -30,7 +30,7 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
       console.log(`Attempt ${attempt}/${retries} for Gemini API call`);
       
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash', // Use a single reliable model
         generationConfig: {
           temperature: 0.1, // Lower temperature for better JSON consistency
           topK: 1,
@@ -113,7 +113,7 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
         
         try {
           const model = genAI.getGenerativeModel({ 
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash', // Use a single reliable model
             generationConfig: {
               temperature: 0.01, // Very low temperature
               maxOutputTokens: 1500,
@@ -392,7 +392,7 @@ export async function createEmbedding(text: string): Promise<number[]> {
     }
     
     // Fallback: generate synthetic embedding if the above doesn't work
-    const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `Convert this text into a numerical embedding vector of exactly 128 floating point numbers between -1 and 1.
 Text: """${text}"""
@@ -461,32 +461,44 @@ Return only a JSON array of 128 numbers like: [0.123, -0.546, 0.789, ...]`;
 export async function generateSkillsAssessmentJSON(
   systemPrompt: string, 
   userPrompt: string, 
-  assessmentType: 'questions' | 'evaluation' | 'difficulty' | 'report' = 'questions'
+  assessmentType: 'questions' | 'evaluation' | 'difficulty' | 'report' | 'recommendations' = 'questions'
 ): Promise<any> {
   
   try {
     console.log(`Starting ${assessmentType} generation...`);
     
-    // Single optimized model configuration
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
-        temperature: 0.2, // Balanced creativity and consistency
+        temperature: 0.15,
         topK: 1,
         topP: 0.9,
-        maxOutputTokens: assessmentType === 'report' ? 3000 : 2000,
+        maxOutputTokens: 5000,
       }
     });
 
-    // Streamlined prompt for faster processing
     const optimizedPrompt = `${systemPrompt}\n\n${userPrompt}\n\nReturn ONLY ${getQuickFormat(assessmentType)} - no explanations.`;
 
     const result = await model.generateContent(optimizedPrompt);
-    let text = result.response.text().trim();
+    const response = await result.response;
+    let text = '';
+
+    if (response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      if (candidate.content && candidate.content.parts) {
+        text = candidate.content.parts.map((part: any) => part.text || '').join('').trim();
+      }
+    }
 
     console.log(`Raw response (${assessmentType}):`, text.substring(0, 200));
+    console.log('=== GEMINI API DEBUG ===');
+    console.log('Model used:', 'gemini-2.5-flash');
+    console.log('Prompt length:', optimizedPrompt.length);
+    console.log('Raw response length:', text.length);
+    console.log('Raw response (first 500 chars):', text.substring(0, 500));
+    console.log('Raw response (last 500 chars):', text.substring(Math.max(0, text.length - 500)));
+    console.log('========================');
 
-    // Fast JSON extraction
     const startChar = assessmentType === 'questions' ? '[' : '{';
     const endChar = assessmentType === 'questions' ? ']' : '}';
     
@@ -497,17 +509,59 @@ export async function generateSkillsAssessmentJSON(
       text = text.substring(start, end + 1);
     }
 
-    // Quick JSON cleanup
     text = text
       .replace(/```json|```/g, '')
       .replace(/,(\s*[}\]])/g, '$1')
-      .replace(/([{,]\s*)(\w+):/g, '$1"$2":')
-      .replace(/:\s*'([^']*)'/g, ':"$1"')
-      .replace(/[\u0000-\u001F]/g, '');
+      .replace(/[\u0000-\u001F]/g, '')
+      .replace(/"([^"]*)'([^"]*)"/g, '"$1$2"');
 
-    const parsed = JSON.parse(text);
+    if (text.startsWith('[') && !text.endsWith(']')) {
+      const lastComplete = text.lastIndexOf('}');
+      if (lastComplete > 0) {
+        text = text.substring(0, lastComplete + 1) + ']';
+        console.log('Fixed truncated array');
+      }
+    }
+
+    if (text.startsWith('{') && !text.endsWith('}')) {
+      const lastComplete = text.lastIndexOf('"');
+      if (lastComplete > 0) {
+        text = text.substring(0, lastComplete) + '}';
+        console.log('Fixed truncated object');
+      }
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (parseError: any) {
+      console.log('JSON parse failed, attempting repair...');
+      
+      if (text.startsWith('[')) {
+        const items = [];
+        const regex = /\{[^}]*\}/g;
+        let match;
+        
+        while ((match = regex.exec(text)) !== null) {
+          try {
+            const item = JSON.parse(match[0]);
+            items.push(item);
+          } catch (e) {
+            console.log('Skipping malformed item');
+          }
+        }
+        
+        if (items.length > 0) {
+          parsed = items;
+          console.log(`Recovered ${items.length} valid items`);
+        } else {
+          throw parseError;
+        }
+      } else {
+        throw parseError;
+      }
+    }
     
-    // Quick validation
     if (!isValidResponse(parsed, assessmentType)) {
       console.log(`Validation failed for ${assessmentType}, using fallback...`);
       return await getSmartFallbackResponse(assessmentType, userPrompt);
@@ -516,7 +570,7 @@ export async function generateSkillsAssessmentJSON(
     console.log(`${assessmentType} generation successful`);
     return parsed;
     
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Assessment ${assessmentType} failed:`, error.message);
     return await getSmartFallbackResponse(assessmentType, userPrompt);
   }
@@ -563,7 +617,7 @@ async function getSmartFallbackResponse(type: string, originalPrompt: string): P
     const simplifiedPrompt = simplifyOriginalPrompt(originalPrompt, type);
     
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash', // Use a single reliable model
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1000,
@@ -760,3 +814,4 @@ function getNextDifficultyLevel(current: string, experience: string): string {
   
   return progression[current as keyof typeof progression] || 'INTERMEDIATE';
 }
+``

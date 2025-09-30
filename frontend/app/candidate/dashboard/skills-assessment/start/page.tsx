@@ -35,7 +35,7 @@ interface SkillCategory {
 const AssessmentStartPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const { profileData } = useProfile();
 
   const skillId = searchParams.get('skill');
@@ -149,62 +149,30 @@ const AssessmentStartPage = () => {
     });
   };
 
-  // REAL API INTEGRATION
-  const handleStartAssessment = async (skillId: string, assessmentType: string) => {
-    setIsLoading(true);
+const handleStartAssessment = (skillId: string, assessmentType: string) => {
+    const selectedSkill = profileData?.skills?.find((skill: ProfileSkill) => skill.skill_id === skillId);
     
-    try {
-      // Find the selected skill
-      const selectedSkill = profileData?.skills?.find((skill: ProfileSkill) => skill.skill_id === skillId);
-      
-      if (!selectedSkill) {
-        toast.error('Selected skill not found');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Starting assessment:', { 
-        skillId, 
-        assessmentType, 
-        skillName: selectedSkill.skill_name,
-        proficiency: selectedSkill.proficiency 
-      });
-
-      // REAL API CALL
-      const result = await startAssessmentMutation.mutateAsync({
-        skillCategory: selectedSkill.skill_name,
-        assessmentType: assessmentType as 'QUICK_CHECK' | 'COMPREHENSIVE'
-      });
-
-      if (result.success) {
-        toast.success('Assessment started successfully!');
-        
-        // Navigate to test page with real assessment ID
-        router.push(`/candidate/dashboard/skills-assessment/test/${result.data.assessmentId}`);
-      } else {
-        throw new Error(result.message || 'Failed to start assessment');
-      }
-      
-    } catch (error: any) {
-      console.error('Failed to start assessment:', error);
-      
-      // Show specific error messages
-      if (error.message.includes('No questions available')) {
-        toast.error('No questions available for this skill. Please try another skill.');
-      } else if (error.message.includes('Assessment already in progress')) {
-        toast.error('You already have an assessment in progress.');
-      } else {
-        toast.error(error.message || 'Failed to start assessment. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
+    if (!selectedSkill) {
+      toast.error('Selected skill not found');
+      return;
     }
+
+    console.log('Starting assessment:', { 
+      skillId, 
+      assessmentType, 
+      skillName: selectedSkill.skill_name,
+      proficiency: selectedSkill.proficiency 
+    });
+
+    startAssessmentMutation.mutate({
+      skillCategory: selectedSkill.skill_name,
+      assessmentType: assessmentType as 'QUICK_CHECK' | 'COMPREHENSIVE',
+      difficulty: mapProficiencyToDifficulty(selectedSkill.proficiency)
+    });
   };
 
-  // Get transformed skills
   const availableSkills = transformSkillsForAssessment();
 
-  // If skillId is provided, filter the available skills to show that one first
   const filteredSkills = skillId 
     ? [
         ...availableSkills.filter(skill => skill.id === skillId),
@@ -258,7 +226,6 @@ const AssessmentStartPage = () => {
           <AssessmentSetup
             availableSkills={filteredSkills}
             onStartAssessment={handleStartAssessment}
-            isLoading={isLoading}
           />
         )}
 

@@ -109,7 +109,7 @@ const AssessmentHubPage = () => {
   // Loading state
   if (isLoadingHistory) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-300 rounded w-1/3 mb-4 mx-auto"></div>
@@ -130,7 +130,7 @@ const AssessmentHubPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       <div className="mx-auto space-y-8">
 
         {/* Header - ORIGINAL UI
