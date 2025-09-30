@@ -6,7 +6,7 @@ import { Upload, Camera, Check, X } from 'lucide-react';
 import { HiCheckBadge, HiExclamationTriangle } from 'react-icons/hi2';
 import { useAuth } from '@/src/context/AuthContext';
 import { useProfile } from '@/src/context/ProfileContext'; //Added profile context
-import { useUploadProfilePicture } from '@/src/lib/profile.queries';
+import { useUploadProfilePicture } from '@/src/lib/profile/profile.queries';
 import Button from '@/src/components/layout/Button';
 
 const MetaSection: React.FC = () => {

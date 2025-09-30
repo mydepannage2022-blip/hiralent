@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, User, X, Check, Plus } from 'lucide-react';
-import { useUpdateBasicInfo } from '@/src/lib/profile.queries';
+import { useUpdateBasicInfo } from '@/src/lib/profile/profile.queries';
 
 interface AboutMeProps {
   data: {

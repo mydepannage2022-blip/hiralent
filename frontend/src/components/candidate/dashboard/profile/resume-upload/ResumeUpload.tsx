@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import Button from '@/src/components/layout/Button';
 import { DropZone } from './DropZone';
 import { FileText, CheckCircle, AlertCircle, Loader, Download } from 'lucide-react';
-import { useUploadApplicationResume } from '@/src/lib/profile.queries';
+import { useUploadApplicationResume } from '@/src/lib/profile/profile.queries';
 import { useProfile } from '@/src/context/ProfileContext';
 
 interface ResumeUploadProps {

@@ -1,73 +1,72 @@
+// frontend/src/components/layout/SmartLink.tsx
+
 "use client";
 
-import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useNavigationLoading } from '../../context/NavigationLoadingContext';
-import { useEffect, useRef } from 'react';
 
 interface SmartLinkProps {
   href: string;
   children: React.ReactNode;
   className?: string;
-  prefetch?: boolean;
   onClick?: () => void;
+  replace?: boolean;
 }
 
 const SmartLink = ({ 
   href, 
   children, 
   className = "", 
-  prefetch = true,
-  onClick
+  onClick,
+  replace = false
 }: SmartLinkProps) => {
   const router = useRouter();
-  const pathname = usePathname();
   const { startNavigation, stopNavigation } = useNavigationLoading();
-  const previousPathname = useRef(pathname);
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (pathname === href) {
-      return;
-    }
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    startNavigation();
-    
+    // Execute custom onClick if provided
     if (onClick) {
       onClick();
     }
 
+    // Start loading
+    startNavigation();
+
+    try {
+      // Direct router navigation
+      if (replace) {
+        router.replace(href);
+      } else {
+        router.push(href);
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+      stopNavigation();
+    }
+
+    // Safety timeout
     setTimeout(() => {
       stopNavigation();
-    }, 10000);
+    }, 3000);
   };
 
-  useEffect(() => {
-    if (previousPathname.current !== pathname) {
-      stopNavigation();
-      previousPathname.current = pathname;
-    }
-  }, [pathname, stopNavigation]);
-
-  useEffect(() => {
-    const handleLoad = () => {
-      stopNavigation();
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('load', handleLoad);
-      return () => window.removeEventListener('load', handleLoad);
-    }
-  }, [stopNavigation]);
-
   return (
-    <Link 
-      href={href} 
-      className={className}
-      prefetch={prefetch}
+    <div 
       onClick={handleClick}
+      className={`${className} cursor-pointer`}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleClick(e as any);
+        }
+      }}
     >
       {children}
-    </Link>
+    </div>
   );
 };
 

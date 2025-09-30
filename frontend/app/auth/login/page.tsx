@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import dynamic from 'next/dynamic';
 import { motion } from "framer-motion";
-import { useLogin } from "../../../src/lib/auth.queries";
+import { useLogin } from "../../../src/lib/auth/auth.queries";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";

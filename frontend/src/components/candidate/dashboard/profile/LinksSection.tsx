@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Link, X, Check, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { useUpdateLinks, useAddLink, useDeleteLink } from '@/src/lib/profile.queries';
-import { SocialLinkData } from '@/src/lib/profile.api';
+import { useUpdateLinks, useAddLink, useDeleteLink } from '@/src/lib/profile/profile.queries';
+import { SocialLinkData } from '@/src/lib/profile/profile.api';
 import { useProfile } from '@/src/context/ProfileContext';
 
 const LinksSection: React.FC = () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useVerifyEmail, useResendVerificationEmail } from '../../../src/lib/auth.queries';
+import { useVerifyEmail, useResendVerificationEmail } from '../../../src/lib/auth/auth.queries';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useRouter } from 'next/navigation';
 

@@ -2,10 +2,10 @@ import React from 'react'
 import { CiSearch } from 'react-icons/ci';
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
-import { HiCheckBadge } from 'react-icons/hi2'; // Verified icon
-import { HiExclamationTriangle } from 'react-icons/hi2'; // Not verified icon
+import { HiCheckBadge } from 'react-icons/hi2'; 
+import { HiExclamationTriangle } from 'react-icons/hi2'; 
 import { useAuth } from '../../../../context/AuthContext';
-import { useProfile } from '../../../../context/ProfileContext'; // ✅ Added profile context
+import { useProfile } from '../../../../context/ProfileContext';
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
 
@@ -18,8 +18,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   isMobileMenuOpen = false, 
   setIsMobileMenuOpen = () => {} 
 }) => {
-  const { user } = useAuth(); // ✅ Only for user info (name, email verification)
-  const { profileData } = useProfile(); // ✅ For profile data (picture, headline)
+  const { user } = useAuth(); 
+  const { profileData } = useProfile(); 
   const router = useRouter();
   const pathname = usePathname();
 
@@ -36,7 +36,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // ✅ Updated: Get profile picture from profile context
   const getProfileImage = () => {
     if (profileData?.profile_picture_url) {
       return profileData.profile_picture_url;
@@ -44,25 +43,20 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     return "/images/candidate.jpg";
   };
 
-  // ✅ Updated: Get user headline with email fallback
   const getUserHeadlineOrEmail = () => {
-    // First try headline from profile context
     if (profileData?.headline) {
       return profileData.headline;
     }
-    // Fallback to email from auth context
     if (user?.email) {
       return user.email;
     }
     return 'Professional seeking new opportunities';
   };
 
-  // Check if user is verified (from auth context)
   const isEmailVerified = () => {
     return user?.is_email_verified || false;
   };
 
-  // Get verification icon
   const getVerificationIcon = () => {
     if (isEmailVerified()) {
       return (
@@ -81,45 +75,55 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   };
 
   // Dynamic page titles and descriptions based on pathname
-  const getPageInfo = () => {
-    switch (pathname) {
-      case '/candidate/dashboard':
-        return {
-          title: 'Dashboard',
-          description: 'Updating your information will offer you the most relevant content'
-        };
-      case '/candidate/dashboard/candidate-profile':
-        return {
-          title: 'Profile',
-          description: 'Manage and update your professional profile information'
-        };
-      case '/candidate/dashboard/messages':
-        return {
-          title: 'Messages',
-          description: 'View and manage your conversations with employers'
-        };
-      case '/candidate/dashboard/notifications':
-        return {
-          title: 'Notifications',
-          description: 'Stay updated with important alerts and updates'
-        };
-      case '/candidate/dashboard/settings':
-        return {
-          title: 'Settings',
-          description: 'Customize your account preferences and privacy settings'
-        };
-      case '/candidate/dashboard/analytics':
-        return {
-          title: 'Analytics',
-          description: 'Track your job search progress and performance metrics'
-        };
-      default:
-        return {
-          title: 'Dashboard',
-          description: 'Updating your information will offer you the most relevant content'
-        };
-    }
-  };
+const getPageInfo = () => {
+  // Handle all skills-assessment routes (static + dynamic)
+  if (pathname.startsWith('/candidate/dashboard/skills-assessment')) {
+    return {
+      title: 'Skills Assessment',
+      description: 'Access and manage your skills assessments'
+    };
+  }
+
+  // Other dashboard routes
+  switch (pathname) {
+    case '/candidate/dashboard':
+      return {
+        title: 'Dashboard',
+        description: 'Updating your information will offer you the most relevant content'
+      };
+    case '/candidate/dashboard/candidate-profile':
+      return {
+        title: 'Profile',
+        description: 'Manage and update your professional profile information'
+      };
+    case '/candidate/dashboard/messages':
+      return {
+        title: 'Messages',
+        description: 'View and manage your conversations with employers'
+      };
+    case '/candidate/dashboard/notifications':
+      return {
+        title: 'Notifications',
+        description: 'Stay updated with important alerts and updates'
+      };
+    case '/candidate/dashboard/settings':
+      return {
+        title: 'Settings',
+        description: 'Customize your account preferences and privacy settings'
+      };
+    case '/candidate/dashboard/analytics':
+      return {
+        title: 'Analytics',
+        description: 'Track your job search progress and performance metrics'
+      };
+    default:
+      return {
+        title: 'Dashboard',
+        description: 'Updating your information will offer you the most relevant content'
+      };
+  }
+};
+
 
   const { title, description } = getPageInfo();
 
