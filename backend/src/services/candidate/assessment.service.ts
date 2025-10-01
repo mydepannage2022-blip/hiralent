@@ -390,6 +390,7 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
       throw new Error('Assessment ID is required');
     }
     
+    // ==================== STEP 1: FETCH ASSESSMENT ====================
     let assessment;
     try {
       assessment = await prisma.skillAssessment.findUnique({
@@ -404,68 +405,252 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
       throw new Error('Assessment not found');
     }
     
+    // Check if already completed
     if (assessment.status === 'COMPLETED') {
-      return { 
-        success: true, 
-        data: { 
-          assessmentId: assessment.assessment_id, 
-          status: 'COMPLETED',
-          message: 'Assessment already completed'
-        } 
-      };
+      const existingSummary = await prisma.assessmentSummary.findUnique({
+        where: { assessment_id: assessmentId }
+      });
+      
+      if (existingSummary) {
+        return { 
+          success: true, 
+          data: { 
+            assessmentId: assessment.assessment_id,
+            skillCategory: assessment.skill_category,
+            assessmentType: assessment.assessment_type,
+            status: 'COMPLETED',
+            message: 'Assessment already completed',
+            
+            // Complete Summary
+            overallScore: existingSummary.overall_score,
+            skillLevel: existingSummary.skill_level,
+            passStatus: existingSummary.pass_status,
+            completedAt: assessment.completed_at,
+            
+            // Performance Breakdown
+            correctAnswers: existingSummary.correct_answers,
+            incorrectAnswers: existingSummary.incorrect_answers,
+            partialAnswers: existingSummary.partial_answers,
+            totalQuestions: existingSummary.total_questions,
+            accuracyRate: existingSummary.accuracy_rate,
+            
+            // Time Metrics
+            totalTimeSpent: existingSummary.total_time_spent,
+            avgTimePerQuestion: existingSummary.avg_time_per_question,
+            
+            // Category & Difficulty Scores
+            categoryScores: existingSummary.category_scores,
+            difficultyScores: existingSummary.difficulty_scores,
+            
+            // AI Insights
+            strengths: existingSummary.strengths,
+            weaknesses: existingSummary.weaknesses,
+            recommendations: existingSummary.recommendations,
+            nextSteps: existingSummary.next_steps,
+            aiConfidence: existingSummary.ai_confidence,
+            
+            // Achievements
+            achievements: existingSummary.achievements,
+            badgesEarned: existingSummary.badges_earned,
+            
+            nextActions: {
+              jobMatching: '/api/v1/candidates/match-jobs',
+              detailedResults: `/api/v1/candidates/assessment/${assessmentId}/results`,
+              retakeAssessment: `/api/v1/candidates/start-assessment`
+            }
+          } 
+        };
+      }
     }
     
-    const results = Array.isArray(assessment.answers) ? assessment.answers : [];
+    const questions = Array.isArray(assessment.questions)
+      ? (assessment.questions as unknown as Question[])
+      : [];
+    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
     
-    // Generate AI report with error handling
+    // ==================== STEP 2: CALCULATE METRICS ====================
+    let correctAnswers = 0;
+    let incorrectAnswers = 0;
+    let partialAnswers = 0;
+    let totalTimeSpent = 0;
+    
+    const difficultyStats: Record<string, { correct: number; total: number }> = {
+      BEGINNER: { correct: 0, total: 0 },
+      INTERMEDIATE: { correct: 0, total: 0 },
+      ADVANCED: { correct: 0, total: 0 },
+      EXPERT: { correct: 0, total: 0 }
+    };
+    
+    answers.forEach((ans: any, idx: number) => {
+      const question = questions[idx];
+      const difficulty = question?.difficulty || 'INTERMEDIATE';
+      
+      difficultyStats[difficulty].total++;
+      
+      if (ans.aiEvaluation?.isCorrect === true) {
+        correctAnswers++;
+        difficultyStats[difficulty].correct++;
+      } else if (ans.aiEvaluation?.score > 0 && ans.aiEvaluation?.score < 100) {
+        partialAnswers++;
+      } else {
+        incorrectAnswers++;
+      }
+      
+      totalTimeSpent += ans.timeTaken || 0;
+    });
+    
+    const totalQuestions = questions.length;
+    const accuracyRate = totalQuestions > 0 
+      ? Math.round((correctAnswers / totalQuestions) * 100) 
+      : 0;
+    const avgTimePerQuestion = totalQuestions > 0 
+      ? Math.round(totalTimeSpent / totalQuestions) 
+      : 0;
+    
+    // ==================== STEP 3: GENERATE AI REPORT ====================
     let report;
     try {
       report = await aiAssessment.generateReport({
         assessment,
-        results,
-        totalTime: null,
+        results: answers,
+        totalTime: totalTimeSpent,
       });
     } catch (aiError: any) {
       console.error('AI report generation error:', aiError);
       
-      // Fallback: Generate basic report
-      report = generateFallbackReport(assessment, results);
+      // Fallback: Generate smart report
+      report = generateFallbackReport(assessment, answers, questions);
       console.warn('Using fallback report due to AI service failure');
     }
     
-    let updated;
-    try {
-      updated = await prisma.skillAssessment.update({
+    const overallScore = report?.overallScore || calculateBasicScore(answers);
+    const skillLevel = report?.skillLevel || determineSkillLevel(overallScore);
+    const passStatus = overallScore >= 60 ? 'passed' : 'failed';
+    
+    // ==================== STEP 4: SAVE TO DATABASE (TRANSACTION) ====================
+    const result = await prisma.$transaction(async (tx) => {
+      // 4.1: Update SkillAssessment
+      const updatedAssessment = await tx.skillAssessment.update({
         where: { assessment_id: assessmentId },
         data: {
           status: 'COMPLETED',
           completed_at: new Date(),
-          overall_score: report?.overallScore || calculateBasicScore(results),
-          skill_level_result: report?.skillLevel || 'INTERMEDIATE',
-          strengths: report?.strengths || ['Assessment completed'],
-          weaknesses: report?.weaknesses || ['Review recommended'],
-          recommendations: report?.recommendations || ['Continue practicing'],
+          overall_score: overallScore,
+          skill_level_result: skillLevel,
+          strengths: report?.strengths || [],
+          weaknesses: report?.weaknesses || [],
+          recommendations: report?.recommendations || [],
           ai_analysis: report || {},
           confidence_score: report?.confidenceScore || 75,
         },
       });
-    } catch (dbError: any) {
-      console.error('Database error completing assessment:', dbError);
-      throw new Error('Failed to complete assessment. Please try again.');
-    }
+      
+      // 4.2: Save Individual Question Results to AssessmentResult table
+      const assessmentResults = answers.map((ans: any, idx: number) => {
+        const question = questions[idx];
+        return {
+          assessment_id: assessmentId,
+          question_id: ans.questionId || question?.questionId || `q${idx + 1}`,
+          question_text: question?.questionText || '',
+          question_type: question?.type || 'MCQ',
+          expected_answer: question?.correctAnswer || null,
+          user_answer: ans.userAnswer || '',
+          is_correct: ans.aiEvaluation?.isCorrect || false,
+          partial_score: ans.aiEvaluation?.score || 0,
+          time_taken: ans.timeTaken || 0,
+          ai_evaluation: ans.aiEvaluation || {},
+          feedback: ans.aiEvaluation?.feedback || null,
+          answered_at: ans.answeredAt ? new Date(ans.answeredAt) : new Date()
+        };
+      });
+      
+      await tx.assessmentResult.createMany({
+        data: assessmentResults,
+        skipDuplicates: true
+      });
+      
+      // 4.3: Save Summary to AssessmentSummary table
+      const achievements = generateAchievements(overallScore, correctAnswers, totalQuestions);
+      const badges = generateBadges(overallScore, skillLevel);
+      
+      const summary = await tx.assessmentSummary.create({
+        data: {
+          assessment_id: assessmentId,
+          overall_score: overallScore,
+          skill_level: skillLevel,
+          pass_status: passStatus,
+          correct_answers: correctAnswers,
+          incorrect_answers: incorrectAnswers,
+          partial_answers: partialAnswers,
+          total_questions: totalQuestions,
+          accuracy_rate: accuracyRate,
+          total_time_spent: totalTimeSpent,
+          avg_time_per_question: avgTimePerQuestion,
+          category_scores: { [assessment.skill_category]: overallScore },
+          difficulty_scores: difficultyStats,
+          strengths: report?.strengths || [],
+          weaknesses: report?.weaknesses || [],
+          recommendations: report?.recommendations || [],
+          next_steps: report?.careerSuggestions || ['Continue learning', 'Apply to jobs'],
+          ai_confidence: report?.confidenceScore || 75,
+          achievements,
+          badges_earned: badges
+        }
+      });
+      
+      return { updatedAssessment, summary };
+    });
     
+    // ==================== STEP 5: RETURN COMPLETE SUCCESS RESPONSE ====================
     return {
       success: true,
       data: {
-        assessmentId: updated.assessment_id,
-        status: updated.status,
-        overallScore: updated.overall_score,
-        skillLevel: updated.skill_level_result,
-        completedAt: updated.completed_at,
-        nextSteps: {
+        // Basic Info
+        assessmentId: result.updatedAssessment.assessment_id,
+        skillCategory: assessment.skill_category,
+        assessmentType: assessment.assessment_type,
+        difficulty: assessment.difficulty,
+        status: result.updatedAssessment.status,
+        completedAt: result.updatedAssessment.completed_at,
+        
+        // Overall Performance
+        overallScore: result.summary.overall_score,
+        skillLevel: result.summary.skill_level,
+        passStatus: result.summary.pass_status,
+        
+        // Detailed Breakdown
+        correctAnswers: result.summary.correct_answers,
+        incorrectAnswers: result.summary.incorrect_answers,
+        partialAnswers: result.summary.partial_answers,
+        totalQuestions: result.summary.total_questions,
+        accuracyRate: result.summary.accuracy_rate,
+        
+        // Time Metrics
+        totalTimeSpent: result.summary.total_time_spent,
+        avgTimePerQuestion: result.summary.avg_time_per_question,
+        
+        // Category & Difficulty Analysis
+        categoryScores: result.summary.category_scores,
+        difficultyScores: result.summary.difficulty_scores,
+        
+        // AI Insights
+        strengths: result.summary.strengths,
+        weaknesses: result.summary.weaknesses,
+        recommendations: result.summary.recommendations,
+        nextSteps: result.summary.next_steps,
+        aiConfidence: result.summary.ai_confidence,
+        
+        // Gamification
+        achievements: result.summary.achievements,
+        badgesEarned: result.summary.badges_earned,
+        
+        // Navigation
+        nextActions: {
           jobMatching: '/api/v1/candidates/match-jobs',
-          detailedResults: `/api/v1/candidates/assessment/${updated.assessment_id}/results`,
-        },
+          detailedResults: `/api/v1/candidates/assessment/${assessmentId}/results`,
+          retakeAssessment: '/api/v1/candidates/start-assessment',
+          viewHistory: '/api/v1/candidates/assessments/history'
+        }
       },
     };
     
@@ -475,70 +660,106 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
   }
 };
 
+
 export const getAssessmentResults = async (assessmentId: string): Promise<any> => {
   try {
     if (!assessmentId) {
       throw new Error('Assessment ID is required');
     }
     
-    let assessment;
+    // ==================== STEP 1: FETCH SUMMARY FROM DB ====================
+    let summary;
     try {
-      assessment = await prisma.skillAssessment.findUnique({
+      summary = await prisma.assessmentSummary.findUnique({
         where: { assessment_id: assessmentId },
+        include: {
+          assessment: true
+        }
       });
     } catch (dbError: any) {
-      console.error('Database error in getAssessmentResults:', dbError);
+      console.error('Database error fetching summary:', dbError);
       throw new Error('Database connection failed. Please try again later.');
     }
     
-    if (!assessment) {
-      throw new Error('Assessment not found');
+    if (!summary) {
+      throw new Error('Assessment results not found. Please complete the assessment first.');
     }
     
-    if (assessment.status !== 'COMPLETED') {
-      throw new Error('Assessment not completed yet. Complete the assessment first.');
+    // ==================== STEP 2: FETCH QUESTION RESULTS ====================
+    let questionResults;
+    try {
+      questionResults = await prisma.assessmentResult.findMany({
+        where: { assessment_id: assessmentId },
+        orderBy: { answered_at: 'asc' }
+      });
+    } catch (dbError: any) {
+      console.error('Database error fetching question results:', dbError);
+      questionResults = [];
     }
     
-    const questions = Array.isArray(assessment.questions)
-      ? (assessment.questions as unknown as Question[])
-      : [];
-    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
-    const aiAnalysis = assessment.ai_analysis || {};
-    
-    const questionBreakdown = answers.map((a: any, idx: number) => ({
-      questionId: a.questionId || `q${idx + 1}`,
-      questionText: questions[idx]?.questionText || '',  
-      userAnswer: a.userAnswer || '',  
-      correctAnswer: questions[idx]?.correctAnswer || '',  
-      isCorrect: a.aiEvaluation?.isCorrect || false,  
-      score: a.aiEvaluation?.score || 0,
-      difficulty: questions[idx]?.difficulty || 'BEGINNER',
-      timeTaken: a.timeTaken,
-      feedback: a.aiEvaluation?.feedback || '',
-      category: assessment.skill_category  
+    // ==================== STEP 3: FORMAT RESPONSE ====================
+    const questions = questionResults.map(q => ({
+      questionId: q.question_id,
+      questionText: q.question_text,
+      questionType: q.question_type,
+      userAnswer: q.user_answer,
+      correctAnswer: q.expected_answer || '',
+      isCorrect: q.is_correct || false,
+      score: q.partial_score || 0,
+      difficulty: summary.assessment.difficulty || 'INTERMEDIATE',
+      timeTaken: q.time_taken,
+      feedback: q.feedback || '',
+      category: summary.assessment.skill_category
     }));
-    
-    const totalQuestions = questions.length;
-    const correctAnswers = answers.filter((a: any) => a.aiEvaluation?.isCorrect).length;
-    const totalTimeSpent = answers.reduce((sum: number, a: any) => sum + (a.timeTaken || 0), 0);
     
     return {
       success: true,
       data: {
-        assessmentId: assessment.assessment_id,
-        skillCategory: assessment.skill_category,
-        overallScore: assessment.overall_score,
-        skillLevel: assessment.skill_level_result,
-        completedAt: assessment.completed_at?.toISOString() || new Date().toISOString(),  
-        totalQuestions,  
-        correctAnswers,  
-        timeSpent: totalTimeSpent,  
-        strengths: assessment.strengths || [],
-        weaknesses: assessment.weaknesses || [],
-        recommendations: assessment.recommendations || [],
-        aiAnalysis,
-        questions: questionBreakdown,
-      },
+        // Basic Info
+        assessmentId: summary.assessment_id,
+        skillName: summary.assessment.skill_category,
+        skillCategory: summary.assessment.skill_category,
+        assessmentType: summary.assessment.assessment_type,
+        difficulty: summary.assessment.difficulty,
+        completedAt: summary.assessment.completed_at,
+        
+        // Overall Performance
+        overallScore: summary.overall_score,
+        skillLevel: summary.skill_level,
+        passStatus: summary.pass_status,
+        
+        // Performance Breakdown
+        totalQuestions: summary.total_questions,
+        correctAnswers: summary.correct_answers,
+        incorrectAnswers: summary.incorrect_answers,
+        partialAnswers: summary.partial_answers,
+        accuracyRate: summary.accuracy_rate,
+        
+        // Time Metrics
+        timeSpent: summary.total_time_spent,
+        avgTimePerQuestion: summary.avg_time_per_question,
+        
+        // Category & Difficulty Analysis
+        categoryScores: summary.category_scores,
+        difficultyScores: summary.difficulty_scores,
+        difficultyStats: summary.difficulty_scores,
+        
+        // AI Insights
+        strengths: summary.strengths,
+        weaknesses: summary.weaknesses,
+        recommendations: summary.recommendations,
+        nextSteps: summary.next_steps,
+        aiConfidence: summary.ai_confidence,
+        aiAnalysis: summary.assessment.ai_analysis || {},
+        
+        // Achievements
+        achievements: summary.achievements,
+        badgesEarned: summary.badges_earned,
+        
+        // Question Breakdown
+        questions: questions,
+        questionResults: questions
+      }
     };
     
   } catch (error: any) {
@@ -557,6 +778,9 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
     try {
       assessments = await prisma.skillAssessment.findMany({
         where: { candidate_id: candidateId, status: 'COMPLETED' },
+        include: {
+          summary: true // This should work after schema fix
+        },
         orderBy: { completed_at: 'desc' },
       });
     } catch (dbError: any) {
@@ -565,59 +789,72 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
     }
     
     const history = assessments.map((a, idx) => {
+      // Use summary if available, otherwise fallback to old data
+      const overallScore = a.summary?.overall_score || a.overall_score || 0;
+      const skillLevel = a.summary?.skill_level || a.skill_level_result || 'BEGINNER';
+      const correctAnswers = a.summary?.correct_answers || 0;
+      const totalQuestions = a.summary?.total_questions || a.total_questions || 0;
+      const timeSpent = a.summary?.total_time_spent || 0;
+      
       let improvement = undefined;
       if (idx < assessments.length - 1) {
-        const diff = (a.overall_score || 0) - (assessments[idx + 1].overall_score || 0);
-        improvement = diff > 0 ? `+${diff.toFixed(1)} points from last attempt` : `${diff.toFixed(1)} points from last attempt`;
+        const prevScore = assessments[idx + 1].summary?.overall_score || assessments[idx + 1].overall_score || 0;
+        const diff = overallScore - prevScore;
+        improvement = diff > 0 
+          ? `+${diff.toFixed(1)} points from last attempt` 
+          : `${diff.toFixed(1)} points from last attempt`;
       }
-      
-      const answers = Array.isArray(a.answers) ? a.answers : [];
-      const totalTimeSpent = answers.reduce((sum: number, ans: any) => sum + (ans.timeTaken || 0), 0);
-      
-      const totalQuestions = a.total_questions || 0;
-      const correctAnswers = answers.filter((ans: any) => ans.aiEvaluation?.isCorrect).length;
       
       return {
         assessmentId: a.assessment_id,
         skillCategory: a.skill_category,
-        overallScore: a.overall_score,
-        skillLevel: a.skill_level_result,
+        overallScore: overallScore,
+        skillLevel: skillLevel,
         completedAt: a.completed_at,
         improvement,
         
-        totalQuestions,
-        correctAnswers,
+        totalQuestions: totalQuestions,
+        correctAnswers: correctAnswers,
         incorrectAnswers: totalQuestions - correctAnswers,
-        timeSpent: totalTimeSpent, // seconds
+        timeSpent: timeSpent,
+        accuracyRate: a.summary?.accuracy_rate || 0,
+        
         difficulty: a.difficulty,
         provider: a.provider,
         
-        strengths: a.strengths || [],
-        weaknesses: a.weaknesses || [],
-        recommendations: a.recommendations || [],
-        confidenceScore: a.confidence_score,
+        strengths: a.summary?.strengths || a.strengths || [],
+        weaknesses: a.summary?.weaknesses || a.weaknesses || [],
+        recommendations: a.summary?.recommendations || a.recommendations || [],
+        achievements: a.summary?.achievements || [],
+        
+        confidenceScore: a.summary?.ai_confidence || a.confidence_score,
       };
     });
     
     const skillProgress: Record<string, any> = {};
     for (const a of assessments) {
       const cat = a.skill_category;
+      const score = a.summary?.overall_score || a.overall_score || 0;
+      const level = a.summary?.skill_level || a.skill_level_result || 'BEGINNER';
+      
       if (!skillProgress[cat]) {
         skillProgress[cat] = {
-          currentLevel: a.skill_level_result,
+          currentLevel: level,
           trend: 'STABLE',
-          lastScore: a.overall_score,
+          lastScore: score,
           previousScore: undefined,
           totalAttempts: 1,
-          bestScore: a.overall_score,
-          averageScore: a.overall_score,
+          bestScore: score,
+          averageScore: score,
         };
       } else {
         skillProgress[cat].totalAttempts++;
-        skillProgress[cat].previousScore = a.overall_score;
-        skillProgress[cat].trend = (a.overall_score || 0) > (skillProgress[cat].lastScore || 0) ? 'IMPROVING' : 'DECLINING';
-        skillProgress[cat].bestScore = Math.max(skillProgress[cat].bestScore, a.overall_score || 0);
-        skillProgress[cat].averageScore = (skillProgress[cat].averageScore * (skillProgress[cat].totalAttempts - 1) + (a.overall_score || 0)) / skillProgress[cat].totalAttempts;
+        skillProgress[cat].previousScore = score;
+        skillProgress[cat].trend = score > skillProgress[cat].lastScore ? 'IMPROVING' : 'DECLINING';
+        skillProgress[cat].bestScore = Math.max(skillProgress[cat].bestScore, score);
+        skillProgress[cat].averageScore = 
+          (skillProgress[cat].averageScore * (skillProgress[cat].totalAttempts - 1) + score) 
+          / skillProgress[cat].totalAttempts;
       }
     }
     
@@ -630,7 +867,7 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
           totalAssessments: assessments.length,
           uniqueSkills: Object.keys(skillProgress).length,
           averageScore: assessments.length > 0 
-            ? assessments.reduce((sum, a) => sum + (a.overall_score || 0), 0) / assessments.length 
+            ? assessments.reduce((sum, a) => sum + (a.summary?.overall_score || a.overall_score || 0), 0) / assessments.length 
             : 0,
           totalTimeSpent: history.reduce((sum, h) => sum + h.timeSpent, 0),
         }
@@ -642,11 +879,6 @@ export const getAssessmentHistory = async (candidateId: string): Promise<any> =>
     throw new Error(error.message || 'Failed to get assessment history');
   }
 };
-
-
-
-
-
 
 
 export const getRecommendations = async (candidateId: string): Promise<any> => {
@@ -727,7 +959,214 @@ export const getRecommendations = async (candidateId: string): Promise<any> => {
   }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ==================== FALLBACK FUNCTIONS ====================
+function calculateBasicScore(answers: any[]): number {
+  if (answers.length === 0) return 0;
+  const scores = answers.map((a: any) => a.aiEvaluation?.score || 0);
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / answers.length);
+}
+
+function determineSkillLevel(score: number): string {
+  if (score >= 90) return 'EXPERT';
+  if (score >= 75) return 'ADVANCED';
+  if (score >= 60) return 'INTERMEDIATE';
+  return 'BEGINNER';
+}
+
+function generateAchievements(score: number, correct: number, total: number): string[] {
+  const achievements: string[] = [];
+  
+  if (score >= 90) achievements.push('Outstanding Performance');
+  if (score >= 80) achievements.push('High Achiever');
+  if (score >= 70) achievements.push('Strong Performer');
+  if (correct === total) achievements.push('Perfect Score');
+  if (score >= 75) achievements.push('Above Average');
+  
+  return achievements;
+}
+
+function generateBadges(score: number, skillLevel: string): string[] {
+  const badges: string[] = [];
+  
+  if (score >= 90) badges.push('gold_medal');
+  else if (score >= 80) badges.push('silver_medal');
+  else if (score >= 70) badges.push('bronze_medal');
+  
+  if (skillLevel === 'EXPERT') badges.push('expert_badge');
+  if (skillLevel === 'ADVANCED') badges.push('advanced_badge');
+  
+  return badges;
+}
+
+function generateFallbackReport(assessment: any, answers: any[], questions: Question[]): any {
+  const score = calculateBasicScore(answers);
+  const level = determineSkillLevel(score);
+  const skillCategory = assessment.skill_category;
+  
+  // ==================== ANALYZE ANSWERS ====================
+  const correctByDifficulty: Record<string, number> = {
+    BEGINNER: 0,
+    INTERMEDIATE: 0,
+    ADVANCED: 0,
+    EXPERT: 0
+  };
+  
+  const totalByDifficulty: Record<string, number> = {
+    BEGINNER: 0,
+    INTERMEDIATE: 0,
+    ADVANCED: 0,
+    EXPERT: 0
+  };
+  
+  answers.forEach((ans: any, idx: number) => {
+    const question = questions[idx];
+    const difficulty = question?.difficulty || 'INTERMEDIATE';
+    
+    totalByDifficulty[difficulty]++;
+    if (ans.aiEvaluation?.isCorrect) {
+      correctByDifficulty[difficulty]++;
+    }
+  });
+  
+  // ==================== GENERATE REAL STRENGTHS ====================
+  const strengths: string[] = [];
+  
+  if (correctByDifficulty.BEGINNER === totalByDifficulty.BEGINNER && totalByDifficulty.BEGINNER > 0) {
+    strengths.push(`Strong foundation in ${skillCategory} fundamentals`);
+  }
+  
+  if (correctByDifficulty.INTERMEDIATE > 0) {
+    const percentage = Math.round((correctByDifficulty.INTERMEDIATE / totalByDifficulty.INTERMEDIATE) * 100);
+    if (percentage >= 70) {
+      strengths.push(`Good understanding of intermediate ${skillCategory} concepts (${percentage}% accuracy)`);
+    }
+  }
+  
+  if (correctByDifficulty.ADVANCED > 0) {
+    strengths.push(`Capable of handling advanced ${skillCategory} challenges`);
+  }
+  
+  if (score >= 80) {
+    strengths.push(`Consistently accurate across all difficulty levels`);
+  }
+  
+  if (strengths.length === 0) {
+    strengths.push(`Completed ${skillCategory} assessment`);
+  }
+  
+  // ==================== GENERATE REAL WEAKNESSES ====================
+  const weaknesses: string[] = [];
+  
+  if (totalByDifficulty.BEGINNER > 0 && correctByDifficulty.BEGINNER < totalByDifficulty.BEGINNER) {
+    const missed = totalByDifficulty.BEGINNER - correctByDifficulty.BEGINNER;
+    weaknesses.push(`Review ${skillCategory} basics (missed ${missed} fundamental question${missed > 1 ? 's' : ''})`);
+  }
+  
+  if (totalByDifficulty.INTERMEDIATE > 0) {
+    const percentage = Math.round((correctByDifficulty.INTERMEDIATE / totalByDifficulty.INTERMEDIATE) * 100);
+    if (percentage < 60) {
+      weaknesses.push(`Needs improvement in intermediate ${skillCategory} areas (${percentage}% accuracy)`);
+    }
+  }
+  
+  if (totalByDifficulty.ADVANCED > 0 && correctByDifficulty.ADVANCED === 0) {
+    weaknesses.push(`Advanced ${skillCategory} topics require more practice`);
+  }
+  
+  if (score < 60) {
+    weaknesses.push(`Overall accuracy below proficiency threshold`);
+  }
+  
+  if (weaknesses.length === 0) {
+    weaknesses.push(`Minor improvements possible in advanced ${skillCategory} topics`);
+  }
+  
+  // ==================== GENERATE REAL RECOMMENDATIONS ====================
+  const recommendations: string[] = [];
+  
+  if (correctByDifficulty.BEGINNER < totalByDifficulty.BEGINNER) {
+    recommendations.push(`Focus on ${skillCategory} fundamentals: Review core concepts and principles`);
+  }
+  
+  if (score < 70) {
+    recommendations.push(`Practice more ${skillCategory} exercises and real-world scenarios`);
+    recommendations.push(`Take a structured ${skillCategory} course to fill knowledge gaps`);
+  }
+  
+  if (totalByDifficulty.ADVANCED > 0 && correctByDifficulty.ADVANCED < totalByDifficulty.ADVANCED) {
+    recommendations.push(`Study advanced ${skillCategory} techniques and best practices`);
+  }
+  
+  if (score >= 70 && score < 85) {
+    recommendations.push(`Apply ${skillCategory} skills in practical projects to strengthen expertise`);
+  }
+  
+  if (score >= 85) {
+    recommendations.push(`Consider mentoring others or creating content about ${skillCategory}`);
+    recommendations.push(`Explore advanced specializations within ${skillCategory}`);
+  }
+  
+  // ==================== GENERATE REAL CAREER SUGGESTIONS ====================
+  const careerSuggestions: string[] = [];
+  
+  if (level === 'EXPERT' || score >= 90) {
+    careerSuggestions.push(`Apply for senior-level positions requiring ${skillCategory} expertise`);
+    careerSuggestions.push(`Consider leadership or specialist roles in ${skillCategory}`);
+  } else if (level === 'ADVANCED' || score >= 75) {
+    careerSuggestions.push(`Target mid-level professional roles in ${skillCategory}`);
+    careerSuggestions.push(`Continue building portfolio showcasing ${skillCategory} skills`);
+  } else if (level === 'INTERMEDIATE' || score >= 60) {
+    careerSuggestions.push(`Seek entry to junior-level positions in ${skillCategory}`);
+    careerSuggestions.push(`Build 2-3 strong portfolio pieces demonstrating ${skillCategory} competency`);
+  } else {
+    careerSuggestions.push(`Complete a comprehensive ${skillCategory} training program`);
+    careerSuggestions.push(`Practice regularly and retake assessment after 2-3 months of study`);
+  }
+  
+  return {
+    overallScore: score,
+    skillLevel: level,
+    strengths,
+    weaknesses,
+    recommendations,
+    careerSuggestions,
+    confidenceScore: 70,
+    marketReadiness: level === 'EXPERT' ? 'Job Ready' : level === 'ADVANCED' ? 'Nearly Ready' : 'Keep Learning'
+  };
+}
+
+
+
+
 
 const getFallbackQuestions = (skillCategory: string, difficulty: string, count: number): Question[] => {
   // Basic fallback questions when AI service fails
@@ -764,22 +1203,3 @@ const getFallbackEvaluation = (question: Question, answer: string): any => {
   };
 };
 
-const generateFallbackReport = (assessment: any, results: any[]): any => {
-  const avgScore = results.length > 0 
-    ? results.reduce((sum, r) => sum + (r.aiEvaluation?.score || 0), 0) / results.length 
-    : 70;
-    
-  return {
-    overallScore: avgScore,
-    skillLevel: avgScore >= 80 ? 'ADVANCED' : avgScore >= 60 ? 'INTERMEDIATE' : 'BEGINNER',
-    strengths: ['Assessment completed', 'Consistent performance'],
-    weaknesses: ['Detailed analysis pending'],
-    recommendations: ['Continue practicing', 'Review fundamentals'],
-    confidenceScore: 75
-  };
-};
-
-const calculateBasicScore = (results: any[]): number => {
-  if (results.length === 0) return 0;
-  return results.reduce((sum, r) => sum + (r.aiEvaluation?.score || 0), 0) / results.length;
-};

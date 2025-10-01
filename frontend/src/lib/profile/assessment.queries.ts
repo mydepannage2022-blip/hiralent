@@ -232,22 +232,24 @@
       });
     };
 
-    export const useAssessmentResults = (assessmentId: string, enabled: boolean = true) => {
-      return useQuery({
-        queryKey: ['assessment-results', assessmentId],
-        queryFn: () => getAssessmentResults(assessmentId),
-        enabled: enabled && !!assessmentId,
-        staleTime: 10 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        retry: (failureCount, error: any) => {
-          if (error?.message?.includes('not completed')) {
-            return false;
-          }
-          return failureCount < 2;
-        },
-        retryDelay: 2000,
-      });
-    };
+export const useAssessmentResults = (assessmentId: string, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ['assessment-results', assessmentId],
+    queryFn: () => getAssessmentResults(assessmentId),
+    enabled: enabled && !!assessmentId,
+    staleTime: 0, // ✅ Always consider stale
+    gcTime: 5 * 60 * 1000, // Keep in garbage collection for 5 mins
+    refetchOnMount: 'always', // ✅ Always refetch when component mounts
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      if (error?.message?.includes('not completed')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+    retryDelay: 2000,
+  });
+};
 
     // ==================== HISTORY & RECOMMENDATIONS HOOKS - FINAL FIX ====================
 

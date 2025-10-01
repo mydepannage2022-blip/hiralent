@@ -1,7 +1,6 @@
 "use client"
 import dynamic from 'next/dynamic';
 
-// Lazy load all heavy components
 const DashboardJobStatistics = dynamic(() => 
   import("@/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>

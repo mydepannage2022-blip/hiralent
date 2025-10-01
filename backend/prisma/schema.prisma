@@ -310,6 +310,7 @@ model SkillAssessment {
   candidate            User             @relation(fields: [candidate_id], references: [user_id])
   job                  CompanyJob?      @relation(fields: [job_id], references: [job_id]) // Changed relation
   results              AssessmentResult[]
+  summary            AssessmentSummary?
 
   @@map("skill_assessments")
 }
@@ -732,6 +733,51 @@ model AssessmentResult {
 
   @@map("assessment_results")
 }
+
+
+model AssessmentSummary {
+  summary_id          String          @id @default(uuid())
+  assessment_id       String          @unique
+  
+  // Overall Metrics
+  overall_score       Float
+  skill_level         String          // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  pass_status         String          // passed, failed, needs_review
+  
+  // Performance Breakdown
+  correct_answers     Int
+  incorrect_answers   Int
+  partial_answers     Int             @default(0)
+  total_questions     Int
+  accuracy_rate       Float           // percentage
+  
+  // Time Metrics
+  total_time_spent    Int             // seconds
+  avg_time_per_question Float         // seconds
+  
+  // Category-wise Performance (JSON)
+  category_scores     Json?           // { "React Basics": 85, "Hooks": 70 }
+  difficulty_scores   Json            // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
+  
+  // AI Insights
+  strengths           String[]
+  weaknesses          String[]
+  recommendations     String[]
+  next_steps          String[]
+  ai_confidence       Float
+  
+  // Achievements (Optional)
+  achievements        String[]        @default([])
+  badges_earned       String[]        @default([])
+  
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  
+  assessment          SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
+  @@map("assessment_summaries")
+}
+
 
 model QuestionBank {
   question_id      String         @id @default(uuid())
