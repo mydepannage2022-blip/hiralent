@@ -118,76 +118,90 @@
       });
     };
 
-  export const useSubmitAnswer = () => {
-    const router = useRouter(); 
-    const queryClient = useQueryClient();
-    const { updateAssessmentProgress, assessmentState, setAssessmentState } = useProfile();
+export const useSubmitAnswer = () => {
+  const router = useRouter(); 
+  const queryClient = useQueryClient();
+  const { updateAssessmentProgress, assessmentState, setAssessmentState } = useProfile();
 
-    return useMutation({
-      mutationFn: ({ assessmentId, answerData }: { 
-        assessmentId: string; 
-        answerData: SubmitAnswerRequest 
-      }) => submitAnswer(assessmentId, answerData),
-      
-      onSuccess: (data, variables) => {
-        if (!data.success) {
-          toast.error(data.message || 'Failed to submit answer');
-          return;
-        }
-
-        const currentTime = assessmentState.currentAssessment?.timeElapsed || 0;
-        
-        updateAssessmentProgress({
-          currentQuestionIndex: data.data.currentIndex + 1,
-          timeElapsed: currentTime + variables.answerData.timeTaken
-        });
-
-  if (data.data.isLastQuestion || !data.data.nextQuestion) {
-    setAssessmentState({ currentQuestion: null });
+  return useMutation({
+    mutationFn: ({ assessmentId, answerData }: { 
+      assessmentId: string; 
+      answerData: SubmitAnswerRequest 
+    }) => submitAnswer(assessmentId, answerData),
     
-    toast.success('Assessment completed! Loading results...', {
-      duration: 2000
-    });
-    
-    setTimeout(() => {
-      router.push(`/candidate/dashboard/skills-assessment/results/${variables.assessmentId}`);
-    }, 1000);
-    
-  } else if (data.data.nextQuestion) {
-    setAssessmentState({
-      currentQuestion: {
-        questionId: data.data.nextQuestion.questionId,
-        questionText: data.data.nextQuestion.questionText,
-        type: data.data.nextQuestion.type as 'MCQ' | 'CODING' | 'ESSAY' | 'TRUE_FALSE' | 'SCENARIO' | 'SHORT_ANSWER',
-        options: transformOptions(data.data.nextQuestion.options),
-        timeLimit: data.data.nextQuestion.timeLimit,
-        difficulty: 'INTERMEDIATE' as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT',
-        category: assessmentState.currentAssessment?.skillCategory || ''
+    onSuccess: async (data, variables) => {  // ← async add karo
+      if (!data.success) {
+        toast.error(data.message || 'Failed to submit answer');
+        return;
       }
-    });
-  }
 
-        if (data.data.feedback) {
-          const feedbackType = data.data.isCorrect ? 'success' : 'error';
-          toast[feedbackType](`${data.data.score}% - ${data.data.feedback}`, {
-            duration: 2000
-          });
-        }
-      },
-          
-      onError: (error: any) => {
-        console.error('Submit answer failed:', error);
+      const currentTime = assessmentState.currentAssessment?.timeElapsed || 0;
+      
+      updateAssessmentProgress({
+        currentQuestionIndex: data.data.currentIndex + 1,
+        timeElapsed: currentTime + variables.answerData.timeTaken
+      });
+
+      if (data.data.isLastQuestion || !data.data.nextQuestion) {
+        setAssessmentState({ currentQuestion: null });
         
-        if (error.message?.includes('Assessment complete')) {
-          return;
-        } else if (error.message?.includes('Time limit exceeded')) {
-          toast.error('Time limit exceeded for this question');
-        } else {
-          toast.error(error.message || 'Failed to submit answer');
+        toast.success('Completing assessment...', {
+          duration: 2000
+        });
+        
+        try {
+          // ✅ CRITICAL: Complete assessment first
+          await completeAssessment(variables.assessmentId);
+          
+          // Invalidate queries
+          queryClient.invalidateQueries({ queryKey: ['assessment-history'] });
+          queryClient.invalidateQueries({ queryKey: ['profile-completeness'] });
+          
+          // Then redirect
+          setTimeout(() => {
+            router.push(`/candidate/dashboard/skills-assessment/results/${variables.assessmentId}`);
+          }, 500);
+          
+        } catch (error: any) {
+          console.error('Failed to complete assessment:', error);
+          toast.error('Failed to save results. Please try again.');
         }
-      },
-    });
-  };
+        
+      } else if (data.data.nextQuestion) {
+        setAssessmentState({
+          currentQuestion: {
+            questionId: data.data.nextQuestion.questionId,
+            questionText: data.data.nextQuestion.questionText,
+            type: data.data.nextQuestion.type as 'MCQ' | 'CODING' | 'ESSAY' | 'TRUE_FALSE' | 'SCENARIO' | 'SHORT_ANSWER',
+            options: transformOptions(data.data.nextQuestion.options),
+            timeLimit: data.data.nextQuestion.timeLimit,
+            difficulty: 'INTERMEDIATE' as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT',
+            category: assessmentState.currentAssessment?.skillCategory || ''
+          }
+        });
+      }
+
+      if (data.data.feedback) {
+        const feedbackType = data.data.isCorrect ? 'success' : 'error';
+        toast[feedbackType](`${data.data.score}% - ${data.data.feedback}`, {
+          duration: 2000
+        });
+      }
+    },
+        
+    onError: (error: any) => {
+      console.error('Submit answer failed:', error);
+      
+      if (error.message?.includes('Assessment complete')) {
+        return;
+      } else if (error.message?.includes('Time limit exceeded')) {
+        toast.error('Time limit exceeded for this question');
+      } else {
+        toast.error(error.message || 'Failed to submit answer');
+      }
+    },
+  });
+};
 
     export const useCompleteAssessment = () => {
       const router = useRouter();
