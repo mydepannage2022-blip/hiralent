@@ -129,7 +129,7 @@ export const useSubmitAnswer = () => {
       answerData: SubmitAnswerRequest 
     }) => submitAnswer(assessmentId, answerData),
     
-    onSuccess: async (data, variables) => {  // ← async add karo
+    onSuccess: (data, variables) => {
       if (!data.success) {
         toast.error(data.message || 'Failed to submit answer');
         return;
@@ -145,27 +145,19 @@ export const useSubmitAnswer = () => {
       if (data.data.isLastQuestion || !data.data.nextQuestion) {
         setAssessmentState({ currentQuestion: null });
         
-        toast.success('Completing assessment...', {
-          duration: 2000
+        // ✅ Show processing message
+        toast.success('Assessment completed! Processing results...', {
+          duration: 3000
         });
         
-        try {
-          // ✅ CRITICAL: Complete assessment first
-          await completeAssessment(variables.assessmentId);
-          
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: ['assessment-history'] });
-          queryClient.invalidateQueries({ queryKey: ['profile-completeness'] });
-          
-          // Then redirect
-          setTimeout(() => {
-            router.push(`/candidate/dashboard/skills-assessment/results/${variables.assessmentId}`);
-          }, 500);
-          
-        } catch (error: any) {
-          console.error('Failed to complete assessment:', error);
-          toast.error('Failed to save results. Please try again.');
-        }
+        // Invalidate queries
+        queryClient.invalidateQueries({ queryKey: ['assessment-history'] });
+        queryClient.invalidateQueries({ queryKey: ['profile-completeness'] });
+        
+        // ✅ REDIRECT TO COMPLETE PAGE (NOT RESULTS)
+        setTimeout(() => {
+          router.push(`/candidate/dashboard/skills-assessment/complete/${variables.assessmentId}`);
+        }, 1500);
         
       } else if (data.data.nextQuestion) {
         setAssessmentState({
@@ -202,7 +194,6 @@ export const useSubmitAnswer = () => {
     },
   });
 };
-
     export const useCompleteAssessment = () => {
       const router = useRouter();
       const { clearAssessmentState } = useProfile();
@@ -247,13 +238,13 @@ export const useSubmitAnswer = () => {
     };
 
 export const useAssessmentResults = (assessmentId: string, enabled: boolean = true) => {
+  const [isReady, setIsReady] = useState(false);
   return useQuery({
     queryKey: ['assessment-results', assessmentId],
     queryFn: () => getAssessmentResults(assessmentId),
     enabled: enabled && !!assessmentId,
-    staleTime: 0, // ✅ Always consider stale
-    gcTime: 5 * 60 * 1000, // Keep in garbage collection for 5 mins
-    refetchOnMount: 'always', // ✅ Always refetch when component mounts
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     retry: (failureCount, error: any) => {
       if (error?.message?.includes('not completed')) {

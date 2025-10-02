@@ -164,7 +164,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               {getQuestionIcon()}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-[#222]">
+              <h2 className="text-sm font-semibold text-[#222]">
                 Question {currentQuestionIndex + 1} of {totalQuestions}
               </h2>
               <div className="flex items-center gap-2 text-sm text-[#757575]">
@@ -188,7 +188,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           {/* Progress indicator */}
           <div className="text-right">
             <div className="text-sm text-[#757575] mb-1">Progress</div>
-            <div className="text-lg font-semibold text-[#005DDC]">
+            <div className="text-sm font-semibold text-[#005DDC]">
               {Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100)}%
             </div>
           </div>
@@ -199,7 +199,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
         {/* Question Text */}
         <div className="mb-6">
-          <p className="text-lg text-[#222] leading-relaxed">
+          <p className="text-sm text-[#222] leading-relaxed">
             {question.questionText}
           </p>
         </div>
@@ -255,7 +255,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                             <CheckCircle className="h-3 w-3 text-white" />
                           )}
                         </div>
-                        <span className="text-[#222] font-medium">
+                        <span className="text-[#222] font-normal text-sm">
                           {String.fromCharCode(65 + index)}. {option.text}
                         </span>
                       </div>
@@ -375,7 +375,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                           <CheckCircle className="h-3 w-3 text-white" />
                         )}
                       </div>
-                      <span className="text-[#222] font-medium text-lg">
+                      <span className="text-[#222] font-medium text-sm">
                         {option}
                       </span>
                     </div>

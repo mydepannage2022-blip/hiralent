@@ -34,7 +34,6 @@ const AssessmentTestPage = () => {
   const submitAnswerMutation = useSubmitAnswer();
   const completeAssessmentMutation = useCompleteAssessment();
 
-  // Redirect if no assessment ID
   useEffect(() => {
     if (!assessmentId) {
       toast.error('Assessment ID not found');
@@ -42,7 +41,6 @@ const AssessmentTestPage = () => {
     }
   }, [assessmentId, router]);
 
-  // ✅ Update UI when question changes from context
   useEffect(() => {
     if (currentQuestion) {
       setSelectedAnswer('');
@@ -51,7 +49,6 @@ const AssessmentTestPage = () => {
     }
   }, [currentQuestion?.questionId]);
 
-  // ✅ Handle assessment completion when no question available
   useEffect(() => {
     if (!currentQuestion && assessmentState.currentAssessment && !isSubmitted) {
       const timer = setTimeout(() => {
@@ -80,7 +77,6 @@ const AssessmentTestPage = () => {
     }
   };
 
-  // Handle answer submission
   const handleSubmitAnswer = () => {
     if (!selectedAnswer || isSubmitted || !currentQuestion) return;
 
@@ -97,7 +93,6 @@ const AssessmentTestPage = () => {
     });
   };
 
-  // Handle time up
   const handleTimeUp = () => {
     if (!isSubmitted && currentQuestion) {
       toast('Time expired! Auto-submitting answer...', {
@@ -119,7 +114,6 @@ const AssessmentTestPage = () => {
     }
   };
 
-  // Prevent page refresh during assessment
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -130,7 +124,6 @@ const AssessmentTestPage = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  // Handle browser back button
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       e.preventDefault();
@@ -151,7 +144,6 @@ const AssessmentTestPage = () => {
     };
   }, [router]);
 
-  // LOADING STATE (Same UI)
   if (!currentQuestion) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -164,7 +156,6 @@ const AssessmentTestPage = () => {
     );
   }
 
-  // Add this before QuestionCard in test page
 console.log('Current Question Options:', currentQuestion?.options);
   const totalQuestions = assessmentState.currentAssessment?.totalQuestions || 25;
   const currentQuestionIndex = assessmentState.currentAssessment?.currentQuestionIndex || 0;
@@ -179,23 +170,15 @@ console.log('Current Question Options:', currentQuestion?.options);
         position="top-right"
       />
 
-      {/* Header with Timer and Progress */}
-      <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-[#222]">
-                Assessment in Progress
-              </h1>
-              <span className="text-sm text-[#757575]">
-                Question {currentQuestionIndex + 1} of {totalQuestions}
-              </span>
-              {violations > 0 && (
-                <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-md">
-                  {violations} violation{violations > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
+      <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-40 rounded-md">
+        <div className="p-4">
+          <div className="w-full flex items-center justify-between gap-4">
+            <ProgressBar
+              currentQuestion={currentQuestionIndex + 1}
+              totalQuestions={totalQuestions}
+              variant="simple"
+              className="w-3/4 bg-transparent border-0 p-0"
+            />
 
             <QuestionTimer
               totalTime={currentQuestion.timeLimit}
@@ -204,20 +187,10 @@ console.log('Current Question Options:', currentQuestion?.options);
               size="small"
             />
           </div>
-
-          <div className="mt-4">
-            <ProgressBar
-              currentQuestion={currentQuestionIndex + 1}
-              totalQuestions={totalQuestions}
-              variant="simple"
-              className="bg-transparent border-0 p-0"
-            />
-          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto py-6 px-4">
+      <div className="mt-8">
         <motion.div
           key={currentQuestion.questionId}
           initial={{ opacity: 0, x: 20 }}
@@ -261,7 +234,6 @@ console.log('Current Question Options:', currentQuestion?.options);
         </div>
       </div>
 
-      {/* Loading Overlay */}
       {(submitAnswerMutation.isPending || completeAssessmentMutation.isPending) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 text-center">

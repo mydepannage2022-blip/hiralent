@@ -1308,6 +1308,7 @@ enum QuestionType {
   ESSAY
   TRUE_FALSE
   SCENARIO
+  SHORT_ANSWER
 }
 // Company Verification Process
 model CompanyVerification {

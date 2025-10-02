@@ -1,8 +1,6 @@
-// frontend/app/candidate/dashboard/skills-assessment/start/page.tsx
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import AssessmentSetup from '@/src/components/candidate/dashboard/skills-assessment/AssessmentSetup';
@@ -35,15 +33,13 @@ interface SkillCategory {
 const AssessmentStartPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // const [isLoading, setIsLoading] = useState(false);
   const { profileData } = useProfile();
-
+  
   const skillId = searchParams.get('skill');
   
-  // REAL API HOOK
   const startAssessmentMutation = useStartAssessment();
 
-  // Helper functions for skill transformation
+  // Helper functions
   const getQuestionCountByProficiency = (proficiency: string, category: string): number => {
     const baseCount = {
       'beginner': 12,
@@ -116,7 +112,6 @@ const AssessmentStartPage = () => {
     return `${baseDesc} focusing on ${levelDesc}${experience}`;
   };
 
-  // Transform profile skills to assessment format
   const transformSkillsForAssessment = (): SkillCategory[] => {
     if (!profileData?.skills || !Array.isArray(profileData.skills)) {
       return [];
@@ -149,7 +144,7 @@ const AssessmentStartPage = () => {
     });
   };
 
-const handleStartAssessment = (skillId: string, assessmentType: string) => {
+  const handleStartAssessment = (skillId: string, assessmentType: string) => {
     const selectedSkill = profileData?.skills?.find((skill: ProfileSkill) => skill.skill_id === skillId);
     
     if (!selectedSkill) {
@@ -162,6 +157,11 @@ const handleStartAssessment = (skillId: string, assessmentType: string) => {
       assessmentType, 
       skillName: selectedSkill.skill_name,
       proficiency: selectedSkill.proficiency 
+    });
+
+    toast.loading('Starting your assessment...', {
+      id: 'start-assessment',
+      duration: 5000
     });
 
     startAssessmentMutation.mutate({
@@ -226,6 +226,7 @@ const handleStartAssessment = (skillId: string, assessmentType: string) => {
           <AssessmentSetup
             availableSkills={filteredSkills}
             onStartAssessment={handleStartAssessment}
+            isLoading={startAssessmentMutation.isPending}
           />
         )}
 

@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ArrowLeft,
   Zap,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import AssessmentCard from './AssessmentCard';
 
@@ -50,7 +51,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
   const [selectedType, setSelectedType] = useState<'QUICK_CHECK' | 'COMPREHENSIVE'>('COMPREHENSIVE');
   const [currentStep, setCurrentStep] = useState<'TYPE' | 'SKILL'>('TYPE');
 
-  // Assessment types configuration - Hiralent style
   const assessmentTypes: AssessmentType[] = [
     {
       id: 'QUICK_CHECK',
@@ -82,17 +82,16 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
   };
 
   const handleStartAssessment = () => {
-    if (selectedSkill && onStartAssessment) {
+    if (selectedSkill && onStartAssessment && !isLoading) {
       onStartAssessment(selectedSkill, selectedType);
     }
   };
 
   const handleBackToType = () => {
     setCurrentStep('TYPE');
-    setSelectedSkill(''); // Reset skill selection when going back
+    setSelectedSkill('');
   };
 
-  // Group skills by category for better organization
   const groupSkillsByCategory = () => {
     const grouped = availableSkills.reduce((acc, skill) => {
       if (!acc[skill.category]) {
@@ -102,7 +101,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
       return acc;
     }, {} as Record<string, SkillCategory[]>);
 
-    // Sort categories: Technical first, then others
     const categoryOrder = ['Technical', 'Soft Skills', 'Certification', 'General'];
     const sortedCategories = categoryOrder.filter(cat => grouped[cat]);
     const otherCategories = Object.keys(grouped).filter(cat => !categoryOrder.includes(cat));
@@ -226,7 +224,8 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
               <div className="flex items-center justify-between">
                 <button 
                   onClick={handleBackToType}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50"
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Change Type
@@ -305,21 +304,34 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
                 <button
                   onClick={handleStartAssessment}
                   disabled={!selectedSkill || isLoading}
-                  className="bg-[#005DDC] text-white px-10 py-3 rounded-md text-lg font-medium hover:bg-[#004EB7] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                  className={`
+                    px-10 py-3 rounded-md text-lg font-medium transition-all
+                    flex items-center gap-3
+                    ${(!selectedSkill || isLoading)
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#005DDC] text-white hover:bg-[#004EB7] hover:shadow-lg'
+                    }
+                  `}
                 >
                   {isLoading ? (
-                    <div className="flex items-center gap-2 text-xs">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Preparing Assessment...
-                    </div>
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Preparing Assessment...</span>
+                    </>
                   ) : (
-                    <div className="flex items-center gap-2 text-xs">
+                    <>
                       <Play className="h-5 w-5" />
-                      Start Assessment
-                    </div>
+                      <span>Start Assessment</span>
+                    </>
                   )}
                 </button>
               </div>
+            )}
+
+            {isLoading && (
+              <p className="text-center text-sm text-gray-600 mt-4">
+                Please wait while we prepare your personalized assessment...
+              </p>
             )}
           </motion.div>
         )}

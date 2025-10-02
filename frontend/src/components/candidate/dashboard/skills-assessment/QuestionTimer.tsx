@@ -156,6 +156,7 @@ const QuestionTimer: React.FC<QuestionTimerProps> = ({
         animate={timeRemaining <= criticalThreshold ? { scale: [1, 1.05, 1] } : {}}
         transition={{ duration: 1, repeat: timeRemaining <= criticalThreshold ? Infinity : 0 }}
       >
+        
         {/* Progress Circle */}
         {showProgress && (
           <svg className="absolute inset-0 transform -rotate-90" width="100%" height="100%">

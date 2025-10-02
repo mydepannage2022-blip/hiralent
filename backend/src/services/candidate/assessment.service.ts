@@ -265,8 +265,6 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
       });
     } catch (aiError: any) {
       console.error('AI evaluation error:', aiError);
-      
-      // Fallback: Basic evaluation if AI fails
       aiEval = getFallbackEvaluation(currentQ, answer);
       console.warn('Using fallback evaluation due to AI service failure');
     }
@@ -297,6 +295,18 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
       throw new Error('Failed to save answer. Please try again.');
     }
     
+    // ✅ AUTO-COMPLETE: If last question, trigger complete
+    if (isLastQuestion) {
+      console.log('Last question answered, auto-completing assessment...');
+      try {
+        await completeAssessment(assessmentId);
+        console.log('Assessment auto-completed successfully');
+      } catch (completeError: any) {
+        console.error('Auto-complete error:', completeError);
+        // Don't throw - answer is saved, completion can be retried
+      }
+    }
+    
     const nextQ = isLastQuestion ? null : questions[idx + 1];
     
     return {
@@ -311,12 +321,13 @@ export const submitAnswer = async (params: { assessmentId: string; questionId: s
               questionId: nextQ.questionId || `q${idx + 2}`,
               questionText: nextQ.questionText,
               type: nextQ.type,
-              options: nextQ.options || [],  // ✅ Already exists
+              options: nextQ.options || [],
               timeLimit: nextQ.timeLimit || 90,
               difficulty: nextQ.difficulty || assessment.difficulty || 'INTERMEDIATE', 
             }
           : null,
-        completed: isLastQuestion,
+        isLastQuestion, // ✅ Add this flag
+        completed: isLastQuestion, // ✅ Keep this for compatibility
       },
     };
     
@@ -405,13 +416,14 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
       throw new Error('Assessment not found');
     }
     
-    // Check if already completed
+    // ==================== CHECK IF ALREADY COMPLETED ====================
     if (assessment.status === 'COMPLETED') {
       const existingSummary = await prisma.assessmentSummary.findUnique({
         where: { assessment_id: assessmentId }
       });
       
       if (existingSummary) {
+        console.log('Assessment already completed, returning existing summary');
         return { 
           success: true, 
           data: { 
@@ -420,12 +432,13 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
             assessmentType: assessment.assessment_type,
             status: 'COMPLETED',
             message: 'Assessment already completed',
+            difficulty: assessment.difficulty,
+            completedAt: assessment.completed_at,
             
-            // Complete Summary
+            // Overall Performance
             overallScore: existingSummary.overall_score,
             skillLevel: existingSummary.skill_level,
             passStatus: existingSummary.pass_status,
-            completedAt: assessment.completed_at,
             
             // Performance Breakdown
             correctAnswers: existingSummary.correct_answers,
@@ -453,22 +466,35 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
             achievements: existingSummary.achievements,
             badgesEarned: existingSummary.badges_earned,
             
+            // Navigation
             nextActions: {
               jobMatching: '/api/v1/candidates/match-jobs',
               detailedResults: `/api/v1/candidates/assessment/${assessmentId}/results`,
-              retakeAssessment: `/api/v1/candidates/start-assessment`
+              retakeAssessment: '/api/v1/candidates/start-assessment',
+              viewHistory: '/api/v1/candidates/assessments/history'
             }
           } 
         };
       }
+      
+      console.warn('Assessment marked COMPLETED but no summary found, generating now...');
     }
     
+    // ==================== STEP 2: PARSE QUESTIONS & ANSWERS ====================
     const questions = Array.isArray(assessment.questions)
       ? (assessment.questions as unknown as Question[])
       : [];
     const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
     
-    // ==================== STEP 2: CALCULATE METRICS ====================
+    if (questions.length === 0) {
+      throw new Error('No questions found in assessment');
+    }
+    
+    if (answers.length === 0) {
+      throw new Error('No answers submitted yet');
+    }
+    
+    // ==================== STEP 3: CALCULATE METRICS ====================
     let correctAnswers = 0;
     let incorrectAnswers = 0;
     let partialAnswers = 0;
@@ -507,18 +533,18 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
       ? Math.round(totalTimeSpent / totalQuestions) 
       : 0;
     
-    // ==================== STEP 3: GENERATE AI REPORT ====================
+    // ==================== STEP 4: GENERATE AI REPORT ====================
     let report;
     try {
+      console.log('Generating AI report...');
       report = await aiAssessment.generateReport({
         assessment,
         results: answers,
         totalTime: totalTimeSpent,
       });
+      console.log('AI report generated successfully');
     } catch (aiError: any) {
       console.error('AI report generation error:', aiError);
-      
-      // Fallback: Generate smart report
       report = generateFallbackReport(assessment, answers, questions);
       console.warn('Using fallback report due to AI service failure');
     }
@@ -527,9 +553,10 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
     const skillLevel = report?.skillLevel || determineSkillLevel(overallScore);
     const passStatus = overallScore >= 60 ? 'passed' : 'failed';
     
-    // ==================== STEP 4: SAVE TO DATABASE (TRANSACTION) ====================
+    // ==================== STEP 5: SAVE TO DATABASE (TRANSACTION) ====================
+    console.log('Saving results to database...');
     const result = await prisma.$transaction(async (tx) => {
-      // 4.1: Update SkillAssessment
+      // 5.1: Update SkillAssessment
       const updatedAssessment = await tx.skillAssessment.update({
         where: { assessment_id: assessmentId },
         data: {
@@ -545,7 +572,7 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
         },
       });
       
-      // 4.2: Save Individual Question Results to AssessmentResult table
+      // 5.2: Save Individual Question Results to AssessmentResult table
       const assessmentResults = answers.map((ans: any, idx: number) => {
         const question = questions[idx];
         return {
@@ -569,7 +596,7 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
         skipDuplicates: true
       });
       
-      // 4.3: Save Summary to AssessmentSummary table
+      // 5.3: Save Summary to AssessmentSummary table
       const achievements = generateAchievements(overallScore, correctAnswers, totalQuestions);
       const badges = generateBadges(overallScore, skillLevel);
       
@@ -601,7 +628,9 @@ export const completeAssessment = async (assessmentId: string): Promise<any> => 
       return { updatedAssessment, summary };
     });
     
-    // ==================== STEP 5: RETURN COMPLETE SUCCESS RESPONSE ====================
+    console.log('Assessment completed and saved successfully');
+    
+    // ==================== STEP 6: RETURN COMPLETE SUCCESS RESPONSE ====================
     return {
       success: true,
       data: {
