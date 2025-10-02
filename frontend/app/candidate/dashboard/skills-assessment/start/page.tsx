@@ -42,9 +42,9 @@ const AssessmentStartPage = () => {
   // Helper functions
   const getQuestionCountByProficiency = (proficiency: string, category: string): number => {
     const baseCount = {
-      'beginner': 12,
-      'intermediate': 18,
-      'advanced': 25
+      'beginner': 5,
+      'intermediate': 5,
+      'advanced': 5
     };
 
     const categoryMultiplier = {

@@ -121,8 +121,8 @@ const AssessmentResultsPage = () => {
 
   if (isLoadingResults) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
+      <div className="bg-gray-50 py-8">
+        <div className="px-4">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-[#005DDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-[#222] mb-2">Loading Your Results</h2>
@@ -135,8 +135,8 @@ const AssessmentResultsPage = () => {
 
   if (!resultsData) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
+      <div className="bg-gray-50 py-8">
+        <div className="px-4">
           <div className="bg-white rounded-lg p-8 shadow-sm text-center">
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
             <h3 className="text-lg font-semibold text-[#222] mb-2">Unable to Load Results</h3>
@@ -169,7 +169,7 @@ const AssessmentResultsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="">
         {/* Content */}
         <div className="w-full">
           {activeTab === 'results' && (

@@ -208,7 +208,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
                 activeTab === tab.key
                   ? 'border-[#005DDC] text-[#005DDC] bg-blue-50'
                   : 'border-transparent text-[#757575] hover:text-[#222] hover:bg-gray-50'
@@ -390,7 +390,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               </div>
 
               {/* Market Insights */}
-              {results.marketInsights && (
+              {/* {results.marketInsights && (
                 <div>
                   <h3 className="text-sm font-semibold text-[#222] mb-4 flex items-center gap-2">
                     Market Insights
@@ -416,7 +416,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
             </motion.div>
           )}
         </div>
@@ -434,7 +434,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* <button
             onClick={onViewRecommendations}
-            className="flex items-center gap-3 p-4 bg-blue-50 text-[#005DDC] rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex items-center gap-3 p-4  cursor-pointer bg-blue-50 text-[#005DDC] rounded-lg hover:bg-blue-100 transition-colors"
           >
             <div className="text-left">
               <div className="font-semibold text-sm">View Learning Resources</div>
@@ -445,7 +445,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
 
           <button
             onClick={onRetakeAssessment}
-            className="flex items-center gap-3 p-4  bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors"
+            className="flex items-center gap-3 p-4  cursor-pointer bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors"
           >
             <div className="text-left">
               <div className="font-semibold text-sm">Retake Assessment</div>
@@ -456,7 +456,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
 
           <button
             onClick={onDownloadReport}
-            className="flex items-center gap-3 p-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+            className="flex items-center gap-3 p-4  cursor-pointer bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
           >
             <div className="text-left">
               <div className="font-semibold text-sm">Download Report</div>
@@ -467,7 +467,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
 
           <button
             onClick={onShareResults}
-            className="flex items-center gap-3 p-4  bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
+            className="flex items-center gap-3 p-4  cursor-pointer  bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
           >
             <div className="text-left">
               <div className="font-semibold text-sm">Share Results</div>

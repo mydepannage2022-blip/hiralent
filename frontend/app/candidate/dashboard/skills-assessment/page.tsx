@@ -27,21 +27,17 @@ const AssessmentHubPage = () => {
   const router = useRouter();
   const { profileData } = useProfile();
 
-  // REAL API INTEGRATION - Assessment History
   const { 
     data: historyResponse, 
     isLoading: isLoadingHistory, 
     error: historyError 
   } = useAssessmentHistory();
 
-  // Transform API response
   const historyData = historyResponse as AssessmentHistory | undefined;
   const realAssessmentHistory: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
 
-  // Generate Available Assessments from Profile Skills (COMPLETELY REAL DATA)
   const [availableAssessments, setAvailableAssessments] = useState<any[]>([]);
 
-  // Transform assessment history to original format (REAL DATA ONLY)
   const assessmentHistory = realAssessmentHistory.map(history => ({
     id: history.assessmentId,
     skillName: history.skillCategory,
@@ -55,19 +51,15 @@ const AssessmentHubPage = () => {
     totalQuestions: 25
   }));
 
-  // Update available assessments based on REAL profile data ONLY
   useEffect(() => {
     if (profileData?.skills && profileData.skills.length > 0 && realAssessmentHistory.length > 0) {
-      // ONLY show skills that have been assessed before (for retake)
       const completedSkillsAssessments = profileData.skills
         .filter((skill: ProfileSkill) => {
-          // Check if this skill has assessment history
           return realAssessmentHistory.some(
             history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
           );
         })
         .map((skill: ProfileSkill) => {
-          // Find the completed assessment
           const completedAssessment = realAssessmentHistory.find(
             history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
           );
@@ -80,7 +72,7 @@ const AssessmentHubPage = () => {
             timeEstimate: skill.proficiency === 'beginner' ? '15-20 mins' : skill.proficiency === 'intermediate' ? '25-30 mins' : '35-40 mins',
             difficulty: skill.proficiency.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED',
             isRecommended: skill.confidence_score < 70 || !skill.is_verified,
-            isCompleted: true, // Always true since we're only showing completed ones
+            isCompleted: true, 
             lastScore: completedAssessment?.overallScore,
             category: skill.skill_category === 'technical' ? 'Programming' : 
                      skill.skill_category === 'soft' ? 'Soft Skills' : 'Certification'
@@ -132,23 +124,6 @@ const AssessmentHubPage = () => {
   return (
     <div className="bg-gray-50">
       <div className="mx-auto space-y-8">
-
-        {/* Header - ORIGINAL UI
-        <motion.section
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-[#222] mb-4">Skills Assessment</h1>
-            <p className="text-[#757575] max-w-2xl mx-auto">
-              Evaluate your technical skills, discover areas for improvement, and get personalized 
-              learning recommendations to advance your career.
-            </p>
-          </div>
-        </motion.section> */}
-
-        {/* Available Assessments - REAL DATA ONLY */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,7 +139,6 @@ const AssessmentHubPage = () => {
           </div>
         </motion.section>
 
-        {/* Recent History - REAL DATA ONLY */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

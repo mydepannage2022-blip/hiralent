@@ -56,8 +56,8 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
       id: 'QUICK_CHECK',
       name: 'Quick Check',
       description: 'Fast skill evaluation with essential questions',
-      questionCount: '8-12',
-      timeEstimate: '10-15 mins',
+      questionCount: '5',
+      timeEstimate: '3-6 mins',
       icon: <Zap className="h-6 w-6" />,
       features: ['Core concepts only', 'Instant results', 'Basic skill level']
     },
@@ -65,8 +65,8 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
       id: 'COMPREHENSIVE',
       name: 'Comprehensive Test',
       description: 'In-depth assessment with detailed analysis',
-      questionCount: '20-25',
-      timeEstimate: '25-35 mins',
+      questionCount: '5',
+      timeEstimate: '4-5 mins',
       icon: <Target className="h-6 w-6" />,
       features: ['Detailed evaluation', 'Skill breakdown', 'Learning recommendations']
     }
@@ -199,7 +199,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
           </motion.div>
         )}
 
-        {/* Step 2: Skill Selection */}
         {currentStep === 'SKILL' && (
           <motion.div
             key="skill-selection"
@@ -208,7 +207,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Selected assessment type info */}
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3 border border-blue-200 rounded-lg px-8 py-2">
                 <div>
@@ -225,15 +223,14 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
                 <button 
                   onClick={handleBackToType}
                   disabled={isLoading}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ArrowLeft className="h-4 w-4" />
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+                > 
+                <ArrowLeft className="h-4 w-4" />
                   Change Type
                 </button>
               </div>
             </div>
 
-            {/* Important Guidelines */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
               <div className="flex gap-4">
                 <AlertTriangle className="h-3 w-3 text-yellow-600 mt-0.5 flex-shrink-0" />
@@ -261,7 +258,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
               </div>
             </div>
 
-            {/* Skills by Category */}
             <div className="mb-8">
               {Object.entries(groupedSkills).map(([category, skills]) => (
                 <div key={category} className="mb-8">
@@ -306,7 +302,7 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
                   disabled={!selectedSkill || isLoading}
                   className={`
                     px-10 py-3 rounded-md text-lg font-medium transition-all
-                    flex items-center gap-3
+                    flex items-center gap-3 cursor-pointer
                     ${(!selectedSkill || isLoading)
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-[#005DDC] text-white hover:bg-[#004EB7] hover:shadow-lg'

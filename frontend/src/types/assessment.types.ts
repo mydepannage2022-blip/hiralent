@@ -249,7 +249,7 @@ export interface SecurityViolation {
   id: string;
   type: 'TAB_SWITCH' | 'WINDOW_BLUR' | 'COPY_PASTE' | 'RIGHT_CLICK' | 'DEV_TOOLS' | 'INACTIVE_TIME';
   message: string;
-  details: string; // ✅ ADDED: Required field for compatibility
+  details: string;
   severity: 'low' | 'medium' | 'high';
   timestamp: Date;
 }

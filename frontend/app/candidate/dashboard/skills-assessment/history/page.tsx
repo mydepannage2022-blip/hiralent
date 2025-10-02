@@ -36,13 +36,11 @@ const AssessmentHistoryPage = () => {
     refetch 
   } = useAssessmentHistory();
 
-  // Transform API response
   const historyData = historyResponse as AssessmentHistory | undefined;
   const assessments: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
   const skillProgress = historyData?.success ? historyData.data.skillProgress : {};
   const summary = historyData?.success ? historyData.data.summary : null;
 
-  // Sorted and filtered assessments
   const filteredAssessments = useMemo(() => {
     let filtered = assessments.filter((assessment) => {
       const matchesSearch = assessment.skillCategory.toLowerCase().includes(searchQuery.toLowerCase());
@@ -63,7 +61,6 @@ const AssessmentHistoryPage = () => {
     return filtered;
   }, [assessments, searchQuery, skillFilter, sortBy]);
 
-  // Get unique skills for filter
   const uniqueSkills = useMemo(() => {
     return Array.from(new Set(assessments.map(a => a.skillCategory)));
   }, [assessments]);
@@ -136,7 +133,7 @@ const AssessmentHistoryPage = () => {
   if (error) {
     return (
       <div className="bg-gray-50 py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="">
           <div className="text-center py-12">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-[#222] mb-2">Unable to Load History</h2>
@@ -154,22 +151,22 @@ const AssessmentHistoryPage = () => {
   }
 
   return (
-    <div className="bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-8">
-
-        {/* Header */}
+    <div className="">
+      <div className="space-y-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-[#222]">Assessment History</h1>
-              <p className="text-[#757575] mt-1">
-                View your completed assessments and track your progress
-              </p>
-            </div>
-            <div className="flex items-center gap-3 mt-4 lg:mt-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center mb-8">
+            <div className="w-full flex items-center justify-between gap-3 mt-4 lg:mt-0">
+              <button
+                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
+                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              >
+                Take New Assessment
+              </button>
+
+
               {assessments.length > 0 && (
                 <button
                   onClick={handleExportHistory}
@@ -179,12 +176,7 @@ const AssessmentHistoryPage = () => {
                   Export
                 </button>
               )}
-              <button
-                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
-                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
-              >
-                Take New Assessment
-              </button>
+              
             </div>
           </div>
         </motion.div>
