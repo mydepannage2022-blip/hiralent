@@ -31,8 +31,9 @@ const BlogSection = () => {
   const blogPosts = [
     {
       id: 1,
-      image: "/images/blog1.png",
-      title: "How to Build an Outstanding Resume",
+      image: "/images/post1.png",
+      category: "Guide",
+      title: "Everything EOR: A Guide to Employer of Record",
       author: "Sarah Johnson",
       date: "March 15, 2024",
       readTime: "5 min read",
@@ -40,8 +41,9 @@ const BlogSection = () => {
     },
     {
       id: 2,
-      image: "/images/blog2.png",
-      title: "Top 10 Interview Questions and Answers",
+      image: "/images/post2.png",
+      category: "Guide",
+      title: "The Business Case for Global Hiring",
       author: "Mike Chen",
       date: "March 12, 2024",
       readTime: "8 min read",
@@ -49,8 +51,9 @@ const BlogSection = () => {
     },
     {
       id: 3,
-      image: "/images/blog3.png",
-      title: "Remote Work: Tips for Success",
+      image: "/images/post3.png",
+      category: "Template",
+      title: "Employer of Record RFP Template",
       author: "Emily Davis",
       date: "March 10, 2024",
       readTime: "6 min read",
@@ -60,18 +63,17 @@ const BlogSection = () => {
 
   return (
     <div className='w-full flex justify-center items-center bg-[#F8F9FA] py-16'>
-      <div className='lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col justify-center items-center gap-12'>
-
+      <div className='lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col gap-12'>
         {/* Header Section */}
         <motion.div
-          className='flex flex-col justify-center items-center gap-5'
+          className='flex flex-col gap-5'
           variants={headingVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.h2
-            className='text-[#222] text-2xl lg:text-3xl xl:text-4xl font-semibold text-center'
+            className='text-[#222] text-2xl lg:text-3xl xl:text-4xl font-semibold'
             animate={{
               backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
             }}
@@ -81,15 +83,15 @@ const BlogSection = () => {
               ease: "easeInOut"
             }}
           >
-            Latest Career Insights
+            Helpful resources to get you started
           </motion.h2>
           <motion.p
-            className='text-[#757575] text-sm lg:text-base text-center max-w-2xl'
+            className='text-[#757575] text-sm lg:text-base max-w-2xl'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            Stay updated with the latest career advice, job market trends, and professional development tips to advance your career journey.
+            We’ve poured our expertise into a series of thoughtfully crafted, easy-to-follow guides and templates for businesses of all sizes.
           </motion.p>
         </motion.div>
 
@@ -98,7 +100,7 @@ const BlogSection = () => {
           {blogPosts.map((post, index) => (
             <motion.div
               key={post.id}
-              className='bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer'
+              className='bg-[#000000DE] rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer'
               variants={blogBoxVariants}
               initial="hidden"
               whileInView="visible"
@@ -116,33 +118,38 @@ const BlogSection = () => {
 
               {/* Blog Content */}
               <div className='p-6 flex flex-col gap-4'>
+                {/* Blog Category */}
+                <h3 className='text-[#FAF4EED9] uppercase font-semibold hover:text-[#005DDC] transition-colors duration-300'>
+                  {post.category}
+                </h3>
+
                 {/* Blog Title */}
-                <h3 className='text-[#222] text-lg font-semibold hover:text-[#005DDC] transition-colors duration-300'>
+                <h3 className='text-white text-2xl font-semibold hover:text-[#005DDC] transition-colors duration-300 sm:w-[275px]'>
                   {post.title}
                 </h3>
 
                 {/* Meta Data */}
-                <div className='flex items-center gap-4 text-xs text-[#757575]'>
+                {/* <div className='flex items-center gap-4 text-xs text-[#757575]'>
                   <span>By {post.author}</span>
                   <span>•</span>
                   <span>{post.date}</span>
                   <span>•</span>
                   <span>{post.readTime}</span>
-                </div>
+                </div> */}
 
                 {/* Description */}
-                <p className='text-[#757575] text-sm line-clamp-3'>
+                {/* <p className='text-[#757575] text-sm line-clamp-3'>
                   {post.description}
-                </p>
+                </p> */}
 
                 {/* Read More Link */}
                 <motion.a
                   href="#"
-                  className='text-[#005DDC] text-sm font-medium hover:underline inline-flex items-center gap-1'
+                  className='text-white text-sm font-medium hover:underline inline-flex items-center gap-1'
                   whileHover={{ x: 5 }}
                   transition={{ duration: 0.2 }}
                 >
-                  Read More
+                  Get the guide
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -153,7 +160,7 @@ const BlogSection = () => {
         </div>
 
         {/* View All Button */}
-        <motion.div
+        {/* <motion.div
           className='text-center mt-16'
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -178,8 +185,7 @@ const BlogSection = () => {
               View All Posts  →
             </motion.span>
           </motion.button>
-        </motion.div>
-
+        </motion.div> */}
       </div>
     </div>
   )
