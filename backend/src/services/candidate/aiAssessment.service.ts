@@ -1,19 +1,5 @@
-// TODO: Import types from assessment.types and openai.ts
 import { SKILL_ASSESSMENT_PROMPTS } from './skillAssessment.prompts';
 import { generateSkillsAssessmentJSON } from '../../lib/openai';
-
-// export const generateQuestions = async (params: any): Promise<any[]> => {
-//   const prompt = SKILL_ASSESSMENT_PROMPTS.QUESTION_GENERATION
-//     .replace('{questionCount}', params.questionCount)
-//     .replace('{difficulty}', params.difficulty)
-//     .replace('{skillCategory}', params.skillCategory)
-//     .replace('{experienceLevel}', params.candidateProfile?.experienceLevel || '')
-//     .replace('{existingSkills}', params.candidateProfile?.existingSkills?.join(', ') || '')
-//     .replace('{industry}', params.candidateProfile?.industry || '');
-//     console.log('Generated Prompt:', prompt);
-//   return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'questions');
-// };
-
 
 export const generateQuestions = async (params: any): Promise<any[]> => {
   const totalYears = params.candidateProfile?.experienceLevel 
@@ -28,12 +14,9 @@ export const generateQuestions = async (params: any): Promise<any[]> => {
     .replace('{questionCount}', params.questionCount)
     .replace('{difficulty}', params.difficulty)
     .replace('{skillCategory}', params.skillCategory)
-    .replace('{experienceLevel}', experienceSummary) // ✅ Shortened
-    .replace('{existingSkills}', topSkills) // ✅ Limited
+    .replace('{experienceLevel}', experienceSummary)
+    .replace('{existingSkills}', topSkills)
     .replace('{industry}', params.candidateProfile?.industry || 'Tech');
-    
-  console.log('Simplified Prompt length:', prompt.length);
-  console.log('Prompt preview:', prompt.substring(0, 300));
   
   return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt, 'questions');
 };
@@ -70,7 +53,6 @@ export const generateReport = async (params: any): Promise<any> => {
   return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'report');
 };
 
-// ✅ ADD THIS FUNCTION
 export const generateRecommendations = async (params: any): Promise<any> => {
   const prompt = SKILL_ASSESSMENT_PROMPTS.SKILL_RECOMMENDATIONS
     .replace('{currentSkills}', params.currentSkills?.join(', ') || 'N/A')

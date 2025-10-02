@@ -9,15 +9,14 @@ export const startAssessment = async (
 ): Promise<any> => {
   try {
     const { candidateId, skillCategory, assessmentType, difficulty } = params;
-    console.log("Starting assessment with params:", params);
-    // Get candidate profile WITH skills (populated)
+
     let candidateWithProfile;
     try {
       candidateWithProfile = await prisma.user.findUnique({
         where: { user_id: candidateId },
         include: {
           candidateProfile: true,
-          candidateSkills: true, // Get actual skills instead of IDs
+          candidateSkills: true,
         },
       });
     } catch (dbError: any) {
@@ -34,10 +33,8 @@ export const startAssessment = async (
     const candidateProfile = candidateWithProfile.candidateProfile;
     const candidateSkills = candidateWithProfile.candidateSkills;
 
-    // Build AI profile with actual skills data
     const aiProfile = {
       experienceLevel: candidateProfile.experience || "",
-      // Use actual skill names from CandidateSkill table instead of JSON parsing
       existingSkills: candidateSkills.map((skill) => skill.skill_name),
       industry: "",
     };
@@ -55,7 +52,6 @@ export const startAssessment = async (
     } catch (aiError: any) {
       console.error("AI service error in startAssessment:", aiError);
 
-      // Fallback: Use basic questions if AI fails
       questions = getFallbackQuestions(
         skillCategory,
         difficulty,
@@ -87,7 +83,7 @@ export const startAssessment = async (
           current_question: 0,
           questions: questions as Json,
           answers: [] as Json,
-          started_at: new Date(), // Add started_at for time tracking
+          started_at: new Date(),
         } as any,
       });
     } catch (dbError: any) {
@@ -179,7 +175,6 @@ export const getNextQuestion = async (assessmentId: string): Promise<any> => {
       throw new Error("Question not found at current index");
     }
 
-    // Update status to IN_PROGRESS if it was PENDING
     if (assessment.status === "PENDING") {
       try {
         await prisma.skillAssessment.update({
@@ -197,7 +192,6 @@ export const getNextQuestion = async (assessmentId: string): Promise<any> => {
       }
     }
 
-    // ✅ Return proper format with nested structure
     return {
       success: true,
       data: {
@@ -211,7 +205,7 @@ export const getNextQuestion = async (assessmentId: string): Promise<any> => {
           aiGenerated: true,
           adaptedReason: "",
           category: assessment.skill_category,
-          correctAnswer: q.correctAnswer || "", // Optional
+          correctAnswer: q.correctAnswer || "",
         },
         currentIndex: idx,
         totalQuestions: questions.length,
@@ -233,7 +227,6 @@ export const submitAnswer = async (params: {
   try {
     const { assessmentId, questionId, answer, timeTaken } = params;
 
-    // Validate input
     if (!assessmentId || !questionId || answer === undefined || timeTaken < 0) {
       throw new Error("Missing or invalid required parameters");
     }
@@ -279,14 +272,12 @@ export const submitAnswer = async (params: {
       throw new Error("Current question not found");
     }
 
-    // Validate question ID
     if (currentQ.questionId !== questionId && `q${idx + 1}` !== questionId) {
       throw new Error(
         "Invalid question ID or answers submitted out of sequence"
       );
     }
 
-    // AI Evaluation with error handling
     let aiEval;
     try {
       aiEval = await aiAssessment.evaluateAnswer({
@@ -330,15 +321,11 @@ export const submitAnswer = async (params: {
       throw new Error("Failed to save answer. Please try again.");
     }
 
-    // ✅ AUTO-COMPLETE: If last question, trigger complete
     if (isLastQuestion) {
-      console.log("Last question answered, auto-completing assessment...");
       try {
         await completeAssessment(assessmentId);
-        console.log("Assessment auto-completed successfully");
       } catch (completeError: any) {
         console.error("Auto-complete error:", completeError);
-        // Don't throw - answer is saved, completion can be retried
       }
     }
 
@@ -362,8 +349,8 @@ export const submitAnswer = async (params: {
                 nextQ.difficulty || assessment.difficulty || "INTERMEDIATE",
             }
           : null,
-        isLastQuestion, // ✅ Add this flag
-        completed: isLastQuestion, // ✅ Keep this for compatibility
+        isLastQuestion,
+        completed: isLastQuestion,
       },
     };
   } catch (error: any) {
@@ -444,7 +431,6 @@ export const completeAssessment = async (
       throw new Error("Assessment ID is required");
     }
 
-    // ==================== STEP 1: FETCH ASSESSMENT ====================
     let assessment;
     try {
       assessment = await prisma.skillAssessment.findUnique({
@@ -459,14 +445,12 @@ export const completeAssessment = async (
       throw new Error("Assessment not found");
     }
 
-    // ==================== CHECK IF ALREADY COMPLETED ====================
     if (assessment.status === "COMPLETED") {
       const existingSummary = await prisma.assessmentSummary.findUnique({
         where: { assessment_id: assessmentId },
       });
 
       if (existingSummary) {
-        console.log("Assessment already completed, returning existing summary");
         return {
           success: true,
           data: {
@@ -478,38 +462,31 @@ export const completeAssessment = async (
             difficulty: assessment.difficulty,
             completedAt: assessment.completed_at,
 
-            // Overall Performance
             overallScore: existingSummary.overall_score,
             skillLevel: existingSummary.skill_level,
             passStatus: existingSummary.pass_status,
 
-            // Performance Breakdown
             correctAnswers: existingSummary.correct_answers,
             incorrectAnswers: existingSummary.incorrect_answers,
             partialAnswers: existingSummary.partial_answers,
             totalQuestions: existingSummary.total_questions,
             accuracyRate: existingSummary.accuracy_rate,
 
-            // Time Metrics
             totalTimeSpent: existingSummary.total_time_spent,
             avgTimePerQuestion: existingSummary.avg_time_per_question,
 
-            // Category & Difficulty Scores
             categoryScores: existingSummary.category_scores,
             difficultyScores: existingSummary.difficulty_scores,
 
-            // AI Insights
             strengths: existingSummary.strengths,
             weaknesses: existingSummary.weaknesses,
             recommendations: existingSummary.recommendations,
             nextSteps: existingSummary.next_steps,
             aiConfidence: existingSummary.ai_confidence,
 
-            // Achievements
             achievements: existingSummary.achievements,
             badgesEarned: existingSummary.badges_earned,
 
-            // Navigation
             nextActions: {
               jobMatching: "/api/v1/candidates/match-jobs",
               detailedResults: `/api/v1/candidates/assessment/${assessmentId}/results`,
@@ -525,7 +502,6 @@ export const completeAssessment = async (
       );
     }
 
-    // ==================== STEP 2: PARSE QUESTIONS & ANSWERS ====================
     const questions = Array.isArray(assessment.questions)
       ? (assessment.questions as unknown as Question[])
       : [];
@@ -539,7 +515,6 @@ export const completeAssessment = async (
       throw new Error("No answers submitted yet");
     }
 
-    // ==================== STEP 3: CALCULATE METRICS ====================
     let correctAnswers = 0;
     let incorrectAnswers = 0;
     let partialAnswers = 0;
@@ -579,12 +554,8 @@ export const completeAssessment = async (
       totalQuestions > 0 ? Math.round(totalTimeSpent / totalQuestions) : 0;
     const totalTimeMinutes = Math.round(totalTimeSpent / 60);
 
-    // ==================== STEP 4: GENERATE AI REPORT (WITH ALL FIELDS) ====================
-    console.log("Generating comprehensive AI report...");
-    
     let report: any = null;
     try {
-      // Calculate overallScore before passing to generateReport
       const overallScore = calculateBasicScore(answers);
       const skillLevel = determineSkillLevel(overallScore);
       
@@ -592,21 +563,13 @@ export const completeAssessment = async (
         assessment,
         results: answers,
         totalTime: totalTimeMinutes,
-        overallScore, // ✅ Pass calculated score
-        skillLevel    // ✅ Pass skill level
-      });
-      
-      console.log('AI Report Generated:', {
-        hasStrengths: report?.strengths?.length > 0,
-        hasWeaknesses: report?.weaknesses?.length > 0,
-        hasRecommendations: report?.recommendations?.length > 0,
-        hasNextSteps: report?.nextSteps?.length > 0
+        overallScore,
+        skillLevel
       });
       
     } catch (aiError: any) {
       console.error("AI report generation failed:", aiError);
       
-      // ✅ USE FALLBACK FUNCTION
       const basicScore = calculateBasicScore(answers);
       const basicLevel = determineSkillLevel(basicScore);
       
@@ -627,10 +590,7 @@ export const completeAssessment = async (
     const skillLevel = report?.skillLevel || determineSkillLevel(overallScore);
     const passStatus = overallScore >= 60 ? "passed" : "failed";
 
-    // ==================== STEP 5: SAVE TO DATABASE (TRANSACTION) ====================
-    console.log("Saving results to database...");
     const result = await prisma.$transaction(async (tx) => {
-      // 5.1: Update SkillAssessment
       const updatedAssessment = await tx.skillAssessment.update({
         where: { assessment_id: assessmentId },
         data: {
@@ -646,7 +606,6 @@ export const completeAssessment = async (
         },
       });
 
-      // 5.2: Save Individual Question Results to AssessmentResult table
       const assessmentResults = answers.map((ans: any, idx: number) => {
         const question = questions[idx];
         return {
@@ -670,7 +629,6 @@ export const completeAssessment = async (
         skipDuplicates: true,
       });
 
-      // 5.3: Save Summary to AssessmentSummary table
       const achievements = generateAchievements(
         overallScore,
         correctAnswers,
@@ -694,11 +652,10 @@ export const completeAssessment = async (
           category_scores: { [assessment.skill_category]: overallScore },
           difficulty_scores: difficultyStats,
 
-          // ✅ ALL AI INSIGHTS PROPERLY SAVED
           strengths: report?.strengths || [],
           weaknesses: report?.weaknesses || [],
           recommendations: report?.recommendations || [],
-          next_steps: report?.nextSteps || [], // ✅ FIXED: Use nextSteps from report
+          next_steps: report?.nextSteps || [],
           ai_confidence: report?.confidenceScore || 75,
 
           achievements,
@@ -709,13 +666,9 @@ export const completeAssessment = async (
       return { updatedAssessment, summary };
     });
 
-    console.log("Assessment completed and saved successfully");
-
-    // ==================== STEP 6: RETURN COMPLETE SUCCESS RESPONSE ====================
     return {
       success: true,
       data: {
-        // Basic Info
         assessmentId: result.updatedAssessment.assessment_id,
         skillCategory: assessment.skill_category,
         assessmentType: assessment.assessment_type,
@@ -723,38 +676,31 @@ export const completeAssessment = async (
         status: result.updatedAssessment.status,
         completedAt: result.updatedAssessment.completed_at,
 
-        // Overall Performance
         overallScore: result.summary.overall_score,
         skillLevel: result.summary.skill_level,
         passStatus: result.summary.pass_status,
 
-        // Detailed Breakdown
         correctAnswers: result.summary.correct_answers,
         incorrectAnswers: result.summary.incorrect_answers,
         partialAnswers: result.summary.partial_answers,
         totalQuestions: result.summary.total_questions,
         accuracyRate: result.summary.accuracy_rate,
 
-        // Time Metrics
         totalTimeSpent: result.summary.total_time_spent,
         avgTimePerQuestion: result.summary.avg_time_per_question,
 
-        // Category & Difficulty Analysis
         categoryScores: result.summary.category_scores,
         difficultyScores: result.summary.difficulty_scores,
 
-        // AI Insights
         strengths: result.summary.strengths,
         weaknesses: result.summary.weaknesses,
         recommendations: result.summary.recommendations,
         nextSteps: result.summary.next_steps,
         aiConfidence: result.summary.ai_confidence,
 
-        // Gamification
         achievements: result.summary.achievements,
         badgesEarned: result.summary.badges_earned,
 
-        // Navigation
         nextActions: {
           jobMatching: "/api/v1/candidates/match-jobs",
           detailedResults: `/api/v1/candidates/assessment/${assessmentId}/results`,
@@ -769,7 +715,6 @@ export const completeAssessment = async (
   }
 };
 
-
 export const getAssessmentResults = async (
   assessmentId: string
 ): Promise<any> => {
@@ -778,7 +723,6 @@ export const getAssessmentResults = async (
       throw new Error("Assessment ID is required");
     }
 
-    // ==================== STEP 1: FETCH SUMMARY FROM DB ====================
     let summary;
     try {
       summary = await prisma.assessmentSummary.findUnique({
@@ -798,7 +742,6 @@ export const getAssessmentResults = async (
       );
     }
 
-    // ==================== STEP 2: FETCH QUESTION RESULTS ====================
     let questionResults;
     try {
       questionResults = await prisma.assessmentResult.findMany({
@@ -810,7 +753,6 @@ export const getAssessmentResults = async (
       questionResults = [];
     }
 
-    // ==================== STEP 3: FORMAT RESPONSE ====================
     const questions = questionResults.map((q) => ({
       questionId: q.question_id,
       questionText: q.question_text,
@@ -828,7 +770,6 @@ export const getAssessmentResults = async (
     return {
       success: true,
       data: {
-        // Basic Info
         assessmentId: summary.assessment_id,
         skillName: summary.assessment.skill_category,
         skillCategory: summary.assessment.skill_category,
@@ -836,28 +777,23 @@ export const getAssessmentResults = async (
         difficulty: summary.assessment.difficulty,
         completedAt: summary.assessment.completed_at,
 
-        // Overall Performance
         overallScore: summary.overall_score,
         skillLevel: summary.skill_level,
         passStatus: summary.pass_status,
 
-        // Performance Breakdown
         totalQuestions: summary.total_questions,
         correctAnswers: summary.correct_answers,
         incorrectAnswers: summary.incorrect_answers,
         partialAnswers: summary.partial_answers,
         accuracyRate: summary.accuracy_rate,
 
-        // Time Metrics
         timeSpent: summary.total_time_spent,
         avgTimePerQuestion: summary.avg_time_per_question,
 
-        // Category & Difficulty Analysis
         categoryScores: summary.category_scores,
         difficultyScores: summary.difficulty_scores,
         difficultyStats: summary.difficulty_scores,
 
-        // AI Insights
         strengths: summary.strengths,
         weaknesses: summary.weaknesses,
         recommendations: summary.recommendations,
@@ -865,11 +801,9 @@ export const getAssessmentResults = async (
         aiConfidence: summary.ai_confidence,
         aiAnalysis: summary.assessment.ai_analysis || {},
 
-        // Achievements
         achievements: summary.achievements,
         badgesEarned: summary.badges_earned,
 
-        // Question Breakdown
         questions: questions,
         questionResults: questions,
       },
@@ -1010,12 +944,8 @@ export const getAssessmentHistory = async (
   }
 };
 
-
 export const getRecommendations = async (candidateId: string) => {
   try {
-    console.log('Fetching recommendations for candidate:', candidateId);
-    
-    // ✅ STEP 1: Fetch latest COMPLETED assessment with summary
     const latestAssessment = await prisma.skillAssessment.findFirst({
       where: { 
         candidate_id: candidateId,
@@ -1023,11 +953,10 @@ export const getRecommendations = async (candidateId: string) => {
       },
       orderBy: { completed_at: 'desc' },
       include: { 
-        summary: true // Include the saved summary from AssessmentSummary table
+        summary: true
       }
     });
 
-    // ✅ STEP 2: Check if assessment exists
     if (!latestAssessment) {
       return {
         success: false,
@@ -1042,7 +971,6 @@ export const getRecommendations = async (candidateId: string) => {
       };
     }
 
-    // ✅ STEP 3: Check if summary exists
     if (!latestAssessment.summary) {
       return {
         success: false,
@@ -1056,29 +984,22 @@ export const getRecommendations = async (candidateId: string) => {
         }
       };
     }
-
-    // ✅ STEP 4: Return saved recommendations (NO AI GENERATION HERE)
-    console.log('Recommendations found in database - returning saved data');
     
     return {
       success: true,
       data: {
-        // Main recommendations data from AssessmentSummary
         recommendations: latestAssessment.summary.recommendations || [],
         nextSteps: latestAssessment.summary.next_steps || [],
         
-        // Additional context for frontend
         strengths: latestAssessment.summary.strengths || [],
         weaknesses: latestAssessment.summary.weaknesses || [],
         
-        // Assessment metadata
         assessmentId: latestAssessment.assessment_id,
         skillCategory: latestAssessment.skill_category,
         skillLevel: latestAssessment.summary.skill_level,
         overallScore: latestAssessment.summary.overall_score,
         completedAt: latestAssessment.completed_at,
         
-        // Formatted learning path (from recommendations)
         learningPath: (latestAssessment.summary.recommendations || []).map((rec: string, idx: number) => ({
           step: idx + 1,
           recommendation: rec,
@@ -1096,16 +1017,11 @@ export const getRecommendations = async (candidateId: string) => {
   }
 };
 
-
-
-
-// ==================== FALLBACK FUNCTIONS ====================
 const getFallbackQuestions = (
   skillCategory: string,
   difficulty: string,
   count: number
 ): Question[] => {
-  // Basic fallback questions when AI service fails
   const fallbackQuestions: Question[] = [
     {
       questionId: "fallback_1",
@@ -1125,16 +1041,13 @@ const getFallbackQuestions = (
     .map((_, idx) => ({
       ...fallbackQuestions[0],
       questionId: `fallback_${idx + 1}`,
-      questionText: `Question ${
-        idx + 1
-      }: Basic ${skillCategory} knowledge check`,
+      questionText: `Question ${idx + 1}: Basic ${skillCategory} knowledge check`,
     }));
 };
 
 const getFallbackEvaluation = (question: Question, answer: string): any => {
-  // Basic evaluation when AI service fails
   return {
-    score: 70, // Average score
+    score: 70,
     feedback:
       "Answer recorded. Detailed evaluation unavailable due to service limitations.",
     strengths: ["Answer provided"],
@@ -1163,7 +1076,6 @@ function generateFallbackReport(params: {
     difficultyStats 
   } = params;
   
-  // Generate basic strengths
   const strengths: string[] = [];
   if (difficultyStats.BEGINNER.correct === difficultyStats.BEGINNER.total && difficultyStats.BEGINNER.total > 0) {
     strengths.push(`Strong foundation in ${skillCategory} fundamentals`);
@@ -1178,7 +1090,6 @@ function generateFallbackReport(params: {
     strengths.push(`Completed ${skillCategory} assessment successfully`);
   }
   
-  // Generate basic weaknesses
   const weaknesses: string[] = [];
   if (incorrectAnswers > totalQuestions * 0.3) {
     weaknesses.push(`Review ${skillCategory} core concepts`);
@@ -1193,7 +1104,6 @@ function generateFallbackReport(params: {
     weaknesses.push(`Minor improvements possible in advanced areas`);
   }
   
-  // Generate basic recommendations
   const recommendations: string[] = [];
   if (overallScore < 70) {
     recommendations.push(`Take a structured ${skillCategory} course`);
@@ -1209,7 +1119,6 @@ function generateFallbackReport(params: {
     recommendations.push(`Contribute to open-source ${skillCategory} projects`);
   }
   
-  // Generate next steps
   const nextSteps: string[] = [];
   if (skillLevel === 'EXPERT') {
     nextSteps.push(`Apply for senior ${skillCategory} positions`);
