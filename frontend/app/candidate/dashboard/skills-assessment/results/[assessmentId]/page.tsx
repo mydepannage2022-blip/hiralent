@@ -165,44 +165,11 @@ const AssessmentResultsPage = () => {
 
   const tabs = [
     { id: 'results', label: 'Results Overview' },
-    { id: 'breakdown', label: 'Skill Breakdown' },
-    { id: 'recommendations', label: 'Recommendations' }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#222] mb-2">
-            Assessment Results
-          </h1>
-          <p className="text-[#757575]">
-            {resultsData.skillName} • Completed on {new Date(resultsData.completedAt).toLocaleDateString()}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="border-b border-gray-200">
-            <div className="px-6 py-4">
-              <div className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-[#005DDC] text-[#005DDC]'
-                        : 'border-transparent text-[#757575] hover:text-[#222] hover:border-gray-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Content */}
         <div className="w-full">
           {activeTab === 'results' && (
@@ -215,65 +182,6 @@ const AssessmentResultsPage = () => {
               onBackToDashboard={handleBackToDashboard}
               showCelebration={true}
             />
-          )}
-          
-          {activeTab === 'breakdown' && (
-            <div className="bg-white rounded-lg p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-[#222] mb-6">Detailed Skill Breakdown</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Strengths */}
-                <div>
-                  <h3 className="text-lg font-semibold text-green-600 mb-4">Strengths</h3>
-                  <div className="space-y-3">
-                    {resultsData.strengths.length > 0 ? (
-                      resultsData.strengths.map((strength, index) => (
-                        <div key={index} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                          <p className="text-green-800">{strength}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500">No strengths identified yet.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Areas for Improvement */}
-                <div>
-                  <h3 className="text-lg font-semibold text-orange-600 mb-4">Areas for Improvement</h3>
-                  <div className="space-y-3">
-                    {resultsData.weaknesses.length > 0 ? (
-                      resultsData.weaknesses.map((weakness, index) => (
-                        <div key={index} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                          <p className="text-orange-800">{weakness}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500">No weaknesses identified.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-[#222] mb-4">Learning Recommendations</h3>
-                <div className="space-y-3">
-                  {resultsData.recommendations.length > 0 ? (
-                    resultsData.recommendations.map((rec, index) => (
-                      <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-blue-800">{rec}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No recommendations available.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'recommendations' && (
-            <SkillRecommendationsTab />
           )}
         </div>
       </div>

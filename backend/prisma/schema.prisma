@@ -277,7 +277,6 @@ model AIInterviewResult {
   candidate_id String
 }
 
-// Skill Assessment (Updated relation)
 model SkillAssessment {
   assessment_id        String           @id @default(uuid())
   candidate_id         String
@@ -289,7 +288,6 @@ model SkillAssessment {
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
 
-  // AI Skill Assessment Fields
   assessment_type      AssessmentType   @default(COMPREHENSIVE)
   skill_category       String
   difficulty           DifficultyLevel  @default(BEGINNER)

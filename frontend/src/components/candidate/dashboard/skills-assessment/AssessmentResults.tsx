@@ -432,7 +432,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         <h3 className="text-sm font-semibold text-[#222] mb-4">What's Next?</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
+          {/* <button
             onClick={onViewRecommendations}
             className="flex items-center gap-3 p-4 bg-blue-50 text-[#005DDC] rounded-lg hover:bg-blue-100 transition-colors"
           >
@@ -441,7 +441,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               <div className="text-[10px] opacity-75">Personalized recommendations</div>
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
-          </button>
+          </button> */}
 
           <button
             onClick={onRetakeAssessment}
@@ -475,17 +475,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             </div>
             <ArrowRight className="h-4 w-4 ml-auto" />
           </button>
-{/* 
-          <button
-            onClick={onBackToDashboard}
-            className="flex items-center gap-3 p-4 bg-gray-50 text-[#757575] rounded-lg hover:bg-gray-100 transition-colors md:col-span-2 lg:col-span-2"
-          >
-            <div className="text-left">
-              <div className="font-semibold text-sm">Back to Dashboard</div>
-              <div className="text-[10px] opacity-75">Continue your learning journey</div>
-            </div>
-            <ArrowRight className="h-4 w-4 ml-auto" />
-          </button> */}
         </div>
       </motion.div>
     </div>
