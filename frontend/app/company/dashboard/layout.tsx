@@ -1,65 +1,97 @@
-"use client"
-import { useState, ReactNode } from 'react';
-import ProtectedRoute from '@/src/components/layout/ProtectedRoute';
-import DashboardSidebar from '@/src/components/company/dashboard/home/DashboardSidebar';
-import DashboardNavbar from '@/src/components/company/dashboard/home/DashboardNavbar';
+"use client";
+import { useState, ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  User,
+  Bell,
+  MessageSquare,
+  Settings,
+  Activity,
+  Settings2,
+} from "lucide-react";
+
+import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
+import DashboardSidebar from "@/src/components/company/dashboard/home/DashboardSidebar";
+import DashboardNavbar from "@/src/components/company/dashboard/home/DashboardNavbar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [isOpen, setIsOpen] = useState<boolean>(true); // Desktop sidebar state
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false); // Mobile drawer state
+  const [isOpen, setIsOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // 👉 Define menus
+  const defaultMenu = [
+    { name: "Dashboard", icon: LayoutDashboard, href: "/company/dashboard" },
+    { name: "Employer Profile", icon: User, href: "/candidate/dashboard/candidate-profile" },
+    { name: "Post Job", icon: User, href: "/company/dashboard/postjob" },
+    { name: "Notifications", icon: Bell, href: "/candidate/dashboard/notifications" },
+    { name: "Messages", icon: MessageSquare, href: "/candidate/dashboard/messages" },
+    { name: "Account Setting", icon: Settings, href: "/candidate/dashboard/settings" },
+    { name: "Manage Hiring", icon: Activity, href: "/company/dashboard/skills-assessment" },
+  ];
+
+  const postJobMenu = [
+    { name: "Dashboard", icon: LayoutDashboard, href: "/company/dashboard" },
+    { name: "Post Job", icon: User, href: "/company/dashboard/postjob" },
+    { name: "Notification", icon: Bell, href: "/candidate/dashboard/notifications" },
+    { name: "Message", icon: MessageSquare, href: "/candidate/dashboard/messages" },
+    { name: "Account Setting", icon: Settings, href: "/candidate/dashboard/settings" },
+    { name: "Activity", icon: Settings2, href: "/candidate/dashboard/analytics" },
+  ];
+
+  // 👉 Switch menus based on route
+  const menuItems = pathname.startsWith("/company/dashboard/postjob")
+    ? postJobMenu
+    : defaultMenu;
 
   return (
     <ProtectedRoute>
       <div className="w-full bg-[#F9F9F9] flex justify-center items-center">
         <div className="w-full xl:max-w-9/10 flex justify-center items-start p-4 md:p-8 gap-4 md:gap-8">
-          {/* Desktop Sticky Sidebar */}
-          <div className='hidden lg:flex justify-start items-start sticky top-8 self-start'>
-            <DashboardSidebar 
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:flex justify-start items-start sticky top-8 self-start">
+            <DashboardSidebar
               isOpen={isOpen}
               setIsOpen={setIsOpen}
               isMobile={false}
               isMobileMenuOpen={false}
-              setIsMobileMenuOpen={() => {}}
+              setIsMobileMenuOpen={() => { }}
+              menuItems={menuItems} // 👈 pass dynamic
             />
           </div>
-          
-          {/* Mobile Overlay Sidebar */}
+
+          {/* Mobile Sidebar */}
           {isMobileMenuOpen && (
             <div className="lg:hidden fixed inset-0 z-50">
-              {/* Overlay Background */}
-              <div 
+              <div
                 className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              
-              {/* Sidebar Drawer */}
               <div className="absolute left-0 top-0 h-full">
-                <DashboardSidebar 
+                <DashboardSidebar
                   isOpen={true}
-                  setIsOpen={() => {}}
+                  setIsOpen={() => { }}
                   isMobile={true}
                   isMobileMenuOpen={isMobileMenuOpen}
                   setIsMobileMenuOpen={setIsMobileMenuOpen}
+                  menuItems={menuItems} // 👈 pass dynamic
                 />
               </div>
             </div>
           )}
-          
-          {/* Main Content Area */}
+
+          {/* Content */}
           <div className="w-full flex flex-col justify-start items-start">
-            <DashboardNavbar 
+            <DashboardNavbar
               isMobileMenuOpen={isMobileMenuOpen}
               setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
-            
-            {/* Dynamic Content */}
-            <div className='w-full py-4'>
-              {children}
-            </div>
+            <div className="w-full py-4">{children}</div>
           </div>
         </div>
       </div>

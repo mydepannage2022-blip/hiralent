@@ -1,23 +1,47 @@
-import React from "react";
+"use client";
 
-interface LabeledInputProps {
+interface InputProps {
     label: string;
-    required?: boolean;
     placeholder?: string;
+    value?: string;
     type?: string;
+    required?: boolean;
+    textarea?: boolean;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
-const LabeledInput = ({ label, required, placeholder, type = "text" }: LabeledInputProps) => (
-    <div className="w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-            {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        <input
-            type={type}
-            placeholder={placeholder}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-    </div>
-);
+const LabeledInput = ({
+    label,
+    placeholder,
+    value,
+    type = "text",
+    required = false,
+    textarea = false,
+}: InputProps) => {
+    return (
+        <div className="relative w-full">
+            <label className="text-sm sm:text-base absolute -top-3 left-3 bg-white px-2 font-medium text-black">
+                {label}
+                {required && <span className="text-[#DC0000] ml-0.5">*</span>}
+            </label>
+
+            {textarea ? (
+                <textarea
+                    placeholder={value ? undefined : placeholder}
+                    defaultValue={value}
+                    className="w-full rounded-md border border-[#A5A5A5] px-4 py-4 focus:ring-2 focus:ring-black focus:outline-none resize-none"
+                    rows={4}
+                />
+            ) : (
+                <input
+                    type={type}
+                    placeholder={value ? undefined : placeholder}
+                    defaultValue={value}
+                    className="w-full rounded-md border border-[#A5A5A5] px-4 py-3 focus:ring-2 focus:ring-black focus:outline-none"
+                />
+            )}
+        </div>
+    );
+};
 
 export default LabeledInput;
