@@ -122,7 +122,7 @@ const AssessmentInstructionsPage = () => {
 
   if (!assessmentId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#757575]">Loading assessment...</p>
@@ -132,9 +132,9 @@ const AssessmentInstructionsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Back Navigation */}
-      <div className="max-w-4xl mx-auto p-6 pb-0">
+      <div className="p-6 pb-0">
         <button
           onClick={handleGoBack}
           className="flex items-center gap-2 text-[#757575] hover:text-[#222] transition-colors"
@@ -155,7 +155,7 @@ const AssessmentInstructionsPage = () => {
       />
 
       {/* Additional Tips */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-full p-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-[#222] mb-4">Pro Tips for Success</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

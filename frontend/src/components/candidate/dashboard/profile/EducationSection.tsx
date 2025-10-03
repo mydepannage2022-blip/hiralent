@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, GraduationCap, X, Check, Plus, Trash2, Calendar } from 'lucide-react';
-import { useUpdateEducation, useAddEducation } from '@/src/lib/profile.queries';
-import { EducationData } from '@/src/lib/profile.api';
+import { useUpdateEducation, useAddEducation } from '@/src/lib/profile/profile.queries';
+import { EducationData } from '@/src/lib/profile/profile.api';
 import { useProfile } from '@/src/context/ProfileContext';
 
 const EducationSection: React.FC = () => {

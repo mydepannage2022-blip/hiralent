@@ -20,22 +20,18 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Fixed generateGeminiJSON function in openai.ts
-
 export async function generateGeminiJSON(systemPrompt: string, userPrompt: string, retries: number = 3): Promise<any> {
   let lastError: any;
   
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`Attempt ${attempt}/${retries} for Gemini API call`);
-      
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
-          temperature: 0.1, // Lower temperature for better JSON consistency
+          temperature: 0.1,
           topK: 1,
           topP: 0.95,
-          maxOutputTokens: 4096, // Increased token limit
+          maxOutputTokens: 4096,
         }
       });
 
@@ -50,20 +46,14 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
       const result = await model.generateContent(fullPrompt);
       let text = result.response.text();
 
-      console.log("Raw Gemini response (first 200 chars):", text.substring(0, 200));
-      console.log("Raw Gemini response (last 200 chars):", text.substring(Math.max(0, text.length - 200)));
-
-      // Aggressive JSON cleanup
       text = text.trim();
       
-      // Remove markdown code blocks
       if (text.startsWith('```json')) {
         text = text.replace(/```json\s*/, '').replace(/\s*```$/, '');
       } else if (text.startsWith('```')) {
         text = text.replace(/```[a-z]*\s*/, '').replace(/\s*```$/, '');
       }
       
-      // Remove any text before first { and after last }
       const firstBrace = text.indexOf('{');
       const lastBrace = text.lastIndexOf('}');
       
@@ -71,56 +61,41 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
         text = text.substring(firstBrace, lastBrace + 1);
       }
       
-      // Clean up common JSON issues
       text = text
-        .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
-        .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
-        .replace(/:\s*([^",\[\]{}\s]+)([,}\]])/g, ':"$1"$2') // Quote unquoted string values
-        .replace(/:\s*'([^']*?)'/g, ':"$1"') // Replace single quotes with double quotes
-        .replace(/\\n/g, ' ') // Replace newlines with spaces
-        .replace(/\\\\/g, '\\') // Fix double backslashes
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove control characters
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":')
+        .replace(/:\s*([^",\[\]{}\s]+)([,}\]])/g, ':"$1"$2')
+        .replace(/:\s*'([^']*?)'/g, ':"$1"')
+        .replace(/\\n/g, ' ')
+        .replace(/\\\\/g, '\\')
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
 
-      console.log("Cleaned JSON (first 200 chars):", text.substring(0, 200));
-      console.log("Cleaned JSON (last 200 chars):", text.substring(Math.max(0, text.length - 200)));
-
-      // Additional safety - try to fix malformed JSON
       try {
         const parsed = JSON.parse(text);
-        console.log("✅ JSON parsing successful");
         return parsed;
       } catch (parseErr: any) {
-        console.log("First parse failed, trying JSON repair...");
-        
-        // Try to fix common JSON issues
         let repairedText = text
-          .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas again
-          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":') // Quote all unquoted keys
-          .replace(/:\s*([^",\[\]{}\s][^,}\]]*[^",}\]\s])([,}\]])/g, ':"$1"$2'); // Quote complex unquoted values
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+          .replace(/:\s*([^",\[\]{}\s][^,}\]]*[^",}\]\s])([,}\]])/g, ':"$1"$2');
         
         const repairParsed = JSON.parse(repairedText);
-        console.log("✅ JSON repair successful");
         return repairParsed;
       }
       
     } catch (err: any) {
       lastError = err;
-      console.error(`Attempt ${attempt} failed:`, err.message);
       
-      // For JSON parsing errors, try with a much simpler prompt
       if (err.message?.includes('JSON') && attempt < retries) {
-        console.log("Trying with minimal JSON structure...");
-        
         try {
           const model = genAI.getGenerativeModel({ 
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: {
-              temperature: 0.01, // Very low temperature
+              temperature: 0.01,
               maxOutputTokens: 1500,
             }
           });
 
-          // Much simpler and more constrained prompt
           const minimalPrompt = `Extract from resume and return exactly this JSON:
 {"headline":"title","skills":[{"name":"skill","category":"technical","proficiency":"intermediate"}],"experience":[{"job_title":"job","company":"co","duration":"time","years":1,"description":"desc"}],"education":[{"degree":"deg","institution":"inst","year":"year","field":"field"}],"summary":"summary"}
 
@@ -129,30 +104,25 @@ Resume: ${userPrompt.substring(0, 1000)}`;
           const result = await model.generateContent(minimalPrompt);
           let text = result.response.text().trim();
           
-          // Extract JSON more aggressively
           const firstBrace = text.indexOf('{');
           const lastBrace = text.lastIndexOf('}');
           if (firstBrace !== -1 && lastBrace !== -1) {
             text = text.substring(firstBrace, lastBrace + 1);
           }
           
-          // Remove any non-JSON content
           text = text.replace(/[^\{\}"\[\]:,0-9a-zA-Z\s\-\.]/g, '');
           
           const parsed = JSON.parse(text);
-          console.log("✅ Minimal JSON parsing successful");
           return parsed;
           
         } catch (minimalErr) {
-          console.error("Minimal approach also failed:", minimalErr);
+          console.error('Minimal approach failed:', minimalErr);
         }
       }
       
-      // Rate limiting backoff
       if (err.message?.includes('overloaded') || err.message?.includes('503') || err.message?.includes('rate limit')) {
         if (attempt < retries) {
           const delay = Math.pow(2, attempt) * 1000;
-          console.log(`Rate limited, waiting ${delay}ms...`);
           await sleep(delay);
           continue;
         }
@@ -160,15 +130,13 @@ Resume: ${userPrompt.substring(0, 1000)}`;
     }
   }
   
-  console.error("All Gemini attempts failed:", lastError);
+  console.error('All Gemini attempts failed:', lastError);
   throw new Error(`Failed to get response from Gemini after ${retries} attempts: ${lastError?.message || 'Unknown error'}`);
 }
 
-
-
 export async function extractSkillsFromText(text: string): Promise<AIExtractionResult> {
   try {
-const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.
+    const systemPrompt = `You are an expert HR analyst. Extract and categorize information from CV text.
 
 CATEGORIZATION RULES:
 - SKILLS: Only professional technical and soft skills
@@ -234,10 +202,8 @@ LANGUAGES (Extract separately):
   } catch (error: any) {
     console.error('Error extracting skills from text:', error);
     
-    // Return a fallback structure if AI fails
-    console.log('Returning fallback structure due to AI service unavailability');
     return {
-      headline: "Professional seeking new opportunities", // Fallback headline
+      headline: "Professional seeking new opportunities",
       skills: [
         {
           name: "Communication",
@@ -267,8 +233,6 @@ LANGUAGES (Extract separately):
     } as AIExtractionResult;
   }
 }
-
-// ---------------------- predictCareerPath ----------------------
 
 export async function predictCareerPath(candidateData: OpenAICareerPredictionPrompt['candidateData']): Promise<CareerPredictionResult> {
   try {
@@ -311,7 +275,6 @@ Return only valid JSON, no other text.`;
   } catch (error) {
     console.error('Error predicting career path:', error);
     
-    // Return fallback structure
     return {
       current_role: "General Professional",
       predicted_roles: [
@@ -344,8 +307,6 @@ Return only valid JSON, no other text.`;
   }
 }
 
-// ---------------------- generateJobMatchReasoning ----------------------
-
 export async function generateJobMatchReasoning(candidateSkills: any[], jobRequirements: any): Promise<JobMatchReasoning> {
   try {
     const systemPrompt = `You are an expert recruiter AI. Analyze how well a candidate matches a job.
@@ -367,7 +328,6 @@ Job Requirements: ${JSON.stringify(jobRequirements)}`;
   } catch (error) {
     console.error('Error generating job match reasoning:', error);
     
-    // Return fallback structure
     return {
       overall_match: 0.0,
       strengths: ["Service temporarily unavailable"],
@@ -378,11 +338,8 @@ Job Requirements: ${JSON.stringify(jobRequirements)}`;
   }
 }
 
-// ---------------------- createEmbedding ----------------------
-
 export async function createEmbedding(text: string): Promise<number[]> {
   try {
-    // Use the embedding model for Gemini
     const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
 
     const result = await model.embedContent(text);
@@ -391,8 +348,7 @@ export async function createEmbedding(text: string): Promise<number[]> {
       return result.embedding.values;
     }
     
-    // Fallback: generate synthetic embedding if the above doesn't work
-    const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `Convert this text into a numerical embedding vector of exactly 128 floating point numbers between -1 and 1.
 Text: """${text}"""
@@ -421,72 +377,36 @@ Return only a JSON array of 128 numbers like: [0.123, -0.546, 0.789, ...]`;
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export async function generateSkillsAssessmentJSON(
   systemPrompt: string, 
   userPrompt: string, 
-  assessmentType: 'questions' | 'evaluation' | 'difficulty' | 'report' = 'questions'
+  assessmentType: 'questions' | 'evaluation' | 'difficulty' | 'report' | 'recommendations' = 'questions'
 ): Promise<any> {
   
   try {
-    console.log(`Starting ${assessmentType} generation...`);
-    
-    // Single optimized model configuration
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
-        temperature: 0.2, // Balanced creativity and consistency
+        temperature: 0.15,
         topK: 1,
         topP: 0.9,
-        maxOutputTokens: assessmentType === 'report' ? 3000 : 2000,
+        maxOutputTokens: 5000,
       }
     });
 
-    // Streamlined prompt for faster processing
     const optimizedPrompt = `${systemPrompt}\n\n${userPrompt}\n\nReturn ONLY ${getQuickFormat(assessmentType)} - no explanations.`;
 
     const result = await model.generateContent(optimizedPrompt);
-    let text = result.response.text().trim();
+    const response = await result.response;
+    let text = '';
 
-    console.log(`Raw response (${assessmentType}):`, text.substring(0, 200));
+    if (response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      if (candidate.content && candidate.content.parts) {
+        text = candidate.content.parts.map((part: any) => part.text || '').join('').trim();
+      }
+    }
 
-    // Fast JSON extraction
     const startChar = assessmentType === 'questions' ? '[' : '{';
     const endChar = assessmentType === 'questions' ? ']' : '}';
     
@@ -497,32 +417,65 @@ export async function generateSkillsAssessmentJSON(
       text = text.substring(start, end + 1);
     }
 
-    // Quick JSON cleanup
     text = text
       .replace(/```json|```/g, '')
       .replace(/,(\s*[}\]])/g, '$1')
-      .replace(/([{,]\s*)(\w+):/g, '$1"$2":')
-      .replace(/:\s*'([^']*)'/g, ':"$1"')
-      .replace(/[\u0000-\u001F]/g, '');
+      .replace(/[\u0000-\u001F]/g, '')
+      .replace(/"([^"]*)'([^"]*)"/g, '"$1$2"');
 
-    const parsed = JSON.parse(text);
+    if (text.startsWith('[') && !text.endsWith(']')) {
+      const lastComplete = text.lastIndexOf('}');
+      if (lastComplete > 0) {
+        text = text.substring(0, lastComplete + 1) + ']';
+      }
+    }
+
+    if (text.startsWith('{') && !text.endsWith('}')) {
+      const lastComplete = text.lastIndexOf('"');
+      if (lastComplete > 0) {
+        text = text.substring(0, lastComplete) + '}';
+      }
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (parseError: any) {
+      if (text.startsWith('[')) {
+        const items = [];
+        const regex = /\{[^}]*\}/g;
+        let match;
+        
+        while ((match = regex.exec(text)) !== null) {
+          try {
+            const item = JSON.parse(match[0]);
+            items.push(item);
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (items.length > 0) {
+          parsed = items;
+        } else {
+          throw parseError;
+        }
+      } else {
+        throw parseError;
+      }
+    }
     
-    // Quick validation
     if (!isValidResponse(parsed, assessmentType)) {
-      console.log(`Validation failed for ${assessmentType}, using fallback...`);
       return await getSmartFallbackResponse(assessmentType, userPrompt);
     }
     
-    console.log(`${assessmentType} generation successful`);
     return parsed;
     
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Assessment ${assessmentType} failed:`, error.message);
     return await getSmartFallbackResponse(assessmentType, userPrompt);
   }
 }
-
-// ==================== HELPER FUNCTIONS ====================
 
 function getQuickFormat(type: string): string {
   switch (type) {
@@ -554,16 +507,12 @@ function isValidResponse(data: any, type: string): boolean {
   }
 }
 
-// ==================== SMART FALLBACK WITH ORIGINAL PROMPT REUSE ====================
-
 async function getSmartFallbackResponse(type: string, originalPrompt: string): Promise<any> {
   try {
-    console.log(`Attempting smart fallback for ${type}...`);
-    
     const simplifiedPrompt = simplifyOriginalPrompt(originalPrompt, type);
     
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1000,
@@ -573,12 +522,10 @@ async function getSmartFallbackResponse(type: string, originalPrompt: string): P
     const result = await model.generateContent(simplifiedPrompt);
     let text = result.response.text().trim();
     
-    // Extract JSON aggressively
     const jsonMatch = text.match(/[\[{].*[\]}]/s);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       if (isValidResponse(parsed, type)) {
-        console.log(`Smart fallback successful for ${type}`);
         return parsed;
       }
     }
@@ -587,8 +534,6 @@ async function getSmartFallbackResponse(type: string, originalPrompt: string): P
     console.warn(`Smart fallback failed for ${type}:`, error.message);
   }
   
-  // Last resort: Static fallback with extracted context
-  console.log(`Using static fallback for ${type}`);
   return getContextualStaticFallback(type, originalPrompt);
 }
 
@@ -598,9 +543,9 @@ function simplifyOriginalPrompt(originalPrompt: string, type: string): string {
   switch (type) {
     case 'questions':
       simplified = simplified
-        .replace(/Generate \d+/, 'Generate 3') // Reduce count
-        .replace(/detailed|comprehensive|complex/gi, 'simple') // Simplify requirements
-        .replace(/with explanation|detailed analysis/gi, '') // Remove complexity
+        .replace(/Generate \d+/, 'Generate 3')
+        .replace(/detailed|comprehensive|complex/gi, 'simple')
+        .replace(/with explanation|detailed analysis/gi, '')
         + '\n\nReturn simple JSON array format only.';
       break;
       
@@ -625,7 +570,6 @@ function simplifyOriginalPrompt(originalPrompt: string, type: string): string {
 }
 
 function getContextualStaticFallback(type: string, originalPrompt: string): any {
-  // Extract context from original prompt
   const context = extractPromptContext(originalPrompt);
   
   switch (type) {
@@ -643,7 +587,6 @@ function getContextualStaticFallback(type: string, originalPrompt: string): any 
 }
 
 function extractPromptContext(prompt: string): any {
-  // Extract key information from original prompt
   const skillMatch = prompt.match(/(?:skill|category|subject)[^:]*:\s*([A-Za-z\s\+#\-]+)/i);
   const difficultyMatch = prompt.match(/(?:difficulty|level)[^:]*:\s*([A-Z]+)/i);
   const experienceMatch = prompt.match(/(?:experience|level)[^:]*:\s*([A-Za-z\s]+)/i);
@@ -660,7 +603,7 @@ function extractPromptContext(prompt: string): any {
 }
 
 function generateContextualQuestions(context: any): any[] {
-  const { skill, difficulty, experience, existingSkills } = context;
+  const { skill, difficulty, experience } = context;
   
   return [
     {
@@ -709,7 +652,6 @@ function generateContextualEvaluation(context: any): any {
 function generateContextualDifficulty(context: any): any {
   const { difficulty, experience } = context;
   
-  // Smart difficulty progression
   const nextDifficulty = getNextDifficultyLevel(difficulty, experience);
   
   return {
@@ -753,7 +695,6 @@ function getNextDifficultyLevel(current: string, experience: string): string {
     'EXPERT': 'EXPERT'
   };
   
-  // Consider experience level
   if (experience.toLowerCase().includes('senior') || experience.toLowerCase().includes('expert')) {
     return progression[current as keyof typeof progression] || 'ADVANCED';
   }

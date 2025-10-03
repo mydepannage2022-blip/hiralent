@@ -140,11 +140,11 @@ const InstructionsBrief: React.FC<InstructionsBriefProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-full p-6">
       {/* Header - Hiralent style */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl lg:text-4xl font-semibold text-[#222] mb-3">Assessment Instructions</h1>
-        <p className="text-[#757575] text-lg">
+        <h1 className="text-xl lg:text-4xl font-semibold text-[#222] mb-3">Assessment Instructions</h1>
+        <p className="text-[#757575] text-xs">
           Please read these instructions carefully before starting
         </p>
       </div>
@@ -152,35 +152,28 @@ const InstructionsBrief: React.FC<InstructionsBriefProps> = ({
       {/* Assessment Overview */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
         <div className="flex items-center gap-4 mb-4">
-          <div className="p-3 bg-blue-100 rounded-lg text-[#005DDC]">
-            {getAssessmentTypeIcon()}
-          </div>
           <div>
-            <h2 className="text-2xl font-semibold text-[#222]">{assessmentInfo.skillName}</h2>
-            <p className="text-[#757575]">{getAssessmentTypeName()}</p>
+            <h2 className="text-xl font-semibold text-[#222]">{assessmentInfo.skillName}</h2>
+            <p className="text-[#757575] text-xs">{getAssessmentTypeName()}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-white rounded-lg">
-            <FileText className="h-8 w-8 text-[#005DDC] mx-auto mb-2" />
-            <div className="text-2xl font-bold text-[#222]">{assessmentInfo.totalQuestions}</div>
-            <div className="text-sm text-[#757575]">Questions</div>
+            <div className="text-lg font-bold text-[#222]">{assessmentInfo.totalQuestions}</div>
+            <div className="text-xs text-[#757575]">Questions</div>
           </div>
           <div className="text-center p-4 bg-white rounded-lg">
-            <Clock className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-[#222]">{assessmentInfo.timeLimit}</div>
-            <div className="text-sm text-[#757575]">Minutes</div>
+            <div className="text-lg font-bold text-[#222]">{assessmentInfo.timeLimit}</div>
+            <div className="text-xs text-[#757575]">Minutes</div>
           </div>
           <div className="text-center p-4 bg-white rounded-lg">
-            <Target className="h-8 w-8 text-green-500 mx-auto mb-2" />
-            <div className="text-lg font-bold text-[#222]">{assessmentInfo.difficulty}</div>
-            <div className="text-sm text-[#757575]">Level</div>
+            <div className="text-base font-bold text-[#222]">{assessmentInfo.difficulty}</div>
+            <div className="text-xs text-[#757575]">Level</div>
           </div>
           <div className="text-center p-4 bg-white rounded-lg">
-            <CheckCircle className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-            <div className="text-lg font-bold text-[#222]">Auto</div>
-            <div className="text-sm text-[#757575]">Scoring</div>
+            <div className="text-base font-bold text-[#222]">Auto</div>
+            <div className="text-xs text-[#757575]">Scoring</div>
           </div>
         </div>
       </div>
@@ -190,17 +183,17 @@ const InstructionsBrief: React.FC<InstructionsBriefProps> = ({
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-6 w-6 text-red-500" />
           <h2 className="text-xl font-semibold text-[#222]">Security Rules</h2>
-          <span className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md">Strictly Enforced</span>
+          {/* <span className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md">Strictly Enforced</span> */}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {securityRules.map((rule, index) => (
             <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 {rule.icon}
                 <div>
-                  <h3 className="font-medium text-red-800 mb-1">{rule.title}</h3>
-                  <p className="text-sm text-red-700">{rule.description}</p>
+                  <h3 className="font-normal text-base text-red-800 mb-1">{rule.title}</h3>
+                  <p className="text-[10px] text-red-700">{rule.description}</p>
                 </div>
               </div>
             </div>
@@ -211,8 +204,8 @@ const InstructionsBrief: React.FC<InstructionsBriefProps> = ({
           <div className="flex gap-3">
             <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-red-800 font-medium mb-1">Violation Warning:</p>
-              <p className="text-red-700 text-sm">
+              <p className="text-red-800 font-normal mb-1 text-base">Violation Warning:</p>
+              <p className="text-red-700 text-[10px]">
                 Security violations are automatically detected. Maximum 3 violations allowed before termination.
               </p>
             </div>
@@ -223,7 +216,6 @@ const InstructionsBrief: React.FC<InstructionsBriefProps> = ({
       {/* Assessment Guidelines */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <CheckCircle className="h-6 w-6 text-green-500" />
           <h2 className="text-xl font-semibold text-[#222]">Assessment Guidelines</h2>
         </div>
 

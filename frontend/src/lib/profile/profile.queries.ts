@@ -24,8 +24,8 @@ import { getProfileCompleteness,
   EducationData,
   SocialLinkData,
   JobBenefitData } from './profile.api';
-import { useProfile } from '../context/ProfileContext';
-import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../../context/ProfileContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const useProfileCompleteness = () => {
   const { setProfileCompleteness } = useProfile();

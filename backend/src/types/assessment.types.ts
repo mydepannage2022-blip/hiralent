@@ -27,6 +27,7 @@ export enum QuestionType {
   ESSAY = 'ESSAY',
   TRUE_FALSE = 'TRUE_FALSE',
   SCENARIO = 'SCENARIO',
+  SHORT_ANSWER = 'SHORT_ANSWER',
 }
 
 // Assessment Start Params

@@ -1,9 +1,9 @@
 import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
 import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile} from './auth.api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
-import { useProfile } from '../context/ProfileContext';
+import { useProfile } from '../../context/ProfileContext';
 
 
 export const useSignup = () => {

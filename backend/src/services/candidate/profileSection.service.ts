@@ -1,5 +1,3 @@
-// services/candidate/profileSection.service.ts
-
 import { PrismaClient } from "@prisma/client";
 import {
   CandidateSkillInput,
@@ -11,14 +9,11 @@ import {
 
 const prisma = new PrismaClient();
 
-// ==================== HEAVY SKILLS PROCESSING ====================
-
 export const processSkillsUpdate = async (
   candidateId: string,
   skills: CandidateSkillInput[]
 ): Promise<{ skillsCount: number }> => {
   try {
-    // Get existing skills
     const existingSkills = await prisma.candidateSkill.findMany({
       where: { candidate_id: candidateId }
     });
@@ -30,22 +25,17 @@ export const processSkillsUpdate = async (
     const incomingSkillsWithId = skills.filter(skill => skill.skill_id);
     const incomingSkillsWithoutId = skills.filter(skill => !skill.skill_id);
 
-    // Skills to delete (existing but not in incoming)
     const toDelete = existingSkills.filter(
       existing => !incomingSkillsWithId.some(incoming => incoming.skill_id === existing.skill_id)
     );
 
-    // Skills to update (have skill_id and exist)
     const toUpdate = incomingSkillsWithId.filter(
       skill => existingSkillMap.has(skill.skill_id!)
     );
 
-    // Skills to create (no skill_id)
     const toCreate = incomingSkillsWithoutId;
 
-    // Execute operations in transaction
     await prisma.$transaction(async (tx) => {
-      // Delete removed skills
       if (toDelete.length > 0) {
         await tx.candidateSkill.deleteMany({
           where: {
@@ -55,7 +45,6 @@ export const processSkillsUpdate = async (
         });
       }
 
-      // Update existing skills
       for (const skill of toUpdate) {
         await tx.candidateSkill.update({
           where: { skill_id: skill.skill_id! },
@@ -69,7 +58,6 @@ export const processSkillsUpdate = async (
         });
       }
 
-      // Create new skills
       if (toCreate.length > 0) {
         await tx.candidateSkill.createMany({
           data: toCreate.map(skill => ({
@@ -85,7 +73,6 @@ export const processSkillsUpdate = async (
       }
     });
 
-    // Return final count
     const finalCount = await prisma.candidateSkill.count({
       where: { candidate_id: candidateId }
     });
@@ -97,14 +84,11 @@ export const processSkillsUpdate = async (
   }
 };
 
-// ==================== HEAVY EXPERIENCE PROCESSING ====================
-
 export const processExperienceUpdate = async (
   candidateId: string,
   experiences: ExperienceInput[]
 ): Promise<void> => {
   try {
-    // Validate experience data
     const validatedExperiences = experiences.map((exp, index) => {
       if (!exp.job_title || exp.job_title.trim().length === 0) {
         throw new Error(`Experience ${index + 1}: Job title is required`);
@@ -122,21 +106,19 @@ export const processExperienceUpdate = async (
         company: exp.company.trim(),
         description: exp.description.trim(),
         duration: exp.duration.trim(),
-        years: Math.max(0, exp.years), // Ensure non-negative
+        years: Math.max(0, exp.years),
         currently_working: exp.currently_working || false,
         start_date: exp.start_date || null,
         end_date: exp.end_date || null
       };
     });
 
-    // Sort experiences by years (most recent first)
     validatedExperiences.sort((a, b) => {
       if (a.currently_working && !b.currently_working) return -1;
       if (!a.currently_working && b.currently_working) return 1;
       return b.years - a.years;
     });
 
-    // Update candidate profile
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -149,21 +131,17 @@ export const processExperienceUpdate = async (
       }
     });
 
-    console.log(`Successfully processed ${validatedExperiences.length} experiences for candidate ${candidateId}`);
   } catch (error) {
     console.error("Error in processExperienceUpdate:", error);
     throw new Error(`Experience processing failed: ${error.message || "Unknown error"}`);
   }
 };
 
-// ==================== HEAVY EDUCATION PROCESSING ====================
-
 export const processEducationUpdate = async (
   candidateId: string,
   education: EducationInput[]
 ): Promise<void> => {
   try {
-    // Validate education data
     const validatedEducation = education.map((edu, index) => {
       if (!edu.degree || edu.degree.trim().length === 0) {
         throw new Error(`Education ${index + 1}: Degree is required`);
@@ -186,12 +164,10 @@ export const processEducationUpdate = async (
       };
     });
 
-    // Sort education by year (most recent first)
     validatedEducation.sort((a, b) => {
       if (a.currently_studying && !b.currently_studying) return -1;
       if (!a.currently_studying && b.currently_studying) return 1;
       
-      // Extract year for sorting (handle ranges like "2020-2024")
       const extractYear = (yearStr: string): number => {
         const years = yearStr.match(/\d{4}/g);
         return years ? parseInt(years[years.length - 1]) : 0;
@@ -200,7 +176,6 @@ export const processEducationUpdate = async (
       return extractYear(b.year) - extractYear(a.year);
     });
 
-    // Update candidate profile
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -213,39 +188,32 @@ export const processEducationUpdate = async (
       }
     });
 
-    console.log(`Successfully processed ${validatedEducation.length} education entries for candidate ${candidateId}`);
   } catch (error) {
     console.error("Error in processEducationUpdate:", error);
     throw new Error(`Education processing failed: ${error.message || "Unknown error"}`);
   }
 };
 
-// ==================== PROFILE DATA VALIDATION ====================
-
 export const validateProfileData = async (data: {
   links?: SocialLink[];
   jobBenefits?: JobBenefit[];
 }): Promise<void> => {
   try {
-    // Validate social links
     if (data.links) {
       const platforms = new Set();
       
       for (const link of data.links) {
-        // Check for duplicate platforms
         if (platforms.has(link.platform)) {
           throw new Error(`Duplicate platform found: ${link.platform}`);
         }
         platforms.add(link.platform);
 
-        // Validate URL format
         try {
           new URL(link.url);
         } catch {
           throw new Error(`Invalid URL for ${link.platform}: ${link.url}`);
         }
 
-        // Platform-specific validation
         if (link.platform === 'github' && !link.url.includes('github.com')) {
           throw new Error("GitHub URL must contain 'github.com'");
         }
@@ -255,32 +223,26 @@ export const validateProfileData = async (data: {
       }
     }
 
-    // Validate job benefits
     if (data.jobBenefits) {
       const benefitTypes = new Set();
       
       for (const benefit of data.jobBenefits) {
-        // Check for duplicate benefit types
         if (benefitTypes.has(benefit.benefit_type)) {
           throw new Error(`Duplicate benefit type found: ${benefit.benefit_type}`);
         }
         benefitTypes.add(benefit.benefit_type);
 
-        // Validate notes length
         if (benefit.notes && benefit.notes.length > 200) {
           throw new Error(`Notes for ${benefit.benefit_type} exceed 200 characters`);
         }
       }
     }
 
-    console.log("Profile data validation completed successfully");
   } catch (error) {
     console.error("Error in validateProfileData:", error);
     throw new Error(`Profile data validation failed: ${error.message || "Unknown error"}`);
   }
 };
-
-// ==================== UTILITY FUNCTIONS ====================
 
 export const getProfileSectionStats = async (candidateId: string) => {
   try {

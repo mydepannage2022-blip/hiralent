@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ArrowLeft,
   Zap,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import AssessmentCard from './AssessmentCard';
 
@@ -50,61 +51,26 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
   const [selectedType, setSelectedType] = useState<'QUICK_CHECK' | 'COMPREHENSIVE'>('COMPREHENSIVE');
   const [currentStep, setCurrentStep] = useState<'TYPE' | 'SKILL'>('TYPE');
 
-  // Assessment types configuration - Hiralent style
   const assessmentTypes: AssessmentType[] = [
     {
       id: 'QUICK_CHECK',
       name: 'Quick Check',
       description: 'Fast skill evaluation with essential questions',
-      questionCount: '8-12',
-      timeEstimate: '10-15 mins',
-      icon: "",
+      questionCount: '5',
+      timeEstimate: '3-6 mins',
+      icon: <Zap className="h-6 w-6" />,
       features: ['Core concepts only', 'Instant results', 'Basic skill level']
     },
     {
       id: 'COMPREHENSIVE',
       name: 'Comprehensive Test',
       description: 'In-depth assessment with detailed analysis',
-      questionCount: '20-25',
-      timeEstimate: '25-35 mins',
-      icon: "",
+      questionCount: '5',
+      timeEstimate: '4-5 mins',
+      icon: <Target className="h-6 w-6" />,
       features: ['Detailed evaluation', 'Skill breakdown', 'Learning recommendations']
     }
   ];
-
-  // Default skills if none provided
-  const defaultSkills: SkillCategory[] = [
-    {
-      id: 'react',
-      name: 'React',
-      description: 'Frontend development with React library, hooks, state management',
-      questionCount: 22,
-      timeEstimate: '25-30 mins',
-      difficulty: 'INTERMEDIATE',
-      isRecommended: true,
-      category: 'Frontend'
-    },
-    {
-      id: 'javascript',
-      name: 'JavaScript',
-      description: 'Core JavaScript programming, ES6+, async/await, DOM',
-      questionCount: 25,
-      timeEstimate: '30-35 mins',
-      difficulty: 'INTERMEDIATE',
-      category: 'Programming'
-    },
-    {
-      id: 'nodejs',
-      name: 'Node.js',
-      description: 'Backend development, Express, APIs, database integration',
-      questionCount: 20,
-      timeEstimate: '25-30 mins',
-      difficulty: 'ADVANCED',
-      category: 'Backend'
-    }
-  ];
-
-  const skillsToShow = availableSkills.length > 0 ? availableSkills : defaultSkills;
 
   const handleTypeSelect = (type: 'QUICK_CHECK' | 'COMPREHENSIVE') => {
     setSelectedType(type);
@@ -116,14 +82,36 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
   };
 
   const handleStartAssessment = () => {
-    if (selectedSkill && onStartAssessment) {
+    if (selectedSkill && onStartAssessment && !isLoading) {
       onStartAssessment(selectedSkill, selectedType);
     }
   };
 
   const handleBackToType = () => {
     setCurrentStep('TYPE');
+    setSelectedSkill('');
   };
+
+  const groupSkillsByCategory = () => {
+    const grouped = availableSkills.reduce((acc, skill) => {
+      if (!acc[skill.category]) {
+        acc[skill.category] = [];
+      }
+      acc[skill.category].push(skill);
+      return acc;
+    }, {} as Record<string, SkillCategory[]>);
+
+    const categoryOrder = ['Technical', 'Soft Skills', 'Certification', 'General'];
+    const sortedCategories = categoryOrder.filter(cat => grouped[cat]);
+    const otherCategories = Object.keys(grouped).filter(cat => !categoryOrder.includes(cat));
+    
+    return [...sortedCategories, ...otherCategories].reduce((acc, category) => {
+      acc[category] = grouped[category];
+      return acc;
+    }, {} as Record<string, SkillCategory[]>);
+  };
+
+  const groupedSkills = groupSkillsByCategory();
 
   return (
     <div className="w-full">
@@ -211,7 +199,6 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
           </motion.div>
         )}
 
-        {/* Step 2: Skill Selection */}
         {currentStep === 'SKILL' && (
           <motion.div
             key="skill-selection"
@@ -220,10 +207,7 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-
-            {/* Selected assessment type info */}
-            <div className="mb-6 flex items-center justify-between ">
-              
+            <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3 border border-blue-200 rounded-lg px-8 py-2">
                 <div>
                   <span className="font-medium text-[#005DDC] text-xs lg:text-sm">
@@ -235,19 +219,18 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
                 </div>
               </div>
 
-            <div className="flex items-center justify-between">
-              <button 
-                onClick={handleBackToType}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50"
-              >
+              <div className="flex items-center justify-between">
+                <button 
+                  onClick={handleBackToType}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm text-[#757575] hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+                > 
                 <ArrowLeft className="h-4 w-4" />
-                Change Type
-              </button>
+                  Change Type
+                </button>
+              </div>
             </div>
-                      </div>
 
-
-            {/* Important Guidelines */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
               <div className="flex gap-4">
                 <AlertTriangle className="h-3 w-3 text-yellow-600 mt-0.5 flex-shrink-0" />
@@ -275,44 +258,77 @@ const AssessmentSetup: React.FC<AssessmentSetupProps> = ({
               </div>
             </div>
 
-            
-            {/* Skills grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-6 mb-8">
-              {skillsToShow.map((skill) => (
-                <div
-                  key={skill.id}
-                  className={selectedSkill === skill.id ? 'ring-2 ring-[#005DDC] rounded-lg' : ''}
-                >
-                  <AssessmentCard
-                    {...skill}
-                    onClick={() => handleSkillSelect(skill.id)}
-                    className={selectedSkill === skill.id ? 'border-[#005DDC] bg-blue-50' : ''}
-                  />
+            <div className="mb-8">
+              {Object.entries(groupedSkills).map(([category, skills]) => (
+                <div key={category} className="mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-lg font-medium text-[#222]">{category}</h3>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-sm text-[#757575]">{skills.length} skill{skills.length > 1 ? 's' : ''}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-stretch">
+                    {skills.map((skill) => (
+                      <div
+                        key={skill.id}
+                        className={selectedSkill === skill.id ? 'ring-2 ring-[#005DDC] rounded-lg' : ''}
+                      >
+                        <AssessmentCard
+                          {...skill}
+                          onClick={() => handleSkillSelect(skill.id)}
+                          className={selectedSkill === skill.id ? 'border-[#005DDC] bg-blue-50' : ''}
+                          showButton={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
 
+            {/* No skills available message */}
+            {availableSkills.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-[#757575] mb-4">No skills available for assessment</div>
+                <p className="text-sm text-[#999]">Please add skills to your profile to start taking assessments</p>
+              </div>
+            )}
 
             {/* Start Assessment Button */}
-            <div className="flex justify-center">
-              <button
-                onClick={handleStartAssessment}
-                disabled={!selectedSkill || isLoading}
-                className="bg-[#005DDC] text-white px-10 py-3 rounded-md text-lg font-medium hover:bg-[#004EB7] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Preparing Assessment...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Play className="h-5 w-5" />
-                    Start Assessment
-                  </div>
-                )}
-              </button>
-            </div>
+            {availableSkills.length > 0 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleStartAssessment}
+                  disabled={!selectedSkill || isLoading}
+                  className={`
+                    px-10 py-3 rounded-md text-lg font-medium transition-all
+                    flex items-center gap-3 cursor-pointer
+                    ${(!selectedSkill || isLoading)
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#005DDC] text-white hover:bg-[#004EB7] hover:shadow-lg'
+                    }
+                  `}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Preparing Assessment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-5 w-5" />
+                      <span>Start Assessment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {isLoading && (
+              <p className="text-center text-sm text-gray-600 mt-4">
+                Please wait while we prepare your personalized assessment...
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

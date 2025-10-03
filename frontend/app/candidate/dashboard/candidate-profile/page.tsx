@@ -1,7 +1,7 @@
 "use client"
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/src/context/AuthContext'
-import { useProfileCompleteness } from '@/src/lib/profile.queries'
+import { useProfileCompleteness } from '@/src/lib/profile/profile.queries'
 import React from 'react'
 
 // Lazy load all heavy components
