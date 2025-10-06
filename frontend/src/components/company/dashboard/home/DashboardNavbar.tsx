@@ -114,9 +114,34 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           title: 'Activity',
           description: 'Updating your information will offer you the most relevant content'
         };
+      case '/company/dashboard/employer-profile':
+        return {
+          title: 'Employer Profile',
+          description: 'Updating your information will offer you the most relevant content'
+        };
+      case '/company/dashboard/manage-hiring':
+        return {
+          title: 'Manage Hiring',
+          description: 'Updating your information will offer you the most relevant content'
+        };
+      case '/company/dashboard/messages':
+        return {
+          title: 'Messages',
+          description: 'Updating your information will offer you the most relevant content'
+        };
+      case '/company/dashboard/notifications':
+        return {
+          title: 'Notifications',
+          description: 'Updating your information will offer you the most relevant content'
+        };
       case '/company/dashboard/postjob':
         return {
           title: 'Post Job',
+          description: 'Updating your information will offer you the most relevent content'
+        };
+      case '/company/dashboard/settings':
+        return {
+          title: 'Settings',
           description: 'Updating your information will offer you the most relevent content'
         };
       default:
