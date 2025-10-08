@@ -2,7 +2,45 @@ export interface SignupInput {
   email: string;
   password: string;
   full_name: string;
-  role: "candidate" | "company_admin" | "agency_admin";
+  role: "candidate" | "company_admin" | "agency_admin" | "superadmin";
+}
+// ✅ NEW: Admin Auth Types
+export interface AdminLoginInput {
+  email: string;
+  password: string;
+}
+
+export interface AdminLoginResponse {
+  success: boolean;
+  tempToken: string;
+  requiresMFA: boolean;
+  mfaSetup: boolean; // If true, admin needs to setup MFA first
+}
+
+export interface SetupMFAInput {
+  tempToken: string;
+}
+
+export interface SetupMFAResponse {
+  success: boolean;
+  qrCode: string; // Base64 image data URL
+  secret: string; // Backup secret key
+  manualEntryKey: string; // For manual entry
+}
+
+export interface VerifyMFAInput {
+  tempToken: string;
+  mfaToken: string; // 6-digit code from authenticator app
+}
+
+export interface AdminSessionResponse {
+  success: boolean;
+  sessionToken: string;
+  admin: {
+    user_id: string;
+    email: string;
+    full_name: string;
+  };
 }
 
 export interface LoginInput {

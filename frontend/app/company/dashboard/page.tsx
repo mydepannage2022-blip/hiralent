@@ -6,6 +6,8 @@ import DashboardJobStatistics from "@/src/components/company/dashboard/home/Dash
 import DashboardRecentlyPostedJobs from "@/src/components/company/dashboard/home/DashboardRecentlyPostedJobs";
 import DashboardSchedule from "@/src/components/company/dashboard/home/DashboardSchedule";
 import DashboardSubscription from "@/src/components/company/dashboard/home/DashboardSubscription";
+import VerificationSection from "@/src/components/company/dashboard/home/VerificationSection";
+
 
 const DashboardHome = () => {
   return (
@@ -15,8 +17,12 @@ const DashboardHome = () => {
         {/* Left Column */}
         <div className="w-full lg:w-2/3 flex flex-col gap-4">
           <DashboardStatsCards />
+          <VerificationSection />
+
+          
           <DashboardJobStatistics />
         </div>
+        
 
         {/* Right Column */}
         <div className="w-full lg:w-1/3 flex flex-col gap-4">

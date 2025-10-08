@@ -137,19 +137,57 @@ export async function ocrImage(filePath: string, lang = OCR_LANG): Promise<strin
   return best.text;
 }
 
-// ---------- OCR PDF : embedded text d’abord, puis fallback ----------
+// ---------- OCR PDF : embedded text d'abord, puis fallback ----------
 export async function ocrPdf(filePath: string): Promise<string> {
   const buf = await fs.readFile(filePath);
 
-  // 1) Texte incorporé (non scanné)
-  const parsed = await pdfParse(buf);
-  if (parsed.text && parsed.text.trim().length > 20) {
-    return parsed.text;
+  // 1) Try to extract embedded text
+  try {
+    const parsed = await pdfParse(buf);
+    if (parsed.text && parsed.text.trim().length > 20) {
+      return parsed.text;
+    }
+  } catch (pdfError: any) {
+    console.warn('[ocrPdf] pdf-parse failed, will convert to image:', pdfError.message);
   }
 
-  // 2) Fallback simple (sans rasterisation lourde)
-  const { data } = await Tesseract.recognize(filePath, OCR_LANG, tesseractOptions(DEFAULT_PSM));
-  return data.text || '';
+  // 2) PDF is scanned or corrupted - convert to images and OCR each page
+  try {
+    // Convert PDF to images using pdf-to-png or similar
+    // For now, let's use a simpler approach with pdf2pic
+    const { fromPath } = await import('pdf2pic');
+    
+    const options = {
+      density: 300,
+      saveFilename: `pdf_page`,
+      savePath: './uploads/temp',
+      format: 'png',
+      width: 2000,
+      height: 2000
+    };
+
+    const converter = fromPath(filePath, options);
+    const pageToConvertAsImage = 1; // Start with first page
+    
+    const result = await converter(pageToConvertAsImage, { responseType: 'image' });
+    
+    if (result && result.path) {
+      // OCR the converted image
+      const { data } = await Tesseract.recognize(result.path, OCR_LANG, tesseractOptions(DEFAULT_PSM));
+      
+      // Clean up temp file
+      try {
+        await fs.unlink(result.path);
+      } catch {}
+      
+      return data.text || '';
+    }
+  } catch (conversionError: any) {
+    console.error('[ocrPdf] PDF conversion failed:', conversionError.message);
+  }
+
+  // 3) Last resort: return empty string
+  return '';
 }
 
 // ---------- Switch PDF vs Image ----------
