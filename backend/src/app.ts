@@ -33,6 +33,9 @@ import companyRoutes from './routes/company.routes';
 import uploadRoutes from "./routes/upload.routes";
 import ocrRoutes from './routes/ocr.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
+import adminAuthRoutes from './routes/admin.auth.routes';
+import adminVerificationRoutes from './routes/admin.verification.routes';
+
 
 
 // Mount routes
@@ -42,6 +45,9 @@ app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
+// Register admin auth routes
+app.use('/api/v1', adminAuthRoutes);
+app.use('/api/v1', adminVerificationRoutes);
 
 
 app.get('/', (req: Request, res: Response) => {

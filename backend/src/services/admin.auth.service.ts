@@ -64,9 +64,9 @@ export async function setupMFA(tempToken: string) {
   }
   
   const secret = speakeasy.generateSecret({
-    name: `HireAlign Admin (${admin.email})`,
+    name: `Hiralent Admin (${admin.email})`, // ✅ Changed from HireAlign to Hiralent
     length: 32,
-    issuer: 'HireAlign'
+    issuer: 'Hiralent' // ✅ Changed from HireAlign to Hiralent
   });
   
   await prisma.user.update({
@@ -86,7 +86,6 @@ export async function setupMFA(tempToken: string) {
     manualEntryKey: secret.base32
   };
 }
-
 export async function verifyMFA(tempToken: string, mfaToken: string) {
   let decoded: any;
   
