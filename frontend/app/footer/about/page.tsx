@@ -1,12 +1,18 @@
+'use client'
+
+import React from "react";
 import TabsNav from "../../../src/components/footer/about/TabsNav";
 import AboutSection from "../../../src/components/footer/about/AboutSection";
-import WhoWeAre from "@../../../src/components/footer/about/WhoWeAre";
+import WhoWeAre from "../../../src/components/footer/about/WhoWeAre";
+import WhyChooseUs from "../../../src/components/footer/about/WhyChooseUs";
+import TestimonialsSection from "../../../src/components/footer/about/TestimonialsSection";
+import OurTeam from "../../../src/components/footer/about/OurTeam";
 
-export default function AboutPage() {
+const page = () => {
     return (
-        <main className="pt-10 mt-30">
-            <h1 className="text-4xl font-bold text-center mb-2">About Hiralent</h1>
-            <p className="text-center text-gray-500 mb-6">Last updated March 12, 2024</p>
+        <div className="mt-30 md:mt-35 mx-auto px-4 sm:p-0 max-w-[608px] sm:max-w-[690px] md:max-w-[920px] lg:max-w-[1024px] xl:max-w-[1280px]">
+            <h1 className="text-4xl md:text-6xl font-bold text-center mb-4">About Hiralent</h1>
+            <p className="text-lg text-center text-[#515151] mb-8 font-medium">Last updated March 12, 2024</p>
 
             {/* Tabs Navigation */}
             <TabsNav />
@@ -14,6 +20,11 @@ export default function AboutPage() {
             {/* Sections */}
             <AboutSection />
             <WhoWeAre />
-        </main>
+            <WhyChooseUs />
+            <TestimonialsSection />
+            <OurTeam />
+        </div>
     );
-}
+};
+
+export default page;

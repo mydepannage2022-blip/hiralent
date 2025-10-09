@@ -54,8 +54,8 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String // candidate, company, agency (removed recruiter)
-  is_email_verified Boolean
+  role              String    // candidate, company, agency (removed recruiter)
+  is_email_verified Boolean 
   phone_number      String?
   position          String?
   linkedin_url      String?
@@ -64,6 +64,10 @@ model User {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
+
+  // NEW: MFA Support
+  mfa_secret        String?   // TOTP secret for 2FA
+  mfa_enabled       Boolean   @default(false)
 
   // Relations
   agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
@@ -95,12 +99,12 @@ model User {
   agencyReviews   AgencyReview[]   @relation("ClientReviews")
 
   // AI-Powered Workflow Relations
-  sentMessages     CommunicationLog[] @relation("SentMessages")
-  receivedMessages CommunicationLog[] @relation("ReceivedMessages")
-  companyAnalytics HiringAnalytics[]  @relation("CompanyAnalytics")
-  generatedContent GeneratedContent[] @relation("GeneratedContent")
-  userAnalytics    UsageAnalytics[]   @relation("UserAnalytics")
-  aiFeedback       AIFeedback[]       @relation("AIFeedback")
+  sentMessages             CommunicationLog[]        @relation("SentMessages")
+  receivedMessages         CommunicationLog[]        @relation("ReceivedMessages")
+  companyAnalytics         HiringAnalytics[]         @relation("CompanyAnalytics")
+  generatedContent         GeneratedContent[]        @relation("GeneratedContent")
+  userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
+  aiFeedback               AIFeedback[]              @relation("AIFeedback")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -126,10 +130,10 @@ model CompanyProfile {
   // Business Details
   business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
-  tax_id              String? // Tax identification number
-  employee_count      Int? // Approximate number of employees
-  annual_revenue      String? // Revenue range
-
+  tax_id            String?  // Tax identification number
+  employee_count    Int?     // Approximate number of employees
+  annual_revenue    String?  // Revenue range
+  
   // Hiring Details
   hiring_volume  String? // low, medium, high volume hiring
   typical_roles  String[] // Common roles they hire for

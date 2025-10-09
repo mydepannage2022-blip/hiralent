@@ -1,7 +1,7 @@
 import SmartLink from "../../../../layout/SmartLink";
 import React, { useState } from "react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { useProfileCompleteness } from "../../../../../lib/profile.queries";
+import { useProfileCompleteness } from "../../../../../lib/profile/profile.queries";
 import { useProfile } from "../../../../../context/ProfileContext";
 
 const DashboardProfilePercentage = () => {

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useSignup } from "../../../src/lib/auth.queries";
+import { useSignup } from "../../../src/lib/auth/auth.queries";
 import AuthLayout from "../../../src/components/layout/AuthLayout";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";

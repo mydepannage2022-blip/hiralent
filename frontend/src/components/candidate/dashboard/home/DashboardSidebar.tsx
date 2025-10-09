@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Subscript,
   LucideIcon,
   X
 } from 'lucide-react';
@@ -50,7 +51,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
-    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' }
+    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
+    { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' }
   ];
 
   // Update active item based on current pathname
@@ -106,12 +108,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           
           <div className='w-full flex-1'>
             {/* Header with Company Logo */}
-            <div className="flex flex-row-reverse items-center justify-between py-4 px-4 border-b border-gray-200 relative">
+            <div className="flex flex-row-reverse items-center justify-center py-4 px-4 border-b border-gray-200 relative">
               <div className={`flex flex-col items-center ${
                 (isOpen && !isMobile) || isMobile ? 'space-x-3' : 'justify-center hidden'
               }`}>
                 <div className="rounded-lg flex items-center justify-center">
-                  <img src="/images/logo.png" alt="Logo" />
+                  <img src="/images/logo.png" alt="Logo" className="w-30 h-9" />
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
                   <div>
@@ -153,7 +155,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}
-                        className={`w-full flex items-center cursor-pointer ${
+                        className={`w-full flex items-center cursor-pointer font-normal ${
                           (isOpen && !isMobile) || isMobile 
                             ? 'lg:px-2 xl:px-4 py-3 space-x-3' 
                             : 'px-3 py-3 justify-center'
@@ -163,9 +165,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                             : 'text-[#353535] hover:bg-gray-50'
                         }`}
                       >
-                        <Icon size={22} className="flex-shrink-0 text-[#353535]" />
+                        <Icon size={22} className="flex-shrink-0 text-[#353535] text-sm" />
                         {((isOpen && !isMobile) || isMobile) && (
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-normal text-base">{item.name}</span>
                         )}
                       </SmartLink>
                     </li>
@@ -176,7 +178,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           </div>
 
           {/* Logout Button */}
-          <div className='w-full p-4 border-t border-gray-200'>
+          <div className='w-full p-4 border-t border-gray-200 mt-16'>
             <button 
               onClick={handleLogoutClick}
               className={`w-full flex items-center cursor-pointer ${

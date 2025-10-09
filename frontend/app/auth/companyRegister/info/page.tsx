@@ -10,7 +10,7 @@ import SmartLink from "@/src/components/layout/SmartLink";
 import { locationOptions } from "@/src/constants/groupedLocationOptions";
 // Types
 import { industryOptions } from "@/src/constants/groupedIndustriesOptions";
-import { useCreateCompanyProfile } from "@/src/lib/auth.queries";
+import { useCreateCompanyProfile } from "@/src/lib/auth/auth.queries";
 
 
 interface FormData {
@@ -20,6 +20,8 @@ interface FormData {
   website: string;
   location: string;
   description: string;
+  registrationNumber: string;
+  fullAddress: string;
 }
 
 interface FormErrors {
@@ -29,6 +31,9 @@ interface FormErrors {
   website?: string;
   location?: string;
   description?: string;
+   
+  registrationNumber?: string;
+  fullAddress?: string;
 }
 
 interface FormTouched {
@@ -38,6 +43,8 @@ interface FormTouched {
   website?: boolean;
   location?: boolean;
   description?: boolean;
+  registrationNumber?: boolean;
+  fullAddress?: boolean;
 }
 
 interface OptionType {
@@ -55,6 +62,8 @@ const CompanyInfoPage = () => {
     website: "",
     location: "",
     description: "",
+    registrationNumber: "",
+    fullAddress: "",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -135,6 +144,18 @@ const CompanyInfoPage = () => {
         if (!value.trim()) return "Company description is required";
         if (value.trim().length < 10) return "Description must be at least 10 characters";
         return undefined;
+      case "registrationNumber":
+      if (!value.trim()) return "Registration number (RC) is required";
+      // Basic RC format validation (Morocco): numbers/letters/slashes
+      if (!/^[A-Z0-9\/\-]{3,}$/i.test(value.trim())) {
+        return "Please enter a valid RC number (e.g., 12345/A/2020)";
+      }
+      return undefined;
+
+    case "fullAddress":
+      if (!value.trim()) return "Full address is required";
+      if (value.trim().length < 10) return "Please enter a complete address";
+      return undefined;
 
       default:
         return undefined;
@@ -217,6 +238,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     website: true,
     location: true,
     description: true,
+    registrationNumber: true,
+    fullAddress: true,
   };
   setTouched(allTouched);
 
@@ -237,8 +260,11 @@ createProfileMutation.mutate({
   company_size: formData.companySize,
   website: formData.website || undefined,
   location: formData.location,
-  description: formData.description
+  description: formData.description,
+  registration_number: formData.registrationNumber.trim(),
+  full_address: formData.fullAddress.trim(),
 });
+
     console.log('Sending data:', formData);
   }
 };
@@ -417,6 +443,71 @@ createProfileMutation.mutate({
               animate={{ opacity: 1 }}
             >
               {errors.location}
+            </motion.p>
+          )}
+        </motion.div>
+        {/* Registration Number Field */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.1, duration: 0.5 }}
+          className="mb-1"
+        >
+          <label className="block text-[#222] font-medium text-xs mb-1">
+            Registration Number (RC)<span className="text-red-500">*</span>
+          </label>
+          <motion.input
+            type="text"
+            name="registrationNumber"
+            id="registrationNumber"
+            placeholder="e.g., 12345/A/2020"
+            className={getInputClassName("registrationNumber")}
+            value={formData.registrationNumber}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            whileFocus={{ scale: 1.02 }}
+            transition={{ duration: 0.3 }}
+          />
+          {touched.registrationNumber && errors.registrationNumber && (
+            <motion.p
+              className="text-red-500 text-xs mt-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {errors.registrationNumber}
+            </motion.p>
+          )}
+        </motion.div>
+
+        {/* Full Address Field */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
+          className="mb-1"
+        >
+          <label className="block text-[#222] font-medium text-xs mb-1">
+            Full Address<span className="text-red-500">*</span>
+          </label>
+          <motion.textarea
+            name="fullAddress"
+            id="fullAddress"
+            placeholder="Enter complete address (street, building, city, postal code)"
+            className={`${getInputClassName("fullAddress")} resize-none`}
+            rows={3}
+            value={formData.fullAddress}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            whileFocus={{ scale: 1.02 }}
+            transition={{ duration: 0.3 }}
+          />
+          {touched.fullAddress && errors.fullAddress && (
+            <motion.p
+              className="text-red-500 text-xs mt-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {errors.fullAddress}
             </motion.p>
           )}
         </motion.div>
