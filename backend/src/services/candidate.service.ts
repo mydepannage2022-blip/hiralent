@@ -784,3 +784,72 @@ export const getCandidateProfile = async (candidateId: string) => {
     throw serviceError;
   }
 };
+
+
+export const getPublicProfile = async (candidateId: string) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { 
+        user_id: candidateId,
+        role: 'candidate' 
+      },
+      select: {
+        full_name: true,
+        position: true,
+        linkedin_url: true,
+        candidateProfile: {
+          select: {
+            profile_picture_url: true,
+            headline: true,
+            about_me: true,
+            location: true,
+            city: true,
+            languages: true,
+            video_intro_url: true,
+            links: true,
+            resume_application_url: true,
+            experience: true,
+            education: true,
+          }
+        },
+        candidateSkills: {
+          select: {
+            skill_name: true,
+            skill_category: true,
+            proficiency: true,
+            years_experience: true,
+            is_verified: true,
+          },
+          where: {
+            is_verified: true 
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('Candidate profile not found');
+    }
+
+    return {
+      full_name: user.full_name,
+      position: user.position,
+      linkedin_url: user.linkedin_url,
+      profile_picture_url: user.candidateProfile?.profile_picture_url || null,
+      headline: user.candidateProfile?.headline || null,
+      about_me: user.candidateProfile?.about_me || null,
+      location: user.candidateProfile?.location || null,
+      city: user.candidateProfile?.city || null,
+      languages: user.candidateProfile?.languages || null,
+      video_intro_url: user.candidateProfile?.video_intro_url || null,
+      links: user.candidateProfile?.links || null,
+      resume_application_url: user.candidateProfile?.resume_application_url || null,
+      skills: user.candidateSkills || [],
+      experience: user.candidateProfile?.experience || null,
+      education: user.candidateProfile?.education || null,
+    };
+  } catch (error) {
+    console.error('Error fetching public profile:', error);
+    throw error;
+  }
+};

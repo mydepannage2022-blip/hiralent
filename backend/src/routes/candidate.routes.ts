@@ -14,9 +14,9 @@ import {
   updateHeadlineController,
   getHeadlineController,
   getProfileController,
+  getPublicProfileController,
 } from '../controller/candidate.controller';
 
-// Profile Management Controllers
 import {
   updateBasicInfoController,
   updateSkillsController,
@@ -59,7 +59,6 @@ import {
   validateUploadedImage 
 } from '../middlewares/uploadImage.middleware';
 
-// Validation Schemas
 import { 
   updateLocationSchema, 
   updateSalarySchema, 
@@ -80,13 +79,9 @@ import { startAssessmentSchema } from '../validation/assessment.validation';
 
 const router = Router();
 
-// Health check (no auth required)
 router.get('/health', healthCheckController);
 
-// All routes below require authentication
 router.use(checkAuth);
-
-// ==================== EXISTING CANDIDATE ROUTES ====================
 
 router.post(
   '/profile-upload',
@@ -125,10 +120,8 @@ router.patch(
   updateHeadlineController
 );
 
-// Get candidate headline
 router.get('/headline', getHeadlineController);
 
-// Get headline for specific candidate (admin/company use)
 router.get('/headline/:candidateId', getHeadlineController);
 
 router.get('/profile-summary', getProfileSummaryController);
@@ -158,8 +151,6 @@ router.post('/update-vector', updateCandidateVectorController);
 
 router.post('/update-vector/:candidateId', updateCandidateVectorController);
 
-
-// ==================== ASSESSMENT ROUTES ====================
 router.post('/start-assessment', [checkAuth, validateBody(startAssessmentSchema)], startAssessmentController);
 
 router.get('/assessment/:assessmentId/question',
@@ -181,7 +172,8 @@ router.get('/assessments/history', checkAuth, getHistoryController);
 
 router.get('/skill-recommendations', checkAuth, getRecommendationsController);
 
-// ==================== PROFILE MANAGEMENT ROUTES ====================
+router.get('/public-profile/:candidateId', getPublicProfileController);
+
 router.put(
   '/profile/basic-info',
   [checkAuth, validateBody(updateBasicInfoSchema)],
@@ -271,7 +263,12 @@ router.post(
   uploadApplicationResumeController
 );
 
+
 export default router;
+
+
+
+
 
 /*
 ==================== COMPLETE API ENDPOINTS SUMMARY ====================
