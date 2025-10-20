@@ -54,8 +54,8 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String    // candidate, company_admin, agency_admin 
-  is_email_verified Boolean 
+  role              String // candidate, company_admin, agency_admin 
+  is_email_verified Boolean
   phone_number      String?
   position          String?
   linkedin_url      String?
@@ -95,13 +95,13 @@ model User {
   agencyReviews   AgencyReview[]   @relation("ClientReviews")
 
   // AI-Powered Workflow Relations
-  sentMessages             CommunicationLog[]        @relation("SentMessages")
-  receivedMessages         CommunicationLog[]        @relation("ReceivedMessages")
-  companyAnalytics         HiringAnalytics[]         @relation("CompanyAnalytics")
-  generatedContent         GeneratedContent[]        @relation("GeneratedContent")
-  userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
-  aiFeedback               AIFeedback[]              @relation("AIFeedback")
-  
+  sentMessages     CommunicationLog[] @relation("SentMessages")
+  receivedMessages CommunicationLog[] @relation("ReceivedMessages")
+  companyAnalytics HiringAnalytics[]  @relation("CompanyAnalytics")
+  generatedContent GeneratedContent[] @relation("GeneratedContent")
+  userAnalytics    UsageAnalytics[]   @relation("UserAnalytics")
+  aiFeedback       AIFeedback[]       @relation("AIFeedback")
+
   // back-relation: one user -> many uploaded docs
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 }
@@ -147,6 +147,9 @@ model CompanyProfile {
   rating            Float? // Company rating from candidates
   total_jobs_posted Int? // Total jobs posted on platform
   active_jobs_count Int? // Currently active jobs
+
+  // langue préférée pour les sorties AI: "en" | "ar" | "fr" (exemples)
+  preferred_language String? @default("en")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -938,6 +941,23 @@ model RelocationAnalytics {
   @@map("relocation_analytics")
 }
 
+enum InsightType {
+  recommendation
+  prediction
+  trend
+  alert
+  opportunity
+}
+
+enum InsightCategory {
+  hiring // With who? (team, staffing needs, key roles to hire)
+  performance // How well? (efficiency, KPIs, retention, product quality, team productivity)
+  market // Where? (industry, competitors, geography, positioning)
+  finance // How much? (revenue, costs, margins, runway, funding)
+  growth // How to improve? (expansion strategies, acquisition channels, partnerships)
+  business_model // How to make money? (revenue streams, pricing model, value capture)
+}
+
 // AI Business Insights & Recommendations
 model BusinessInsight {
   insight_id  String @id @default(uuid())
@@ -945,19 +965,20 @@ model BusinessInsight {
   target_type String // company, agency, platform
 
   // Insight Details
-  insight_type      String // recommendation, prediction, trend, alert, opportunity
-  category          String // hiring, performance, market, finance, growth
+  insight_type      InsightType
+  category          InsightCategory
   title             String
   description       String
   detailed_analysis String?
 
   // AI Details
   ai_model   String // Which AI model generated this
-  confidence Float // 0-1 confidence score
+  confidence Float? // 0-1 confidence score (now optional)
   evidence   Json? // Supporting data/evidence
+  payload    Json? // raw structured JSON from the LLM
 
   // Actionability
-  priority          String // low, medium, high, critical
+  priority          String   @default("medium") // low, medium, high, critical
   action_required   Boolean  @default(false)
   suggested_actions String[] // Array of suggested actions
   expected_impact   String? // Expected impact if acted upon
@@ -974,9 +995,18 @@ model BusinessInsight {
   is_recurring Boolean   @default(false)
   next_update  DateTime? // When to regenerate this insight
 
+  // Idempotency / dedupe (NEW)
+  /// Date-only bucket; 1 insight max per (company, category, day)
+  day_bucket      DateTime @default(dbgenerated("CURRENT_DATE"))
+  /// Optional stronger guard (hash of companyId|category|YYYY-MM-DD|content)
+  dedupe_checksum String?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@unique([target_type, target_id, category, day_bucket], map: "insight_daily_unique")
+  @@index([target_type, target_id])
+  @@index([dedupe_checksum])
   @@map("business_insights")
 }
 
