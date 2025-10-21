@@ -54,8 +54,8 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String // candidate, company_admin, agency_admin 
-  is_email_verified Boolean
+  role              String    // candidate, company_admin, agency_admin, superadmin
+  is_email_verified Boolean 
   phone_number      String?
   position          String?
   linkedin_url      String?
@@ -64,6 +64,10 @@ model User {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
+
+  // NEW: MFA Support
+  mfa_secret        String?   // TOTP secret for 2FA
+  mfa_enabled       Boolean   @default(false)
 
   // Relations
   agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
@@ -129,10 +133,16 @@ model CompanyProfile {
   // Business Details
   business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
-  tax_id              String? // Tax identification number
-  employee_count      Int? // Approximate number of employees
-  annual_revenue      String? // Revenue range
+  tax_id            String?  // Tax identification number
+  employee_count    Int?     // Approximate number of employees
+  annual_revenue    String?  // Revenue range
 
+  //  ADD THESE NEW FIELDS FOR VERIFICATION 
+  full_address      String?  // Complete registered address (street, building, city....)
+  verification_status String? @default("unverified") // unverified, pending, verified, rejected
+  verification_submitted_at DateTime? // When verification was submitted
+  verification_notes String? // Admin notes about verification
+  
   // Hiring Details
   hiring_volume  String? // low, medium, high volume hiring
   typical_roles  String[] // Common roles they hire for

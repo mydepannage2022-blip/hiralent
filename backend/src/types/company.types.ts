@@ -16,6 +16,8 @@ export interface CreateCompanyProfileData {
   business_type?: string;
   employee_count?: number;
   remote_policy?: string;
+  registration_number: string;
+  full_address: string;        
 }
 
 export interface UpdateCompanyProfileData {
@@ -34,4 +36,6 @@ export interface UpdateCompanyProfileData {
   business_type?: string;
   employee_count?: number;
   remote_policy?: string;
+  registration_number?: string; 
+  full_address?: string;        
 }

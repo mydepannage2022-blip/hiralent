@@ -98,6 +98,8 @@ export const createCompanyProfile = async (data: {
   website?: string;
   location: string;
   description: string;
+  registration_number: string;
+  full_address: string;
 }) => {
     try {
     console.log('API data:', data); // ✅ Add this

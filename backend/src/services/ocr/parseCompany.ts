@@ -82,20 +82,69 @@ const DATE_FORMATS = [
 function extractCompanyName(lines: string[]): { value?: string; score: number; note?: string } {
   const normLines = lines.map((l) => CLEAN.normalize(l));
 
-  for (const line of normLines) {
+  // ✅ NEW: Look for explicit company name after hints
+  for (let i = 0; i < normLines.length; i++) {
+    const line = normLines[i];
     const hint = COMPANY_HINTS.find((r) => r.test(line));
+    
     if (hint) {
+      // Check same line after colon/separator
       const after = line.split(/[:：]/)[1] || "";
       const candidate = CLEAN.normalize(after)
-        .split(/\b(RC|ICE|IF|PATENTE|TVA|VAT)\b/i)[0]   // coupe avant autres champs
+        .split(/\b(RC|ICE|IF|PATENTE|TVA|VAT)\b/i)[0]
         .replace(/^[-–—]\s*/, "")
-        .replace(/[^\w\s&'’.-]/g, "");
+        .replace(/[^\w\s&''.-]/g, "")
+        .trim();
+      
       if (candidate && candidate.length >= 3) {
-        return { value: candidate, score: 0.95, note: "from_hint" };
+        return { value: candidate, score: 0.95, note: "from_hint_same_line" };
+      }
+      
+      // ✅ Check next line after hint (common in structured documents)
+      if (i + 1 < normLines.length) {
+        const nextLine = normLines[i + 1].trim();
+        if (nextLine.length >= 3 && nextLine.length < 100 && !/^\d+[\|\)]/.test(nextLine)) {
+          return { value: nextLine, score: 0.93, note: "from_hint_next_line" };
+        }
       }
     }
   }
 
+  // ✅ NEW: In Moroccan documents, company name often appears prominently before first section
+  const beforeFirstSection = [];
+  for (let i = 0; i < Math.min(15, normLines.length); i++) {
+    // Stop at first numbered section (1 |, 2 |, etc.)
+    if (/^\d+[\|\)]/.test(normLines[i])) break;
+    
+    // Skip issuing authority names
+    if (/(office|minist[eè]re|tribunal|administration|gouvernement)/i.test(normLines[i])) continue;
+    
+    // Skip generic headers
+    if (/(fiche|certificat|document|legal|registre)/i.test(normLines[i])) continue;
+    
+    beforeFirstSection.push(normLines[i]);
+  }
+  
+  // Find the most prominent looking company name
+  const candidates = beforeFirstSection.filter(line => {
+    const words = line.split(/\s+/);
+    return line.length >= 5 
+           && line.length < 80
+           && words.length >= 2 
+           && words.length <= 10
+           && !/\d{4}/.test(line) // no years
+           && !/@/.test(line); // no emails
+  });
+  
+  if (candidates.length > 0) {
+    // Pick the one that looks most like a company name (has uppercase, &, SARL, etc.)
+    candidates.sort((a, b) => scoreTitleLike(b) - scoreTitleLike(a));
+    if (candidates[0] && candidates[0].length >= 5) {
+      return { value: candidates[0], score: 0.80, note: "prominent_before_sections" };
+    }
+  }
+
+  // Original title-like logic as final fallback...
   const titleish: string[] = [];
   for (let i = 0; i < Math.min(10, normLines.length); i++) {
     const l = normLines[i];
@@ -141,50 +190,111 @@ function extractRegistration(text: string) {
 
 function extractAddress(lines: string[]) {
   const norm = lines.map((l) => CLEAN.normalize(l));
+  
+  // First, look for "Siège social" with value on same line or after colon
   for (let i = 0; i < norm.length; i++) {
     if (/si[eè]ge\s+social/i.test(norm[i])) {
       const after = norm[i].split(/[:：]/)[1] || "";
       const v = CLEAN.normalize(after);
-      if (v.length > 6) return { value: v, score: 0.9, note: "from_hint" };
+      if (v.length > 10) return { value: v, score: 0.9, note: "from_siege_social" };
     }
   }
-  const ADDRESS_HINTS = [/adresse/i, /si[eè]ge\s+social/i, /head\s*office/i, /address/i];
+
+  // Look for address hints followed by actual address content
   for (let i = 0; i < norm.length; i++) {
-    if (ADDRESS_HINTS.some((r) => r.test(norm[i]))) {
-      const collected = [stripLabel(norm[i])];
-      for (let j = i + 1; j < Math.min(i + 4, norm.length); j++) {
-        if (looksLikeAddress(norm[j])) collected.push(norm[j]); else break;
+    const line = norm[i];
+    
+    // If we find an address hint/label
+    if (ADDRESS_HINTS.some((r) => r.test(line))) {
+      // Check if the line itself has content after the label
+      const afterColon = line.split(/[:：]/)[1] || "";
+      if (afterColon.length > 10 && looksLikeAddress(afterColon)) {
+        return { value: CLEAN.normalize(afterColon), score: 0.9, note: "from_hint_same_line" };
       }
-      const joined = CLEAN.normalize(collected.join(", "));
-      if (joined.length > 8) return { value: joined, score: 0.85, note: "from_hint" };
+
+      // ✅ NEW: Skip table headers (short lines with multiple column names)
+      const isTableHeader = /\b(adresse|activit[ée]|enseigne|ville|city|address)\b/gi.test(line) 
+                          && line.split(/\s+/).length <= 5 
+                          && line.length < 50;
+
+      if (isTableHeader) {
+        // Look at the next few lines for actual address data
+        const collected: string[] = [];
+        for (let j = i + 1; j < Math.min(i + 5, norm.length); j++) {
+          const nextLine = norm[j];
+          
+          // Skip empty or very short lines
+          if (nextLine.length < 5) continue;
+          
+          // Stop if we hit another section header
+          if (/^\d+[\)|\|]/.test(nextLine)) break;
+          
+          // Collect lines that look like addresses
+          if (looksLikeAddress(nextLine)) {
+            collected.push(nextLine);
+          } else if (collected.length > 0) {
+            // If we already have some address lines and hit a non-address line, stop
+            break;
+          }
+        }
+        
+        if (collected.length > 0) {
+          const joined = CLEAN.normalize(collected.join(", "));
+          return { value: joined, score: 0.88, note: "from_table_content" };
+        }
+      } else {
+        // Original logic for non-table headers
+        const collected = [stripLabel(line)];
+        for (let j = i + 1; j < Math.min(i + 4, norm.length); j++) {
+          if (looksLikeAddress(norm[j])) collected.push(norm[j]); 
+          else break;
+        }
+        const joined = CLEAN.normalize(collected.filter(s => s.length > 3).join(", "));
+        if (joined.length > 10) return { value: joined, score: 0.85, note: "from_hint_multiline" };
+      }
     }
   }
+
+  // Fallback: scan for address-like patterns anywhere
   let best: { value?: string; score: number } = { score: 0.1 };
   for (let i = 0; i < norm.length; i++) {
-    if (looksLikeAddress(norm[i])) {
+    if (looksLikeAddress(norm[i]) && norm[i].length > 15) {
       const collected = [norm[i]];
-      for (let j = i + 1; j < Math.min(i + 4, norm.length); j++) {
-        if (looksLikeAddress(norm[j])) collected.push(norm[j]); else break;
+      for (let j = i + 1; j < Math.min(i + 3, norm.length); j++) {
+        if (looksLikeAddress(norm[j]) && norm[j].length > 5) {
+          collected.push(norm[j]);
+        } else break;
       }
       const joined = CLEAN.normalize(collected.join(", "));
       const sc = scoreAddress(joined);
       if (sc > best.score) best = { value: joined, score: sc };
     }
   }
+  
   return best;
+}
+
+// Update looksLikeAddress to be more specific
+function looksLikeAddress(s: string) {
+  const deb = CLEAN.deburr(s.toLowerCase());
+  
+  // ✅ Exclude table headers and labels
+  const isLabel = /^(adresse|address|activit[ée]|enseigne|ville|city)(\s|$)/i.test(s.trim());
+  if (isLabel) return false;
+  
+  const hasStreet = /(rue|avenue|av\.?|bd|boulevard|quartier|route|lot|bloc|immeuble|appartement|apartment|street|st\.?|road|rd\.?|hay|n°|num[ée]ro)/i.test(deb);
+  const hasNum = /\b\d{1,5}\b/.test(deb);
+  const hasPostCode = /\b\d{4,6}\b/.test(deb);
+  const hasCityHint = /(casablanca|rabat|tanger|marrakech|fes|agadir|dakhla|ouad|oued|paris|marseille|lyon|london|madrid|city|ville|morocco|maroc|france|uk|espagne|spain)/i.test(deb);
+  
+  // Require at least one strong indicator
+  return (hasStreet && hasNum) || (hasNum && hasCityHint) || (hasStreet && hasCityHint) || hasPostCode;
 }
 
 function stripLabel(s: string) {
   return CLEAN.normalize(s.replace(/^\s*(adresse|address|si[eè]ge\s+social)\s*[:：-]\s*/i, ""));
 }
-function looksLikeAddress(s: string) {
-  const deb = CLEAN.deburr(s.toLowerCase());
-  const hasStreet = /(rue|avenue|av\.?|bd|boulevard|quartier|route|lot|bloc|immeuble|appartement|apartment|street|st\.?|road|rd\.?)/i.test(deb);
-  const hasNum = /\b\d{1,5}\b/.test(deb);
-  const hasPostCode = /\b\d{4,6}\b/.test(deb);
-  const hasCityHint = /(casablanca|rabat|tanger|marrakech|fes|agadir|paris|marseille|lyon|london|madrid|city|ville|morocco|maroc|france|uk|espagne|spain)/i.test(deb);
-  return hasStreet || (hasNum && (hasCityHint || hasPostCode));
-}
+
 function scoreAddress(s: string) {
   let sc = 0.5;
   if (/\b\d{4,6}\b/.test(s)) sc += 0.15;

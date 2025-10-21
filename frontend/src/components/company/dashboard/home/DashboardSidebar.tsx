@@ -175,7 +175,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </ul>
             </nav>
           </div>
-
+        
           {/* Logout Button */}
           <div className='w-full p-4 border-t border-gray-200'>
             <button 

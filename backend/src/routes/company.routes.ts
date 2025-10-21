@@ -34,7 +34,7 @@ router.post(
 );
 
 // // Get company profile
-// router.get('/profile', getProfileController);
+router.get('/profile', getProfileController);
 
 // Update company profile
 router.patch(
