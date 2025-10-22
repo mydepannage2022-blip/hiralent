@@ -2,103 +2,224 @@
 
 import { useState } from "react";
 import SectionCard from "@/src/components/company/dashboard/postjob/SectionCard";
-import LabeledInput from "@/src/components/company/dashboard/postjob/LabeledInput";
-import CheckboxButton from "@/src/components/company/dashboard/postjob/CheckboxButton";
-import Tag from "@/src/components/company/dashboard/postjob/Tag";
+import JobIntroSection from "@/src/components/company/dashboard/postjob/JobIntroSection";
+import EmploymentTypeSection from "@/src/components/company/dashboard/postjob/EmploymentTypeSection";
+import WorkLocationSection from "@/src/components/company/dashboard/postjob/WorkLocationSection";
+import SalarySection from "@/src/components/company/dashboard/postjob/SalarySection";
+import PreferredJobBenefitsSection from "@/src/components/company/dashboard/postjob/PreferredJobBenefitsSection";
+import JobExecutionConditionsSection from "@/src/components/company/dashboard/postjob/JobExecutionConditionsSection";
+import WorkExperienceSection from "@/src/components/company/dashboard/postjob/WorkExperienceSection";
+import CompletionRequirementsSection from "@/src/components/company/dashboard/postjob/CompletionRequirementsSection";
+import SkillsSection from "@/src/components/company/dashboard/postjob/SkillsSection";
+import JobDescriptionSection from "@/src/components/company/dashboard/postjob/JobDescriptionSection";
 
-const page = () => {
+// icons
+import {
+  MapPin,
+  BriefcaseBusiness,
+  SquareUserRound,
+  HandCoins,
+  FileText,
+  Star,
+  Users,
+  Building,
+  IdCard,
+  Medal,
+} from "lucide-react";
+
+const Page = () => {
   const [employmentTypes, setEmploymentTypes] = useState<string[]>(["Full-time", "Remote"]);
   const [tags, setTags] = useState<string[]>(["Tehran/Iran"]);
-  const [salaryVisible, setSalaryVisible] = useState(true);
+  const [editSection, setEditSection] = useState<string | null>(null);
+
+  // track if page needs saving
+  const [dirty, setDirty] = useState(false);
 
   const toggleEmploymentType = (type: string) => {
     setEmploymentTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
+    setDirty(true);
   };
 
   const removeTag = (tag: string) => {
     setTags((prev) => prev.filter((t) => t !== tag));
+    setDirty(true);
   };
 
+  const handleSaveAll = () => {
+    console.log("All section changes saved ✅");
+    setEditSection(null);
+    setDirty(false); // mark everything saved
+  };
+
+  const handlePostJob = () => {
+    console.log("Job posted 🚀");
+  };
+
+  // ---- UI logic ----
+  const showSave = dirty || editSection !== null;
+
   return (
-    <div className="max-w-3xl px-4 py-8 bg-white rounded-xl">
-      {/* 1. Job Introduction */}
-      <SectionCard title="Job Introduction">
-        <div className="grid grid-cols-1 gap-4">
-          <LabeledInput label="Job title" required placeholder="User Interface Designer (UI Designer)" />
-          <LabeledInput label="Job category" required placeholder="Please type your job category" />
-          <LabeledInput label="Organization industry" required placeholder="Please type your organization industry" />
-          <LabeledInput label="Organizational level" required placeholder="Please type your organizational level" />
-        </div>
+    <div className="max-w-3xl 2xl:max-w-6xl p-2 sm:p-4 bg-white rounded-xl space-y-6">
+      {/* Job Intro */}
+      <SectionCard
+        title="Job Introduction"
+        icon={<BriefcaseBusiness className="w-6 h-6" />}
+        isEditing={editSection === "job"}
+        onToggle={() => {
+          setEditSection(editSection === "job" ? null : "job");
+          setDirty(true);
+        }}
+      >
+        <JobIntroSection isEditing={editSection === "job"} />
       </SectionCard>
 
-      {/* 2. Employment Type */}
-      <SectionCard title="Employment Type">
-        <div className="flex flex-wrap">
-          {["Full-time", "Part-time", "Remote", "Internship"].map((type) => (
-            <CheckboxButton
-              key={type}
-              label={type}
-              checked={employmentTypes.includes(type)}
-              onChange={() => toggleEmploymentType(type)}
-            />
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap">
-          {employmentTypes.map((type) => (
-            <Tag key={type} label={type} onRemove={() => toggleEmploymentType(type)} />
-          ))}
-        </div>
+      {/* Employment */}
+      <SectionCard
+        title="Employment Type"
+        icon={<SquareUserRound className="w-6 h-6" />}
+        isEditing={editSection === "employment"}
+        onToggle={() => {
+          setEditSection(editSection === "employment" ? null : "employment");
+          setDirty(true);
+        }}
+      >
+        <EmploymentTypeSection
+          isEditing={editSection === "employment"}
+          employmentTypes={employmentTypes}
+          toggleEmploymentType={toggleEmploymentType}
+        />
       </SectionCard>
 
-      {/* 3. Work Location */}
-      <SectionCard title="Work Location">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <LabeledInput label="Country" required placeholder="Iran" />
-          <LabeledInput label="City" required placeholder="Tehran" />
-        </div>
-        <div className="mt-3 flex flex-wrap">
-          {tags.map((tag) => (
-            <Tag key={tag} label={tag} onRemove={() => removeTag(tag)} />
-          ))}
-        </div>
+      {/* Work Location */}
+      <SectionCard
+        title="Work Location"
+        icon={<MapPin className="w-6 h-6" />}
+        isEditing={editSection === "location"}
+        onToggle={() => {
+          setEditSection(editSection === "location" ? null : "location");
+          setDirty(true);
+        }}
+      >
+        <WorkLocationSection
+          isEditing={editSection === "location"}
+          tags={tags}
+          removeTag={removeTag}
+        />
       </SectionCard>
 
-      {/* 4. Salary & Benefits */}
-      <SectionCard title="Salary & Benefits">
-        <LabeledInput label="Minimum Salary Amount" required placeholder="5000$" type="number" />
+      {/* Salary */}
+      <SectionCard
+        title="Salary & Benefits"
+        icon={<HandCoins className="w-6 h-6" />}
+        isEditing={editSection === "salary"}
+        onToggle={() => {
+          setEditSection(editSection === "salary" ? null : "salary");
+          setDirty(true);
+        }}
+      >
+        <SalarySection isEditing={editSection === "salary"} />
+      </SectionCard>
 
-        <div className="mt-3 text-sm text-gray-600">
-          <p>💡 What is the fair salary range for this field?</p>
-        </div>
+      {/* Preferred Benefits */}
+      <SectionCard
+        title="Preferred Job Benefits"
+        icon={<Star className="w-6 h-6" />}
+        isEditing={editSection === "benefits"}
+        onToggle={() => {
+          setEditSection(editSection === "benefits" ? null : "benefits");
+          setDirty(true);
+        }}
+      >
+        <PreferredJobBenefitsSection isEditing={editSection === "benefits"} />
+      </SectionCard>
 
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            id="displaySalary"
-            type="checkbox"
-            checked={salaryVisible}
-            onChange={() => setSalaryVisible(!salaryVisible)}
-            className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-          />
-          <label htmlFor="displaySalary" className="text-sm text-gray-700">
-            Displaying salary in the job post
-          </label>
-        </div>
+      {/* Job Execution Conditions */}
+      <SectionCard
+        title="Job Execution Conditions"
+        icon={<Users className="w-6 h-6" />}
+        isEditing={editSection === "execution"}
+        onToggle={() => {
+          setEditSection(editSection === "execution" ? null : "execution");
+          setDirty(true);
+        }}
+      >
+        <JobExecutionConditionsSection isEditing={editSection === "execution"} />
+      </SectionCard>
 
-        <p className="mt-2 text-sm text-red-500">
-          Job postings that transparently display their fair salary receive 45% more resumes on
-          average.
-        </p>
+      {/* Work Experience */}
+      <SectionCard
+        title="Work Experience"
+        icon={<Building className="w-6 h-6" />}
+        isEditing={editSection === "experience"}
+        onToggle={() => {
+          setEditSection(editSection === "experience" ? null : "experience");
+          setDirty(true);
+        }}
+      >
+        <WorkExperienceSection isEditing={editSection === "experience"} />
+      </SectionCard>
 
-        {salaryVisible && (
-          <div className="mt-3 flex flex-wrap">
-            <Tag label="5000$" onRemove={() => { }} />
-          </div>
+      {/* Completion Requirements */}
+      <SectionCard
+        title="Completion Requirements"
+        icon={<IdCard className="w-6 h-6" />}
+        isEditing={editSection === "completion"}
+        onToggle={() => {
+          setEditSection(editSection === "completion" ? null : "completion");
+          setDirty(true);
+        }}
+      >
+        <CompletionRequirementsSection isEditing={editSection === "completion"} />
+      </SectionCard>
+
+      {/* Skills */}
+      <SectionCard
+        title="Skills"
+        icon={<Medal className="w-6 h-6" />}
+        isEditing={editSection === "skills"}
+        onToggle={() => {
+          setEditSection(editSection === "skills" ? null : "skills");
+          setDirty(true);
+        }}
+      >
+        <SkillsSection isEditing={editSection === "skills"} />
+      </SectionCard>
+
+      {/* Job Description */}
+      <SectionCard
+        title="Job Description"
+        icon={<FileText className="w-6 h-6" />}
+        isEditing={editSection === "description"}
+        onToggle={() => {
+          setEditSection(editSection === "description" ? null : "description");
+          setDirty(true);
+        }}
+      >
+        <JobDescriptionSection isEditing={editSection === "description"} />
+      </SectionCard>
+
+      {/* Footer button */}
+      <div className="mt-8">
+        {showSave ? (
+          <button
+            onClick={handleSaveAll}
+            className="bg-[#282828] text-white px-18 py-2 rounded-md font-medium hover:opacity-90 transition-colors w-auto max-w-lg"
+          >
+            Save
+          </button>
+        ) : (
+          <button
+            onClick={handlePostJob}
+            className="bg-[#282828] text-white px-18 py-2 rounded-md font-medium hover:opacity-90 transition-colors w-auto max-w-max"
+          >
+            Post Job
+          </button>
         )}
-      </SectionCard>
+      </div>
     </div>
   );
 };
 
-export default page;
+export default Page;

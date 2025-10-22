@@ -143,11 +143,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Target className="h-6 w-6 text-[#005DDC]" />
-          <h3 className="text-lg font-semibold text-[#222]">Assessment Progress</h3>
+          <h3 className="text-lg font-semibold text-[#222] text-sm">Assessment Progress</h3>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-[#005DDC]">{progressPercentage}%</div>
-          <div className="text-sm text-[#757575]">Complete</div>
+          <div className="text-xl font-bold text-[#005DDC]">{progressPercentage}%</div>
+          <div className="text-xs text-[#757575]">Complete</div>
         </div>
       </div>
 

@@ -1,17 +1,24 @@
-// TODO: Import types from assessment.types and openai.ts
 import { SKILL_ASSESSMENT_PROMPTS } from './skillAssessment.prompts';
 import { generateSkillsAssessmentJSON } from '../../lib/openai';
 
 export const generateQuestions = async (params: any): Promise<any[]> => {
+  const totalYears = params.candidateProfile?.experienceLevel 
+    ? JSON.parse(params.candidateProfile.experienceLevel).reduce((sum: number, job: any) => sum + (job.years || 0), 0)
+    : 0;
+  
+  const experienceSummary = `${totalYears}+ years experience`;
+  
+  const topSkills = params.candidateProfile?.existingSkills?.slice(0, 15).join(', ') || 'N/A';
+  
   const prompt = SKILL_ASSESSMENT_PROMPTS.QUESTION_GENERATION
     .replace('{questionCount}', params.questionCount)
     .replace('{difficulty}', params.difficulty)
     .replace('{skillCategory}', params.skillCategory)
-    .replace('{experienceLevel}', params.candidateProfile?.experienceLevel || '')
-    .replace('{existingSkills}', params.candidateProfile?.existingSkills?.join(', ') || '')
-    .replace('{industry}', params.candidateProfile?.industry || '');
-    console.log('Generated Prompt:', prompt);
-  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'questions');
+    .replace('{experienceLevel}', experienceSummary)
+    .replace('{existingSkills}', topSkills)
+    .replace('{industry}', params.candidateProfile?.industry || 'Tech');
+  
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt, 'questions');
 };
 
 export const evaluateAnswer = async (params: any): Promise<any> => {
@@ -44,4 +51,18 @@ export const generateReport = async (params: any): Promise<any> => {
     .replace('{totalTime}', params.totalTime?.toString() || '')
     .replace('{performanceData}', JSON.stringify(params.results || []));
   return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'report');
+};
+
+export const generateRecommendations = async (params: any): Promise<any> => {
+  const prompt = SKILL_ASSESSMENT_PROMPTS.SKILL_RECOMMENDATIONS
+    .replace('{currentSkills}', params.currentSkills?.join(', ') || 'N/A')
+    .replace('{assessmentHistory}', JSON.stringify(params.assessmentHistory || []))
+    .replace('{experienceLevel}', params.experienceLevel || 'Intermediate')
+    .replace('{careerGoals}', params.careerGoals || 'N/A');
+  
+  return await generateSkillsAssessmentJSON(
+    'You are an expert career advisor AI.',
+    prompt,
+    'recommendations'
+  );
 };

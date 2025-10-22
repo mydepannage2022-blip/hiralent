@@ -1,5 +1,3 @@
-// frontend/app/candidate/dashboard/skills-assessment/history/page.tsx
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -17,7 +15,9 @@ import {
   CheckCircle,
   AlertCircle,
   Download,
-  BarChart3
+  BarChart3,
+  Brain,
+  XCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAssessmentHistory } from '@/src/lib/profile/assessment.queries';
@@ -36,11 +36,11 @@ const AssessmentHistoryPage = () => {
     refetch 
   } = useAssessmentHistory();
 
-  // Transform API response
   const historyData = historyResponse as AssessmentHistory | undefined;
   const assessments: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
+  const skillProgress = historyData?.success ? historyData.data.skillProgress : {};
+  const summary = historyData?.success ? historyData.data.summary : null;
 
-  // Sorted and filtered assessments
   const filteredAssessments = useMemo(() => {
     let filtered = assessments.filter((assessment) => {
       const matchesSearch = assessment.skillCategory.toLowerCase().includes(searchQuery.toLowerCase());
@@ -48,7 +48,6 @@ const AssessmentHistoryPage = () => {
       return matchesSearch && matchesSkill;
     });
 
-    // Apply sorting
     filtered.sort((a, b) => {
       if (sortBy === 'date') {
         return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
@@ -62,25 +61,22 @@ const AssessmentHistoryPage = () => {
     return filtered;
   }, [assessments, searchQuery, skillFilter, sortBy]);
 
-  // Get unique skills for filter
   const uniqueSkills = useMemo(() => {
     return Array.from(new Set(assessments.map(a => a.skillCategory)));
   }, [assessments]);
-
-  // Calculate stats
-  const totalAssessments = assessments.length;
-  const completedCount = assessments.filter(a => a.overallScore > 0).length;
-  const averageScore = assessments.length > 0 
-    ? Math.round(assessments.reduce((sum, a) => sum + a.overallScore, 0) / assessments.length)
-    : 0;
 
   const handleViewResults = (assessmentId: string) => {
     router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
   };
 
   const handleRetakeAssessment = (skillName: string) => {
-    const skillId = skillName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    router.push(`/candidate/dashboard/skills-assessment/instructions?skill=${skillId}-assessment`);
+    router.push('/candidate/dashboard/skills-assessment/start');
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
   const handleExportHistory = () => {
@@ -90,6 +86,8 @@ const AssessmentHistoryPage = () => {
       Skill: a.skillCategory,
       Score: a.overallScore,
       Level: a.skillLevel,
+      'Questions Correct': `${a.correctAnswers}/${a.totalQuestions}`,
+      'Time Spent': formatTime(a.timeSpent),
       'Completed At': new Date(a.completedAt).toLocaleDateString(),
       Improvement: a.improvement || 'N/A'
     }));
@@ -111,13 +109,13 @@ const AssessmentHistoryPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-300 rounded w-1/3 mb-4"></div>
             <div className="h-4 bg-gray-300 rounded w-1/2 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {[1, 2, 3].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="bg-white rounded-lg p-6 border border-gray-200">
                   <div className="h-16 bg-gray-300 rounded"></div>
                 </div>
@@ -134,8 +132,8 @@ const AssessmentHistoryPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+      <div className="bg-gray-50 py-8 px-4">
+        <div className="">
           <div className="text-center py-12">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-[#222] mb-2">Unable to Load History</h2>
@@ -153,22 +151,22 @@ const AssessmentHistoryPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="">
       <div className="space-y-8">
-
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-[#222]">Assessment History</h1>
-              <p className="text-[#757575] mt-1">
-                View your completed assessments and track your progress
-              </p>
-            </div>
-            <div className="flex items-center gap-3 mt-4 lg:mt-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center mb-8">
+            <div className="w-full flex items-center justify-between gap-3 mt-4 lg:mt-0">
+              <button
+                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
+                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
+              >
+                Take New Assessment
+              </button>
+
+
               {assessments.length > 0 && (
                 <button
                   onClick={handleExportHistory}
@@ -178,24 +176,19 @@ const AssessmentHistoryPage = () => {
                   Export
                 </button>
               )}
-              <button
-                onClick={() => router.push('/candidate/dashboard/skills-assessment')}
-                className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors"
-              >
-                Take New Assessment
-              </button>
+              
             </div>
           </div>
         </motion.div>
 
         {/* Stats Cards */}
-        {assessments.length > 0 && (
+        {assessments.length > 0 && summary && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <div className="bg-white rounded-lg p-6 border border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg">
@@ -203,7 +196,7 @@ const AssessmentHistoryPage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-[#757575]">Total Assessments</p>
-                    <p className="text-2xl font-bold text-[#222]">{totalAssessments}</p>
+                    <p className="text-2xl font-bold text-[#222]">{summary.totalAssessments}</p>
                   </div>
                 </div>
               </div>
@@ -211,11 +204,11 @@ const AssessmentHistoryPage = () => {
               <div className="bg-white rounded-lg p-6 border border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-50 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <Brain className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-[#757575]">Completed</p>
-                    <p className="text-2xl font-bold text-[#222]">{completedCount}</p>
+                    <p className="text-sm text-[#757575]">Unique Skills</p>
+                    <p className="text-2xl font-bold text-[#222]">{summary.uniqueSkills}</p>
                   </div>
                 </div>
               </div>
@@ -227,7 +220,21 @@ const AssessmentHistoryPage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-[#757575]">Average Score</p>
-                    <p className="text-2xl font-bold text-[#222]">{averageScore}%</p>
+                    <p className="text-2xl font-bold text-[#222]">{Math.round(summary.averageScore)}%</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-50 rounded-lg">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#757575]">Time Invested</p>
+                    <p className="text-2xl font-bold text-[#222]">
+                      {Math.round(summary.totalTimeSpent / 60)}m
+                    </p>
                   </div>
                 </div>
               </div>
@@ -235,7 +242,7 @@ const AssessmentHistoryPage = () => {
           </motion.div>
         )}
 
-        {/* Filters - Only show if there are assessments */}
+        {/* Filters */}
         {assessments.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -245,7 +252,6 @@ const AssessmentHistoryPage = () => {
             <div className="bg-white rounded-lg p-6 border border-gray-200 mb-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
-                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#757575]" />
                   <input
@@ -257,7 +263,6 @@ const AssessmentHistoryPage = () => {
                   />
                 </div>
 
-                {/* Skill Filter */}
                 <select
                   value={skillFilter}
                   onChange={(e) => setSkillFilter(e.target.value)}
@@ -271,7 +276,6 @@ const AssessmentHistoryPage = () => {
                   ))}
                 </select>
 
-                {/* Sort By */}
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'date' | 'score' | 'skill')}
@@ -305,6 +309,12 @@ const AssessmentHistoryPage = () => {
                         Score
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Questions
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
+                        Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
                         Level
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-[#757575] uppercase tracking-wider">
@@ -325,7 +335,15 @@ const AssessmentHistoryPage = () => {
                           <div className="text-sm font-medium text-[#222]">
                             {assessment.skillCategory}
                           </div>
+                          {assessment.improvement && (
+                            <div className={`text-xs ${
+                              assessment.improvement.startsWith('+') ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {assessment.improvement}
+                            </div>
+                          )}
                         </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-[#222]">
@@ -342,11 +360,34 @@ const AssessmentHistoryPage = () => {
                             </div>
                           </div>
                         </td>
+
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          <div className="flex items-center gap-1 text-sm">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-green-600 font-medium">{assessment.correctAnswers}</span>
+                            <span className="text-[#757575]">/</span>
+                            <span className="text-[#757575]">{assessment.totalQuestions}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1 text-sm text-[#757575]">
+                            <Clock className="h-4 w-4" />
+                            {formatTime(assessment.timeSpent)}
+                          </div>
+                        </td>
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            assessment.skillLevel === 'EXPERT' ? 'bg-purple-100 text-purple-800' :
+                            assessment.skillLevel === 'ADVANCED' ? 'bg-blue-100 text-blue-800' :
+                            assessment.skillLevel === 'INTERMEDIATE' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
                             {assessment.skillLevel}
                           </span>
                         </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-[#757575]">
                           {new Date(assessment.completedAt).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -354,6 +395,7 @@ const AssessmentHistoryPage = () => {
                             day: 'numeric'
                           })}
                         </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-2">
                             <button
