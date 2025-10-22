@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, X, Star } from "lucide-react";
 import { Conversation } from "./mockData";
 
@@ -15,9 +15,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     onSelectChat,
 }) => {
     const [search, setSearch] = useState("");
+    const [localChats, setLocalChats] = useState<Conversation[]>(conversations);
+
+    useEffect(() => {
+        setLocalChats(conversations);
+    }, [conversations]);
+
     const query = search.trim().toLowerCase();
 
-    const filteredChats = conversations.filter((c) => {
+    // ✅ Reset unread count on click
+    const handleSelectChat = (id: number) => {
+        setLocalChats((prev) =>
+            prev.map((chat) =>
+                chat.id === id ? { ...chat, unreadCount: 0 } : chat
+            )
+        );
+        onSelectChat(id);
+    };
+
+    const filteredChats = localChats.filter((c) => {
         const lastText = c.messages[c.messages.length - 1]?.text || "";
         return (
             c.name.toLowerCase().includes(query) ||
@@ -41,20 +57,35 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         );
     };
 
-    return (
-        <div className="flex flex-col w-full bg-white h-full">
-            {/* Header */}
-            <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
-            </div>
+    // ✅ Helper to convert timestamps like “7 minutes ago”
+    const timeAgo = (timestamp: string) => {
+        const now = new Date();
+        const msgTime = new Date();
+        const [hour, minute] = timestamp.split(":").map(Number);
+        msgTime.setHours(hour);
+        msgTime.setMinutes(minute);
 
-            {/* Search Bar */}
-            <div className="p-3 border-b relative">
-                <div className="flex items-center bg-gray-100 rounded-md px-3 py-2">
+        const diffMs = now.getTime() - msgTime.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 1) return "Just now";
+        if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+        return msgTime.toLocaleDateString();
+    };
+
+    return (
+        <div className="flex flex-col w-full h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* 🔍 Search Bar */}
+            <div className="p-3 border-b bg-white">
+                <div className="flex items-center border border-gray-200 rounded-full px-3 py-2 bg-gray-50">
                     <Search className="w-4 h-4 text-gray-500 mr-2" />
                     <input
                         type="text"
-                        placeholder="Search..."
+                        placeholder="Search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="flex-1 bg-transparent text-sm outline-none"
@@ -70,26 +101,30 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 </div>
             </div>
 
-            {/* Chats List */}
-            <div className="flex-1 overflow-y-auto">
+            {/* 💬 Chats List */}
+            <div className="flex-1 overflow-y-auto bg-white">
                 {filteredChats.map((chat) => {
                     const lastMsg = chat.messages[chat.messages.length - 1];
                     const lastText = lastMsg?.text || "";
                     const time = lastMsg?.timestamp || "";
+                    const hasUnread =
+                        typeof chat.unreadCount === "number" && chat.unreadCount > 0;
 
                     return (
                         <div
                             key={chat.id}
-                            onClick={() => onSelectChat(chat.id)}
-                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b hover:bg-gray-50 transition ${chat.id === activeId ? "bg-blue-50" : ""
+                            onClick={() => handleSelectChat(chat.id)}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b border-gray-100 ${chat.id === activeId
+                                    ? "bg-blue-50"
+                                    : "hover:bg-gray-50 active:bg-gray-100"
                                 }`}
                         >
-                            {/* Avatar */}
-                            <div className="relative">
+                            {/* 🧑 Avatar */}
+                            <div className="relative flex-shrink-0">
                                 <img
                                     src={chat.avatar}
                                     alt={chat.name}
-                                    className="w-12 h-12 rounded-full object-cover"
+                                    className="w-10 h-10 rounded-full object-cover"
                                 />
                                 {chat.lastSeen === "Online" && (
                                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
@@ -106,15 +141,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         {chat.starred && (
                                             <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                                         )}
-                                        <span className="text-[11px] text-gray-400">{time}</span>
-                                        {chat.unreadCount && (
-                                            <div className="ml-1 min-w-[20px] h-[20px] flex items-center justify-center bg-blue-600 text-white text-xs font-semibold rounded-full">
+                                        <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                                            {timeAgo(time)}
+                                        </span>
+                                        {hasUnread && (
+                                            <div className="ml-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-semibold rounded-full">
                                                 {chat.unreadCount}
                                             </div>
                                         )}
                                     </div>
                                 </div>
-
                                 <p className="text-xs text-gray-500 truncate">
                                     {highlightText(lastText) as any}
                                 </p>

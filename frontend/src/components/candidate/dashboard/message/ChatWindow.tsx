@@ -16,9 +16,9 @@ import { Conversation, Message, MessageType } from "./mockData";
 import TextMessage from "./TextMessage";
 import FileMessage from "./FileMessage";
 import MediaMessage from "./MediaMessage";
+import VoiceMessage from "./VoiceMessage";
 import CameraCapture from "./CameraCapture";
-// import Picker from "@emoji-mart/react";
-// import data from "@emoji-mart/data";
+import EmojiPicker from "emoji-picker-react";
 
 interface ChatWindowProps {
     conversation: Conversation | null;
@@ -37,19 +37,18 @@ export default function ChatWindow({
     const [showEmoji, setShowEmoji] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-    const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
     const attachmentRef = useRef<HTMLDivElement | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    // Auto-scroll to bottom
+    // 🟦 Scroll to latest message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [conversation?.messages]);
 
-    // Close modals on outside click
+    // 🟩 Close popups on outside click
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
+        const handleClickOutside = (e: MouseEvent) => {
             if (
                 attachmentRef.current &&
                 !attachmentRef.current.contains(e.target as Node)
@@ -58,8 +57,8 @@ export default function ChatWindow({
                 setShowEmoji(false);
             }
         };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     if (!conversation) {
@@ -70,7 +69,7 @@ export default function ChatWindow({
         );
     }
 
-    // Helper: create and send message
+    // 🟨 Helper: send message
     const createAndSend = (type: MessageType, text: string, fileName?: string) => {
         const msg: Message = {
             id: Date.now(),
@@ -86,7 +85,7 @@ export default function ChatWindow({
         onSendMessage(conversation.id, msg);
     };
 
-    // Send text message
+    // 🟢 Send text message
     const handleSendText = () => {
         const trimmed = inputText.trim();
         if (!trimmed) return;
@@ -95,7 +94,7 @@ export default function ChatWindow({
         setShowEmoji(false);
     };
 
-    // Upload photo/video
+    // 🟢 Upload photo/video
     const handlePhotoVideoUpload = () => {
         const input = document.createElement("input");
         input.type = "file";
@@ -111,11 +110,12 @@ export default function ChatWindow({
         setShowAttachments(false);
     };
 
-    // Upload file
+    // 🟣 Upload file
     const handleFileUpload = () => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".pdf,.txt,.doc,.docx,.xls,.xlsx,.zip,.rar,.ppt,.pptx";
+        input.accept =
+            ".pdf,.txt,.doc,.docx,.xls,.xlsx,.zip,.rar,.ppt,.pptx";
         input.onchange = () => {
             const file = input.files?.[0];
             if (!file) return;
@@ -126,7 +126,7 @@ export default function ChatWindow({
         setShowAttachments(false);
     };
 
-    // Camera handler
+    // 📸 Camera (modal on desktop, native on mobile)
     const handleCameraClick = () => {
         const isMobile = window.innerWidth <= 768;
         if (isMobile) {
@@ -147,7 +147,7 @@ export default function ChatWindow({
         setShowAttachments(false);
     };
 
-    // Share location
+    // 📍 Share location
     const handleShareLocation = () => {
         if (!navigator.geolocation) {
             alert("Geolocation not supported.");
@@ -164,7 +164,7 @@ export default function ChatWindow({
         setShowAttachments(false);
     };
 
-    // 🎤 Voice Recording Logic
+    // 🎤 Voice Recording
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -180,11 +180,10 @@ export default function ChatWindow({
             };
 
             recorder.start();
-            setAudioChunks(chunks);
             setMediaRecorder(recorder);
             setIsRecording(true);
         } catch (err) {
-            alert("Microphone access denied or not available.");
+            alert("Microphone access denied or unavailable.");
         }
     };
 
@@ -195,13 +194,15 @@ export default function ChatWindow({
         }
     };
 
-    // Render message
+    // 🧱 Render messages
     const renderMessage = (msg: Message): React.ReactNode => {
         switch (msg.type) {
             case "text":
             case "location":
                 return <TextMessage key={msg.id} msg={msg} />;
             case "file":
+                if (msg.fileName?.includes("voice-message"))
+                    return <VoiceMessage key={msg.id} msg={msg} />;
                 return <FileMessage key={msg.id} msg={msg} />;
             case "image":
             case "video":
@@ -215,7 +216,7 @@ export default function ChatWindow({
     return (
         <>
             <div className="flex flex-col w-full h-full bg-white">
-                {/* Header */}
+                {/* HEADER */}
                 <div className="flex items-center p-4 border-b border-gray-200 bg-gray-50">
                     <button
                         onClick={onBack}
@@ -223,29 +224,34 @@ export default function ChatWindow({
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <img
-                        src={conversation.avatar}
-                        alt={conversation.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                    />
+                    <div className="relative">
+                        <img
+                            src={conversation.avatar}
+                            alt={conversation.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                        />
+                        {conversation.isActive && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                        )}
+                    </div>
                     <div className="ml-3">
                         <h2 className="font-semibold text-gray-800">{conversation.name}</h2>
                         <p className="text-xs text-gray-500">{conversation.lastSeen}</p>
                     </div>
                 </div>
 
-                {/* Messages */}
+                {/* MESSAGES */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 bg-gray-50">
                     {(conversation.messages ?? []).map((m) => renderMessage(m))}
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Section */}
+                {/* INPUT BAR */}
                 <div
                     ref={attachmentRef}
                     className="p-3 border-t flex items-center gap-2 relative bg-white"
                 >
-                    {/* Attachments */}
+                    {/* ATTACHMENTS */}
                     <button
                         onClick={() => {
                             setShowAttachments((s) => !s);
@@ -285,7 +291,17 @@ export default function ChatWindow({
                         </div>
                     )}
 
-                    {/* Emoji */}
+                    {/* INPUT FIELD */}
+                    <input
+                        type="text"
+                        placeholder="Write a message..."
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSendText()}
+                        className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+
+                    {/* EMOJI PICKER */}
                     <div className="relative">
                         <button
                             onClick={() => {
@@ -298,28 +314,19 @@ export default function ChatWindow({
                         </button>
 
                         {showEmoji && (
-                            <div className="absolute bottom-14 left-0 z-50">
-                                {/* <Picker
-                                    data={data}
-                                    onEmojiSelect={(emoji: any) =>
-                                        setInputText((prev) => prev + emoji.native)
+                            <div className="absolute bottom-14 right-0 z-50">
+                                <EmojiPicker
+                                    onEmojiClick={(emojiData) =>
+                                        setInputText((prev) => prev + emojiData.emoji)
                                     }
-                                /> */}
+                                    height={350}
+                                    width={300}
+                                />
                             </div>
                         )}
                     </div>
 
-                    {/* Input */}
-                    <input
-                        type="text"
-                        placeholder="Write a message..."
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSendText()}
-                        className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-
-                    {/* Mic / Send */}
+                    {/* MIC / SEND BUTTON */}
                     {inputText.trim() ? (
                         <button
                             onClick={handleSendText}
@@ -330,7 +337,9 @@ export default function ChatWindow({
                     ) : (
                         <button
                             onClick={isRecording ? stopRecording : startRecording}
-                            className={`p-2 rounded-full ${isRecording ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600"
+                            className={`p-2 rounded-full ${isRecording
+                                ? "bg-red-500 text-white"
+                                : "bg-gray-100 text-gray-600"
                                 }`}
                         >
                             <Mic size={18} />
@@ -339,7 +348,7 @@ export default function ChatWindow({
                 </div>
             </div>
 
-            {/* Camera Modal */}
+            {/* CAMERA MODAL */}
             {showCamera && (
                 <CameraCapture
                     onClose={() => setShowCamera(false)}
