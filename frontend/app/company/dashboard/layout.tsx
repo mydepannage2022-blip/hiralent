@@ -9,6 +9,8 @@ import {
   Settings,
   Activity,
   Settings2,
+  SquarePlus,
+  MessageSquareText,
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
@@ -27,21 +29,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // 👉 Define menus
   const defaultMenu = [
     { name: "Dashboard", icon: LayoutDashboard, href: "/company/dashboard" },
-    { name: "Employer Profile", icon: User, href: "/candidate/dashboard/candidate-profile" },
-    { name: "Post Job", icon: User, href: "/company/dashboard/postjob" },
-    { name: "Notifications", icon: Bell, href: "/candidate/dashboard/notifications" },
-    { name: "Messages", icon: MessageSquare, href: "/candidate/dashboard/messages" },
-    { name: "Account Setting", icon: Settings, href: "/candidate/dashboard/settings" },
-    { name: "Manage Hiring", icon: Activity, href: "/company/dashboard/skills-assessment" },
+    { name: "Employer Profile", icon: User, href: "/company/dashboard/employer-profile" },
+    { name: "Post Job", icon: SquarePlus, href: "/company/dashboard/postjob" },
+    { name: "Notifications", icon: Bell, href: "/company/dashboard/notifications" },
+    { name: "Messages", icon: MessageSquareText, href: "/company/dashboard/messages" },
+    { name: "Account Setting", icon: Settings, href: "/company/dashboard/settings" },
+    { name: "Manage Hiring", icon: Settings2, href: "/company/dashboard/manage-hiring" }
   ];
 
   const postJobMenu = [
+    // { name: "Dashboard", icon: LayoutDashboard, href: "/company/dashboard" },
+    // { name: "Post Job", icon: User, href: "/company/dashboard/postjob" },
+    // { name: "Notification", icon: Bell, href: "/candidate/dashboard/notifications" },
+    // { name: "Message", icon: MessageSquare, href: "/candidate/dashboard/messages" },
+    // { name: "Account Setting", icon: Settings, href: "/candidate/dashboard/settings" },
+    // { name: "Activity", icon: Settings2, href: "/candidate/dashboard/analytics" },
+
     { name: "Dashboard", icon: LayoutDashboard, href: "/company/dashboard" },
-    { name: "Post Job", icon: User, href: "/company/dashboard/postjob" },
-    { name: "Notification", icon: Bell, href: "/candidate/dashboard/notifications" },
-    { name: "Message", icon: MessageSquare, href: "/candidate/dashboard/messages" },
-    { name: "Account Setting", icon: Settings, href: "/candidate/dashboard/settings" },
-    { name: "Activity", icon: Settings2, href: "/candidate/dashboard/analytics" },
+    { name: "Employer Profile", icon: User, href: "/company/dashboard/employer-profile" },
+    { name: "Post Job", icon: SquarePlus, href: "/company/dashboard/postjob" },
+    { name: "Notifications", icon: Bell, href: "/company/dashboard/notifications" },
+    { name: "Messages", icon: MessageSquareText, href: "/company/dashboard/messages" },
+    { name: "Account Setting", icon: Settings, href: "/company/dashboard/settings" },
+    { name: "Manage Hiring", icon: Settings2, href: "/company/dashboard/manage-hiring" }
   ];
 
   // 👉 Switch menus based on route
