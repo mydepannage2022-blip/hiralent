@@ -1,5 +1,3 @@
-// frontend/src/components/layout/SmartLink.tsx
-
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -35,7 +33,7 @@ const SmartLink = ({
     // Start loading
     startNavigation();
 
-    try {
+    try {``
       // Direct router navigation
       if (replace) {
         router.replace(href);
