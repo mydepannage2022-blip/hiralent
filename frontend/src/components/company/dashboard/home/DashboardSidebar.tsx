@@ -157,17 +157,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </ul>
             </nav>
           </div>
-<<<<<<< HEAD
-        
-          {/* Logout Button */}
-          <div className='w-full p-4 border-t border-gray-200'>
-            <button 
-=======
 
           {/* Logout */}
           <div className="w-full p-4 border-t border-gray-200">
             <button
->>>>>>> origin
               onClick={handleLogoutClick}
               className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
                   ? "px-4 py-3 space-x-3 justify-start"

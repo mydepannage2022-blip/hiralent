@@ -1,4 +1,4 @@
-import OCRUpload from "@../../../src/components/OCRUpload";
+import OCRUpload from "@/src/components/company/dashboard/OCRUpload";
 
 export default function OCRTestPage() {
   return (
