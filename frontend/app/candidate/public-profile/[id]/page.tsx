@@ -14,8 +14,13 @@ import { PublicProfileData } from '@/src/types/profile';
 
 export default function PublicProfilePage() {
     const params = useParams();
-    const candidateId = params.candidateId as string;
+    const candidateId = params.id as string;
     
+
+      console.log('🔍 Page mounted');
+    console.log('🆔 candidateId:', candidateId);
+    console.log('🔄 candidateId exists:', !!candidateId);
+
     const { data: profileResponse, isLoading, error } = useQuery({
         queryKey: ['public-profile', candidateId],
         queryFn: () => getPublicProfile(candidateId),

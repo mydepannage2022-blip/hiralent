@@ -54,11 +54,15 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
                         alt={profile.full_name || "Profile"}
                         fill
                         className="rounded-full object-cover"
+                        onError={(e) => {
+                            // Fallback on error
+                            e.currentTarget.style.display = 'none';
+                        }}
                     />
                 ) : (
-                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-gray-500">
-                            {profile.full_name?.charAt(0) || 'P'}
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-white">
+                            {profile.full_name?.charAt(0)?.toUpperCase() || 'P'}
                         </span>
                     </div>
                 )}
