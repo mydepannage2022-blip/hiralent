@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import Select, { SingleValue } from "react-select";
 import { motion } from "framer-motion";
-import { useUpdateSalary } from "../../../../src/lib/auth.queries";
+import { useUpdateSalary } from "../../../../src/lib/auth/auth.queries";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 import SmartLink from "@/src/components/layout/SmartLink";
@@ -113,7 +113,7 @@ const SalaryPage = () => {
 
         <motion.button
           type="submit"
-          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm cursor-pointer"
+          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm cursor-pointer mt-4"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.3 }}

@@ -1,16 +1,24 @@
-// TODO: Import types from assessment.types and openai.ts
 import { SKILL_ASSESSMENT_PROMPTS } from './skillAssessment.prompts';
-import { generateGeminiJSON } from '../../lib/openai';
+import { generateSkillsAssessmentJSON } from '../../lib/openai';
 
 export const generateQuestions = async (params: any): Promise<any[]> => {
+  const totalYears = params.candidateProfile?.experienceLevel 
+    ? JSON.parse(params.candidateProfile.experienceLevel).reduce((sum: number, job: any) => sum + (job.years || 0), 0)
+    : 0;
+  
+  const experienceSummary = `${totalYears}+ years experience`;
+  
+  const topSkills = params.candidateProfile?.existingSkills?.slice(0, 15).join(', ') || 'N/A';
+  
   const prompt = SKILL_ASSESSMENT_PROMPTS.QUESTION_GENERATION
     .replace('{questionCount}', params.questionCount)
     .replace('{difficulty}', params.difficulty)
     .replace('{skillCategory}', params.skillCategory)
-    .replace('{experienceLevel}', params.candidateProfile?.experienceLevel || '')
-    .replace('{existingSkills}', params.candidateProfile?.existingSkills?.join(', ') || '')
-    .replace('{industry}', params.candidateProfile?.industry || '');
-  return await generateGeminiJSON('You are an expert skill assessment AI.', prompt);
+    .replace('{experienceLevel}', experienceSummary)
+    .replace('{existingSkills}', topSkills)
+    .replace('{industry}', params.candidateProfile?.industry || 'Tech');
+  
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt, 'questions');
 };
 
 export const evaluateAnswer = async (params: any): Promise<any> => {
@@ -19,7 +27,12 @@ export const evaluateAnswer = async (params: any): Promise<any> => {
     .replace('{question}', params.question)
     .replace('{expectedAnswer}', params.expectedAnswer || '')
     .replace('{userAnswer}', params.userAnswer);
-  return await generateGeminiJSON('You are an expert skill assessment AI.', prompt);
+  
+  return await generateSkillsAssessmentJSON(
+    'You are an expert skill assessment AI.', 
+    prompt, 
+    'evaluation'  
+  );
 };
 
 export const adjustDifficulty = async (params: any): Promise<any> => {
@@ -27,7 +40,7 @@ export const adjustDifficulty = async (params: any): Promise<any> => {
     .replace('{currentDifficulty}', params.currentDifficulty)
     .replace('{recentScores}', params.recentAnswers?.map((a: any) => a.partialScore || a.score || 0).join(', ') || '')
     .replace('{avgTimePerQuestion}', params.avgTimePerQuestion?.toString() || '');
-  return await generateGeminiJSON('You are an expert skill assessment AI.', prompt);
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'difficulty');
 };
 
 export const generateReport = async (params: any): Promise<any> => {
@@ -37,5 +50,19 @@ export const generateReport = async (params: any): Promise<any> => {
     .replace('{overallScore}', params.assessment.overall_score?.toString() || '')
     .replace('{totalTime}', params.totalTime?.toString() || '')
     .replace('{performanceData}', JSON.stringify(params.results || []));
-  return await generateGeminiJSON('You are an expert skill assessment AI.', prompt);
+  return await generateSkillsAssessmentJSON('You are an expert skill assessment AI.', prompt , 'report');
+};
+
+export const generateRecommendations = async (params: any): Promise<any> => {
+  const prompt = SKILL_ASSESSMENT_PROMPTS.SKILL_RECOMMENDATIONS
+    .replace('{currentSkills}', params.currentSkills?.join(', ') || 'N/A')
+    .replace('{assessmentHistory}', JSON.stringify(params.assessmentHistory || []))
+    .replace('{experienceLevel}', params.experienceLevel || 'Intermediate')
+    .replace('{careerGoals}', params.careerGoals || 'N/A');
+  
+  return await generateSkillsAssessmentJSON(
+    'You are an expert career advisor AI.',
+    prompt,
+    'recommendations'
+  );
 };

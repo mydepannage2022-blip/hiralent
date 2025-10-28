@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useUploadProfilePicture } from "../../../../src/lib/auth.queries";
+import { useUploadProfilePicture } from "../../../../src/lib/auth/auth.queries";
 import { Upload } from "lucide-react";
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
@@ -162,7 +162,7 @@ const ProfilePicturePage = () => {
         <motion.button
           type="submit"
           disabled={isPending || !selectedFile}
-          className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 text-sm ${
+          className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 mt-4 text-sm ${
             isPending || !selectedFile
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-[#1B73E8] hover:bg-[#1557B0] text-white'

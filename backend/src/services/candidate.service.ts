@@ -22,7 +22,6 @@ import { generateToken } from "../utils/jwt.util";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 
-// Import our separated services
 import { processDocumentAsync } from "./candidate/documentProcessor.service";
 import { cleanupOldResume, cleanupTempFile, cleanupOldProfilePicture } from "./candidate/cleanup.service";
 
@@ -31,13 +30,11 @@ cloudinary.config({
   cloudinary_url: process.env.CLOUDINARY_URL,
 });
 
-
 export const uploadAndProcessCV = async (
   candidateId: string,
   file: Express.Multer.File
 ): Promise<CVUploadResponse> => {
   try {
-    // Check if file exists
     if (!file) {
       throw new Error("No file provided");
     }
@@ -46,27 +43,21 @@ export const uploadAndProcessCV = async (
       throw new Error("File not found after upload");
     }
 
-    // Step 1: Clean up old resume and related data
     await cleanupOldResume(candidateId);
 
-    // Step 2: Upload to Cloudinary
-    console.log("Uploading resume to Cloudinary...");
     const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
       folder: "hiralent-candidate/resumes",
       public_id: `resume_${candidateId}_${Date.now()}`,
-      resource_type: "raw", // Changed from "auto" to "raw" for better PDF handling
+      resource_type: "raw",
       access_mode: 'public',
-      type: 'upload' // Removed access_control array
+      type: 'upload'
     });
 
-    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
-
-    // Step 3: Create new document record with direct Cloudinary URL
     const document = await prisma.candidateDocument.create({
       data: {
         candidate_id: candidateId,
         file_name: file.originalname,
-        file_path: cloudinaryResult.secure_url, // Use direct secure_url instead of complex URL generation
+        file_path: cloudinaryResult.secure_url,
         file_type: file.mimetype,
         file_size: file.size,
         upload_status: "uploaded",
@@ -74,13 +65,10 @@ export const uploadAndProcessCV = async (
       },
     });
 
-    // Step 4: Clean up temporary local file
     cleanupTempFile(file.path);
 
-    // Step 5: Start background processing using separated service
     processDocumentAsync(document.document_id, candidateId, cloudinaryResult.secure_url);
 
-    // Step 6: Return response with download URL
     return {
       success: true,
       document_id: document.document_id,
@@ -96,7 +84,6 @@ export const uploadAndProcessCV = async (
   } catch (error) {
     console.error("Error uploading CV:", error);
     
-    // Clean up temporary file on error
     if (file && fs.existsSync(file.path)) {
       cleanupTempFile(file.path);
     }
@@ -111,7 +98,7 @@ export const getResumeDownloadUrl = async (
   try {
     const document = await prisma.candidateDocument.findFirst({
       where: { candidate_id: candidateId },
-      orderBy: { created_at: "desc" }, // Get latest resume
+      orderBy: { created_at: "desc" },
     });
 
     if (!document) {
@@ -124,7 +111,7 @@ export const getResumeDownloadUrl = async (
     return {
       success: true,
       data: {
-        download_url: document.file_path, // This is now Cloudinary URL
+        download_url: document.file_path,
         file_name: document.file_name,
       },
       message: "Resume download URL retrieved successfully",
@@ -153,10 +140,8 @@ export const deleteResume = async (
       };
     }
 
-    // Use cleanup function to remove everything
     await cleanupOldResume(candidateId);
     
-    // Recalculate profile completeness after deletion
     await calculateProfileCompleteness(candidateId);
     
     return {
@@ -190,7 +175,6 @@ export const getJobRecommendations = async (
   limit: number = 20
 ): Promise<JobRecommendation[]> => {
   try {
-    // Get candidate vector
     const candidateVector = await prisma.candidateVector.findUnique({
       where: { candidate_id: candidateId },
     });
@@ -201,32 +185,27 @@ export const getJobRecommendations = async (
 
     const combinedVector = candidateVector.combined_vector as number[];
 
-    // Find similar jobs using Pinecone
     const similarJobs = await findSimilarJobs(combinedVector, limit);
 
-    // Get candidate skills for detailed matching
     const candidateSkills = await prisma.candidateSkill.findMany({
       where: { candidate_id: candidateId },
     });
 
-    // Process each job recommendation
     const recommendations: JobRecommendation[] = [];
     for (const match of similarJobs) {
       const jobId = match.metadata?.job_id;
       if (!jobId) continue;
 
-      // Get job details - Updated to use CompanyJob
       const job = await prisma.companyJob.findUnique({
         where: { job_id: jobId },
         include: {
-          company: { select: { full_name: true } },  // Updated from 'recruiter' to 'company'
+          company: { select: { full_name: true } },
           agency: { select: { name: true } },
         },
       });
 
       if (!job) continue;
 
-      // Generate detailed match reasoning
       const jobRequirements = {
         title: job.title,
         required_skills: job.required_skills,
@@ -239,7 +218,6 @@ export const getJobRecommendations = async (
         jobRequirements
       );
 
-      // Save recommendation
       const existing = await prisma.jobRecommendation.findFirst({
         where: {
           candidate_id: candidateId,
@@ -262,7 +240,7 @@ export const getJobRecommendations = async (
       recommendations.push({
         job_id: jobId,
         title: job.title,
-        company: job.company.full_name,  // Updated to use company relation
+        company: job.company.full_name,
         location: job.location,
         salary_range: job.salary_range || undefined,
         match_score: match.score || 0,
@@ -283,14 +261,13 @@ export const getJobRecommendations = async (
   }
 };
 
-// Updated calculateProfileCompleteness function in candidate.service.ts
 export const calculateProfileCompleteness = async (candidateId: string): Promise<ProfileCompletenessScore> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: true, // Get actual skills from relation
+        candidateSkills: true,
         candidateDocuments: true
       }
     });
@@ -305,7 +282,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     const missingFields: string[] = [];
     const suggestions: string[] = [];
 
-    // Basic Info Score (25 points)
     let basicInfoScore = 0;
     if (candidate.full_name?.trim()) basicInfoScore += 8;
     else missingFields.push('full_name');
@@ -323,7 +299,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
 
     totalScore += basicInfoScore;
 
-    // Headline Score (10 points)
     let headlineScore = 0;
     if (profile?.headline?.trim()) {
       headlineScore = 10;
@@ -333,9 +308,8 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += headlineScore;
 
-    // Skills Score (25 points) - Updated to use actual skills count
     let skillsScore = 0;
-    const skillsCount = candidate.candidateSkills.length; // Use actual skills from relation
+    const skillsCount = candidate.candidateSkills.length;
     
     if (skillsCount > 0) {
       if (skillsCount >= 8) skillsScore = 25;
@@ -348,7 +322,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += skillsScore;
 
-    // Experience Score (20 points)
     let experienceScore = 0;
     if (profile?.experience) {
       try {
@@ -359,7 +332,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
           else experienceScore = 10;
         }
       } catch (e) {
-        // Handle parsing error
       }
     }
     if (experienceScore === 0) {
@@ -368,7 +340,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += experienceScore;
 
-    // Education Score (10 points)
     let educationScore = 0;
     if (profile?.education) {
       try {
@@ -377,7 +348,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
           educationScore = 10;
         }
       } catch (e) {
-        // Handle parsing error
       }
     }
     if (educationScore === 0) {
@@ -386,7 +356,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += educationScore;
 
-    // Profile Picture Score (5 points)
     let profilePictureScore = 0;
     if (profile?.profile_picture_url?.trim()) {
       profilePictureScore = 5;
@@ -396,7 +365,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += profilePictureScore;
 
-    // Document Score (5 points)
     let documentScore = 0;
     const hasResume = candidate.candidateDocuments.some(doc => 
       doc.upload_status === 'completed' && doc.extraction_status === 'completed'
@@ -409,7 +377,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
     }
     totalScore += documentScore;
 
-    // Calculate section scores as percentages
     const completenessData = {
       overall_score: Math.round((totalScore / maxScore) * 100),
       basic_info_score: Math.round((basicInfoScore / 25) * 100),
@@ -423,7 +390,6 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
       suggestions: suggestions
     };
 
-    // Save to database
     await prisma.profileCompleteness.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -445,14 +411,13 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
   }
 };
 
-
 export const getProfileSummary = async (candidateId: string): Promise<CandidateProfileSummary> => {
   try {
     const candidate = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: { // Get actual skills instead of JSON
+        candidateSkills: {
           orderBy: [
             { is_verified: 'desc' },
             { created_at: 'desc' }
@@ -473,7 +438,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       throw new Error('Candidate not found');
     }
 
-    // Basic info
     const basicInfo = {
       name: candidate.full_name,
       email: candidate.email,
@@ -484,7 +448,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       location: candidate.candidateProfile?.location || undefined
     };
 
-    // Transform skills to populated format
     const skills = candidate.candidateSkills.map(skill => ({
       skill_id: skill.skill_id,
       skill_name: skill.skill_name,
@@ -496,7 +459,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       is_verified: skill.is_verified
     }));
 
-    // Documents info
     const documents = candidate.candidateDocuments.map(doc => ({
       id: doc.document_id,
       name: doc.file_name,
@@ -504,7 +466,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       extraction_status: doc.extraction_status || undefined
     }));
 
-    // Transform profile completeness - Fix type issue
     let profileCompleteness: ProfileCompletenessScore | undefined;
     if (candidate.profileCompleteness) {
       profileCompleteness = {
@@ -516,7 +477,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
         education_score: candidate.profileCompleteness.education_score,
         document_score: candidate.profileCompleteness.document_score,
         headline_score: candidate.profileCompleteness.headline_score,
-        // Type safe JSON parsing
         missing_fields: Array.isArray(candidate.profileCompleteness.missing_fields) 
           ? candidate.profileCompleteness.missing_fields as string[]
           : JSON.parse(candidate.profileCompleteness.missing_fields as string),
@@ -526,7 +486,6 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
       };
     }
 
-    // Build summary
     const summary: CandidateProfileSummary = {
       basic_info: basicInfo,
       skills, 
@@ -554,7 +513,6 @@ export const updateCandidateHeadline = async (
   data: UpdateHeadlineInput
 ): Promise<HeadlineUpdateResult> => {
   try {
-    // Validate headline length
     if (!data.headline || data.headline.trim().length === 0) {
       throw new Error("Headline is required");
     }
@@ -563,7 +521,6 @@ export const updateCandidateHeadline = async (
       throw new Error("Headline cannot exceed 120 characters");
     }
 
-    // Update headline in database
     const updatedProfile = await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -576,7 +533,6 @@ export const updateCandidateHeadline = async (
       },
     });
 
-    // Recalculate profile completeness (async, don't wait)
     calculateProfileCompleteness(candidateId).catch((error) => {
       console.warn("Failed to recalculate profile completeness:", error);
     });
@@ -594,14 +550,11 @@ export const updateCandidateHeadline = async (
   }
 };
 
-
 export async function updateCandidateLocation(
   userId: string,
   data: UpdateLocationInput
 ) {
   try {
-    console.log("📛 userId in updateCandidateLocation: ", userId);
-
     const result = await prisma.candidateProfile.upsert({
       where: { candidate_id: userId },
       update: {
@@ -658,7 +611,6 @@ export const uploadProfilePicture = async (
   let tempFilePath: string | null = null;
 
   try {
-    // Validate inputs
     if (!candidateId) {
       throw new Error("Candidate ID is required");
     }
@@ -668,12 +620,7 @@ export const uploadProfilePicture = async (
     }
 
     tempFilePath = file.path;
-    console.log(
-      `Processing profile picture upload for candidate: ${candidateId}`
-    );
-    console.log(`File path: ${tempFilePath}`);
 
-    // Get existing profile to check for old picture
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId },
       select: { profile_picture_url: true },
@@ -681,8 +628,6 @@ export const uploadProfilePicture = async (
 
     const oldPictureUrl = existingProfile?.profile_picture_url;
 
-    // Upload to Cloudinary with optimizations
-    console.log("Uploading to Cloudinary...");
     const cloudinaryResult = await cloudinary.uploader.upload(tempFilePath, {
       folder: "hiralent/profile-pictures",
       public_id: `candidate_${candidateId}_${Date.now()}`,
@@ -693,16 +638,12 @@ export const uploadProfilePicture = async (
           crop: "fill",
           gravity: "face",
           quality: "auto:good",
-          format: "webp", // Convert to WebP for better compression
+          format: "webp",
         },
       ],
       resource_type: "image",
     });
 
-    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
-
-    // Update database with new profile picture URL
-    console.log("Updating database...");
     const updatedProfile = await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -715,17 +656,12 @@ export const uploadProfilePicture = async (
       },
     });
 
-    console.log("Database updated successfully");
-
-    // Clean up temporary file
     cleanupTempFile(tempFilePath);
 
-    // Delete old Cloudinary image if exists (using separated service)
     if (oldPictureUrl && oldPictureUrl !== cloudinaryResult.secure_url) {
       await cleanupOldProfilePicture(candidateId, oldPictureUrl);
     }
 
-    // Recalculate profile completeness (async, don't wait)
     calculateProfileCompleteness(candidateId).catch((error) => {
       console.warn("Failed to recalculate profile completeness:", error);
     });
@@ -739,27 +675,23 @@ export const uploadProfilePicture = async (
   } catch (error) {
     console.error("Service error - Profile picture upload:", error);
 
-    // Clean up temporary file in case of error
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       cleanupTempFile(tempFilePath);
     }
 
-    // Re-throw with more context
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Profile picture upload failed: ${errorMessage}`);
   }
 };
 
-
 export const getCandidateProfile = async (candidateId: string) => {
   try {
-    // Get user with profile data AND skills - extended from login query
     const user = await prisma.user.findUnique({
       where: { user_id: candidateId },
       include: {
         candidateProfile: true,
-        candidateSkills: { // Added skills relation
+        candidateSkills: {
           orderBy: [
             { is_verified: 'desc' },
             { created_at: 'desc' }
@@ -781,7 +713,6 @@ export const getCandidateProfile = async (candidateId: string) => {
       throw new Error("User not found");
     }
 
-    // Clean user object - same structure as login response
     const cleanUser = {
       user_id: user.user_id,
       email: user.email,
@@ -795,7 +726,6 @@ export const getCandidateProfile = async (candidateId: string) => {
       agency: user.agency,
     };
 
-    // Transform skills to populated format
     const populatedSkills = user.candidateSkills.map(skill => ({
       skill_id: skill.skill_id,
       skill_name: skill.skill_name,
@@ -807,19 +737,15 @@ export const getCandidateProfile = async (candidateId: string) => {
       is_verified: skill.is_verified
     }));
 
-    // Extract profile data
     let profileData = null;
     if (user.candidateProfile) {
       profileData = {
         ...user.candidateProfile,
-        // Convert dates to ISO strings to match login response format
         created_at: user.candidateProfile.created_at.toISOString(),
         updated_at: user.candidateProfile.updated_at.toISOString(),
-        // Replace skill IDs with populated skills
-        skills: populatedSkills // Populated skills instead of IDs array
+        skills: populatedSkills
       };
     } else {
-      // If no profile exists, return basic structure with candidate_id
       profileData = {
         candidate_id: candidateId,
         about_me: null,
@@ -838,13 +764,12 @@ export const getCandidateProfile = async (candidateId: string) => {
         preferred_locations: null,
         profile_picture_url: null,
         resume_url: null,
-        skills: populatedSkills, // Empty skills array for new profile
+        skills: populatedSkills,
         updated_at: new Date().toISOString(),
         video_intro_url: null,
       };
     }
 
-    // ✅ Return user, profile, and token - exactly like login response but with populated skills
     return {
       user: cleanUser,
       profile: profileData,
@@ -857,5 +782,74 @@ export const getCandidateProfile = async (candidateId: string) => {
     serviceError.code = "PROFILE_FETCH_FAILED";
     serviceError.statusCode = 500;
     throw serviceError;
+  }
+};
+
+
+export const getPublicProfile = async (candidateId: string) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { 
+        user_id: candidateId,
+        role: 'candidate' 
+      },
+      select: {
+        full_name: true,
+        position: true,
+        linkedin_url: true,
+        candidateProfile: {
+          select: {
+            profile_picture_url: true,
+            headline: true,
+            about_me: true,
+            location: true,
+            city: true,
+            languages: true,
+            video_intro_url: true,
+            links: true,
+            resume_application_url: true,
+            experience: true,
+            education: true,
+          }
+        },
+        candidateSkills: {
+          select: {
+            skill_name: true,
+            skill_category: true,
+            proficiency: true,
+            years_experience: true,
+            is_verified: true,
+          },
+          where: {
+            is_verified: true 
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('Candidate profile not found');
+    }
+
+    return {
+      full_name: user.full_name,
+      position: user.position,
+      linkedin_url: user.linkedin_url,
+      profile_picture_url: user.candidateProfile?.profile_picture_url || null,
+      headline: user.candidateProfile?.headline || null,
+      about_me: user.candidateProfile?.about_me || null,
+      location: user.candidateProfile?.location || null,
+      city: user.candidateProfile?.city || null,
+      languages: user.candidateProfile?.languages || null,
+      video_intro_url: user.candidateProfile?.video_intro_url || null,
+      links: user.candidateProfile?.links || null,
+      resume_application_url: user.candidateProfile?.resume_application_url || null,
+      skills: user.candidateSkills || [],
+      experience: user.candidateProfile?.experience || null,
+      education: user.candidateProfile?.education || null,
+    };
+  } catch (error) {
+    console.error('Error fetching public profile:', error);
+    throw error;
   }
 };

@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Gift, X, Check, Plus, Trash2 } from 'lucide-react';
-import { useUpdateJobBenefits } from '@/src/lib/profile.queries';
-import { JobBenefitData } from '@/src/lib/profile.api';
+import { useUpdateJobBenefits } from '@/src/lib/profile/profile.queries';
+import { JobBenefitData } from '@/src/lib/profile/profile.api';
 import { useProfile } from '@/src/context/ProfileContext';
 
 const JobBenefitsSection: React.FC = () => {

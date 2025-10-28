@@ -20,19 +20,16 @@ const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'talenta-candidates';
 
 export { pc };
 
-// Initialize Pinecone index
 export async function initializePineconeIndex() {
   try {
     const indexList = await pc.listIndexes();
     
-    // Check if index exists
     const indexExists = indexList.indexes?.some(index => index.name === INDEX_NAME);
     
     if (!indexExists) {
-      console.log(`Creating Pinecone index: ${INDEX_NAME}`);
       await pc.createIndex({
         name: INDEX_NAME,
-        dimension: 1024, // OpenAI text-embedding-ada-002 dimension
+        dimension: 1024,
         metric: 'cosine',
         spec: {
           serverless: {
@@ -42,8 +39,6 @@ export async function initializePineconeIndex() {
         }
       });
       
-      // Wait for index to be ready
-      console.log('Waiting for index to be ready...');
       await new Promise(resolve => setTimeout(resolve, 10000));
     }
     
@@ -54,7 +49,6 @@ export async function initializePineconeIndex() {
   }
 }
 
-// Get existing index
 export async function getPineconeIndex() {
   try {
     return pc.index(INDEX_NAME);
@@ -64,7 +58,6 @@ export async function getPineconeIndex() {
   }
 }
 
-// Store candidate vector in Pinecone
 export async function storeCandidateVector(
   candidateId: string,
   vector: number[],
@@ -85,14 +78,12 @@ export async function storeCandidateVector(
       }
     ]);
     
-    console.log(`Stored vector for candidate: ${candidateId}`);
   } catch (error) {
     console.error('Error storing candidate vector:', error);
     throw new Error('Failed to store candidate vector');
   }
 }
 
-// Store job vector in Pinecone
 export async function storeJobVector(
   jobId: string,
   vector: number[],
@@ -113,14 +104,12 @@ export async function storeJobVector(
       }
     ]);
     
-    console.log(`Stored vector for job: ${jobId}`);
   } catch (error) {
     console.error('Error storing job vector:', error);
     throw new Error('Failed to store job vector');
   }
 }
 
-// Find similar candidates for a job
 export async function findSimilarCandidates(
   jobVector: number[],
   topK: number = 10
@@ -142,7 +131,6 @@ export async function findSimilarCandidates(
   }
 }
 
-// Find similar jobs for a candidate
 export async function findSimilarJobs(
   candidateVector: number[],
   topK: number = 20
@@ -164,7 +152,6 @@ export async function findSimilarJobs(
   }
 }
 
-// Update candidate vector
 export async function updateCandidateVector(
   candidateId: string,
   vector: number[],
@@ -178,26 +165,22 @@ export async function updateCandidateVector(
   }
 }
 
-// Delete candidate vector
 export async function deleteCandidateVector(candidateId: string): Promise<void> {
   try {
     const index = await getPineconeIndex();
     
     await index.deleteOne(`candidate_${candidateId}`);
-    console.log(`Deleted vector for candidate: ${candidateId}`);
   } catch (error) {
     console.error('Error deleting candidate vector:', error);
     throw new Error('Failed to delete candidate vector');
   }
 }
 
-// Delete job vector
 export async function deleteJobVector(jobId: string): Promise<void> {
   try {
     const index = await getPineconeIndex();
     
     await index.deleteOne(`job_${jobId}`);
-    console.log(`Deleted vector for job: ${jobId}`);
   } catch (error) {
     console.error('Error deleting job vector:', error);
     throw new Error('Failed to delete job vector');

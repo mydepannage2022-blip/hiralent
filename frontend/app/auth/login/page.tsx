@@ -2,13 +2,12 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from 'next/dynamic';
 import { motion } from "framer-motion";
-import { useLogin } from "../../../src/lib/auth.queries";
+import { useLogin } from "../../../src/lib/auth/auth.queries";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";
-
-
 // Types
 interface FormData {
   email: string;
@@ -169,7 +168,7 @@ const handleSubmit = (e: React.FormEvent) => {
       testimonials={pageConfig.testimonials}
       title={pageConfig.title}
       subtitle={pageConfig.subtitle}
-      showTabs={true}
+      showTabs={false}
       activeTab="candidate"
     > 
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -274,7 +273,7 @@ const handleSubmit = (e: React.FormEvent) => {
         <motion.button
           type="submit"
           disabled={loginMutation.isPending}
-          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed mt-4"
           whileHover={{ scale: loginMutation.isPending ? 1 : 1.05 }}
           whileTap={{ scale: loginMutation.isPending ? 1 : 0.95 }}
           transition={{ duration: 0.3 }}

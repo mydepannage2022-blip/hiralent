@@ -1,4 +1,4 @@
-// components/ui/ProgressSteps.tsx
+// src/components/auth/ProgressSteps.tsx
 "use client";
 
 import React from "react";
@@ -65,7 +65,7 @@ const ProgressSteps: React.FC<ProgressStepsProps> = ({ currentStep, steps }) => 
             {index < steps.length - 1 && (
               <div
                 className={`absolute top-1/2 -right-1.5 w-3 h-0.5 transform -translate-y-1/2 transition-colors duration-300 ${
-                  isCompleted ? "bg-[#E5E7EB]" : "bg-[#E5E7EB]"
+                  isCompleted ? "bg-[#063B82]" : "bg-[#E5E7EB]"
                 }`}
               />
             )}
@@ -81,7 +81,7 @@ const ProgressSteps: React.FC<ProgressStepsProps> = ({ currentStep, steps }) => 
   );
 };
 
-// Configuration for signup steps
+// Configuration for candidate signup steps
 export const signupSteps: Step[] = [
   {
     id: 1,
@@ -107,6 +107,20 @@ export const signupSteps: Step[] = [
     id: 5,
     path: "/auth/signup/uploadresume",
     label: "Upload Resume"
+  }
+];
+
+// Configuration for company registration steps
+export const companySteps: Step[] = [
+  {
+    id: 1,
+    path: "/auth/companyRegister",
+    label: "Admin Information"
+  },
+  {
+    id: 2,
+    path: "/auth/companyRegister/info",
+    label: "Company Details"
   }
 ];
 

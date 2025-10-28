@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUploadResume } from '../../../../src/lib/auth.queries';
+import { useUploadResume } from '../../../../src/lib/auth/auth.queries';
 import { useRouter } from 'next/navigation';
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
@@ -180,7 +180,7 @@ const UploadResumePage = () => {
           <motion.button
             type="submit"
             disabled={isPending || !resume}
-            className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#1B73E8] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#1557B0] transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed mt-4"
             whileHover={{ scale: isPending ? 1 : 1.05 }}
             whileTap={{ scale: isPending ? 1 : 0.95 }}
             transition={{ duration: 0.3 }}

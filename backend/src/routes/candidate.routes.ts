@@ -14,9 +14,9 @@ import {
   updateHeadlineController,
   getHeadlineController,
   getProfileController,
+  getPublicProfileController,
 } from '../controller/candidate.controller';
 
-// Profile Management Controllers
 import {
   updateBasicInfoController,
   updateSkillsController,
@@ -59,7 +59,6 @@ import {
   validateUploadedImage 
 } from '../middlewares/uploadImage.middleware';
 
-// Validation Schemas
 import { 
   updateLocationSchema, 
   updateSalarySchema, 
@@ -76,16 +75,13 @@ import {
   updateJobBenefitsSchema,
   bulkProfileUpdateSchema
 } from '../validation/candidate.schema';
+import { startAssessmentSchema } from '../validation/assessment.validation';
 
 const router = Router();
 
-// Health check (no auth required)
 router.get('/health', healthCheckController);
 
-// All routes below require authentication
 router.use(checkAuth);
-
-// ==================== EXISTING CANDIDATE ROUTES ====================
 
 router.post(
   '/profile-upload',
@@ -124,10 +120,8 @@ router.patch(
   updateHeadlineController
 );
 
-// Get candidate headline
 router.get('/headline', getHeadlineController);
 
-// Get headline for specific candidate (admin/company use)
 router.get('/headline/:candidateId', getHeadlineController);
 
 router.get('/profile-summary', getProfileSummaryController);
@@ -148,7 +142,6 @@ router.get('/skills', getExtractedSkillsController);
 
 router.get('/skills/:candidateId', getExtractedSkillsController);
 
-// ==================== WEEK 2 APIs: AI Job Matching Engine ====================
 
 router.get('/match-jobs', getJobRecommendationsController);
 
@@ -158,42 +151,35 @@ router.post('/update-vector', updateCandidateVectorController);
 
 router.post('/update-vector/:candidateId', updateCandidateVectorController);
 
-// ==================== WEEK 3 APIs: AI Skill Assessment ====================
+router.post('/start-assessment', [checkAuth, validateBody(startAssessmentSchema)], startAssessmentController);
 
-// Start a new assessment
-router.post('/start-assessment', startAssessmentController);
+router.get('/assessment/:assessmentId/question',
+  checkAuth, 
+  validateAssessmentOwnership, 
+  checkAssessmentStatus,
+  getQuestionController
+);
 
-// Get next question (adaptive)
-router.get('/assessment/:assessmentId/question', validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
+router.post('/assessment/:assessmentId/answer', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
 
-// Submit answer
-router.post('/assessment/:assessmentId/answer', validateAssessmentOwnership, checkAssessmentStatus, validateQuestionSubmission, validateTimeLimit, submitAnswerController);
+router.get('/assessment/:assessmentId/progress', checkAuth, validateAssessmentOwnership, getProgressController);
 
-// Get assessment progress
-router.get('/assessment/:assessmentId/progress', validateAssessmentOwnership, getProgressController);
+router.post('/assessment/:assessmentId/complete', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
 
-// Complete assessment
-router.post('/assessment/:assessmentId/complete', validateAssessmentOwnership, checkAssessmentStatus, completeAssessmentController);
+router.get('/assessment/:assessmentId/results', checkAuth, validateAssessmentOwnership, getResultsController);
 
-// Get assessment results
-router.get('/assessment/:assessmentId/results', validateAssessmentOwnership, getResultsController);
+router.get('/assessments/history', checkAuth, getHistoryController);
 
-// Get assessment history
-router.get('/assessments/history', getHistoryController);
+router.get('/skill-recommendations', checkAuth, getRecommendationsController);
 
-// Get skill recommendations
-router.get('/skill-recommendations', getRecommendationsController);
+router.get('/public-profile/:candidateId', getPublicProfileController);
 
-// ==================== NEW PROFILE MANAGEMENT ROUTES ====================
-
-// Basic Info Management
 router.put(
   '/profile/basic-info',
   [checkAuth, validateBody(updateBasicInfoSchema)],
   updateBasicInfoController
 );
 
-// Skills Management
 router.put(
   '/profile/skills',
   [checkAuth, validateBody(updateSkillsSchema)],
@@ -212,7 +198,6 @@ router.delete(
   deleteSkillController
 );
 
-// Experience Management
 router.put(
   '/profile/experience',
   [checkAuth, validateBody(updateExperienceSchema)],
@@ -278,7 +263,12 @@ router.post(
   uploadApplicationResumeController
 );
 
+
 export default router;
+
+
+
+
 
 /*
 ==================== COMPLETE API ENDPOINTS SUMMARY ====================

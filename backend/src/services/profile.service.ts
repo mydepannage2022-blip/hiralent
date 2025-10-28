@@ -1,5 +1,3 @@
-// services/profile.service.ts
-
 import { PrismaClient } from "@prisma/client";
 import {
   UpdateBasicInfoInput,
@@ -27,7 +25,6 @@ import {
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 
-// Import heavy operations from separate service
 import {
   processSkillsUpdate,
   processExperienceUpdate,
@@ -36,11 +33,7 @@ import {
 } from "./candidate/profileSection.service";
 import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
 
-
-
 const prisma = new PrismaClient();
-
-// ==================== BASIC INFO MANAGEMENT ====================
 
 export const updateBasicInfo = async (
   candidateId: string,
@@ -48,10 +41,8 @@ export const updateBasicInfo = async (
 ): Promise<BasicInfoUpdateResult> => {
   
   try {
-      console.log("Updating basic info for candidate:", candidateId, data);  
-      const updatedFields: string[] = [];
+    const updatedFields: string[] = [];
 
-    // Update User table fields
     const userUpdateData: any = {};
     if (data.full_name !== undefined) {
       userUpdateData.full_name = data.full_name;
@@ -61,7 +52,7 @@ export const updateBasicInfo = async (
       userUpdateData.phone_number = data.phone_number;
       updatedFields.push('phone_number');
     }
-    // Update CandidateProfile table fields
+
     const profileUpdateData: any = {};
     if (data.about_me !== undefined) {
       profileUpdateData.about_me = data.about_me;
@@ -71,7 +62,7 @@ export const updateBasicInfo = async (
       profileUpdateData.location = data.location;
       updatedFields.push('location');
     }
-    // Update User if there are fields to update
+
     if (Object.keys(userUpdateData).length > 0) {
       await prisma.user.update({
         where: { user_id: candidateId },
@@ -79,7 +70,6 @@ export const updateBasicInfo = async (
       });
     }
 
-    // Update CandidateProfile if there are fields to update
     if (Object.keys(profileUpdateData).length > 0) {
       await prisma.candidateProfile.upsert({
         where: { candidate_id: candidateId },
@@ -94,7 +84,6 @@ export const updateBasicInfo = async (
       });
     }
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -109,17 +98,13 @@ export const updateBasicInfo = async (
   }
 };
 
-// ==================== SKILLS MANAGEMENT ====================
-
 export const updateSkills = async (
   candidateId: string,
   data: UpdateSkillsInput
 ): Promise<SkillUpdateResult> => {
   try {
-    // Use heavy operation service
     const result = await processSkillsUpdate(candidateId, data.skills);
     
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -139,7 +124,6 @@ export const addSkill = async (
   data: AddSkillInput
 ): Promise<SkillUpdateResult> => {
   try {
-    // Check if skill already exists
     const existingSkill = await prisma.candidateSkill.findFirst({
       where: {
         candidate_id: candidateId,
@@ -151,7 +135,6 @@ export const addSkill = async (
       throw new Error("Skill already exists");
     }
 
-    // Add new skill
     await prisma.candidateSkill.create({
       data: {
         candidate_id: candidateId,
@@ -165,12 +148,10 @@ export const addSkill = async (
       }
     });
 
-    // Get updated skills count
     const skillsCount = await prisma.candidateSkill.count({
       where: { candidate_id: candidateId }
     });
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -190,7 +171,6 @@ export const deleteSkill = async (
   skillId: string
 ): Promise<SkillUpdateResult> => {
   try {
-    // Verify skill belongs to candidate
     const skill = await prisma.candidateSkill.findFirst({
       where: { 
         skill_id: skillId,
@@ -202,17 +182,14 @@ export const deleteSkill = async (
       throw new Error("Skill not found");
     }
 
-    // Delete skill
     await prisma.candidateSkill.delete({
       where: { skill_id: skillId }
     });
 
-    // Get updated skills count
     const skillsCount = await prisma.candidateSkill.count({
       where: { candidate_id: candidateId }
     });
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -227,17 +204,13 @@ export const deleteSkill = async (
   }
 };
 
-// ==================== EXPERIENCE MANAGEMENT ====================
-
 export const updateExperience = async (
   candidateId: string,
   data: UpdateExperienceInput
 ): Promise<ExperienceUpdateResult> => {
   try {
-    // Use heavy operation service
     await processExperienceUpdate(candidateId, data.experiences);
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -257,7 +230,6 @@ export const addExperience = async (
   data: AddExperienceInput
 ): Promise<ExperienceUpdateResult> => {
   try {
-    // Get existing experience
     const profile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }
     });
@@ -271,10 +243,8 @@ export const addExperience = async (
       }
     }
 
-    // Add new experience
     experiences.push(data);
 
-    // Update profile
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -287,7 +257,6 @@ export const addExperience = async (
       }
     });
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -302,17 +271,13 @@ export const addExperience = async (
   }
 };
 
-// ==================== EDUCATION MANAGEMENT ====================
-
 export const updateEducation = async (
   candidateId: string,
   data: UpdateEducationInput
 ): Promise<EducationUpdateResult> => {
   try {
-    // Use heavy operation service
     await processEducationUpdate(candidateId, data.education);
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -332,7 +297,6 @@ export const addEducation = async (
   data: AddEducationInput
 ): Promise<EducationUpdateResult> => {
   try {
-    // Get existing education
     const profile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }
     });
@@ -346,10 +310,8 @@ export const addEducation = async (
       }
     }
 
-    // Add new education
     education.push(data);
 
-    // Update profile
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -362,7 +324,6 @@ export const addEducation = async (
       }
     });
 
-    // Recalculate profile completeness
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
@@ -377,17 +338,13 @@ export const addEducation = async (
   }
 };
 
-// ==================== LINKS MANAGEMENT ====================
-
 export const updateLinks = async (
   candidateId: string,
   data: UpdateLinksInput
 ): Promise<LinksUpdateResult> => {
   try {
-    // Validate links
     await validateProfileData({ links: data.links });
 
-    // Update profile with links
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -416,7 +373,6 @@ export const addLink = async (
   linkData: SocialLink
 ): Promise<LinksUpdateResult> => {
   try {
-    // Get existing links
     const profile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }
     });
@@ -430,16 +386,13 @@ export const addLink = async (
       }
     }
 
-    // Check if platform already exists
     const existingLink = links.find(link => link.platform === linkData.platform);
     if (existingLink) {
       throw new Error(`${linkData.platform} link already exists`);
     }
 
-    // Add new link
     links.push(linkData);
 
-    // Update profile
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -468,7 +421,6 @@ export const deleteLink = async (
   linkIndex: number
 ): Promise<LinksUpdateResult> => {
   try {
-    // Get existing links
     const profile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId }
     });
@@ -488,11 +440,9 @@ export const deleteLink = async (
       throw new Error("Link index out of range");
     }
 
-    // Remove link at index
     const deletedLink = links[linkIndex];
     links.splice(linkIndex, 1);
 
-    // Update profile
     await prisma.candidateProfile.update({
       where: { candidate_id: candidateId },
       data: {
@@ -512,17 +462,13 @@ export const deleteLink = async (
   }
 };
 
-// ==================== JOB BENEFITS MANAGEMENT ====================
-
 export const updateJobBenefits = async (
   candidateId: string,
   data: UpdateJobBenefitsInput
 ): Promise<JobBenefitsUpdateResult> => {
   try {
-    // Validate job benefits
     await validateProfileData({ jobBenefits: data.job_benefits });
 
-    // Update profile with job benefits
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -546,8 +492,6 @@ export const updateJobBenefits = async (
   }
 };
 
-// ==================== BULK PROFILE UPDATE ====================
-
 export const bulkUpdateProfile = async (
   candidateId: string,
   data: BulkProfileUpdateInput
@@ -555,43 +499,36 @@ export const bulkUpdateProfile = async (
   try {
     const updatedSections: string[] = [];
 
-    // Update basic info
     if (data.basic_info) {
       await updateBasicInfo(candidateId, data.basic_info);
       updatedSections.push('basic_info');
     }
 
-    // Update skills
     if (data.skills) {
       await updateSkills(candidateId, { skills: data.skills });
       updatedSections.push('skills');
     }
 
-    // Update experience
     if (data.experience) {
       await updateExperience(candidateId, { experiences: data.experience });
       updatedSections.push('experience');
     }
 
-    // Update education
     if (data.education) {
       await updateEducation(candidateId, { education: data.education });
       updatedSections.push('education');
     }
 
-    // Update links
     if (data.links) {
       await updateLinks(candidateId, { links: data.links });
       updatedSections.push('links');
     }
 
-    // Update job benefits
     if (data.job_benefits) {
       await updateJobBenefits(candidateId, { job_benefits: data.job_benefits });
       updatedSections.push('job_benefits');
     }
 
-    // Get updated completion score
     const { calculateProfileCompleteness } = await import("./candidate.service");
     const completeness = await calculateProfileCompleteness(candidateId);
 
@@ -607,15 +544,11 @@ export const bulkUpdateProfile = async (
   }
 };
 
-
-// backend/src/services/candidate.service.ts - Add this function
-
 export const uploadApplicationResume = async (
   candidateId: string,
   file: Express.Multer.File
 ): Promise<APIResponse<{ resume_application_url: string; file_name: string }>> => {
   try {
-    // Validate inputs
     if (!candidateId) {
       throw new Error("Candidate ID is required");
     }
@@ -624,9 +557,6 @@ export const uploadApplicationResume = async (
       throw new Error("File not found after upload");
     }
 
-    console.log(`Processing application resume upload for candidate: ${candidateId}`);
-
-    // Get existing profile to check for old application resume
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId },
       select: { resume_application_url: true },
@@ -634,20 +564,14 @@ export const uploadApplicationResume = async (
 
     const oldApplicationResumeUrl = existingProfile?.resume_application_url;
 
-    // Upload to Cloudinary  
-    console.log("Uploading application resume to Cloudinary...");
     const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
       folder: "hiralent-candidate/application-resumes",
       public_id: `application_resume_${candidateId}_${Date.now()}`,
-      resource_type: "raw", // For PDF/DOC files
+      resource_type: "raw",
       access_mode: 'public',
       type: 'upload'
     });
 
-    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
-
-    // Update candidate profile with new application resume URL
-    console.log("Updating database...");
     const updatedProfile = await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {
@@ -660,12 +584,8 @@ export const uploadApplicationResume = async (
       },
     });
 
-    console.log("Database updated successfully");
-
-    // Clean up temporary file
     cleanupTempFile(file.path);
 
-    // Delete old application resume from Cloudinary if exists
     if (oldApplicationResumeUrl && oldApplicationResumeUrl !== cloudinaryResult.secure_url) {
       await cleanupOldApplicationResume(candidateId, oldApplicationResumeUrl);
     }
@@ -682,12 +602,10 @@ export const uploadApplicationResume = async (
   } catch (error) {
     console.error("Service error - Application resume upload:", error);
 
-    // Clean up temporary file in case of error
     if (file && fs.existsSync(file.path)) {
       cleanupTempFile(file.path);
     }
 
-    // Re-throw with more context
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Application resume upload failed: ${errorMessage}`);
   }

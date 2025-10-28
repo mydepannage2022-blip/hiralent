@@ -1,4 +1,4 @@
-// components/ui/TabSelector.tsx
+// src/components/auth/TabSelector.tsx
 "use client";
 
 import React from "react";
@@ -13,7 +13,7 @@ interface TabSelectorProps {
 
 const TabSelector: React.FC<TabSelectorProps> = ({ 
   activeTab = 'candidate',
-  candidateLink = "/auth/signup/info",
+  candidateLink = "/auth/signup",
   companyLink = "/auth/companyRegister"
 }) => {
   return (
@@ -23,10 +23,11 @@ const TabSelector: React.FC<TabSelectorProps> = ({
       animate={{ opacity: 1 }}
       transition={{ delay: 0.4, duration: 0.5 }}
     >
+      
       <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
         <SmartLink
           href={candidateLink}
-          className={`border-r-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] py-1.5 px-2 lg:px-8 text-[14px] transition-colors duration-200 ${
+          className={`border-l-1 border-t-1 border-b-1 rounded-t-none rounded-l-lg border-[#005DDC] py-1.5 px-2 lg:px-8 text-[14px] transition-colors duration-200 ${
             activeTab === 'candidate'
               ? 'bg-[#005DDC] text-white'
               : 'bg-white text-[#222] hover:bg-gray-50'

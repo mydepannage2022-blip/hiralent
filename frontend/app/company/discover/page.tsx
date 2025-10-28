@@ -39,7 +39,7 @@ const DiscoverPage = () => {
 
     return (
         <div className='text-black'>
-            <div className="sm:mt-40 mt-30 mb-20">
+            <div className="sm:mt-40 mt-30 mb-20 px-2">
                 <div className='flex justify-center items-center flex-col mb-14'>
                     <h1 className="xl:mb-8 mb-6 text-xl sm:text-3xl lg:text-4xl font-bold">
                         Discover the Best Workplaces
@@ -76,7 +76,7 @@ const DiscoverPage = () => {
                         onClose={() => setSidebarOpen(false)}
                     />
 
-                    <div className='flex flex-col gap-4 sm:mx-11 md:mx-22 lg:mx-0 mx-2 lg:w-[780px] xl:w-[925px] w-full'>
+                    <div className='flex flex-col gap-4 sm:mx-10 md:mx-13 lg:mx-0 mx-2 lg:w-[720px] xl:w-[975px] w-full'>
                         <CompanyCard
                             logo="/images/bmw-logo.png"
                             name="BMW"

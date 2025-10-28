@@ -1,16 +1,13 @@
-import React from 'react'
+"use client";
+import React from "react";
+import ChatShell from "../../../../src/components/candidate/dashboard/message/ChatShell";
 
-const page = () => {
+const Page = () => {
   return (
-    <div className='w-full flex justify-start items-start gap-3'>
-      <div className='w-2/3 flex flex-col justify-start items-center gap-4'>
-        Messages coming soon
-      </div>
-      <div className='w-1/3 flex flex-col justify-start items-start gap-4'>
-        Message settings coming soon
-      </div>
+    <div>
+      <ChatShell />
     </div>
-  )
-}
+  );
+};
 
-export default page
+export default Page;

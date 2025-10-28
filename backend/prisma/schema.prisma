@@ -54,7 +54,7 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String    // candidate, company, agency (removed recruiter)
+  role              String    // candidate, company_admin, agency_admin, superadmin
   is_email_verified Boolean 
   phone_number      String?
   position          String?
@@ -64,6 +64,10 @@ model User {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
+
+  // NEW: MFA Support
+  mfa_secret        String?   // TOTP secret for 2FA
+  mfa_enabled       Boolean   @default(false)
 
   // Relations
   agency                   Agency?                    @relation(fields: [agency_id], references: [agency_id])
@@ -101,6 +105,9 @@ model User {
   generatedContent         GeneratedContent[]        @relation("GeneratedContent")
   userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
   aiFeedback               AIFeedback[]              @relation("AIFeedback")
+  
+  // back-relation: one user -> many uploaded docs
+  uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -129,6 +136,12 @@ model CompanyProfile {
   tax_id            String?  // Tax identification number
   employee_count    Int?     // Approximate number of employees
   annual_revenue    String?  // Revenue range
+
+  //  ADD THESE NEW FIELDS FOR VERIFICATION 
+  full_address      String?  // Complete registered address (street, building, city....)
+  verification_status String? @default("unverified") // unverified, pending, verified, rejected
+  verification_submitted_at DateTime? // When verification was submitted
+  verification_notes String? // Admin notes about verification
   
   // Hiring Details
   hiring_volume     String?  // low, medium, high volume hiring
@@ -150,6 +163,27 @@ model CompanyProfile {
 
   user              User     @relation(fields: [company_id], references: [user_id])
 }
+
+model Question {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  problemStatement String
+  difficulty  String   // easy, medium, hard
+  skillTags   String[]
+  type        String   // coding, mcq, debugging
+  canonicalSolution String
+  testCases   Json     // { inputs: [], outputs: [] }
+  status      String   // draft, pending_review, approved, rejected
+  createdBy   String?  // user ID who created/generated
+  aiGenerated Boolean  @default(false)
+  source      String?  // ai_generated, web_scraped, manual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("questions")
+}
+
 
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
@@ -277,7 +311,6 @@ model AIInterviewResult {
   candidate_id String
 }
 
-// Skill Assessment (Updated relation)
 model SkillAssessment {
   assessment_id        String           @id @default(uuid())
   candidate_id         String
@@ -289,7 +322,6 @@ model SkillAssessment {
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
 
-  // AI Skill Assessment Fields
   assessment_type      AssessmentType   @default(COMPREHENSIVE)
   skill_category       String
   difficulty           DifficultyLevel  @default(BEGINNER)
@@ -310,6 +342,7 @@ model SkillAssessment {
   candidate            User             @relation(fields: [candidate_id], references: [user_id])
   job                  CompanyJob?      @relation(fields: [job_id], references: [job_id]) // Changed relation
   results              AssessmentResult[]
+  summary            AssessmentSummary?
 
   @@map("skill_assessments")
 }
@@ -732,6 +765,51 @@ model AssessmentResult {
 
   @@map("assessment_results")
 }
+
+
+model AssessmentSummary {
+  summary_id          String          @id @default(uuid())
+  assessment_id       String          @unique
+  
+  // Overall Metrics
+  overall_score       Float
+  skill_level         String          // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  pass_status         String          // passed, failed, needs_review
+  
+  // Performance Breakdown
+  correct_answers     Int
+  incorrect_answers   Int
+  partial_answers     Int             @default(0)
+  total_questions     Int
+  accuracy_rate       Float           // percentage
+  
+  // Time Metrics
+  total_time_spent    Int             // seconds
+  avg_time_per_question Float         // seconds
+  
+  // Category-wise Performance (JSON)
+  category_scores     Json?           // { "React Basics": 85, "Hooks": 70 }
+  difficulty_scores   Json            // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
+  
+  // AI Insights
+  strengths           String[]
+  weaknesses          String[]
+  recommendations     String[]
+  next_steps          String[]
+  ai_confidence       Float
+  
+  // Achievements (Optional)
+  achievements        String[]        @default([])
+  badges_earned       String[]        @default([])
+  
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  
+  assessment          SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
+  @@map("assessment_summaries")
+}
+
 
 model QuestionBank {
   question_id      String         @id @default(uuid())
@@ -1262,25 +1340,118 @@ enum QuestionType {
   ESSAY
   TRUE_FALSE
   SCENARIO
+  SHORT_ANSWER
 }
-// Company Verification Process
-model CompanyVerification {
-  verification_id   String @id @default(uuid())
-  company_id        String
-  status           String // pending, approved, rejected
-  documents        Json   // Business registration, tax docs
-  verified_by      String?
-  verification_date DateTime?
+// Add these enums first
+enum VerificationSubjectType {
+  COMPANY
+  AGENCY
 }
 
-// Agency Verification Process  
-model AgencyVerification {
-  verification_id   String @id @default(uuid())
-  agency_id         String
-  license_status    String // pending, verified, expired
-  verification_documents Json
+enum VerificationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationDecision {
+  APPROVE
+  REJECT
+  MANUAL_REVIEW
+  NO_DECISION
+}
+
+enum VerificationCaseStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+// Verification Run table
+model VerificationRun {
+  run_id        String                  @id @default(uuid())
+  subject_type  VerificationSubjectType
+  subject_id    String
+  status        VerificationRunStatus
+  started_at    DateTime                @default(now())
+  ended_at      DateTime?
+  risk_score    Float?
+  decision      VerificationDecision?
+  reason_codes  String[]                @default([])
+
+  signals  VerificationSignal[]
+  snapshot VerificationSnapshot?
+
+  companyLatestOf CompanyVerification? @relation("CompanyLatestRun")
+  agencyLatestOf  AgencyVerification?  @relation("AgencyLatestRun")
+}
+
+// Verification Signal table
+model VerificationSignal {
+  signal_id   String   @id @default(uuid())
+  run_id      String
+  signal_type String
+  passed      Boolean
+  score       Float?
+  explanation String?
+  raw_payload Json?
+
+  run VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+// Verification Snapshot table
+model VerificationSnapshot {
+  snapshot_id String   @id @default(uuid())
+  run_id      String   @unique
+  profile     Json
+  documents   Json
+  created_at  DateTime @default(now())
+
+  run VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+// Updated Company Verification with new fields
+model CompanyVerification {
+  verification_id   String                 @id @default(uuid())
+  company_id        String
+  status            VerificationCaseStatus @default(DRAFT)
+  documents         Json
   verified_by       String?
   verification_date DateTime?
+
+  latest_run_id String? @unique
+  risk_score    Float?
+  reason_codes  String[] @default([])
+
+  latest_run VerificationRun? @relation("CompanyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([company_id])
+  @@index([status])
+}
+
+// Updated Agency Verification with new fields
+model AgencyVerification {
+  verification_id        String                 @id @default(uuid())
+  agency_id              String
+  license_status         String
+  verification_documents Json
+  verified_by            String?
+  verification_date      DateTime?
+
+  status        VerificationCaseStatus @default(DRAFT)
+  latest_run_id String? @unique
+  risk_score    Float?
+  reason_codes  String[] @default([])
+
+  latest_run VerificationRun? @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([agency_id])
+  @@index([status])
 }
 
 // Super Admin Management
@@ -1289,4 +1460,37 @@ model SuperAdmin {
   user_id          String
   permissions      String[]
   created_at       DateTime @default(now())
+}
+
+// Uploads file metadata
+model UploadedDocument {
+  document_id   String   @id @default(uuid())
+  uploaded_by   String
+  subject_type  String // "COMPANY" | "AGENCY"
+  subject_id    String // company_id or agency_id
+  // File attributes
+  file_name     String
+  storage_key   String // key/path inside S3 bucket
+  url           String? // optional canonical URL (not public)
+  mime_type     String
+  file_ext      String?
+  file_size     Int
+  sha256        String
+  // Business metadata
+  document_type String // "registration_cert", "tax", "license", ...
+  status        String   @default("pending") // "pending" | "approved" | "rejected" | "expired"
+  notes         String?
+  // Derivatives
+  preview_key   String? // low-res preview key
+  preview_ready Boolean  @default(false)
+  // Audit
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // named relation to User
+  uploader User @relation("UserUploadedDocuments", fields: [uploaded_by], references: [user_id])
+
+  @@index([subject_type, subject_id])
+  @@index([uploaded_by])
+  @@index([document_type])
 }
