@@ -15,36 +15,36 @@ model Agency {
   billing_contact_email String
   owner_user_id         String
   logo_url              String?
-  status                String    // pending, active, suspended, rejected
+  status                String // pending, active, suspended, rejected
   approved_by           String?
   approved_at           DateTime?
   approval_notes        String?
-  
-  // Enhanced Agency Fields
-  license_number        String?   // Professional license number
-  license_expiry        DateTime? // License expiration date
-  service_categories    String[]  // visa, housing, documentation, legal, etc.
-  operating_countries   String[]  // Countries where agency operates
-  service_description   String?   // Detailed service description
-  accreditations        String[]  // Professional accreditations
-  languages_supported   String[]  // Languages agency supports
-  average_case_duration Int?      // Average case completion time in days
-  success_rate          Float?    // Success rate percentage
-  rating                Float?    // Agency rating (1-5)
-  total_cases_handled   Int?      // Total number of cases handled
-  
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
 
-  users                 User[]
-  cases                 RelocationCase[]
-  subscription          AgencySubscription?
-  webhooks              WebhookEndpoint[]
-  invitations           CompanyAgencyInvitation[] // Changed from RecruiterInvitation
-  reviews               AgencyReview[]
-  caseAssignments       CaseAssignment[]
-  relocationAnalytics   RelocationAnalytics[]     // Added new relation
-  jobs                  CompanyJob[]              // Added missing relation for agency jobs
+  // Enhanced Agency Fields
+  license_number        String? // Professional license number
+  license_expiry        DateTime? // License expiration date
+  service_categories    String[] // visa, housing, documentation, legal, etc.
+  operating_countries   String[] // Countries where agency operates
+  service_description   String? // Detailed service description
+  accreditations        String[] // Professional accreditations
+  languages_supported   String[] // Languages agency supports
+  average_case_duration Int? // Average case completion time in days
+  success_rate          Float? // Success rate percentage
+  rating                Float? // Agency rating (1-5)
+  total_cases_handled   Int? // Total number of cases handled
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users               User[]
+  cases               RelocationCase[]
+  subscription        AgencySubscription?
+  webhooks            WebhookEndpoint[]
+  invitations         CompanyAgencyInvitation[] // Changed from RecruiterInvitation
+  reviews             AgencyReview[]
+  caseAssignments     CaseAssignment[]
+  relocationAnalytics RelocationAnalytics[] // Added new relation
+  jobs                CompanyJob[] // Added missing relation for agency jobs
 }
 
 // Enhanced User Model
@@ -54,172 +54,173 @@ model User {
   email             String    @unique
   password_hash     String
   full_name         String
-  role              String    // candidate, company_admin, agency_admin, superadmin
-  is_email_verified Boolean 
+  role              String // candidate, company_admin, agency_admin, superadmin
+  is_email_verified Boolean
   phone_number      String?
   position          String?
   linkedin_url      String?
-  company_role      String?   // For company users: HR Manager, CEO, etc.
+  company_role      String? // For company users: HR Manager, CEO, etc.
   branding_notes    String?
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
 
   // NEW: MFA Support
-  mfa_secret        String?   // TOTP secret for 2FA
-  mfa_enabled       Boolean   @default(false)
+  mfa_secret  String? // TOTP secret for 2FA
+  mfa_enabled Boolean @default(false)
 
   // Relations
-  agency                   Agency?                    @relation(fields: [agency_id], references: [agency_id])
-  candidateProfile         CandidateProfile?
-  companyProfile           CompanyProfile?            // Changed from recruiterProfile
-  agencyAdminProfile       AgencyAdminProfile?
-  auditLogs                AdminAuditLog[]
-  jobsPosted               CompanyJob[]               // Changed from RecruiterJob
-  jobApplications          JobApplication[]
-  assessments              SkillAssessment[]
-  aiInterviews             AIInterviewResult[]
-  notifications            Notification[]
-  progressUpdates          CandidateProgressTracker[]
-  progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
-  invitationsSent          CompanyAgencyInvitation[]  @relation("CompanyInvites") // Changed from RecruiterInvitation
-  
+  agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile    CandidateProfile?
+  companyProfile      CompanyProfile? // Changed from recruiterProfile
+  agencyAdminProfile  AgencyAdminProfile?
+  auditLogs           AdminAuditLog[]
+  jobsPosted          CompanyJob[] // Changed from RecruiterJob
+  jobApplications     JobApplication[]
+  assessments         SkillAssessment[]
+  aiInterviews        AIInterviewResult[]
+  notifications       Notification[]
+  progressUpdates     CandidateProgressTracker[]
+  progressUpdatesByMe CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+  invitationsSent     CompanyAgencyInvitation[]  @relation("CompanyInvites") // Changed from RecruiterInvitation
+
   // Candidate Flow Relations
-  candidateDocuments       CandidateDocument[]        @relation("CandidateDocuments")
-  candidateSkills          CandidateSkill[]          @relation("CandidateSkills")
-  skillExtractions         SkillExtraction[]         @relation("SkillExtractions")
-  careerPredictions        CareerPrediction[]        @relation("CareerPredictions")
-  jobRecommendations       JobRecommendation[]       @relation("JobRecommendations")
-  candidateVector          CandidateVector?          @relation("CandidateVector")
-  profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
-  
+  candidateDocuments  CandidateDocument[]  @relation("CandidateDocuments")
+  candidateSkills     CandidateSkill[]     @relation("CandidateSkills")
+  skillExtractions    SkillExtraction[]    @relation("SkillExtractions")
+  careerPredictions   CareerPrediction[]   @relation("CareerPredictions")
+  jobRecommendations  JobRecommendation[]  @relation("JobRecommendations")
+  candidateVector     CandidateVector?     @relation("CandidateVector")
+  profileCompleteness ProfileCompleteness? @relation("ProfileCompleteness")
+  sessions            UserSession[]        @relation("UserSessions")
   // Relocation Flow Relations
-  relocationCases          RelocationCase[]          @relation("CandidateRelocationCases")
-  caseAssignments          CaseAssignment[]          @relation("AgentCaseAssignments")
-  agencyReviews            AgencyReview[]            @relation("ClientReviews")
-  
+  relocationCases     RelocationCase[]     @relation("CandidateRelocationCases")
+  caseAssignments     CaseAssignment[]     @relation("AgentCaseAssignments")
+  agencyReviews       AgencyReview[]       @relation("ClientReviews")
+
   // AI-Powered Workflow Relations
-  sentMessages             CommunicationLog[]        @relation("SentMessages")
-  receivedMessages         CommunicationLog[]        @relation("ReceivedMessages")
-  companyAnalytics         HiringAnalytics[]         @relation("CompanyAnalytics")
-  generatedContent         GeneratedContent[]        @relation("GeneratedContent")
-  userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
-  aiFeedback               AIFeedback[]              @relation("AIFeedback")
-  
+  sentMessages     CommunicationLog[] @relation("SentMessages")
+  receivedMessages CommunicationLog[] @relation("ReceivedMessages")
+  companyAnalytics HiringAnalytics[]  @relation("CompanyAnalytics")
+  generatedContent GeneratedContent[] @relation("GeneratedContent")
+  userAnalytics    UsageAnalytics[]   @relation("UserAnalytics")
+  aiFeedback       AIFeedback[]       @relation("AIFeedback")
+
   // back-relation: one user -> many uploaded docs
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
 model CompanyProfile {
-  company_id        String   @id
-  
+  company_id String @id
+
   // Basic Company Info
-  company_name      String?  // Official registered company name
-  display_name      String?  // Display name (can be different from legal name)
-  industry          String?  // Technology, Healthcare, Finance, etc.
-  company_size      String?  // startup, small, medium, large, enterprise
-  website           String?
-  headquarters      String?  // Primary location
-  founded_year      Int?
-  description       String?  // Company description/about
-  
+  company_name String? // Official registered company name
+  display_name String? // Display name (can be different from legal name)
+  industry     String? // Technology, Healthcare, Finance, etc.
+  company_size String? // startup, small, medium, large, enterprise
+  website      String?
+  headquarters String? // Primary location
+  founded_year Int?
+  description  String? // Company description/about
+
   // Contact & Social
-  contact_number    String?
-  linkedin_profile  String?
-  twitter_handle    String?
-  facebook_page     String?
-  
+  contact_number   String?
+  linkedin_profile String?
+  twitter_handle   String?
+  facebook_page    String?
+
   // Business Details
-  business_type     String?  // public, private, non-profit, government
+  business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
-  tax_id            String?  // Tax identification number
-  employee_count    Int?     // Approximate number of employees
-  annual_revenue    String?  // Revenue range
+  tax_id              String? // Tax identification number
+  employee_count      Int? // Approximate number of employees
+  annual_revenue      String? // Revenue range
 
   //  ADD THESE NEW FIELDS FOR VERIFICATION 
-  full_address      String?  // Complete registered address (street, building, city....)
-  verification_status String? @default("unverified") // unverified, pending, verified, rejected
+  full_address              String? // Complete registered address (street, building, city....)
+  verification_status       String?   @default("unverified") // unverified, pending, verified, rejected
   verification_submitted_at DateTime? // When verification was submitted
-  verification_notes String? // Admin notes about verification
-  
+  verification_notes        String? // Admin notes about verification
+
   // Hiring Details
-  hiring_volume     String?  // low, medium, high volume hiring
-  typical_roles     String[] // Common roles they hire for
-  hiring_regions    String[] // Geographic regions they hire from/for
-  remote_policy     String?  // fully_remote, hybrid, office_only
-  
+  hiring_volume  String? // low, medium, high volume hiring
+  typical_roles  String[] // Common roles they hire for
+  hiring_regions String[] // Geographic regions they hire from/for
+  remote_policy  String? // fully_remote, hybrid, office_only
+
   // Platform Specific
   logo_url          String?
   banner_url        String?
-  verified          Boolean  @default(false)
+  verified          Boolean   @default(false)
   verification_date DateTime?
-  rating            Float?   // Company rating from candidates
-  total_jobs_posted Int?     // Total jobs posted on platform
-  active_jobs_count Int?     // Currently active jobs
-  
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  rating            Float? // Company rating from candidates
+  total_jobs_posted Int? // Total jobs posted on platform
+  active_jobs_count Int? // Currently active jobs
 
-  user              User     @relation(fields: [company_id], references: [user_id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // user              User     @relation(fields: [company_id], references: [user_id])
+  user User @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
 }
 
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
-  admin_id       String   @id
+  admin_id       String  @id
   phone_number   String?
   position       String?
   linkedin_url   String?
   company_role   String?
   branding_notes String?
-  
-  // Agency specific fields
-  license_details String?   // Professional license details
-  specialization  String[]  // Areas of specialization
-  languages       String[]  // Languages spoken
-  years_experience Int?     // Years of experience in relocation services
-  certifications  String[]  // Professional certifications
-  
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
 
-  user User @relation(fields: [admin_id], references: [user_id])
+  // Agency specific fields
+  license_details  String? // Professional license details
+  specialization   String[] // Areas of specialization
+  languages        String[] // Languages spoken
+  years_experience Int? // Years of experience in relocation services
+  certifications   String[] // Professional certifications
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
 }
 
 // Enhanced Job Model (Previously RecruiterJob)
 model CompanyJob {
-  job_id          String   @id @default(uuid())
-  company_id      String   // Changed from recruiter_id
-  agency_id       String?  // Optional: if job requires relocation services
+  job_id          String  @id @default(uuid())
+  company_id      String // Changed from recruiter_id
+  agency_id       String? // Optional: if job requires relocation services
   title           String
   location        String
   description     String
   salary_range    String?
   required_skills String?
-  status          String   // draft, active, paused, closed, cancelled
-  
+  status          String // draft, active, paused, closed, cancelled
+
   // Enhanced Job Fields
-  job_type        String?  // full_time, part_time, contract, internship
-  experience_level String? // entry, mid, senior, executive
-  education_level String?  // high_school, bachelor, master, phd
-  remote_option   String?  // fully_remote, hybrid, office_only
-  visa_sponsored  Boolean? // Whether company sponsors visa
+  job_type              String? // full_time, part_time, contract, internship
+  experience_level      String? // entry, mid, senior, executive
+  education_level       String? // high_school, bachelor, master, phd
+  remote_option         String? // fully_remote, hybrid, office_only
+  visa_sponsored        Boolean? // Whether company sponsors visa
   relocation_assistance Boolean? // Whether company provides relocation help
-  urgency_level   String?  // low, medium, high, urgent
-  department      String?  // Engineering, Marketing, Sales, etc.
-  reporting_to    String?  // Position this role reports to
-  team_size       Int?     // Size of team this role will join
-  
+  urgency_level         String? // low, medium, high, urgent
+  department            String? // Engineering, Marketing, Sales, etc.
+  reporting_to          String? // Position this role reports to
+  team_size             Int? // Size of team this role will join
+
   // Application Settings
   application_deadline DateTime?
-  max_applications     Int?      // Maximum number of applications to accept
-  auto_reject_after    Int?      // Days after which to auto-reject
-  screening_questions  String[]  // Custom screening questions
-  
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  max_applications     Int? // Maximum number of applications to accept
+  auto_reject_after    Int? // Days after which to auto-reject
+  screening_questions  String[] // Custom screening questions
 
-  company            User                       @relation(fields: [company_id], references: [user_id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  company            User                       @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
   agency             Agency?                    @relation(fields: [agency_id], references: [agency_id])
   applications       JobApplication[]
   progressTrackers   CandidateProgressTracker[]
@@ -227,35 +228,35 @@ model CompanyJob {
   jobRecommendations JobRecommendation[]        @relation("JobRecommendations")
   jobVector          JobVector?                 @relation("JobVector")
   relocationCases    RelocationCase[]           @relation("JobRelocationCases")
-  interviewSchedules InterviewSchedule[]        // Added relation without fields/references
+  interviewSchedules InterviewSchedule[] // Added relation without fields/references
 }
 
 // Enhanced Job Application
 model JobApplication {
-  application_id    String   @id @default(uuid())
-  candidate_id      String
-  job_id            String
-  status            String   // applied, screening, shortlisted, interviewed, offered, hired, rejected
-  cover_letter      String?
-  applied_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  
+  application_id String   @id @default(uuid())
+  candidate_id   String
+  job_id         String
+  status         String // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  cover_letter   String?
+  applied_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
   // Enhanced Application Fields
-  salary_expectation Float?
-  available_from     DateTime? // When candidate can start
-  visa_status        String?   // citizen, permanent_resident, work_visa, student_visa, needs_sponsorship
+  salary_expectation  Float?
+  available_from      DateTime? // When candidate can start
+  visa_status         String? // citizen, permanent_resident, work_visa, student_visa, needs_sponsorship
   willing_to_relocate Boolean?
   current_location    String?
-  
+
   // Screening & Assessment
-  screening_answers   Json?     // Answers to custom screening questions
-  assessment_score    Float?    // Overall assessment score
-  interview_feedback  String?   // Interview feedback from company
-  rejection_reason    String?   // Reason for rejection
-  
-  candidate User               @relation(fields: [candidate_id], references: [user_id])
-  job       CompanyJob         @relation(fields: [job_id], references: [job_id]) // Changed relation
-  interview AIInterviewResult?
+  screening_answers  Json? // Answers to custom screening questions
+  assessment_score   Float? // Overall assessment score
+  interview_feedback String? // Interview feedback from company
+  rejection_reason   String? // Reason for rejection
+
+  candidate          User                @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job                CompanyJob          @relation(fields: [job_id], references: [job_id]) // Changed relation
+  interview          AIInterviewResult?
   interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
 }
 
@@ -264,13 +265,13 @@ model CandidateProgressTracker {
   progress_id  String   @id @default(uuid())
   candidate_id String
   job_id       String
-  stage        String   // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  stage        String // applied, screening, shortlisted, interviewed, offered, hired, rejected
   updated_by   String
   notes        String?
   updated_at   DateTime @default(now())
 
-  candidate User       @relation(fields: [candidate_id], references: [user_id])
-  updatedBy User       @relation("ProgressUpdatedBy", fields: [updated_by], references: [user_id])
+  candidate User       @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  updatedBy User?      @relation("ProgressUpdatedBy", fields: [updated_by], references: [user_id], onDelete: Cascade)
   job       CompanyJob @relation(fields: [job_id], references: [job_id]) // Changed relation
 }
 
@@ -286,42 +287,42 @@ model AIInterviewResult {
   updated_at     DateTime @updatedAt
 
   application  JobApplication @relation(fields: [application_id], references: [application_id])
-  candidate    User           @relation(fields: [candidate_id], references: [user_id])
+  candidate    User           @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
   candidate_id String
 }
 
 model SkillAssessment {
-  assessment_id        String           @id @default(uuid())
-  candidate_id         String
-  job_id               String?
-  provider             String
-  score                String?
-  status               AssessmentStatus @default(PENDING)
-  completed_at         DateTime?
-  created_at           DateTime         @default(now())
-  updated_at           DateTime         @updatedAt
+  assessment_id String           @id @default(uuid())
+  candidate_id  String
+  job_id        String?
+  provider      String
+  score         String?
+  status        AssessmentStatus @default(PENDING)
+  completed_at  DateTime?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
 
-  assessment_type      AssessmentType   @default(COMPREHENSIVE)
-  skill_category       String
-  difficulty           DifficultyLevel  @default(BEGINNER)
-  total_questions      Int              @default(20)
-  time_limit           Int              @default(30)
-  current_question     Int              @default(0)
-  started_at           DateTime?
-  questions            Json
-  answers              Json
-  overall_score        Float?
-  skill_level_result   String?
-  strengths            String[]
-  weaknesses           String[]
-  recommendations      String[]
-  ai_analysis          Json?
-  confidence_score     Float?
+  assessment_type    AssessmentType  @default(COMPREHENSIVE)
+  skill_category     String
+  difficulty         DifficultyLevel @default(BEGINNER)
+  total_questions    Int             @default(20)
+  time_limit         Int             @default(30)
+  current_question   Int             @default(0)
+  started_at         DateTime?
+  questions          Json
+  answers            Json
+  overall_score      Float?
+  skill_level_result String?
+  strengths          String[]
+  weaknesses         String[]
+  recommendations    String[]
+  ai_analysis        Json?
+  confidence_score   Float?
 
-  candidate            User             @relation(fields: [candidate_id], references: [user_id])
-  job                  CompanyJob?      @relation(fields: [job_id], references: [job_id]) // Changed relation
-  results              AssessmentResult[]
-  summary            AssessmentSummary?
+  candidate User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job       CompanyJob?        @relation(fields: [job_id], references: [job_id]) // Changed relation
+  results   AssessmentResult[]
+  summary   AssessmentSummary?
 
   @@map("skill_assessments")
 }
@@ -330,45 +331,45 @@ model SkillAssessment {
 
 // Relocation Case Management
 model RelocationCase {
-  case_id           String   @id @default(uuid())
-  candidate_id      String
-  job_id            String?  // Optional: linked to specific job
-  agency_id         String
-  case_number       String   @unique // Human readable case number
-  
+  case_id      String  @id @default(uuid())
+  candidate_id String
+  job_id       String? // Optional: linked to specific job
+  agency_id    String
+  case_number  String  @unique // Human readable case number
+
   // Case Details
-  service_type      String   // visa_processing, housing_assistance, documentation, full_relocation
-  priority_level    String   // low, medium, high, urgent
-  status            String   // initiated, in_progress, pending_documents, completed, cancelled
+  service_type         String // visa_processing, housing_assistance, documentation, full_relocation
+  priority_level       String // low, medium, high, urgent
+  status               String // initiated, in_progress, pending_documents, completed, cancelled
   estimated_completion DateTime?
   actual_completion    DateTime?
-  
+
   // Locations
-  origin_country    String
+  origin_country      String
   destination_country String
-  destination_city  String?
-  
+  destination_city    String?
+
   // Financial
-  estimated_cost    Float?
-  actual_cost       Float?
-  payment_status    String?  // pending, partial, paid, refunded
-  
+  estimated_cost Float?
+  actual_cost    Float?
+  payment_status String? // pending, partial, paid, refunded
+
   // Case Management
-  case_manager_id   String?  // Assigned case manager
-  notes             String?
+  case_manager_id    String? // Assigned case manager
+  notes              String?
   documents_required String[] // List of required documents
   documents_received String[] // List of received documents
-  
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  
-  candidate         User              @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id])
-  job               CompanyJob?       @relation("JobRelocationCases", fields: [job_id], references: [job_id])
-  agency            Agency            @relation(fields: [agency_id], references: [agency_id])
-  assignments       CaseAssignment[]
-  updates           CaseProgressUpdate[]
-  documents         CaseDocument[]
-  
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
+  agency      Agency               @relation(fields: [agency_id], references: [agency_id])
+  assignments CaseAssignment[]
+  updates     CaseProgressUpdate[]
+  documents   CaseDocument[]
+
   @@map("relocation_cases")
 }
 
@@ -376,31 +377,31 @@ model RelocationCase {
 model CaseAssignment {
   assignment_id String   @id @default(uuid())
   case_id       String
-  agent_id      String   // Agency user assigned to this case
+  agent_id      String // Agency user assigned to this case
   assigned_at   DateTime @default(now())
-  status        String   // active, completed, transferred
+  status        String // active, completed, transferred
   notes         String?
-  
-  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
-  agent         User           @relation("AgentCaseAssignments", fields: [agent_id], references: [user_id])
-  agency        Agency         @relation(fields: [agency_id], references: [agency_id])
-  agency_id     String
-  
+
+  case_details RelocationCase @relation(fields: [case_id], references: [case_id])
+  agent        User           @relation("AgentCaseAssignments", fields: [agent_id], references: [user_id], onDelete: Cascade)
+  agency       Agency         @relation(fields: [agency_id], references: [agency_id])
+  agency_id    String
+
   @@map("case_assignments")
 }
 
 // Case Progress Updates
 model CaseProgressUpdate {
-  update_id     String   @id @default(uuid())
-  case_id       String
-  updated_by    String   // User who made the update
-  status        String   // New status
-  description   String   // Description of progress
-  is_milestone  Boolean  @default(false) // Major milestone or regular update
-  created_at    DateTime @default(now())
-  
-  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
-  
+  update_id    String   @id @default(uuid())
+  case_id      String
+  updated_by   String // User who made the update
+  status       String // New status
+  description  String // Description of progress
+  is_milestone Boolean  @default(false) // Major milestone or regular update
+  created_at   DateTime @default(now())
+
+  case_details RelocationCase @relation(fields: [case_id], references: [case_id])
+
   @@map("case_progress_updates")
 }
 
@@ -412,31 +413,31 @@ model CaseDocument {
   file_path     String
   file_type     String
   file_size     Int
-  document_type String   // passport, visa, contract, housing_agreement, etc.
-  uploaded_by   String   // User who uploaded
-  status        String   // pending, approved, rejected, expired
+  document_type String // passport, visa, contract, housing_agreement, etc.
+  uploaded_by   String // User who uploaded
+  status        String // pending, approved, rejected, expired
   notes         String?
   created_at    DateTime @default(now())
-  
-  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
-  
+
+  case_details RelocationCase @relation(fields: [case_id], references: [case_id])
+
   @@map("case_documents")
 }
 
 // Agency Reviews
 model AgencyReview {
-  review_id     String   @id @default(uuid())
-  agency_id     String
-  reviewer_id   String   // User who left the review
-  case_id       String?  // Optional: specific case being reviewed
-  rating        Int      // 1-5 rating
-  review_text   String?
-  service_type  String?  // Which service was reviewed
-  created_at    DateTime @default(now())
-  
-  agency        Agency   @relation(fields: [agency_id], references: [agency_id])
-  reviewer      User     @relation("ClientReviews", fields: [reviewer_id], references: [user_id])
-  
+  review_id    String   @id @default(uuid())
+  agency_id    String
+  reviewer_id  String // User who left the review
+  case_id      String? // Optional: specific case being reviewed
+  rating       Int // 1-5 rating
+  review_text  String?
+  service_type String? // Which service was reviewed
+  created_at   DateTime @default(now())
+
+  agency   Agency @relation(fields: [agency_id], references: [agency_id])
+  reviewer User   @relation("ClientReviews", fields: [reviewer_id], references: [user_id], onDelete: Cascade)
+
   @@map("agency_reviews")
 }
 
@@ -444,21 +445,21 @@ model AgencyReview {
 
 // Updated Company Invitations (Previously RecruiterInvitation)
 model CompanyAgencyInvitation {
-  invitation_id String   @id @default(uuid())
-  agency_id     String
-  inviter_id    String
-  email         String
-  full_name     String
-  position      String?
+  invitation_id   String   @id @default(uuid())
+  agency_id       String
+  inviter_id      String
+  email           String
+  full_name       String
+  position        String?
   invitation_type String // company_user, agency_user
-  status        String   // pending, accepted, expired, cancelled
-  expires_at    DateTime
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  status          String // pending, accepted, expired, cancelled
+  expires_at      DateTime
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   agency  Agency @relation(fields: [agency_id], references: [agency_id])
-  inviter User   @relation("CompanyInvites", fields: [inviter_id], references: [user_id])
-  
+  inviter User   @relation("CompanyInvites", fields: [inviter_id], references: [user_id], onDelete: Cascade)
+
   @@map("company_agency_invitations")
 }
 
@@ -478,58 +479,56 @@ model JobRecommendation {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  candidate User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id])
+  candidate User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job       CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id]) // Changed relation
 }
 
 // Job Vector (Updated relation)
 model JobVector {
-  vector_id          String   @id @default(uuid())
-  job_id             String   @unique
+  vector_id           String   @id @default(uuid())
+  job_id              String   @unique
   requirements_vector Json
-  skills_vector      Json
-  combined_vector    Json
-  vector_version     String
-  last_updated       DateTime @default(now())
-  created_at         DateTime @default(now())
+  skills_vector       Json
+  combined_vector     Json
+  vector_version      String
+  last_updated        DateTime @default(now())
+  created_at          DateTime @default(now())
 
   job CompanyJob @relation("JobVector", fields: [job_id], references: [job_id]) // Changed relation
 }
 
 // EXISTING MODELS (No changes needed)
 
-
 model CandidateProfile {
-  candidate_id          String   @id
-  resume_url           String?
-  video_intro_url      String?
-  profile_picture_url   String?
-  headline             String?  @db.VarChar(120)
-  about_me             String?  @db.VarChar(500)   
-  resume_application_url String? 
+  candidate_id           String  @id
+  resume_url             String?
+  video_intro_url        String?
+  profile_picture_url    String?
+  headline               String? @db.VarChar(120)
+  about_me               String? @db.VarChar(500)
+  resume_application_url String?
 
-  skills               String[]
-  education            String?
-  experience           String?
-  languages            String?
-  
-  location             String?
-  city                 String? 
-  postal_code          Int?
-  preferred_locations  String?
-  
+  skills     String[]
+  education  String?
+  experience String?
+  languages  String?
+
+  location            String?
+  city                String?
+  postal_code         Int?
+  preferred_locations String?
+
   minimum_salary_amount Float?
-  payment_period       String?
-  job_benefits         String?
+  payment_period        String?
+  job_benefits          String?
 
-  links                String?
-  
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  links String?
 
-  user User @relation(fields: [candidate_id], references: [user_id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
-
 
 model AdminAuditLog {
   log_id       String   @id @default(uuid())
@@ -540,7 +539,7 @@ model AdminAuditLog {
   description  String?
   created_at   DateTime @default(now())
 
-  admin User @relation(fields: [admin_id], references: [user_id])
+  admin User @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
 }
 
 model RolePermission {
@@ -568,14 +567,14 @@ model Notification {
   sent_via        String
   created_at      DateTime @default(now())
 
-  user User @relation(fields: [user_id], references: [user_id])
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model SubscriptionPlan {
   plan_id                  String   @id @default(uuid())
   name                     String
-  price_monthly_usd      Decimal
-  price_annually_usd     Decimal
+  price_monthly_usd        Decimal
+  price_annually_usd       Decimal
   job_post_limit           Int
   ai_interview_limit       Int
   features_included        String
@@ -622,38 +621,38 @@ model WebhookEndpoint {
 // CANDIDATE FLOW MODELS (No changes needed)
 
 model CandidateDocument {
-  document_id      String   @id @default(uuid())
-  candidate_id     String
-  file_name        String
-  file_path        String
-  file_type        String
-  file_size        Int
-  upload_status    String
+  document_id       String   @id @default(uuid())
+  candidate_id      String
+  file_name         String
+  file_path         String
+  file_type         String
+  file_size         Int
+  upload_status     String
   extraction_status String?
-  processed_text   String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  processed_text    String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  candidate        User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id])
+  candidate        User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   skillExtractions SkillExtraction[]
   candidateSkills  CandidateSkill[]  @relation("SkillsFromDocument")
 }
 
 model CandidateSkill {
-  skill_id       String   @id @default(uuid())
-  candidate_id   String
-  skill_name     String
-  skill_category String?
-  proficiency    String?
-  years_experience Int?
-  confidence_score Float?
-  source_type    String
+  skill_id           String   @id @default(uuid())
+  candidate_id       String
+  skill_name         String
+  skill_category     String?
+  proficiency        String?
+  years_experience   Int?
+  confidence_score   Float?
+  source_type        String
   source_document_id String?
-  is_verified    Boolean  @default(false)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  is_verified        Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
-  candidate User @relation("CandidateSkills", fields: [candidate_id], references: [user_id])
+  candidate      User               @relation("CandidateSkills", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   sourceDocument CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id])
 }
 
@@ -672,24 +671,24 @@ model SkillExtraction {
   updated_at       DateTime @updatedAt
 
   document  CandidateDocument @relation(fields: [document_id], references: [document_id])
-  candidate User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id])
+  candidate User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
 
 model CareerPrediction {
-  prediction_id       String   @id @default(uuid())
-  candidate_id        String
-  current_role        String?
-  predicted_roles     Json
-  career_path         Json
-  skill_gaps          Json
-  salary_prediction   Json
-  confidence_score    Float
-  ai_model_version    String
-  input_data_summary  String?
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  prediction_id      String   @id @default(uuid())
+  candidate_id       String
+  current_role       String?
+  predicted_roles    Json
+  career_path        Json
+  skill_gaps         Json
+  salary_prediction  Json
+  confidence_score   Float
+  ai_model_version   String
+  input_data_summary String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
-  candidate User @relation("CareerPredictions", fields: [candidate_id], references: [user_id])
+  candidate User @relation("CareerPredictions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
 
 model CandidateVector {
@@ -703,95 +702,93 @@ model CandidateVector {
   last_updated      DateTime @default(now())
   created_at        DateTime @default(now())
 
-  candidate User @relation("CandidateVector", fields: [candidate_id], references: [user_id])
+  candidate User @relation("CandidateVector", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
 
 model ProfileCompleteness {
-  completeness_id   String   @id @default(uuid())
-  candidate_id      String   @unique
-  overall_score     Float
-  basic_info_score  Float
-  skills_score      Float
-  experience_score  Float
+  completeness_id       String   @id @default(uuid())
+  candidate_id          String   @unique
+  overall_score         Float
+  basic_info_score      Float
+  skills_score          Float
+  experience_score      Float
   profile_picture_score Float
-  education_score   Float
-  document_score    Float
-  headline_score    Float    @default(0.0)  // ADD DEFAULT VALUE
-  missing_fields    Json
-  suggestions       Json
-  last_calculated   DateTime @default(now())
-  created_at        DateTime @default(now())
+  education_score       Float
+  document_score        Float
+  headline_score        Float    @default(0.0) // ADD DEFAULT VALUE
+  missing_fields        Json
+  suggestions           Json
+  last_calculated       DateTime @default(now())
+  created_at            DateTime @default(now())
 
-  candidate User @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id])
+  candidate User @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
 
 model AssessmentResult {
-  result_id         String           @id @default(uuid())
-  assessment_id     String
-  question_id       String
-  question_text     String
-  question_type     QuestionType
-  expected_answer   String?
-  user_answer       String
-  is_correct        Boolean?
-  partial_score     Float?
-  time_taken        Int
-  ai_evaluation     Json?
-  feedback          String?
-  answered_at       DateTime         @default(now())
+  result_id       String       @id @default(uuid())
+  assessment_id   String
+  question_id     String
+  question_text   String
+  question_type   QuestionType
+  expected_answer String?
+  user_answer     String
+  is_correct      Boolean?
+  partial_score   Float?
+  time_taken      Int
+  ai_evaluation   Json?
+  feedback        String?
+  answered_at     DateTime     @default(now())
 
-  assessment        SkillAssessment  @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  assessment SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
 
   @@map("assessment_results")
 }
 
-
 model AssessmentSummary {
-  summary_id          String          @id @default(uuid())
-  assessment_id       String          @unique
-  
+  summary_id    String @id @default(uuid())
+  assessment_id String @unique
+
   // Overall Metrics
-  overall_score       Float
-  skill_level         String          // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
-  pass_status         String          // passed, failed, needs_review
-  
+  overall_score Float
+  skill_level   String // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  pass_status   String // passed, failed, needs_review
+
   // Performance Breakdown
-  correct_answers     Int
-  incorrect_answers   Int
-  partial_answers     Int             @default(0)
-  total_questions     Int
-  accuracy_rate       Float           // percentage
-  
+  correct_answers   Int
+  incorrect_answers Int
+  partial_answers   Int   @default(0)
+  total_questions   Int
+  accuracy_rate     Float // percentage
+
   // Time Metrics
-  total_time_spent    Int             // seconds
-  avg_time_per_question Float         // seconds
-  
+  total_time_spent      Int // seconds
+  avg_time_per_question Float // seconds
+
   // Category-wise Performance (JSON)
-  category_scores     Json?           // { "React Basics": 85, "Hooks": 70 }
-  difficulty_scores   Json            // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
-  
+  category_scores   Json? // { "React Basics": 85, "Hooks": 70 }
+  difficulty_scores Json // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
+
   // AI Insights
-  strengths           String[]
-  weaknesses          String[]
-  recommendations     String[]
-  next_steps          String[]
-  ai_confidence       Float
-  
+  strengths       String[]
+  weaknesses      String[]
+  recommendations String[]
+  next_steps      String[]
+  ai_confidence   Float
+
   // Achievements (Optional)
-  achievements        String[]        @default([])
-  badges_earned       String[]        @default([])
-  
-  created_at          DateTime        @default(now())
-  updated_at          DateTime        @updatedAt
-  
-  assessment          SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
-  
+  achievements  String[] @default([])
+  badges_earned String[] @default([])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  assessment SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+
   @@map("assessment_summaries")
 }
 
-
 model QuestionBank {
-  question_id      String         @id @default(uuid())
+  question_id      String          @id @default(uuid())
   question_text    String
   question_type    QuestionType
   skill_category   String
@@ -799,13 +796,13 @@ model QuestionBank {
   options          Json?
   correct_answer   String?
   explanation      String?
-  ai_generated     Boolean        @default(false)
+  ai_generated     Boolean         @default(false)
   generated_by     String?
-  times_used       Int            @default(0)
+  times_used       Int             @default(0)
   avg_score        Float?
   difficulty_index Float?
-  created_at       DateTime       @default(now())
-  updated_at       DateTime       @updatedAt
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
 
   @@map("question_bank")
 }
@@ -838,477 +835,477 @@ enum DifficultyLevel {
 
 // AI Interview Scheduling & Management
 model InterviewSchedule {
-  schedule_id        String   @id @default(uuid())
-  application_id     String
-  job_id             String?  // Added job_id field for the relation
-  interview_type     String   // phone, video, in_person, ai_video
-  scheduled_time     DateTime
-  timezone           String
-  duration_minutes   Int      @default(60)
-  status             String   // scheduled, in_progress, completed, rescheduled, cancelled, no_show
-  ai_optimized       Boolean  @default(false)
-  
+  schedule_id      String   @id @default(uuid())
+  application_id   String
+  job_id           String? // Added job_id field for the relation
+  interview_type   String // phone, video, in_person, ai_video
+  scheduled_time   DateTime
+  timezone         String
+  duration_minutes Int      @default(60)
+  status           String // scheduled, in_progress, completed, rescheduled, cancelled, no_show
+  ai_optimized     Boolean  @default(false)
+
   // AI Optimization Details
-  optimal_time_score Float?   // AI calculated optimal time score
-  reschedule_count   Int      @default(0)
-  auto_rescheduled   Boolean  @default(false)
-  
+  optimal_time_score Float? // AI calculated optimal time score
+  reschedule_count   Int     @default(0)
+  auto_rescheduled   Boolean @default(false)
+
   // Meeting Details
-  meeting_link       String?  // Video call link
-  meeting_room       String?  // Physical room
-  interviewer_ids    String[] // Array of interviewer user IDs
-  preparation_sent   Boolean  @default(false)
-  reminder_sent      Boolean  @default(false)
-  
+  meeting_link     String? // Video call link
+  meeting_room     String? // Physical room
+  interviewer_ids  String[] // Array of interviewer user IDs
+  preparation_sent Boolean  @default(false)
+  reminder_sent    Boolean  @default(false)
+
   // Results
-  conducted_by       String?  // Actual interviewer
-  actual_duration    Int?     // Actual duration in minutes
-  interview_notes    String?
-  outcome            String?  // passed, failed, needs_review
+  conducted_by         String? // Actual interviewer
+  actual_duration      Int? // Actual duration in minutes
+  interview_notes      String?
+  outcome              String? // passed, failed, needs_review
   next_round_scheduled Boolean @default(false)
-  
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  
-  application        JobApplication @relation(fields: [application_id], references: [application_id])
-  job                CompanyJob?     @relation(fields: [job_id], references: [job_id]) // Added missing job relation
-  
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  application JobApplication @relation(fields: [application_id], references: [application_id])
+  job         CompanyJob?    @relation(fields: [job_id], references: [job_id]) // Added missing job relation
+
   @@map("interview_schedules")
 }
 
 // AI Communication Hub & Message Tracking
 model CommunicationLog {
-  log_id           String   @id @default(uuid())
-  sender_id        String   // User who sent (can be system)
-  recipient_id     String   // User who received
-  message_type     String   // email, sms, push, in_app, whatsapp
-  channel          String?  // specific channel (email_template_name, etc.)
-  
+  log_id       String  @id @default(uuid())
+  sender_id    String // User who sent (can be system)
+  recipient_id String // User who received
+  message_type String // email, sms, push, in_app, whatsapp
+  channel      String? // specific channel (email_template_name, etc.)
+
   // Content
-  subject          String?  // For emails
-  content          String   // Message content
-  content_type     String   @default("text") // text, html, json
-  ai_generated     Boolean  @default(false)
-  ai_model_used    String?  // Which AI model generated this
-  
+  subject       String? // For emails
+  content       String // Message content
+  content_type  String  @default("text") // text, html, json
+  ai_generated  Boolean @default(false)
+  ai_model_used String? // Which AI model generated this
+
   // Delivery Status
-  status           String   // queued, sent, delivered, read, failed, bounced
-  sent_at          DateTime?
-  delivered_at     DateTime?
-  read_at          DateTime?
-  failed_reason    String?
-  
+  status        String // queued, sent, delivered, read, failed, bounced
+  sent_at       DateTime?
+  delivered_at  DateTime?
+  read_at       DateTime?
+  failed_reason String?
+
   // Context
   related_entity_type String? // job, application, case, assessment
   related_entity_id   String? // ID of related entity
-  campaign_id      String?  // For bulk communications
-  
+  campaign_id         String? // For bulk communications
+
   // Engagement
-  clicked          Boolean  @default(false)
-  reply_received   Boolean  @default(false)
-  unsubscribed     Boolean  @default(false)
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
-  sender           User     @relation("SentMessages", fields: [sender_id], references: [user_id])
-  recipient        User     @relation("ReceivedMessages", fields: [recipient_id], references: [user_id])
-  
+  clicked        Boolean @default(false)
+  reply_received Boolean @default(false)
+  unsubscribed   Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  sender    User @relation("SentMessages", fields: [sender_id], references: [user_id], onDelete: Cascade)
+  recipient User @relation("ReceivedMessages", fields: [recipient_id], references: [user_id], onDelete: Cascade)
+
   @@map("communication_logs")
 }
 
 // AI Hiring Analytics & Metrics
 model HiringAnalytics {
-  analytics_id     String   @id @default(uuid())
-  company_id       String
-  
+  analytics_id String @id @default(uuid())
+  company_id   String
+
   // Metric Details
-  metric_type      String   // time_to_hire, cost_per_hire, quality_of_hire, candidate_satisfaction
-  metric_value     Float
-  metric_unit      String?  // days, dollars, percentage, score
-  
+  metric_type  String // time_to_hire, cost_per_hire, quality_of_hire, candidate_satisfaction
+  metric_value Float
+  metric_unit  String? // days, dollars, percentage, score
+
   // Time Period
-  period_type      String   // daily, weekly, monthly, quarterly, yearly
-  period_start     DateTime
-  period_end       DateTime
-  
+  period_type  String // daily, weekly, monthly, quarterly, yearly
+  period_start DateTime
+  period_end   DateTime
+
   // Context
-  job_id           String?  // Specific job or overall
-  department       String?  // Department-specific metrics
-  seniority_level  String?  // entry, mid, senior, executive
-  
+  job_id          String? // Specific job or overall
+  department      String? // Department-specific metrics
+  seniority_level String? // entry, mid, senior, executive
+
   // Comparison Data
   previous_period_value Float?
   benchmark_value       Float? // Industry benchmark
-  trend               String? // improving, declining, stable
-  
+  trend                 String? // improving, declining, stable
+
   // AI Analysis
-  ai_insights     Json?    // AI-generated insights about this metric
-  recommendations Json?    // AI recommendations for improvement
-  confidence_score Float?  // AI confidence in analysis
-  
-  calculated_at   DateTime @default(now())
-  created_at      DateTime @default(now())
-  
-  company         User     @relation("CompanyAnalytics", fields: [company_id], references: [user_id])
-  
+  ai_insights      Json? // AI-generated insights about this metric
+  recommendations  Json? // AI recommendations for improvement
+  confidence_score Float? // AI confidence in analysis
+
+  calculated_at DateTime @default(now())
+  created_at    DateTime @default(now())
+
+  company User @relation("CompanyAnalytics", fields: [company_id], references: [user_id], onDelete: Cascade)
+
   @@map("hiring_analytics")
 }
 
 // Agency Relocation Analytics
 model RelocationAnalytics {
-  analytics_id     String   @id @default(uuid())
-  agency_id        String
-  
+  analytics_id String @id @default(uuid())
+  agency_id    String
+
   // Metric Details
-  metric_type      String   // success_rate, completion_time, client_satisfaction, cost_efficiency
-  metric_value     Float
-  metric_unit      String?
-  
+  metric_type  String // success_rate, completion_time, client_satisfaction, cost_efficiency
+  metric_value Float
+  metric_unit  String?
+
   // Time Period
-  period_type      String
-  period_start     DateTime
-  period_end       DateTime
-  
+  period_type  String
+  period_start DateTime
+  period_end   DateTime
+
   // Service Context
-  service_type     String?  // visa, housing, documentation, full_relocation
-  origin_country   String?
+  service_type        String? // visa, housing, documentation, full_relocation
+  origin_country      String?
   destination_country String?
-  
+
   // Performance Data
   cases_completed  Int?
   cases_failed     Int?
-  average_duration Float?   // Average completion time
-  client_rating    Float?   // Average client rating
-  
+  average_duration Float? // Average completion time
+  client_rating    Float? // Average client rating
+
   // AI Analysis
-  ai_insights      Json?
-  recommendations  Json?
-  market_trends    Json?    // Market trend analysis
-  
-  calculated_at    DateTime @default(now())
-  created_at       DateTime @default(now())
-  
-  agency           Agency   @relation(fields: [agency_id], references: [agency_id])
-  
+  ai_insights     Json?
+  recommendations Json?
+  market_trends   Json? // Market trend analysis
+
+  calculated_at DateTime @default(now())
+  created_at    DateTime @default(now())
+
+  agency Agency @relation(fields: [agency_id], references: [agency_id])
+
   @@map("relocation_analytics")
 }
 
 // AI Business Insights & Recommendations
 model BusinessInsight {
-  insight_id       String   @id @default(uuid())
-  target_id        String   // company_id, agency_id, or system-wide
-  target_type      String   // company, agency, platform
-  
+  insight_id  String @id @default(uuid())
+  target_id   String // company_id, agency_id, or system-wide
+  target_type String // company, agency, platform
+
   // Insight Details
-  insight_type     String   // recommendation, prediction, trend, alert, opportunity
-  category         String   // hiring, performance, market, finance, growth
-  title            String
-  description      String
+  insight_type      String // recommendation, prediction, trend, alert, opportunity
+  category          String // hiring, performance, market, finance, growth
+  title             String
+  description       String
   detailed_analysis String?
-  
+
   // AI Details
-  ai_model         String   // Which AI model generated this
-  confidence       Float    // 0-1 confidence score
-  evidence         Json?    // Supporting data/evidence
-  
+  ai_model   String // Which AI model generated this
+  confidence Float // 0-1 confidence score
+  evidence   Json? // Supporting data/evidence
+
   // Actionability
-  priority         String   // low, medium, high, critical
-  action_required  Boolean  @default(false)
+  priority          String // low, medium, high, critical
+  action_required   Boolean  @default(false)
   suggested_actions String[] // Array of suggested actions
-  expected_impact  String?  // Expected impact if acted upon
-  
+  expected_impact   String? // Expected impact if acted upon
+
   // Status
-  status           String   @default("new") // new, viewed, acted_upon, dismissed
-  viewed_at        DateTime?
-  acted_upon_at    DateTime?
-  feedback_rating  Int?     // 1-5 rating from user
-  feedback_text    String?
-  
+  status          String    @default("new") // new, viewed, acted_upon, dismissed
+  viewed_at       DateTime?
+  acted_upon_at   DateTime?
+  feedback_rating Int? // 1-5 rating from user
+  feedback_text   String?
+
   // Validity
-  expires_at       DateTime? // When this insight becomes stale
-  is_recurring     Boolean   @default(false)
-  next_update      DateTime? // When to regenerate this insight
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  expires_at   DateTime? // When this insight becomes stale
+  is_recurring Boolean   @default(false)
+  next_update  DateTime? // When to regenerate this insight
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   @@map("business_insights")
 }
 
 // AI Generated Content Management
 model GeneratedContent {
-  content_id       String   @id @default(uuid())
-  user_id          String   // User who requested the content
-  
+  content_id String @id @default(uuid())
+  user_id    String // User who requested the content
+
   // Content Details
-  content_type     String   // job_description, email_template, social_post, cover_letter, interview_questions
-  template_id      String?  // If based on a template
-  title            String?
-  original_input   String?  // User's original request/prompt
-  generated_content String  // AI-generated content
-  
+  content_type      String // job_description, email_template, social_post, cover_letter, interview_questions
+  template_id       String? // If based on a template
+  title             String?
+  original_input    String? // User's original request/prompt
+  generated_content String // AI-generated content
+
   // AI Details
-  ai_model         String   // openai_gpt4, gemini, claude, etc.
-  prompt_used      String?  // Actual prompt sent to AI
-  generation_time  Int?     // Time taken to generate (ms)
-  tokens_used      Int?     // Tokens consumed
-  
+  ai_model        String // openai_gpt4, gemini, claude, etc.
+  prompt_used     String? // Actual prompt sent to AI
+  generation_time Int? // Time taken to generate (ms)
+  tokens_used     Int? // Tokens consumed
+
   // Content Management
-  status           String   @default("draft") // draft, review, approved, published, archived
-  version          Int      @default(1)
+  status            String  @default("draft") // draft, review, approved, published, archived
+  version           Int     @default(1)
   parent_content_id String? // For content revisions
-  
+
   // Usage & Performance
-  usage_count      Int      @default(0) // How many times used
-  performance_score Float?  // Effectiveness score (CTR, engagement, etc.)
-  user_rating      Int?     // 1-5 user rating
-  user_feedback    String?
-  
+  usage_count       Int     @default(0) // How many times used
+  performance_score Float? // Effectiveness score (CTR, engagement, etc.)
+  user_rating       Int? // 1-5 user rating
+  user_feedback     String?
+
   // Customization
-  customizations   Json?    // User modifications to generated content
-  brand_guidelines Json?    // Brand guidelines applied
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  published_at     DateTime?
-  
-  user             User     @relation("GeneratedContent", fields: [user_id], references: [user_id])
-  
+  customizations   Json? // User modifications to generated content
+  brand_guidelines Json? // Brand guidelines applied
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  published_at DateTime?
+
+  user User @relation("GeneratedContent", fields: [user_id], references: [user_id], onDelete: Cascade)
+
   @@map("generated_content")
 }
 
 // System Health Monitoring
 model SystemHealth {
-  health_id        String   @id @default(uuid())
-  
+  health_id String @id @default(uuid())
+
   // Service Details
-  service_name     String   // database, redis, ai_service, vector_db, email_service
-  service_type     String   // internal, external, ai_provider
-  endpoint         String?  // Service endpoint being monitored
-  
+  service_name String // database, redis, ai_service, vector_db, email_service
+  service_type String // internal, external, ai_provider
+  endpoint     String? // Service endpoint being monitored
+
   // Health Status
-  status           String   // healthy, degraded, down, maintenance
-  response_time    Float?   // Response time in milliseconds
-  uptime_percentage Float?  // Uptime percentage
-  
+  status            String // healthy, degraded, down, maintenance
+  response_time     Float? // Response time in milliseconds
+  uptime_percentage Float? // Uptime percentage
+
   // Error Tracking
-  error_count      Int      @default(0)
-  last_error       String?
-  error_details    Json?
-  
+  error_count   Int     @default(0)
+  last_error    String?
+  error_details Json?
+
   // Performance Metrics
-  cpu_usage        Float?
-  memory_usage     Float?
-  disk_usage       Float?
-  network_latency  Float?
-  
+  cpu_usage       Float?
+  memory_usage    Float?
+  disk_usage      Float?
+  network_latency Float?
+
   // Monitoring Details
-  check_interval   Int      @default(300) // Check interval in seconds
-  timeout_seconds  Int      @default(30)
-  alerts_enabled   Boolean  @default(true)
-  
-  checked_at       DateTime @default(now())
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  check_interval  Int     @default(300) // Check interval in seconds
+  timeout_seconds Int     @default(30)
+  alerts_enabled  Boolean @default(true)
+
+  checked_at DateTime @default(now())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   @@map("system_health")
 }
 
 // Platform Usage Analytics
 model UsageAnalytics {
-  usage_id         String   @id @default(uuid())
-  user_id          String?  // Null for anonymous actions
-  session_id       String?  // Session identifier
-  
+  usage_id   String  @id @default(uuid())
+  user_id    String? // Null for anonymous actions
+  session_id String? // Session identifier
+
   // Action Details
-  action_type      String   // login, logout, job_post, application_submit, profile_view
-  resource_type    String?  // job, application, assessment, user, company
-  resource_id      String?  // ID of the resource acted upon
-  
+  action_type   String // login, logout, job_post, application_submit, profile_view
+  resource_type String? // job, application, assessment, user, company
+  resource_id   String? // ID of the resource acted upon
+
   // Context
-  page_url         String?
-  user_agent       String?
-  ip_address       String?
-  country          String?
-  city             String?
-  device_type      String?  // desktop, mobile, tablet
-  browser          String?
-  
+  page_url    String?
+  user_agent  String?
+  ip_address  String?
+  country     String?
+  city        String?
+  device_type String? // desktop, mobile, tablet
+  browser     String?
+
   // Performance
-  response_time    Float?   // Action completion time
-  success          Boolean  @default(true)
-  error_message    String?
-  
+  response_time Float? // Action completion time
+  success       Boolean @default(true)
+  error_message String?
+
   // Metadata
-  metadata         Json?    // Additional context data
-  ab_test_variant  String?  // A/B test variant
-  
-  timestamp        DateTime @default(now())
-  
-  user             User?    @relation("UserAnalytics", fields: [user_id], references: [user_id])
-  
+  metadata        Json? // Additional context data
+  ab_test_variant String? // A/B test variant
+
+  timestamp DateTime @default(now())
+
+  user User? @relation("UserAnalytics", fields: [user_id], references: [user_id], onDelete: SetNull)
+
   @@map("usage_analytics")
 }
 
 // AI Model Performance Tracking
 model ModelPerformance {
-  performance_id   String   @id @default(uuid())
-  
+  performance_id String @id @default(uuid())
+
   // Model Details
-  model_name       String   // job_matching, skill_assessment, interview_analysis, content_generation
-  model_type       String   // ml_model, llm, embedding_model
-  version          String   // Model version
-  provider         String   // openai, anthropic, google, internal
-  
+  model_name String // job_matching, skill_assessment, interview_analysis, content_generation
+  model_type String // ml_model, llm, embedding_model
+  version    String // Model version
+  provider   String // openai, anthropic, google, internal
+
   // Performance Metrics
-  accuracy_score   Float?   // Overall accuracy
-  precision_score  Float?   // Precision metric
-  recall_score     Float?   // Recall metric
-  f1_score         Float?   // F1 score
-  
+  accuracy_score  Float? // Overall accuracy
+  precision_score Float? // Precision metric
+  recall_score    Float? // Recall metric
+  f1_score        Float? // F1 score
+
   // Usage Metrics
-  total_requests   Int      @default(0)
-  successful_requests Int   @default(0)
-  failed_requests  Int      @default(0)
+  total_requests        Int    @default(0)
+  successful_requests   Int    @default(0)
+  failed_requests       Int    @default(0)
   average_response_time Float?
-  
+
   // Quality Metrics
-  user_satisfaction Float?  // Average user rating
-  feedback_count   Int      @default(0)
-  positive_feedback Int     @default(0)
-  negative_feedback Int     @default(0)
-  
+  user_satisfaction Float? // Average user rating
+  feedback_count    Int    @default(0)
+  positive_feedback Int    @default(0)
+  negative_feedback Int    @default(0)
+
   // Cost Metrics
-  total_cost       Float?   // Total cost for this period
-  cost_per_request Float?   // Average cost per request
-  tokens_used      Int?     // For LLMs
-  
+  total_cost       Float? // Total cost for this period
+  cost_per_request Float? // Average cost per request
+  tokens_used      Int? // For LLMs
+
   // Time Period
   measurement_period String // daily, weekly, monthly
-  period_start     DateTime
-  period_end       DateTime
-  
+  period_start       DateTime
+  period_end         DateTime
+
   // Analysis
   performance_trend String? // improving, declining, stable
   issues_identified String[] // Array of identified issues
-  recommendations  String[] // Improvement recommendations
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  recommendations   String[] // Improvement recommendations
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   @@map("model_performance")
 }
 
 // User Feedback for AI Features
 model AIFeedback {
-  feedback_id      String   @id @default(uuid())
-  user_id          String
-  
+  feedback_id String @id @default(uuid())
+  user_id     String
+
   // Feature Context
-  feature_type     String   // job_recommendation, skill_assessment, interview_analysis, content_generation
+  feature_type        String // job_recommendation, skill_assessment, interview_analysis, content_generation
   feature_instance_id String? // Specific instance being rated (job_id, assessment_id, etc.)
-  
+
   // Feedback Details
-  rating           Int      // 1-5 star rating
-  feedback_text    String?
+  rating                  Int // 1-5 star rating
+  feedback_text           String?
   improvement_suggestions String?
-  
+
   // Specific Feedback Categories
-  accuracy_rating  Int?     // How accurate was the AI?
-  usefulness_rating Int?    // How useful was the result?
-  speed_rating     Int?     // How fast was the response?
-  
+  accuracy_rating   Int? // How accurate was the AI?
+  usefulness_rating Int? // How useful was the result?
+  speed_rating      Int? // How fast was the response?
+
   // Context
   user_experience_level String? // beginner, intermediate, expert
-  use_case         String?  // How they were using the feature
-  
+  use_case              String? // How they were using the feature
+
   // Follow-up
-  would_recommend  Boolean?
-  would_use_again  Boolean?
-  contact_for_followup Boolean @default(false)
-  
-  created_at       DateTime @default(now())
-  
-  user             User     @relation("AIFeedback", fields: [user_id], references: [user_id])
-  
+  would_recommend      Boolean?
+  would_use_again      Boolean?
+  contact_for_followup Boolean  @default(false)
+
+  created_at DateTime @default(now())
+
+  user User @relation("AIFeedback", fields: [user_id], references: [user_id], onDelete: Cascade)
+
   @@map("ai_feedback")
 }
 
 // AI Learning & Training Data
 model AITrainingData {
-  training_id      String   @id @default(uuid())
-  
+  training_id String @id @default(uuid())
+
   // Data Source
-  data_type        String   // user_interaction, feedback, performance_metric
-  source_table     String   // Which table this data comes from
-  source_id        String   // ID of the source record
-  
+  data_type    String // user_interaction, feedback, performance_metric
+  source_table String // Which table this data comes from
+  source_id    String // ID of the source record
+
   // Training Context
-  model_name       String   // Which AI model this data trains
-  training_purpose String   // improvement, fine_tuning, validation
-  
+  model_name       String // Which AI model this data trains
+  training_purpose String // improvement, fine_tuning, validation
+
   // Data Content
-  input_data       Json     // Input data for training
-  expected_output  Json?    // Expected/correct output
-  actual_output    Json?    // What the model actually produced
-  
+  input_data      Json // Input data for training
+  expected_output Json? // Expected/correct output
+  actual_output   Json? // What the model actually produced
+
   // Quality Metrics
   data_quality_score Float? // Quality assessment of this data
-  verified         Boolean  @default(false)
-  verified_by      String?  // Who verified this data
-  
+  verified           Boolean @default(false)
+  verified_by        String? // Who verified this data
+
   // Usage
-  used_in_training Boolean  @default(false)
+  used_in_training    Boolean @default(false)
   training_session_id String?
-  contribution_score Float? // How much this data improved the model
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  contribution_score  Float? // How much this data improved the model
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   @@map("ai_training_data")
 }
 
 // Platform Evolution & Feature Requests
 model PlatformEvolution {
-  evolution_id     String   @id @default(uuid())
-  
+  evolution_id String @id @default(uuid())
+
   // Evolution Type
-  type             String   // feature_request, bug_report, improvement, innovation
-  category         String   // ui_ux, ai_features, performance, security, integration
-  priority         String   // low, medium, high, critical
-  
+  type     String // feature_request, bug_report, improvement, innovation
+  category String // ui_ux, ai_features, performance, security, integration
+  priority String // low, medium, high, critical
+
   // Details
-  title            String
-  description      String
+  title             String
+  description       String
   technical_details String?
-  business_impact  String?
-  
+  business_impact   String?
+
   // User Context
-  requested_by     String?  // User ID who requested
+  requested_by     String? // User ID who requested
   affected_users   String[] // Array of user types affected
   user_pain_points String[] // Pain points this addresses
-  
+
   // Implementation
-  status           String   @default("submitted") // submitted, review, approved, development, testing, deployed, rejected
-  assigned_to      String?  // Developer/team assigned
-  estimated_effort String?  // Small, medium, large, extra_large
-  sprint_planned   String?  // Which sprint this is planned for
-  
+  status           String  @default("submitted") // submitted, review, approved, development, testing, deployed, rejected
+  assigned_to      String? // Developer/team assigned
+  estimated_effort String? // Small, medium, large, extra_large
+  sprint_planned   String? // Which sprint this is planned for
+
   // AI Analysis
   ai_feasibility_score Float? // AI-calculated feasibility score
-  ai_impact_prediction Json?  // Predicted impact analysis
+  ai_impact_prediction Json? // Predicted impact analysis
   ai_similar_requests  String[] // Similar requests identified by AI
-  
+
   // Feedback & Voting
-  upvotes          Int      @default(0)
-  downvotes        Int      @default(0)
-  user_comments    Json?    // User comments and discussions
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  completed_at     DateTime?
-  
+  upvotes       Int   @default(0)
+  downvotes     Int   @default(0)
+  user_comments Json? // User comments and discussions
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  completed_at DateTime?
+
   @@map("platform_evolution")
 }
 
@@ -1321,6 +1318,7 @@ enum QuestionType {
   SCENARIO
   SHORT_ANSWER
 }
+
 // Add these enums first
 enum VerificationSubjectType {
   COMPANY
@@ -1351,17 +1349,18 @@ enum VerificationCaseStatus {
   REJECTED
   EXPIRED
 }
+
 // Verification Run table
 model VerificationRun {
-  run_id        String                  @id @default(uuid())
-  subject_type  VerificationSubjectType
-  subject_id    String
-  status        VerificationRunStatus
-  started_at    DateTime                @default(now())
-  ended_at      DateTime?
-  risk_score    Float?
-  decision      VerificationDecision?
-  reason_codes  String[]                @default([])
+  run_id       String                  @id @default(uuid())
+  subject_type VerificationSubjectType
+  subject_id   String
+  status       VerificationRunStatus
+  started_at   DateTime                @default(now())
+  ended_at     DateTime?
+  risk_score   Float?
+  decision     VerificationDecision?
+  reason_codes String[]                @default([])
 
   signals  VerificationSignal[]
   snapshot VerificationSnapshot?
@@ -1372,7 +1371,7 @@ model VerificationRun {
 
 // Verification Signal table
 model VerificationSignal {
-  signal_id   String   @id @default(uuid())
+  signal_id   String  @id @default(uuid())
   run_id      String
   signal_type String
   passed      Boolean
@@ -1403,7 +1402,7 @@ model CompanyVerification {
   verified_by       String?
   verification_date DateTime?
 
-  latest_run_id String? @unique
+  latest_run_id String?  @unique
   risk_score    Float?
   reason_codes  String[] @default([])
 
@@ -1415,7 +1414,7 @@ model CompanyVerification {
 
 // Updated Agency Verification with new fields
 model AgencyVerification {
-  verification_id        String                 @id @default(uuid())
+  verification_id        String    @id @default(uuid())
   agency_id              String
   license_status         String
   verification_documents Json
@@ -1423,9 +1422,9 @@ model AgencyVerification {
   verification_date      DateTime?
 
   status        VerificationCaseStatus @default(DRAFT)
-  latest_run_id String? @unique
+  latest_run_id String?                @unique
   risk_score    Float?
-  reason_codes  String[] @default([])
+  reason_codes  String[]               @default([])
 
   latest_run VerificationRun? @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id])
 
@@ -1435,10 +1434,10 @@ model AgencyVerification {
 
 // Super Admin Management
 model SuperAdmin {
-  admin_id         String @id @default(uuid())
-  user_id          String
-  permissions      String[]
-  created_at       DateTime @default(now())
+  admin_id    String   @id @default(uuid())
+  user_id     String
+  permissions String[]
+  created_at  DateTime @default(now())
 }
 
 // Uploads file metadata
@@ -1467,9 +1466,46 @@ model UploadedDocument {
   updated_at    DateTime @updatedAt
 
   // named relation to User
-  uploader User @relation("UserUploadedDocuments", fields: [uploaded_by], references: [user_id])
+  uploader User @relation("UserUploadedDocuments", fields: [uploaded_by], references: [user_id], onDelete: Cascade)
 
   @@index([subject_type, subject_id])
   @@index([uploaded_by])
   @@index([document_type])
+}
+
+model UserSession {
+  session_id        String    @id @default(uuid())
+  user_id           String
+  device_name       String?
+  device_type       String?
+  browser_name      String?
+  browser_version   String?
+  os_name           String?
+  os_version        String?
+  ip_address        String
+  location_country  String?
+  location_city     String?
+  location_region   String?
+  jwt_token_hash    String
+  is_current        Boolean   @default(false)
+  last_activity     DateTime  @default(now())
+  login_time        DateTime  @default(now())
+  expires_at        DateTime
+  user_agent        String
+  screen_resolution String?
+  timezone          String?
+  language          String?
+  is_active         Boolean   @default(true)
+  terminated_at     DateTime?
+  terminated_by     String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  user User @relation("UserSessions", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([jwt_token_hash])
+  @@index([is_active])
+  @@index([expires_at])
+  @@map("user_sessions")
 }

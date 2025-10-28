@@ -1,19 +1,21 @@
-import prisma from "../lib/prisma";
+import prisma from "../../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { sendEmail } from "../utils/email.util";
-import { generateToken } from "../utils/jwt.util";
+import { sendEmail } from "../../utils/email.util";
+import { generateToken } from "../../utils/jwt.util";
+import fs from 'fs/promises';
+import path from 'path';
 import {
   SignupInput,
   LoginInput,
   ForgotPasswordInput,
   ResetPasswordInput,
   VerifyEmailInput,
-   UserWithProfiles, 
-   CleanUser,
-   LoginResponse
-} from "../types/auth.types";
-
+  UserWithProfiles, 
+  CleanUser,
+  LoginResponse,
+} from "../../types/auth.types";
+import { DeleteAccountRequest } from "../../validation/auth.schema";
 export const signup = async (input: SignupInput) => {
   try {
     const { email, password, full_name, role } = input;
@@ -329,5 +331,249 @@ export const resetPassword = async ({ token, newPassword }: ResetPasswordInput) 
       error: true,
       message: error.message || "Reset password failed",
     };
+  }
+};
+
+
+export const deleteAccount = async (userId: string, body?: DeleteAccountRequest) => {
+  try {
+    // Validate user exists
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId },
+      select: {
+        user_id: true,
+        role: true,
+        email: true,
+        full_name: true,
+        candidateProfile: {
+          select: {
+            profile_picture_url: true,
+            resume_url: true,
+            video_intro_url: true,
+            resume_application_url: true
+          }
+        },
+        companyProfile: {
+          select: {
+            logo_url: true,
+            banner_url: true
+          }
+        },
+        agencyAdminProfile: {
+          select: {
+            admin_id: true
+          }
+        },
+        candidateDocuments: {
+          select: {
+            file_path: true,
+            document_id: true
+          }
+        },
+        uploadedDocuments: {
+          select: {
+            storage_key: true,
+            preview_key: true,
+            document_id: true
+          }
+        },
+        jobsPosted: {
+          select: {
+            job_id: true
+          }
+        },
+        relocationCases: {
+          select: {
+            case_id: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    console.log(`[DELETE ACCOUNT] Starting deletion for User ID: ${userId}, Role: ${user.role}, Email: ${user.email}`);
+
+    // Collect all file paths that need to be deleted
+    const filesToDelete: string[] = [];
+
+    // Candidate profile files
+    if (user.candidateProfile) {
+      const profile = user.candidateProfile;
+      if (profile.profile_picture_url) filesToDelete.push(profile.profile_picture_url);
+      if (profile.resume_url) filesToDelete.push(profile.resume_url);
+      if (profile.video_intro_url) filesToDelete.push(profile.video_intro_url);
+      if (profile.resume_application_url) filesToDelete.push(profile.resume_application_url);
+    }
+
+    // Company profile files
+    if (user.companyProfile) {
+      const profile = user.companyProfile;
+      if (profile.logo_url) filesToDelete.push(profile.logo_url);
+      if (profile.banner_url) filesToDelete.push(profile.banner_url);
+    }
+
+    // Candidate document files
+    if (user.candidateDocuments?.length > 0) {
+      user.candidateDocuments.forEach(doc => {
+        if (doc.file_path) filesToDelete.push(doc.file_path);
+      });
+    }
+
+    // Uploaded document files
+    if (user.uploadedDocuments?.length > 0) {
+      user.uploadedDocuments.forEach(doc => {
+        if (doc.storage_key) filesToDelete.push(doc.storage_key);
+        if (doc.preview_key) filesToDelete.push(doc.preview_key);
+      });
+    }
+
+    // Count related records before deletion
+    const relatedCounts = {
+      candidateDocuments: user.candidateDocuments?.length || 0,
+      uploadedDocuments: user.uploadedDocuments?.length || 0,
+      jobsPosted: user.jobsPosted?.length || 0,
+      relocationCases: user.relocationCases?.length || 0,
+      filesToDelete: filesToDelete.length
+    };
+
+    console.log(`[DELETE ACCOUNT] Related records count:`, relatedCounts);
+
+    // Perform database deletion with transaction
+    await prisma.$transaction(async (tx) => {
+      console.log(`[DELETE ACCOUNT] Starting database transaction for user: ${userId}`);
+      
+      // Delete user - CASCADE will automatically delete all related records
+      await tx.user.delete({
+        where: { user_id: userId }
+      });
+      
+      console.log(`[DELETE ACCOUNT] User and all related records deleted successfully`);
+    }, {
+      timeout: 30000, // 30 second timeout for large deletions
+    });
+
+    // Schedule file cleanup (don't wait for completion)
+    if (filesToDelete.length > 0) {
+      console.log(`[DELETE ACCOUNT] Scheduling cleanup of ${filesToDelete.length} files`);
+      setImmediate(() => deleteFilesAsync(filesToDelete, userId));
+    }
+
+    // Log successful deletion
+    console.log(`[DELETE ACCOUNT] Completed successfully for user: ${userId}`);
+
+    return {
+      success: true,
+      message: `${user.role} account deleted successfully`,
+      data: {
+        deleted_user_id: userId,
+        deleted_user_email: user.email,
+        deleted_user_name: user.full_name,
+        deleted_role: user.role,
+        related_records_deleted: relatedCounts,
+        deletion_timestamp: new Date().toISOString()
+      }
+    };
+
+  } catch (error: any) {
+    console.error(`[DELETE ACCOUNT] Error for user ${userId}:`, error);
+    
+    // Re-throw with more context
+    if (error.code === 'P2025') {
+      throw new Error('User not found or already deleted');
+    } else if (error.code === 'P2003') {
+      throw new Error('Cannot delete user due to foreign key constraints');
+    } else {
+      throw new Error(`Failed to delete account: ${error.message}`);
+    }
+  }
+};
+
+// Helper function for asynchronous file cleanup
+async function deleteFilesAsync(filePaths: string[], userId: string) {
+  const uploadDir = process.env.UPLOAD_DIR || './uploads';
+  let deletedCount = 0;
+  let failedCount = 0;
+  
+  console.log(`[FILE CLEANUP] Starting cleanup of ${filePaths.length} files for user: ${userId}`);
+  
+  for (const filePath of filePaths) {
+    try {
+      let fullPath = filePath;
+      
+      // Handle relative paths
+      if (!path.isAbsolute(filePath)) {
+        fullPath = path.join(uploadDir, filePath);
+      }
+      
+      // Check if file exists before attempting deletion
+      await fs.access(fullPath);
+      await fs.unlink(fullPath);
+      
+      deletedCount++;
+      console.log(`[FILE CLEANUP] Deleted: ${fullPath}`);
+      
+    } catch (fileError: any) {
+      failedCount++;
+      
+      if (fileError.code === 'ENOENT') {
+        console.log(`[FILE CLEANUP] File not found (already deleted?): ${filePath}`);
+      } else {
+        console.warn(`[FILE CLEANUP] Failed to delete file: ${filePath}`, fileError.message);
+      }
+    }
+  }
+  
+  console.log(`[FILE CLEANUP] Completed for user ${userId}: ${deletedCount} deleted, ${failedCount} failed`);
+}
+export const getUserDeletionSummary = async (userId: string) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId },
+      include: {
+        // Profile relations add karo
+        candidateProfile: true,
+        companyProfile: true,
+        agencyAdminProfile: true,
+        
+        _count: {
+          select: {
+            candidateDocuments: true,
+            uploadedDocuments: true,
+            jobsPosted: true,
+            jobApplications: true,
+            assessments: true,
+            notifications: true,
+            relocationCases: true,
+            agencyReviews: true,
+            invitationsSent: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return {
+      user_info: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        created_at: user.created_at
+      },
+      related_records_count: user._count,
+      estimated_deletion_impact: {
+        database_records: Object.values(user._count).reduce((sum, count) => sum + count, 1),
+        profile_exists: !!(user.candidateProfile || user.companyProfile || user.agencyAdminProfile)
+      }
+    };
+
+  } catch (error: any) {
+    throw new Error(`Failed to get deletion summary: ${error.message}`);
   }
 };

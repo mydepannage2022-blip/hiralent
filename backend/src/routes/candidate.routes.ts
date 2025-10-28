@@ -80,6 +80,8 @@ import { startAssessmentSchema } from '../validation/assessment.validation';
 const router = Router();
 
 router.get('/health', healthCheckController);
+// public profile 
+router.get('/public-profile/:candidateId', getPublicProfileController);
 
 router.use(checkAuth);
 
@@ -262,6 +264,7 @@ router.post(
   handleUploadError,  // Handles multer errors
   uploadApplicationResumeController
 );
+
 
 
 export default router;

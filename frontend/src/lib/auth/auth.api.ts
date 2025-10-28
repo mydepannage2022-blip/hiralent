@@ -91,6 +91,20 @@ export const uploadProfilePicture = async (image: File) => {
   return response.data;
 };
 
+
+
+export const forgotPassword = async (data: { email: string }) => {
+  const response = await api.post('/auth/forgot-password', data);
+  return response.data;
+};
+
+export const resetPassword = async (data: { token: string; newPassword: string }) => {
+  const response = await api.post('/auth/reset-password', data);
+  return response.data;
+};
+
+
+
 export const createCompanyProfile = async (data: {
   company_name: string;
   industry: string;
@@ -109,4 +123,18 @@ export const createCompanyProfile = async (data: {
     console.error('API Error:', error.response?.data); // ✅ Add this
     throw error;
   }
+};
+
+
+export const uploadCompanyDocument = async (document: File) => {
+  const formData = new FormData();
+  formData.append('document', document);
+  formData.append('forceType', 'company_doc');
+  
+  const response = await api.post('/ocr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+
+  console.log('✅ API Response:', response.data);
+  return response.data;
 };

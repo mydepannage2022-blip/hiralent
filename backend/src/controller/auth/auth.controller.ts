@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as authService from "../services/auth.service";
+import * as authService from "../../services/auth/auth.service";
 
 export const signupController = async (req: Request, res: Response) => {
   try {
@@ -86,3 +86,31 @@ export const resetPasswordController = async (req: Request, res: Response) => {
     res.status(400).json({ error: message });
   }
 };
+
+
+export const deleteAccountController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.user_id;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        error: "User not authenticated" 
+      });
+    }
+
+    const result = await authService.deleteAccount(userId);
+    res.status(200).json(result);
+    
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to delete account";
+    res.status(500).json({ 
+      error: message 
+    });
+  }
+};
+
+
+
+
+
+

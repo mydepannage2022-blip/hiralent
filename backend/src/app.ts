@@ -27,7 +27,7 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
-import authRoutes from './routes/auth.routes';
+import authRoutes from './routes/auth/auth.routes';
 import candidateRoutes from './routes/candidate.routes';
 import companyRoutes from './routes/company.routes';
 import uploadRoutes from "./routes/upload.routes";
@@ -43,7 +43,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/ocr', ocrRoutes);
+app.use('/api/v1/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
 // Register admin auth routes
 app.use('/api/v1', adminAuthRoutes);

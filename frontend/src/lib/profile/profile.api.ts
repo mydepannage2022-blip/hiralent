@@ -33,6 +33,8 @@ export const getCandidateProfile = async (): Promise<APIResponse> => {
   return response.data;
 };
 
+
+
 // ==================== TYPE DEFINITIONS ====================
 
 export interface BasicInfoData {

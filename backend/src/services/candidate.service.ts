@@ -818,11 +818,8 @@ export const getPublicProfile = async (candidateId: string) => {
             skill_category: true,
             proficiency: true,
             years_experience: true,
-            is_verified: true,
+            is_verified: true,  
           },
-          where: {
-            is_verified: true 
-          }
         }
       }
     });
@@ -844,7 +841,7 @@ export const getPublicProfile = async (candidateId: string) => {
       video_intro_url: user.candidateProfile?.video_intro_url || null,
       links: user.candidateProfile?.links || null,
       resume_application_url: user.candidateProfile?.resume_application_url || null,
-      skills: user.candidateSkills || [],
+      skills: user.candidateSkills || [], 
       experience: user.candidateProfile?.experience || null,
       education: user.candidateProfile?.education || null,
     };
