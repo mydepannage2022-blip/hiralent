@@ -84,8 +84,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     console.log("🚪 Logout called");
     
-    setUser(null);
-    setToken(null);
+    localStorage.removeItem('profileData');
+    localStorage.removeItem('profileCompleteness');
     
     localStorage.removeItem("authToken");
     localStorage.removeItem("authUser");

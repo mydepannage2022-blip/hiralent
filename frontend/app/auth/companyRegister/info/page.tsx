@@ -20,8 +20,11 @@ interface FormData {
   website: string;
   location: string;
   description: string;
+<<<<<<< HEAD
   registrationNumber: string;
   fullAddress: string;
+=======
+>>>>>>> main
 }
 
 interface FormErrors {

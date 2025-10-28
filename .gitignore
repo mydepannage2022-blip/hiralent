@@ -3,7 +3,11 @@ node_modules/
 
 /src/generated/prisma
 /config/firebase-adminsdk.json
+<<<<<<< HEAD
 distbackend/uploads/
 backend/uploads/
 *.zip
 node_modules_old/
+=======
+dist
+>>>>>>> main
