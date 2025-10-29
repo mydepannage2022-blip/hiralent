@@ -13,14 +13,12 @@ export default function EducationSection({ education }: EducationSectionProps) {
         );
     }
 
-    // Sort education by year (most recent first)
     const sortedEducation = [...education].sort((a, b) => {
         const yearA = parseInt(a.year) || 0;
         const yearB = parseInt(b.year) || 0;
         return yearB - yearA;
     });
 
-    // Get education level icon
     const getEducationIcon = (degree: string) => {
         const lowerDegree = degree.toLowerCase();
         if (lowerDegree.includes('phd') || lowerDegree.includes('doctorate')) {
@@ -38,7 +36,6 @@ export default function EducationSection({ education }: EducationSectionProps) {
         return <BookOpen className="w-4 h-4 text-gray-600" />;
     };
 
-    // Get education level color
     const getEducationColor = (degree: string) => {
         const lowerDegree = degree.toLowerCase();
         if (lowerDegree.includes('phd') || lowerDegree.includes('doctorate')) {
