@@ -1,3 +1,7 @@
+import { generateTokenWithSession } from "../../utils/jwt.util";
+import { createSession } from "./session.service";
+import { getClientIP } from "../../utils/locationDetector.util";
+import { v4 as uuidv4 } from 'uuid';
 import prisma from "../../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -48,7 +52,7 @@ export const signup = async (input: SignupInput) => {
   }
 };
 
-export const login = async ({ email, password }: LoginInput): Promise<LoginResponse> => {
+export const login = async ({ email, password }: LoginInput, req?: any): Promise<LoginResponse> => {
   try {
     const user: UserWithProfiles | null = await prisma.user.findUnique({
       where: { email },
@@ -79,11 +83,25 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) throw new Error("Invalid credentials");
 
-    const token = generateToken({
-      user_id: user.user_id,
-      role: user.role,
-      agency_id: user.agency_id,
-    });
+    const sessionId = uuidv4();
+
+    const token = generateTokenWithSession(
+      user.user_id,
+      user.role,
+      sessionId,
+      user.agency_id || undefined
+    );
+
+ 
+        await createSession({
+        userId: user.user_id,
+        jwtToken: token,
+        userAgent: req?.headers['user-agent'] || 'Unknown',
+        ipAddress: req ? getClientIP(req) : '127.0.0.1',
+        screenResolution: req?.body?.screenResolution,
+        timezone: req?.body?.timezone,
+        language: req?.body?.language
+      });
 
     const cleanUser: CleanUser = {
       user_id: user.user_id,

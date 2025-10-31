@@ -1,6 +1,6 @@
 import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword} from './auth.api';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword, deleteAccount} from './auth.api';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
@@ -300,5 +300,26 @@ export const useResetPassword = () => {
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Password reset failed');
     },
+  });
+};
+
+
+
+export const useDeleteAccount = () => {
+  const router = useRouter();
+  
+  return useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Account deleted successfully');
+        // Clear auth and redirect
+        localStorage.removeItem('auth_token');
+        router.push('/auth/login');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to delete account');
+    }
   });
 };

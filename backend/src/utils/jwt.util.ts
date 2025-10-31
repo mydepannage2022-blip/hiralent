@@ -2,17 +2,14 @@
 
 import jwt from 'jsonwebtoken';
 
-// Flexible payload - any object works
 export interface JWTPayload {
   [key: string]: any;  // Accept any properties
 }
 
-// Main token generation - accepts any payload
 export const generateToken = (payload: any, expiresIn: string = '7d'): string => {
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn } as any);
 };
 
-// For your specific case
 export const generateUserToken = (userId: string, expiresIn: string = '15m'): string => {
   return jwt.sign({ user_id: userId }, process.env.JWT_SECRET!, { expiresIn } as any);
 };

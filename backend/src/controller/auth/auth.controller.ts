@@ -13,7 +13,7 @@ export const signupController = async (req: Request, res: Response) => {
 
 export const loginController = async (req: Request, res: Response) => {
   try {
-    const data = await authService.login(req.body);
+    const data = await authService.login(req.body, req); // req pass kar raha h
     res.status(200).json(data);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Login failed";

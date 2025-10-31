@@ -1,5 +1,3 @@
-// backend/src/services/session.service.ts
-
 import  prisma  from '../../lib/prisma';
 import { hashPassword as hash } from '../../utils/hash.util';
 import { detectDevice } from '../../utils/deviceDetector.util';
@@ -9,11 +7,14 @@ import {
   SessionInfo, 
 } from '../../types/session.types';
 
-// Create new session on login
+
 export const createSession = async (data: CreateSessionData): Promise<string> => {
   try {
+    console.log('🔄 Creating session for user:', data.userId);
+    
     // Hash the JWT token for security
     const tokenHash = await hash(data.jwtToken);
+    console.log('🔐 Token hashed successfully');
     
     // Detect device information
     const deviceInfo = detectDevice(data.userAgent);
@@ -27,6 +28,7 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
     
     // Create device name
     const deviceName = `${deviceInfo.browser.name} on ${deviceInfo.os.name}`;
+    console.log('📱 Device detected:', deviceName);
     
     // Mark all other sessions as not current
     await prisma.userSession.updateMany({
@@ -38,6 +40,7 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
     const sessionCount = await prisma.userSession.count({
       where: { user_id: data.userId, is_active: true }
     });
+    console.log('📊 Current session count:', sessionCount);
     
     if (sessionCount >= 5) {
       // Delete oldest session
@@ -55,6 +58,7 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
             terminated_by: 'system'
           }
         });
+        console.log('🗑️ Oldest session terminated');
       }
     }
     
@@ -82,14 +86,16 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
       }
     });
     
+    console.log('✅ Session created successfully:', session.session_id);
+    console.log('🔗 Token hash stored:', tokenHash.substring(0, 10) + '...');
+    
     return session.session_id;
   } catch (error: any) {
-    console.error('Create Session Error:', error);
+    console.error('❌ Session creation failed:', error);
     throw new Error('Failed to create session');
   }
 };
 
-// Get all active sessions for a user
 export const getUserSessions = async (userId: string): Promise<SessionInfo[]> => {
   try {
     const sessions = await prisma.userSession.findMany({
@@ -121,7 +127,6 @@ export const getUserSessions = async (userId: string): Promise<SessionInfo[]> =>
   }
 };
 
-// Terminate specific session
 export const terminateSession = async (sessionId: string, terminatedBy?: string): Promise<boolean> => {
   try {
     const result = await prisma.userSession.update({
@@ -140,7 +145,6 @@ export const terminateSession = async (sessionId: string, terminatedBy?: string)
   }
 };
 
-// Terminate all other sessions (keep current one)
 export const terminateOtherSessions = async (currentSessionId: string, userId: string): Promise<number> => {
   try {
     const result = await prisma.userSession.updateMany({
@@ -163,7 +167,6 @@ export const terminateOtherSessions = async (currentSessionId: string, userId: s
   }
 };
 
-// Terminate all sessions (logout everywhere)
 export const terminateAllSessions = async (userId: string): Promise<number> => {
   try {
     const result = await prisma.userSession.updateMany({
@@ -185,7 +188,6 @@ export const terminateAllSessions = async (userId: string): Promise<number> => {
   }
 };
 
-// Update session activity (called on each API request)
 export const updateSessionActivity = async (sessionId: string): Promise<boolean> => {
   try {
     await prisma.userSession.update({
@@ -196,15 +198,16 @@ export const updateSessionActivity = async (sessionId: string): Promise<boolean>
     return true;
   } catch (error: any) {
     // Silently fail to avoid breaking API requests
-    console.error('Update Session Activity Error:', error);
+    console.warn('Update Session Activity Error:', error);
     return false;
   }
 };
 
-// Get session by token hash (for validation)
 export const getSessionByToken = async (tokenHash: string) => {
   try {
-    return await prisma.userSession.findFirst({
+    console.log('🔍 Looking for session with token hash:', tokenHash.substring(0, 10) + '...');
+    
+    const session = await prisma.userSession.findFirst({
       where: { 
         jwt_token_hash: tokenHash, 
         is_active: true,
@@ -212,13 +215,27 @@ export const getSessionByToken = async (tokenHash: string) => {
       },
       include: { user: true }
     });
+    
+    if (session) {
+      console.log('✅ Session found:', session.session_id);
+    } else {
+      console.log('❌ No session found for token hash');
+      
+      // Debug: Check all sessions for this user
+      const allSessions = await prisma.userSession.findMany({
+        where: { is_active: true },
+        select: { session_id: true, user_id: true, jwt_token_hash: true }
+      });
+      console.log('🔍 All active sessions:', allSessions.length);
+    }
+    
+    return session;
   } catch (error: any) {
     console.error('Get Session By Token Error:', error);
     return null;
   }
 };
 
-// Cleanup expired sessions (cron job)
 export const cleanupExpiredSessions = async (): Promise<number> => {
   try {
     const result = await prisma.userSession.updateMany({
@@ -241,7 +258,6 @@ export const cleanupExpiredSessions = async (): Promise<number> => {
   }
 };
 
-// Validate session exists and is active
 export const validateSession = async (sessionId: string, userId: string): Promise<boolean> => {
   try {
     const session = await prisma.userSession.findFirst({

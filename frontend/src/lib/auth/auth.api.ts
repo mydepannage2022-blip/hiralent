@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { APIResponse } from '../profile/profile.api';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL,
@@ -103,7 +104,15 @@ export const resetPassword = async (data: { token: string; newPassword: string }
   return response.data;
 };
 
+export const deleteAccount = async (): Promise<APIResponse> => {
+  const response = await api.delete('/auth/delete-account', {
+    data: {}
+  });
+  
+  return response.data;
 
+  
+};
 
 export const createCompanyProfile = async (data: {
   company_name: string;
@@ -136,5 +145,20 @@ export const uploadCompanyDocument = async (document: File) => {
   });
 
   console.log('✅ API Response:', response.data);
+  return response.data;
+};
+
+export const getUserSessions = async () => {
+  const response = await api.get('/auth/sessions/');
+  return response.data;
+};
+
+export const terminateSession = async (sessionId: string) => {
+  const response = await api.delete(`/auth/sessions/${sessionId}`);
+  return response.data;
+};
+
+export const terminateAllOtherSessions = async () => {
+  const response = await api.delete('/auth/sessions/others/terminate');
   return response.data;
 };
