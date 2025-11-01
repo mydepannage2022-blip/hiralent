@@ -173,3 +173,23 @@ export interface SkillFilterState {
   verifiedOnly: boolean;
   searchTerm: string;
 }
+
+
+
+
+export interface ResumeQualityData {
+  completionPercentage: number;
+  suggestions: QualitySuggestion[];
+}
+
+export interface QualitySuggestion {
+  id: string;
+  text: string;
+  percentage: number;
+  completed: boolean;
+}
+
+export interface ResumeLink {
+  url: string;
+  qrCodeData: string;
+}
