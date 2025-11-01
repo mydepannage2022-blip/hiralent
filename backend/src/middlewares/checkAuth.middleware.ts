@@ -1,10 +1,6 @@
-// backend/src/middlewares/checkAuth.middleware.ts (ENHANCED VERSION)
-
 import { Request, Response, NextFunction } from 'express';
 import { verifyTokenWithDetails } from '../utils/jwt.util';
-import { getSessionByToken, updateSessionActivity } from '../services/auth/session.service'; 
-import { hashPassword as hash } from '../utils/hash.util';
-
+import * as blacklistService from '../services/auth/blacklist.service';
 export interface AuthenticatedRequest extends Request {
   user?: {
     user_id: string;
@@ -16,6 +12,7 @@ export interface AuthenticatedRequest extends Request {
     full_name?: string;
   };
 }
+
 
 export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -30,7 +27,14 @@ export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: 
 
     const token = authHeader.substring(7);
     
-    // Verify JWT token
+    const isBlacklisted = await blacklistService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'Session terminated. Please login again.' 
+      });
+    }
+
     const { payload, error, expired } = verifyTokenWithDetails(token);
     
     if (error || !payload) {
@@ -40,12 +44,14 @@ export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: 
       });
     }
 
-    // SKIP ALL SESSION VALIDATION - JUST SET USER
     req.user = {
       user_id: payload.user_id,
       role: payload.role,
       agency_id: payload.agency_id,
       session_id: payload.session_id || 'bypass',
+      is_email_verified: payload.is_email_verified,
+      email: payload.email,
+      full_name: payload.full_name
     };
 
     console.log('✅ Auth successful for user:', payload.user_id);
@@ -60,7 +66,7 @@ export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: 
   }
 };
 
-// Optional: Middleware for routes that don't require session validation
+
 export const checkAuthLegacy = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -99,7 +105,6 @@ export const checkAuthLegacy = async (req: AuthenticatedRequest, res: Response, 
   }
 };
 
-// Middleware to check if user has active session
 export const requireActiveSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user?.session_id || req.user.session_id === 'legacy') {
     return res.status(401).json({ 

@@ -1,6 +1,6 @@
 import toast from 'react-hot-toast';
-import { useMutation } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword, deleteAccount} from './auth.api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword, deleteAccount, getUserSessions , terminateAllOtherSessions, terminateSession } from './auth.api';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
@@ -323,3 +323,57 @@ export const useDeleteAccount = () => {
     }
   });
 };
+
+
+
+export const useSessions = () => {
+  return useQuery({
+    queryKey: ['sessions'],
+    queryFn: getUserSessions,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: 1000,
+  });
+};
+
+// Terminate specific session
+export const useTerminateSession = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: terminateSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Session terminated successfully!');
+    },
+    onError: (error: any) => {
+      console.error('Error terminating session:', error);
+      toast.error('Failed to terminate session');
+    }
+  });
+};
+
+// Terminate all other sessions
+export const useTerminateAllOtherSessions = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: terminateAllOtherSessions,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('All other sessions terminated!');
+    },
+    onError: (error: any) => {
+      console.error('Error terminating all sessions:', error);
+      toast.error('Failed to terminate all sessions');
+    }
+  });
+};
+
+
+
+
+
+

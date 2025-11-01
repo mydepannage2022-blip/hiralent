@@ -7,6 +7,7 @@ import {
   SessionInfo, 
 } from '../../types/session.types';
 
+import * as blacklistService from './blacklist.service';
 
 export const createSession = async (data: CreateSessionData): Promise<string> => {
   try {
@@ -127,18 +128,34 @@ export const getUserSessions = async (userId: string): Promise<SessionInfo[]> =>
   }
 };
 
-export const terminateSession = async (sessionId: string, terminatedBy?: string): Promise<boolean> => {
+export const terminateSession = async (sessionId: string, userId: string): Promise<boolean> => {
   try {
-    const result = await prisma.userSession.update({
-      where: { session_id: sessionId, is_active: true },
+    const session = await prisma.userSession.findFirst({
+      where: { 
+        session_id: sessionId, 
+        user_id: userId, 
+        is_active: true 
+      }
+    });
+
+    if (!session) return false;
+
+    await blacklistService.addToBlacklist(
+      session.jwt_token_hash, 
+      sessionId, 
+      userId
+    );
+
+    await prisma.userSession.update({
+      where: { session_id: sessionId },
       data: {
         is_active: false,
         terminated_at: new Date(),
-        terminated_by: terminatedBy || 'user'
+        terminated_by: 'user'
       }
     });
-    
-    return !!result;
+
+    return true;
   } catch (error: any) {
     console.error('Terminate Session Error:', error);
     return false;
@@ -147,6 +164,25 @@ export const terminateSession = async (sessionId: string, terminatedBy?: string)
 
 export const terminateOtherSessions = async (currentSessionId: string, userId: string): Promise<number> => {
   try {
+    // Get all other sessions first (to blacklist their tokens)
+    const otherSessions = await prisma.userSession.findMany({
+      where: {
+        user_id: userId,
+        session_id: { not: currentSessionId },
+        is_active: true
+      }
+    });
+
+    // Add all JWT tokens to blacklist
+    for (const session of otherSessions) {
+      await blacklistService.addToBlacklist(
+        session.jwt_token_hash,
+        session.session_id,
+        userId
+      );
+    }
+
+    // Update all other sessions as terminated
     const result = await prisma.userSession.updateMany({
       where: {
         user_id: userId,
@@ -169,11 +205,20 @@ export const terminateOtherSessions = async (currentSessionId: string, userId: s
 
 export const terminateAllSessions = async (userId: string): Promise<number> => {
   try {
+    const allSessions = await prisma.userSession.findMany({
+      where: { user_id: userId, is_active: true }
+    });
+
+    for (const session of allSessions) {
+      await blacklistService.addToBlacklist(
+        session.jwt_token_hash,
+        session.session_id,
+        userId
+      );
+    }
+
     const result = await prisma.userSession.updateMany({
-      where: {
-        user_id: userId,
-        is_active: true
-      },
+      where: { user_id: userId, is_active: true },
       data: {
         is_active: false,
         terminated_at: new Date(),

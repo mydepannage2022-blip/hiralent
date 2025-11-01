@@ -1,7 +1,8 @@
 // src/components/candidate/dashboard/settings/DevicesAccount.tsx
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { MonitorSmartphone, Laptop, Smartphone, Tablet, Hand, X, Monitor, Globe, MapPin, Clock } from "lucide-react";
+import { useSessions, useTerminateSession, useTerminateAllOtherSessions } from '@/src/lib/auth/auth.queries';
 
 interface Session {
   session_id: string;
@@ -19,10 +20,15 @@ interface Session {
 }
 
 function DevicesAccount() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [terminating, setTerminating] = useState<string | null>(null);
-  const [terminatingAll, setTerminatingAll] = useState(false);
+  // React Query hooks
+  const { data: sessionsData, isLoading } = useSessions();
+  const terminateSessionMutation = useTerminateSession();
+  const terminateAllMutation = useTerminateAllOtherSessions();
+
+  // Extract sessions from API response
+  const sessions: Session[] = sessionsData?.data || [];
+  const currentSession = sessions.find(session => session.is_current);
+  const otherSessions = sessions.filter(session => !session.is_current);
 
   // Get device icon based on type
   const getDeviceIcon = (deviceType: string) => {
@@ -53,99 +59,18 @@ function DevicesAccount() {
     return `${diffDays}d ago`;
   };
 
-  // Fetch user sessions
-  const fetchSessions = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        console.error('No auth token found');
-        return;
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/sessions/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch sessions');
-      }
-
-      const data = await response.json();
-      setSessions(data.data || []);
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Handle terminate session
+  const handleTerminateSession = (sessionId: string) => {
+    terminateSessionMutation.mutate(sessionId);
   };
 
-  // Terminate specific session
-  const terminateSession = async (sessionId: string) => {
-    try {
-      setTerminating(sessionId);
-      const token = localStorage.getItem('authToken');
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to terminate session');
-      }
-
-      // Remove session from state
-      setSessions(prev => prev.filter(session => session.session_id !== sessionId));
-    } catch (error) {
-      console.error('Error terminating session:', error);
-    } finally {
-      setTerminating(null);
-    }
+  // Handle terminate all other sessions
+  const handleTerminateAllOtherSessions = () => {
+    terminateAllMutation.mutate();
   };
 
-  // Terminate all other sessions
-  const terminateAllOtherSessions = async () => {
-    try {
-      setTerminatingAll(true);
-      const token = localStorage.getItem('authToken');
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/sessions/others/terminate`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to terminate other sessions');
-      }
-
-      // Keep only current session
-      setSessions(prev => prev.filter(session => session.is_current));
-    } catch (error) {
-      console.error('Error terminating all sessions:', error);
-    } finally {
-      setTerminatingAll(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
-  const currentSession = sessions.find(session => session.is_current);
-  const otherSessions = sessions.filter(session => !session.is_current);
-
-  if (loading) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="w-full p-5 rounded-xl shadow-sm bg-white">
         <div className="animate-pulse">
@@ -170,7 +95,9 @@ function DevicesAccount() {
           <MonitorSmartphone size={96} strokeWidth={1.75} />
         </span>
         <span className="text-lg font-medium">Active Sessions</span>
-        <span className="text-sm text-gray-500">{sessions.length} device{sessions.length !== 1 ? 's' : ''}</span>
+        <span className="text-sm text-gray-500">
+          {sessions.length} device{sessions.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       <div className="w-full space-y-4">
@@ -203,15 +130,15 @@ function DevicesAccount() {
         {/* Terminate All Button */}
         {otherSessions.length > 0 && (
           <button
-            onClick={terminateAllOtherSessions}
-            disabled={terminatingAll}
+            onClick={handleTerminateAllOtherSessions}
+            disabled={terminateAllMutation.isPending}
             className="flex gap-2 items-center justify-center border border-red-300 hover:border-red-400 py-2 mb-3 w-full rounded-lg transition-colors disabled:opacity-50"
           >
             <span className="text-red-600">
               <Hand size={20} />
             </span>
             <span className="font-medium text-red-600">
-              {terminatingAll ? 'Terminating...' : 'Terminate All Other Sessions'}
+              {terminateAllMutation.isPending ? 'Terminating...' : 'Terminate All Other Sessions'}
             </span>
           </button>
         )}
@@ -241,12 +168,12 @@ function DevicesAccount() {
                   </div>
 
                   <button 
-                    onClick={() => terminateSession(session.session_id)}
-                    disabled={terminating === session.session_id}
+                    onClick={() => handleTerminateSession(session.session_id)}
+                    disabled={terminateSessionMutation.isPending}
                     className="p-1 rounded-full hover:bg-red-100 transition-colors disabled:opacity-50"
                     title="Terminate session"
                   >
-                    {terminating === session.session_id ? (
+                    {terminateSessionMutation.isPending ? (
                       <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
                     ) : (
                       <X size={18} className="text-red-600" />
@@ -271,12 +198,6 @@ function DevicesAccount() {
         {sessions.length === 0 && (
           <div className="text-center py-4 text-gray-500">
             <p className="text-sm">No active sessions found</p>
-            <button 
-              onClick={fetchSessions}
-              className="text-blue-600 text-sm mt-2 hover:underline"
-            >
-              Refresh
-            </button>
           </div>
         )}
       </div>
