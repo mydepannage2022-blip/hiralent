@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import ChatSidebar from "./ChatSidebar";
-import ChatWindow from "./ChatWindow";
+import ChatSidebar from "../../../candidate/dashboard/message/ChatSidebar";
+import ChatWindow from "../../../candidate/dashboard/message/ChatWindow";
 import { mockConversations, Conversation, Message } from "./mockData";
 
 const ChatShell: React.FC = () => {

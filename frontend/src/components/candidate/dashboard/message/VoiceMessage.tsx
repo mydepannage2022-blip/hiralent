@@ -10,6 +10,8 @@ export default function VoiceMessage({ msg }: { msg: Message }) {
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
 
+    const isMine = msg.sender === "me";
+
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
@@ -46,54 +48,60 @@ export default function VoiceMessage({ msg }: { msg: Message }) {
         return `${minutes}:${seconds}`;
     };
 
+    // Simple generated waveform (visual only)
+    const renderWaveform = (count: number) => {
+        const bars = Array.from({ length: count }, (_, i) => {
+            const height = Math.random() * 14 + 4; // random height for visual wave
+            return (
+                <div
+                    key={i}
+                    className={`w-[2px] mx-[1px] rounded-full ${isMine ? "bg-blue-600" : "bg-gray-500"
+                        }`}
+                    style={{ height }}
+                ></div>
+            );
+        });
+        return bars;
+    };
+
     return (
-        <div
-            className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"
-                }`}
-        >
+        <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
             <div
-                className={`max-w-[70%] flex flex-col ${msg.sender === "me" ? "items-end" : "items-start"
+                className={`max-w-[70%] flex flex-col ${isMine ? "items-end" : "items-start"
                     }`}
             >
                 <div
-                    className={`flex items-center gap-3 p-3 rounded-2xl shadow-sm 
-          ${msg.sender === "me"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-800"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl ${isMine
+                            ? "bg-[#EFF5FF] text-black rounded-br-none"
+                            : "bg-[#F9F9F9] text-black rounded-bl-none"
                         }`}
                 >
+                    {/* Play button */}
                     <button
                         onClick={togglePlay}
-                        className={`w-9 h-9 flex items-center justify-center rounded-full ${msg.sender === "me"
-                                ? "bg-blue-500 hover:bg-blue-700"
-                                : "bg-white hover:bg-gray-200"
+                        className={`w-9 h-9 flex items-center justify-center rounded-full ${isMine ? "bg-blue-500" : "bg-gray-400"
                             }`}
                     >
                         {isPlaying ? (
-                            <Pause size={18} className="text-gray-800" />
+                            <Pause size={18} className="text-white" />
                         ) : (
-                            <Play size={18} className="text-gray-800" />
+                            <Play size={18} className="text-white" />
                         )}
                     </button>
 
-                    {/* Progress bar */}
-                    <div className="flex-1">
-                        <div className="relative w-40 h-1.5 bg-gray-300 rounded-full overflow-hidden">
-                            <div
-                                className={`absolute left-0 top-0 h-full ${msg.sender === "me" ? "bg-white" : "bg-blue-600"
-                                    }`}
-                                style={{
-                                    width: duration ? `${(progress / duration) * 100}%` : "0%",
-                                }}
-                            ></div>
-                        </div>
-                        <div className="text-[11px] mt-1 opacity-80">
-                            {formatTime(progress)} / {formatTime(duration)}
-                        </div>
+                    {/* Waveform */}
+                    <div className="flex-1 flex items-center justify-start h-6 overflow-hidden">
+                        <div className="flex items-end w-full">{renderWaveform(40)}</div>
                     </div>
+
+                    {/* Duration */}
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                        {formatTime(duration)}
+                    </span>
                 </div>
 
-                <div className="text-[10px] text-gray-400 text-right mt-1">
+                {/* Timestamp */}
+                <div className="text-[10px] text-gray-500 text-right mt-1">
                     {msg.timestamp}
                 </div>
 

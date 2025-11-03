@@ -33,8 +33,8 @@ export interface Conversation {
 export const mockConversations: Conversation[] = [
     {
         id: 1,
-        name: "Schlumberger",
-        avatar: "/images/companyavatar3.png",
+        name: "IOGP",
+        avatar: "/images/companyavatar4.png",
         lastSeen: "Online",
         unreadCount: 2,
         isActive: true,
@@ -64,8 +64,8 @@ export const mockConversations: Conversation[] = [
     },
     {
         id: 2,
-        name: "Woodplc",
-        avatar: "/images/companyavatar2.png",
+        name: "Baker Hughes",
+        avatar: "/images/companyavatar5.png",
         lastSeen: "Last seen 2 hours ago", // ❌ No green dot in sidebar
         unreadCount: 0, // Won’t show 0 badge
         isActive: false, // Chat window avatar dot OFF
@@ -81,8 +81,8 @@ export const mockConversations: Conversation[] = [
     },
     {
         id: 3,
-        name: "Etihad Airways",
-        avatar: "/images/companyavatar1.png",
+        name: "Aramco",
+        avatar: "/images/companyavatar6.png",
         lastSeen: "Last seen 10 minutes ago",
         unreadCount: 5,
         isActive: false,
