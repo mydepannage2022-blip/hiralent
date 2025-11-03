@@ -11,12 +11,14 @@ import {
   ChevronRight,
   LogOut,
   LucideIcon,
-  X,
-} from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
-import SmartLink from "../../../layout/SmartLink";
-import LogoutModal from "../../../layout/LogoutModal";
-import { useAuth } from "../../../../context/AuthContext";
+  BookOpen, // QUESTION BANK
+  Clock, // ReviewQueue
+  X
+} from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import SmartLink from '../../../layout/SmartLink';
+import LogoutModal from '../../../layout/LogoutModal';
+import { useAuth } from '../../../../context/AuthContext'; 
 
 interface MenuItem {
   name: string;
@@ -39,7 +41,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isMobile,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  menuItems,
+  menuItems: propMenuItems,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,12 +49,29 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [activeItem, setActiveItem] = useState<string>("Dashboard");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const localMenuItems: MenuItem[] = [
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
+    { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
+    { name: 'Question Bank', icon: BookOpen, href: '/company/dashboard/questions' }, 
+    { name: 'Review Queue', icon: Clock, href: '/company/dashboard/review-queue' },
+    { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
+    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
+    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
+    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' }
+  ];
+
+  // Fusionnez et dédupliquez les tableaux par href (URL unique)
+  const allMenuItems = [...localMenuItems, ...propMenuItems].filter((item, index, array) => {
+    return array.findIndex(i => i.href === item.href) === index;
+  });
+
+  // Update active item based on current pathname
   useEffect(() => {
-    const currentItem = menuItems.find((item) => item.href === pathname);
+    const currentItem = allMenuItems.find((item) => item.href === pathname);
     if (currentItem) {
       setActiveItem(currentItem.name);
     }
-  }, [pathname, menuItems]);
+  }, [pathname, allMenuItems]);
 
   const handleLogoutClick = () => setShowLogoutModal(true);
   const handleLogoutConfirm = () => {
@@ -130,11 +149,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             {/* Menu */}
             <nav className="mt-6 text-black">
               <ul className="space-y-2 px-4">
-                {menuItems.map((item) => {
+                {allMenuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
-                    <li key={item.name}>
+                    <li key={`${item.name}-${item.href}`}> {/* ← Clé unique combinée */}
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}
@@ -157,17 +176,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </ul>
             </nav>
           </div>
-<<<<<<< HEAD
         
           {/* Logout Button */}
           <div className='w-full p-4 border-t border-gray-200'>
             <button 
-=======
-
-          {/* Logout */}
-          <div className="w-full p-4 border-t border-gray-200">
-            <button
->>>>>>> origin
               onClick={handleLogoutClick}
               className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
                   ? "px-4 py-3 space-x-3 justify-start"

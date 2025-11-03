@@ -164,6 +164,27 @@ model CompanyProfile {
   user              User     @relation(fields: [company_id], references: [user_id])
 }
 
+model Question {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  problemStatement String
+  difficulty  String   // easy, medium, hard
+  skillTags   String[]
+  type        String   // coding, mcq, debugging
+  canonicalSolution String
+  testCases   Json     // { inputs: [], outputs: [] }
+  status      String   // draft, pending_review, approved, rejected
+  createdBy   String?  // user ID who created/generated
+  aiGenerated Boolean  @default(false)
+  source      String?  // ai_generated, web_scraped, manual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("questions")
+}
+
+
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
   admin_id       String   @id
