@@ -12,8 +12,9 @@ export const createProfileController = async (req: Request, res: Response): Prom
       return;
     }
 
-    // Check if user role is company
-    if (req.user.role !== 'company_admin') {
+    // Check if user role is company (accept company or company_admin)
+    const roleLower = (req.user.role || '').toString().toLowerCase();
+    if (roleLower !== 'company' && roleLower !== 'company_admin') {
       res.status(403).json({
         success: false,
         message: 'Only company users can create company profiles'

@@ -22,7 +22,8 @@ import { Question, SecurityViolation } from '@/src/types/assessment.types';
 const AssessmentTestPage = () => {
   const router = useRouter();
   const params = useParams();
-  const assessmentId = params.assessmentId as string;
+  // Guard useParams() which can be null/undefined in some Next runtime/type contexts
+  const assessmentId = params?.assessmentId ? String(params.assessmentId) : '';
 
   // REAL API STATE
   const { assessmentState, updateAssessmentProgress } = useProfile();
@@ -55,7 +56,7 @@ const AssessmentTestPage = () => {
   useEffect(() => {
     if (!assessmentId) {
       toast.error('Assessment ID not found');
-      router.push('/candidate/dashboard/skills-assessment');
+      if (typeof window !== 'undefined') router.push('/candidate/dashboard/skills-assessment');
       return;
     }
   }, [assessmentId, router]);

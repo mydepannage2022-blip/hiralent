@@ -42,7 +42,8 @@ const Alert = ({ type, message, onClose }: {
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  // useSearchParams can be null in some runtime/type scenarios; guard it.
+  const token = searchParams?.get?.('token') ?? null;
   const { user } = useAuth();
   const router = useRouter();
   
@@ -169,11 +170,12 @@ export default function VerifyEmailPage() {
           </p>
           <button 
             onClick={() => {
-              if (user.role === 'CANDIDATE') {
+              const role = (user.role || '').toString().toLowerCase();
+              if (role === 'candidate') {
                 router.push('/candidate/dashboard');
-              } else if (user.role === 'COMPANY') {
+              } else if (role === 'company' || role === 'company_admin') {
                 router.push('/company/dashboard');
-              } else if (user.role === 'AGENCY') {
+              } else if (role === 'agency') {
                 router.push('/agency/dashboard');
               } else {
                 router.push('/');

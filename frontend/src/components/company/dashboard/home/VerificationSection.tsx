@@ -15,7 +15,8 @@ export default function VerificationSection() {
 
   useEffect(() => {
     const fetchCompanyProfile = async () => {
-      if (!user || user.role !== 'company_admin') {
+      const role = (user?.role || '').toString().toLowerCase();
+      if (!user || (role !== 'company' && role !== 'company_admin')) {
         setIsLoading(false);
         return;
       }

@@ -46,14 +46,14 @@ router.post('/update-vector', candidate_controller_1.updateCandidateVectorContro
 router.post('/update-vector/:candidateId', candidate_controller_1.updateCandidateVectorController);
 // ==================== ASSESSMENT ROUTES ====================
 router.post('/start-assessment', [checkAuth_middleware_1.checkAuth, (0, validateBody_middleware_1.validateBody)(assessment_validation_1.startAssessmentSchema)], assessment_controller_1.startAssessmentController);
-// router.get('/assessment/:assessmentId/question', checkAuth, validateAssessmentOwnership, checkAssessmentStatus, getQuestionController);
 router.get('/assessment/:assessmentId/question', checkAuth_middleware_1.checkAuth, assessment_middleware_1.validateAssessmentOwnership, assessment_middleware_1.checkAssessmentStatus, assessment_controller_1.getQuestionController);
 router.post('/assessment/:assessmentId/answer', checkAuth_middleware_1.checkAuth, assessment_middleware_1.validateAssessmentOwnership, assessment_middleware_1.checkAssessmentStatus, assessment_middleware_1.validateQuestionSubmission, assessment_middleware_1.validateTimeLimit, assessment_controller_1.submitAnswerController);
-router.get('/assessment/:assessmentId/progress', assessment_middleware_1.validateAssessmentOwnership, assessment_controller_1.getProgressController);
-router.post('/assessment/:assessmentId/complete', assessment_middleware_1.validateAssessmentOwnership, assessment_middleware_1.checkAssessmentStatus, assessment_controller_1.completeAssessmentController);
-router.get('/assessment/:assessmentId/results', assessment_middleware_1.validateAssessmentOwnership, assessment_controller_1.getResultsController);
-router.get('/assessments/history', assessment_controller_1.getHistoryController);
-router.get('/skill-recommendations', assessment_controller_1.getRecommendationsController);
+router.get('/assessment/:assessmentId/progress', checkAuth_middleware_1.checkAuth, assessment_middleware_1.validateAssessmentOwnership, assessment_controller_1.getProgressController);
+router.post('/assessment/:assessmentId/complete', checkAuth_middleware_1.checkAuth, assessment_middleware_1.validateAssessmentOwnership, assessment_middleware_1.checkAssessmentStatus, assessment_controller_1.completeAssessmentController);
+router.get('/assessment/:assessmentId/results', checkAuth_middleware_1.checkAuth, assessment_middleware_1.validateAssessmentOwnership, assessment_controller_1.getResultsController);
+router.get('/assessments/history', checkAuth_middleware_1.checkAuth, assessment_controller_1.getHistoryController);
+router.get('/skill-recommendations', checkAuth_middleware_1.checkAuth, assessment_controller_1.getRecommendationsController);
+// ==================== PROFILE MANAGEMENT ROUTES ====================
 router.put('/profile/basic-info', [checkAuth_middleware_1.checkAuth, (0, validateBody_middleware_1.validateBody)(candidate_schema_1.updateBasicInfoSchema)], profile_controller_1.updateBasicInfoController);
 router.put('/profile/skills', [checkAuth_middleware_1.checkAuth, (0, validateBody_middleware_1.validateBody)(candidate_schema_1.updateSkillsSchema)], profile_controller_1.updateSkillsController);
 router.post('/profile/skills', [checkAuth_middleware_1.checkAuth, (0, validateBody_middleware_1.validateBody)(candidate_schema_1.addSkillSchema)], profile_controller_1.addSkillController);

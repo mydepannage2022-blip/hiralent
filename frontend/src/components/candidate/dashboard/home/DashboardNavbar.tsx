@@ -77,7 +77,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   // Dynamic page titles and descriptions based on pathname
 const getPageInfo = () => {
   // Handle all skills-assessment routes (static + dynamic)
-  if (pathname.startsWith('/candidate/dashboard/skills-assessment')) {
+  if (pathname && pathname.startsWith('/candidate/dashboard/skills-assessment')) {
     return {
       title: 'Skills Assessment',
       description: 'Access and manage your skills assessments'
@@ -85,7 +85,7 @@ const getPageInfo = () => {
   }
 
   // Other dashboard routes
-  switch (pathname) {
+  switch (pathname || '') {
     case '/candidate/dashboard':
       return {
         title: 'Dashboard',

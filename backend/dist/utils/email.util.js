@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendEmail = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
-const sendEmail = async ({ to, subject, html }) => {
+const sendEmail = async ({ to, subject, html, from }) => {
     try {
         const transporter = nodemailer_1.default.createTransport({
             host: process.env.SMTP_HOST,
@@ -16,8 +16,10 @@ const sendEmail = async ({ to, subject, html }) => {
                 pass: process.env.SMTP_PASS,
             },
         });
+        // Use provided from address when given, otherwise default to Hiralent Team using SMTP_FROM
+        const fromAddress = from || `"Hiralent Team" <${process.env.SMTP_FROM}>`;
         const info = await transporter.sendMail({
-            from: `"Talenta Team" <${process.env.SMTP_FROM}>`,
+            from: fromAddress,
             to,
             subject,
             html,

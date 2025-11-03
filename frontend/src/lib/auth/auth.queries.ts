@@ -12,7 +12,7 @@ export const useSignup = () => {
 
   return useMutation({
     mutationFn: signup,
-    onSuccess: (data) => {
+  onSuccess: (data: any) => {
       if (data.error === true || data.success === false) {
         const errorMessage = data.message || 'Login failed';
         toast.error(errorMessage);
@@ -21,17 +21,32 @@ export const useSignup = () => {
       }
 
       toast.success('Account created successfully!');
-      login(data.user, data.token);
-      
-      if (data.user.role === 'company_admin') {
-        router.push('/auth/companyRegister/info');
-      } else if (data.user.role === 'candidate') {
-        router.push('/auth/signup/location'); 
-      } else if (data.user.role === 'agency') {
-        router.push('/agency/setup'); 
-      } else {
-        router.push('/'); 
+      if (process.env.NODE_ENV !== 'production') {
+        try {
+          // eslint-disable-next-line no-console
+          console.debug('[useSignup.onSuccess] signup response', { user: data.user ? { user_id: data.user.user_id, email: data.user.email, role: data.user.role } : null, hasToken: !!data.token });
+        } catch {}
       }
+      login(data.user, data.token);
+
+      // Small delay to allow browser to accept httpOnly cookies in cookie-only flows
+      // This mitigates a race where immediate background requests (profile, completeness)
+      // run before the cookie is accepted, causing 401s and potential logout redirects.
+      const redirect = () => {
+        const role = (data.user.role || '').toString().toLowerCase();
+        if (role === 'company' || role === 'company_admin') {
+            router.push('/auth/companyRegister/info');
+        } else if (role === 'candidate') {
+            router.push('/auth/signup/location'); 
+        } else if (role === 'agency') {
+            router.push('/agency/setup'); 
+        } else {
+            router.push('/'); 
+        }
+      };
+
+      // Delay is intentionally small — long enough for the browser to store cookies, short for UX.
+      setTimeout(redirect, 75);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Signup failed';
@@ -98,12 +113,12 @@ export const useLogin = () => {
   
   return useMutation({
     mutationFn: loginapi,
-    onSuccess: (data) => {
+  onSuccess: (data: any) => {
 
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-        sessionStorage.clear();
-      }
+      // Do not clear all localStorage/sessionStorage here — that can remove
+      // the persisted user set by the auth interceptor and cause a race
+      // where ProtectedRoute redirects to login immediately. Keep login
+      // atomic: call login(...) which will persist user/token as needed.
 
       if (data.error === true || data.success === false) {
         const errorMessage = data.message || 'Login failed';
@@ -127,13 +142,14 @@ export const useLogin = () => {
         // YEH BHI LOG KARO
         console.log('No stored redirect, checking role:', data.user.role);
         
-        if (data.user.role === 'candidate') {
+        const role = (data.user.role || '').toString().toLowerCase();
+        if (role === 'candidate') {
           console.log('Redirecting to candidate dashboard');
           router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company_admin') {
+        } else if (role === 'company' || role === 'company_admin') {
           console.log('Redirecting to company dashboard');
           router.push('/company/dashboard');
-        } else if (data.user.role === 'agency') {
+        } else if (role === 'agency') {
           console.log('Redirecting to agency dashboard');
           router.push('/agency/dashboard');
         } else {
@@ -191,12 +207,18 @@ export const useUpdateSalary = () => {
 
 export const useUploadResume = () => {
   const router = useRouter();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: uploadResume,
     onSuccess: () => {
       console.log('Resume uploaded successfully');
       toast.success('Resume uploaded successfully!');
-      router.push("/auth/logout");
+      // Keep the user signed in — redirect them to their dashboard instead of logging out
+      if (user?.role === 'candidate') {
+        router.push('/candidate/dashboard');
+      } else {
+        router.push('/');
+      }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Failed to upload resume';
@@ -212,13 +234,28 @@ export const useVerifyEmail = () => {
 
   return useMutation({
     mutationFn: verifyEmail,
-    onSuccess: (data) => {
+  onSuccess: (data: any) => {
       console.log("Email verified successfully:", data);
       toast.success('Email verified successfully!');
       
-      if (data.success && data.user && data.token) {
+      // Backend may return { user, token } or only { user } for cookie-only sessions.
+      if (data?.user) {
         login(data.user, data.token);
-        router.push('/auth/logout');
+        const role = (data.user.role || '').toString().toLowerCase();
+        if (role === 'candidate') {
+          router.push('/candidate/dashboard');
+        } else if (role === 'company' || role === 'company_admin') {
+          router.push('/company/dashboard');
+        } else {
+          router.push('/');
+        }
+        return;
+      }
+
+      // Old behavior: backend might return a simple success flag without user payload.
+      if (data?.success) {
+        // Just navigate to home — the user likely needs to sign in again or a cookie was set.
+        router.push('/');
       }
     },
     onError: (error: any) => {
@@ -271,7 +308,8 @@ export const useCreateCompanyProfile = () => {
     mutationFn: createCompanyProfile,
     onSuccess: () => {
       toast.success('Company profile created!');
-      router.push('/auth/logout');
+      // Keep company signed in and send them to their dashboard
+      router.push('/company/dashboard');
     }
   });
 };

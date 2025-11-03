@@ -36,7 +36,9 @@ const createCompanyProfile = async (userId, data) => {
                 business_type: data.business_type,
                 employee_count: data.employee_count,
                 remote_policy: data.remote_policy,
-                verified: false, // New companies start unverified
+                registration_number: data.registration_number,
+                full_address: data.full_address,
+                verified: false,
                 rating: null,
                 total_jobs_posted: 0,
                 active_jobs_count: 0
@@ -68,7 +70,8 @@ const getCompanyProfile = async (userId) => {
         if (!user) {
             throw new Error('User not found');
         }
-        if (user.role !== 'company') {
+        const userRoleLower = (user.role || '').toString().toLowerCase();
+        if (userRoleLower !== 'company' && userRoleLower !== 'company_admin') {
             throw new Error('User is not a company');
         }
         return {
@@ -99,7 +102,8 @@ const updateCompanyProfile = async (userId, data) => {
         if (!user) {
             throw new Error('User not found');
         }
-        if (user.role !== 'company') {
+        const userRoleLowerUpdate = (user.role || '').toString().toLowerCase();
+        if (userRoleLowerUpdate !== 'company' && userRoleLowerUpdate !== 'company_admin') {
             throw new Error('Only company users can update company profiles');
         }
         if (!user.companyProfile) {

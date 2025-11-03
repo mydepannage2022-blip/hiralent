@@ -1,6 +1,8 @@
 // frontend/src/lib/assessment.api.ts
 
-import axios from 'axios';
+// Reuse the shared axios instance from the auth client so baseURL, withCredentials
+// and auth persistence are consistent across the app.
+import { api as authApi } from '../auth/auth.api';
 import {
   StartAssessmentRequest,
   StartAssessmentResponse,
@@ -15,20 +17,9 @@ import {
   AssessmentError
 } from '../../types/assessment.types';
 
-// API instance with same pattern as existing auth.api.ts
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// Token interceptor (same pattern as existing)
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Use authApi for requests so we inherit baseURL, cookie support and token
+// persistence logic from `auth.api.ts` (avoids token key mismatch and wrong baseURL)
+const api = authApi;
 
 // ==================== ASSESSMENT API CALLS ====================
 
@@ -38,6 +29,12 @@ export const startAssessment = async (data: StartAssessmentRequest): Promise<Sta
     return response.data;
   } catch (error: any) {
     console.error('Start assessment error:', error);
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore attach code for easier detection in UI
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     throw new Error(error?.response?.data?.message || 'Failed to start assessment');
   }
 };
@@ -50,6 +47,12 @@ export const getNextQuestion = async (assessmentId: string): Promise<AssessmentQ
     console.error('Get question error:', error);
     
     // Handle specific error cases
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     if (error?.response?.status === 400) {
       throw new Error(error.response.data.error || 'No more questions available');
     }
@@ -68,6 +71,12 @@ export const submitAnswer = async (
   } catch (error: any) {
     console.error('Submit answer error:', error);
     
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     // Handle specific error cases
     if (error?.response?.status === 400) {
       const errorMsg = error.response.data.error || 'Invalid answer submission';
@@ -88,6 +97,12 @@ export const getAssessmentProgress = async (assessmentId: string): Promise<Asses
     return response.data;
   } catch (error: any) {
     console.error('Get progress error:', error);
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     throw new Error(error?.response?.data?.message || 'Failed to get assessment progress');
   }
 };
@@ -98,6 +113,12 @@ export const completeAssessment = async (assessmentId: string): Promise<Complete
     return response.data;
   } catch (error: any) {
     console.error('Complete assessment error:', error);
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     throw new Error(error?.response?.data?.message || 'Failed to complete assessment');
   }
 };
@@ -109,6 +130,12 @@ export const getAssessmentResults = async (assessmentId: string): Promise<Assess
   } catch (error: any) {
     console.error('Get results error:', error);
     
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     if (error?.response?.status === 400) {
       throw new Error('Assessment not completed yet');
     }
@@ -125,6 +152,12 @@ export const getAssessmentHistory = async (): Promise<AssessmentHistory> => {
     return response.data;
   } catch (error: any) {
     console.error('Get assessment history error:', error);
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     throw new Error(error?.response?.data?.message || 'Failed to get assessment history');
   }
 };
@@ -135,6 +168,12 @@ export const getSkillRecommendations = async (): Promise<SkillRecommendations> =
     return response.data;
   } catch (error: any) {
     console.error('Get skill recommendations error:', error);
+    if (error?.response?.status === 401) {
+      const e = new Error('UNAUTHORIZED');
+      // @ts-ignore
+      e.code = 'UNAUTHORIZED';
+      throw e;
+    }
     throw new Error(error?.response?.data?.message || 'Failed to get skill recommendations');
   }
 };

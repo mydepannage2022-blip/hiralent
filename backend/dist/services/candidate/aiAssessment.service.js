@@ -22,9 +22,7 @@ const evaluateAnswer = async (params) => {
         .replace('{question}', params.question)
         .replace('{expectedAnswer}', params.expectedAnswer || '')
         .replace('{userAnswer}', params.userAnswer);
-    // ✅ ADD assessmentType parameter for evaluation
-    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt, 'evaluation' // ← ADD THIS LINE
-    );
+    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt, 'evaluation');
 };
 exports.evaluateAnswer = evaluateAnswer;
 const adjustDifficulty = async (params) => {
@@ -32,7 +30,7 @@ const adjustDifficulty = async (params) => {
         .replace('{currentDifficulty}', params.currentDifficulty)
         .replace('{recentScores}', params.recentAnswers?.map((a) => a.partialScore || a.score || 0).join(', ') || '')
         .replace('{avgTimePerQuestion}', params.avgTimePerQuestion?.toString() || '');
-    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt);
+    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt, 'difficulty');
 };
 exports.adjustDifficulty = adjustDifficulty;
 const generateReport = async (params) => {
@@ -42,6 +40,6 @@ const generateReport = async (params) => {
         .replace('{overallScore}', params.assessment.overall_score?.toString() || '')
         .replace('{totalTime}', params.totalTime?.toString() || '')
         .replace('{performanceData}', JSON.stringify(params.results || []));
-    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt);
+    return await (0, openai_1.generateSkillsAssessmentJSON)('You are an expert skill assessment AI.', prompt, 'report');
 };
 exports.generateReport = generateReport;

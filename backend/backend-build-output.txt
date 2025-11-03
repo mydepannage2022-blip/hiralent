@@ -1,0 +1,19 @@
+
+> backend@1.0.0 build
+> tsc
+
+src/controller/upload.controller.ts(82,28): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.
+src/controller/upload.controller.ts(92,28): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.
+src/lib/s3.ts(6,8): error TS2307: Cannot find module '@aws-sdk/client-s3' or its corresponding type declarations.
+src/lib/s3.ts(7,30): error TS2307: Cannot find module '@aws-sdk/s3-request-presigner' or its corresponding type declarations.
+src/services/admin.verification.service.ts(7,7): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type 'CompanyProfileWhereInput'. Did you mean to write 'verification_date'?
+src/services/admin.verification.service.ts(21,7): error TS2353: Object literal may only specify known properties, and 'verification_submitted_at' does not exist in type 'CompanyProfileOrderByWithRelationInput | CompanyProfileOrderByWithRelationInput[]'.
+src/services/admin.verification.service.ts(52,34): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.
+src/services/admin.verification.service.ts(95,7): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type '(Without<CompanyProfileUpdateInput, CompanyProfileUncheckedUpdateInput> & CompanyProfileUncheckedUpdateInput) | (Without<...> & CompanyProfileUpdateInput)'. Did you mean to write 'verification_date'?
+src/services/admin.verification.service.ts(125,7): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type '(Without<CompanyProfileUpdateInput, CompanyProfileUncheckedUpdateInput> & CompanyProfileUncheckedUpdateInput) | (Without<...> & CompanyProfileUpdateInput)'. Did you mean to write 'verification_date'?
+src/services/admin.verification.service.ts(153,16): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type 'CompanyProfileWhereInput'. Did you mean to write 'verification_date'?
+src/services/admin.verification.service.ts(160,9): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type 'CompanyProfileWhereInput'. Did you mean to write 'verification_date'?
+src/services/admin.verification.service.ts(167,9): error TS2561: Object literal may only specify known properties, but 'verification_status' does not exist in type 'CompanyProfileWhereInput'. Did you mean to write 'verification_date'?
+src/services/upload/upload.service.ts(53,28): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.
+src/services/upload/upload.service.ts(75,18): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.
+src/services/verification/docPipeline.ts(40,28): error TS2339: Property 'uploadedDocument' does not exist on type 'PrismaClient<PrismaClientOptions, LogLevel, DefaultArgs>'.

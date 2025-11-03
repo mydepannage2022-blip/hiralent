@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUploadResume } from '../../../../src/lib/auth/auth.queries';
+import { useAuth } from '@/src/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
@@ -16,6 +17,7 @@ const UploadResumePage = () => {
   const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, processing, completed
   const [progress, setProgress] = useState(0);
   const router = useRouter();
+  const { user } = useAuth();
 
   // Simulate processing progress
   useEffect(() => {
@@ -27,7 +29,13 @@ const UploadResumePage = () => {
             setUploadStatus('completed');
             // Auto redirect after completion
             setTimeout(() => {
-              router.push('/auth/logout');
+              if (user?.role === 'candidate') {
+                router.push('/candidate/dashboard');
+              } else if (user?.role === 'company' || user?.role === 'company_admin') {
+                router.push('/company/dashboard');
+              } else {
+                router.push('/');
+              }
             }, 2000);
             return 100;
           }
@@ -134,7 +142,15 @@ const UploadResumePage = () => {
 
                 {uploadStatus === 'completed' && (
                   <motion.button
-                    onClick={() => router.push('/auth/logout')}
+                    onClick={() => {
+                      if (user?.role === 'candidate') {
+                        router.push('/candidate/dashboard');
+                      } else if (user?.role === 'company' || user?.role === 'company_admin') {
+                        router.push('/company/dashboard');
+                      } else {
+                        router.push('/');
+                      }
+                    }}
                     className="mt-4 px-6 py-2 bg-[#063B82] text-white rounded-lg text-sm hover:bg-[#052f6b] transition-colors"
                     whileHover={{ scale: 1.05 }}
                   >
@@ -190,7 +206,7 @@ const UploadResumePage = () => {
 
           {/* Only show skip if not loading */}
           {!isPending && (
-            <SmartLink href={"/auth/logout"}>
+            <SmartLink href={user?.role === 'candidate' ? '/candidate/dashboard' : user?.role === 'company' || user?.role === 'company_admin' ? '/company/dashboard' : '/'}>
               <motion.div
                 className="text-center text-gray-500 text-sm cursor-pointer hover:text-gray-700"
                 initial={{ opacity: 0 }}

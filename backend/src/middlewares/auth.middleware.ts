@@ -1,41 +1,44 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// Define AuthUser type (customize fields as needed)
 type AuthUser = {
-  id: string;
   user_id: string;
-  role: string;
+  role?: string;
   email?: string;
   [key: string]: any;
 };
 
-// The Express Request type extension for "user" is defined in src/types/express.d.ts
-// Remove duplicate declaration here to avoid type conflicts.
-
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token: string | null =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : null;
+
+    // ✅ Fallback cookie
+    if (!token && (req as any).cookies?.token) {
+      token = (req as any).cookies.token;
+    }
+
+    if (!token) {
       return res.status(401).json({ error: 'Missing or invalid Authorization header' });
     }
 
-    const token = authHeader.split(' ')[1];
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not set in environment variables');
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (typeof decoded === 'object' && decoded !== null) {
-      req.user = decoded as AuthUser;
-    } else {
-      return res.status(401).json({ error: 'Invalid token payload' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as jwt.JwtPayload | string;
+
+    if (decoded && typeof decoded === 'object') {
+      (req as any).user = decoded as AuthUser;
+      return next();
     }
 
-    next();
+    return res.status(401).json({ error: 'Invalid token payload' });
   } catch (err: any) {
-    console.error('Auth error:', err.message);
+    console.error('Auth error:', err?.message || err);
     return res.status(401).json({ error: 'Unauthorized' });
   }
 };

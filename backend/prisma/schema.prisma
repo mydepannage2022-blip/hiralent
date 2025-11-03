@@ -79,6 +79,8 @@ model User {
   jobApplications     JobApplication[]
   assessments         SkillAssessment[]
   aiInterviews        AIInterviewResult[]
+  // Code submission relation (candidate submissions)
+  codeSubmissions     CodeSubmission[]
   notifications       Notification[]
   progressUpdates     CandidateProgressTracker[]
   progressUpdatesByMe CandidateProgressTracker[] @relation("ProgressUpdatedBy")
@@ -120,7 +122,7 @@ model CompanyProfile {
   headquarters String? // Primary location
   founded_year Int?
   description  String? // Company description/about
-
+  full_address String?   // add this
   // Contact & Social
   contact_number   String?
   linkedin_profile String?
@@ -314,6 +316,8 @@ model SkillAssessment {
   candidate User               @relation(fields: [candidate_id], references: [user_id])
   job       CompanyJob?        @relation(fields: [job_id], references: [job_id]) // Changed relation
   results   AssessmentResult[]
+  // Code submissions associated with this assessment
+  submissions CodeSubmission[]
 
   @@map("skill_assessments")
 }
@@ -1385,4 +1389,37 @@ model SuperAdmin {
   user_id     String
   permissions String[]
   created_at  DateTime @default(now())
+}
+
+model CodeSubmission {
+  submission_id String   @id @default(uuid())
+  assessment_id String
+  candidate_id  String
+  question_id   String
+  language      String
+  code          String
+  status        SubmissionStatus @default(PENDING)
+  score         Float?
+  runtime_ms    Int?
+  memory_kb     Int?
+  plagiarism_risk Float?
+  evidence      Json?
+  result        Json?
+  ended_at      DateTime?
+  error         String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  candidate  User             @relation(fields: [candidate_id], references: [user_id])
+  assessment SkillAssessment  @relation(fields: [assessment_id], references: [assessment_id])
+
+  @@map("code_submissions")
+}
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
 }

@@ -25,7 +25,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const pathname = usePathname();
 
   const handleNotificationClick = () => {
-    router.push('/candidate/dashboard/notifications');
+    router.push('/company/dashboard/notifications');
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -56,6 +56,14 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       return user.email;
     }
     return 'Professional seeking new opportunities';
+  };
+
+  // Get a safe display name from the user object (handles different possible key names)
+  const getUserDisplayName = () => {
+    if (!user) return 'Guest User';
+    const anyUser = user as any;
+    const combinedName = `${anyUser.first_name || ''} ${anyUser.last_name || ''}`.trim();
+    return anyUser.full_name || anyUser.fullName || anyUser.name || combinedName || 'Guest User';
   };
 
   // Check if user is verified (from auth context)
@@ -89,30 +97,30 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           title: 'Activity',
           description: 'Updating your information will offer you the most relevant content'
         };
-      case '/candidate/dashboard/candidate-profile':
+      case '/company/dashboard/profile':
         return {
           title: 'Profile',
-          description: 'Manage and update your professional profile information'
+          description: 'Manage and update your company profile information'
         };
-      case '/candidate/dashboard/messages':
+      case '/company/dashboard/messages':
         return {
           title: 'Messages',
-          description: 'View and manage your conversations with employers'
+          description: 'View and manage your conversations'
         };
-      case '/candidate/dashboard/notifications':
+      case '/company/dashboard/notifications':
         return {
           title: 'Notifications',
           description: 'Stay updated with important alerts and updates'
         };
-      case '/candidate/dashboard/settings':
+      case '/company/dashboard/settings':
         return {
           title: 'Settings',
           description: 'Customize your account preferences and privacy settings'
         };
-      case '/candidate/dashboard/analytics':
+      case '/company/dashboard/analytics':
         return {
           title: 'Analytics',
-          description: 'Track your job search progress and performance metrics'
+          description: 'Track your company performance metrics'
         };
       default:
         return {
@@ -171,16 +179,19 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         
         {/* User Profile Section */}
         <div className='flex justify-center items-center gap-2'>
-          <img 
-            src={getProfileImage()} 
-            alt="User Image" 
+          <h3 className='text-[#222] text-sm lg:text-base'>
+            {getUserDisplayName()}
+          </h3>
+          <img
+            src={getProfileImage()}
+            alt={getUserDisplayName()}
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
           />
-          <div className='hidden lg:hidden xl:flex flex-col justify-center items-start'>
+          <div className='hidden xl:flex flex-col justify-center items-start'>
             {/* User Name with Verification Icon */}
             <div className='flex items-center gap-1'>
               <h3 className='text-[#222] text-sm lg:text-base'>
-                {user?.full_name || 'Guest User'}  
+                {getUserDisplayName()}
               </h3>
               {/* Verification Icon */}
               {getVerificationIcon()}

@@ -1,3 +1,4 @@
+// backend/src/utils/jwt.util.ts
 import jwt, { SignOptions } from "jsonwebtoken";
 import type { StringValue } from "ms"; 
 
@@ -7,13 +8,13 @@ if (!JWT_SECRET) {
 }
 
 export const generateToken = (
-  payload: string | object,
-  expiresIn: number | StringValue = "7d" 
+  payload: { user_id: string; role?: string; agency_id?: string },
+  expiresIn: number | StringValue = "7d"
 ): string => {
   const options: SignOptions = { expiresIn };
   return jwt.sign(payload, JWT_SECRET, options);
 };
 
-export const verifyToken = (token: string): any => {
-  return jwt.verify(token, JWT_SECRET);
+export const verifyToken = (token: string): { user_id: string; role?: string; agency_id?: string } => {
+  return jwt.verify(token, JWT_SECRET) as { user_id: string; role?: string; agency_id?: string };
 };

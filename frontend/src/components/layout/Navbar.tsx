@@ -12,10 +12,12 @@ import SmartLink from './SmartLink';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, token } = useAuth();
-  const pathname = usePathname();
+  const { user } = useAuth();
+  const pathnameRaw = usePathname();
+  const pathname = pathnameRaw ?? '/';
 
-  const isLoggedIn = user && token;
+  // Consider a user authenticated if we have a user object. Token may be cookie-only.
+  const isLoggedIn = !!user;
 
   // ✅ get correct role switch link
   const getSwitchRoleLink = () => {
@@ -142,15 +144,29 @@ const Navbar = () => {
 
           {/* Get Started / Dashboard */}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
-            <SmartLink
-              href={isLoggedIn ? "/candidate/dashboard" : "/auth/signup"}
-              className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'
-            >
-              <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
-                <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
-              </motion.div>
-              <span className='hidden lg:inline'>{isLoggedIn ? 'Dashboard' : 'Get Started'}</span>
-            </SmartLink>
+            {(() => {
+              // determine dashboard href based on role (case-insensitive)
+              const role = (user?.role || '').toString().toLowerCase();
+              let dashboardHref = '/';
+              if (isLoggedIn) {
+                if (role === 'company' || role === 'company_admin') dashboardHref = '/company/dashboard';
+                else if (role === 'candidate') dashboardHref = '/candidate/dashboard';
+                else if (role === 'agency') dashboardHref = '/agency/dashboard';
+                else dashboardHref = '/';
+              }
+
+              return (
+                <SmartLink
+                  href={isLoggedIn ? dashboardHref : "/auth/signup"}
+                  className='flex justify-center items-center gap-1 bg-[#005DDC] text-white text-sm lg:text-sm px-2 py-2 rounded-lg hover:bg-[#0046B3] transition duration-300 shadow-md hover:shadow-lg'
+                >
+                  <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+                    <IoIosArrowDropright className='text-white cursor-pointer lg:text-xl' />
+                  </motion.div>
+                  <span className='hidden lg:inline'>{isLoggedIn ? 'Dashboard' : 'Get Started'}</span>
+                </SmartLink>
+              );
+            })()}
           </motion.div>
 
           {/* Mobile Menu Button */}

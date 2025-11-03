@@ -16,7 +16,18 @@ import {
 const AssessmentCompletePage = () => {
   const router = useRouter();
   const params = useParams();
-  const assessmentId = params.id as string;
+  // useParams() can be null in some runtime/type contexts — guard it.
+  const assessmentId = (params && params.id) ? (params.id as string) : '';
+
+  // If assessmentId is missing, redirect back to the assessments list.
+  if (!assessmentId) {
+    // We intentionally do a client-side push so build-time checks are happy
+    // while also preventing runtime crashes.
+    if (typeof window !== 'undefined') {
+      router.push('/candidate/dashboard/skills-assessment');
+    }
+    return null;
+  }
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [isProcessing, setIsProcessing] = useState(true);

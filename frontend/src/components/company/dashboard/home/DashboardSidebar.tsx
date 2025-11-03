@@ -46,12 +46,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const menuItems: MenuItem[] = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
-    { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
-    { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
-    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
-    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
-    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' }
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/company/dashboard' },
+    { name: 'Profile', icon: User, href: '/company/dashboard/profile' },
+    { name: 'Notifications', icon: Bell, href: '/company/dashboard/notifications' },
+    { name: 'Messages', icon: MessageSquare, href: '/company/dashboard/messages' },
+    { name: 'Settings', icon: Settings, href: '/company/dashboard/settings' },
+    { name: 'Analytics', icon: Activity, href: '/company/dashboard/analytics' }
   ];
 
   // Update active item based on current pathname

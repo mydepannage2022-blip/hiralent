@@ -1,5 +1,11 @@
 import app from './app';
 import { connectDB } from './lib/mongo';
+import { loadDevStubs } from './bootstrap/devStubs';
+
+// Load dev stubs if we’re in local/dev mode
+if (process.env.NODE_ENV !== 'production') {
+  loadDevStubs();
+}
 
 (async () => {
   try {

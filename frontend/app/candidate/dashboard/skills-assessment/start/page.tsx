@@ -38,7 +38,7 @@ const AssessmentStartPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { profileData } = useProfile();
 
-  const skillId = searchParams.get('skill');
+  const skillId = searchParams?.get?.('skill') ?? '';
   
   // REAL API HOOK
   const startAssessmentMutation = useStartAssessment();

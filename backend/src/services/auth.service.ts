@@ -1,3 +1,4 @@
+// backend/src/services/auth.service.ts
 import prisma from "../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -14,29 +15,176 @@ import {
    LoginResponse
 } from "../types/auth.types";
 
+// Email template functions
+const getWelcomeEmailTemplate = (verificationLink: string, companyName: string) => {
+  return `
+    <div style="font-family: Inter, Arial, sans-serif; max-width: 680px; margin: 0 auto; background:#f8fafc; padding:28px;">
+      <div style="background:white; border-radius:12px; padding:28px; box-shadow: 0 6px 18px rgba(15,23,42,0.06);">
+        <div style="text-align:center; margin-bottom:18px;">
+          <div style="width:64px; height:64px; margin:0 auto; border-radius:12px; background:linear-gradient(135deg,#0ea5a4,#6366f1); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:22px;">H</div>
+        </div>
+        <h2 style="color:#0f172a; font-size:20px; text-align:center; margin:0 0 8px;">Welcome to Hiralent</h2>
+        <p style="color:#334155; text-align:center; margin:0 0 20px;">Hi ${companyName || 'there'}, thanks for joining Hiralent. Please verify your email to access your dashboard.</p>
+        <div style="text-align:center; margin:20px 0;">
+          <a href="${verificationLink}" style="background:#6366f1; color:white; padding:12px 22px; text-decoration:none; border-radius:8px; font-weight:600; display:inline-block;">Verify Email</a>
+        </div>
+        <p style="color:#94a3b8; font-size:13px; text-align:center; margin-top:18px;">If you didn't create an account, you can safely ignore this email.</p>
+      </div>
+      <p style="text-align:center; color:#94a3b8; font-size:12px; margin-top:14px;">© ${new Date().getFullYear()} Hiralent</p>
+    </div>
+  `;
+};
+
+const getLegacyCheckEmailTemplate = (uploadLink: string, companyName: string) => {
+  return `
+    <div style="font-family: Inter, Arial, sans-serif; max-width: 680px; margin: 0 auto; background:#f8fafc; padding:28px;">
+      <div style="background:white; border-radius:12px; padding:28px; box-shadow: 0 6px 18px rgba(15,23,42,0.06);">
+        <div style="text-align:center; margin-bottom:14px;">
+          <div style="width:64px; height:64px; margin:0 auto; border-radius:12px; background:linear-gradient(135deg,#f59e0b,#ef4444); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:22px;">📁</div>
+        </div>
+        <h2 style="color:#0f172a; font-size:20px; text-align:center; margin:0 0 8px;">Quick action required</h2>
+        <p style="color:#334155; text-align:center; margin:0 0 18px;">Hi ${companyName || 'there'}, please upload your company documents so we can verify your account and unlock features.</p>
+        <div style="text-align:center; margin:20px 0;">
+          <a href="${uploadLink}" style="background:#0ea5a4; color:white; padding:12px 22px; text-decoration:none; border-radius:8px; font-weight:600; display:inline-block;">Upload documents</a>
+        </div>
+        <p style="color:#94a3b8; font-size:13px; text-align:center; margin-top:18px;">If you already uploaded, you can ignore this message.</p>
+      </div>
+      <p style="text-align:center; color:#94a3b8; font-size:12px; margin-top:14px;">© ${new Date().getFullYear()} Hiralent</p>
+    </div>
+  `;
+};
+
+export const sendWelcomeEmail = async (email: string, user_id: string, companyName: string) => {
+  try {
+    // Ensure the user in DB is actually a company before sending company-only emails.
+    const dbUser = await prisma.user.findUnique({ where: { user_id }, select: { role: true, email: true } });
+    if (!dbUser) {
+      console.warn(`sendWelcomeEmail: user not found: ${user_id} — skipping welcome email`);
+      return;
+    }
+
+    if (dbUser.role !== 'company') {
+      console.log(`sendWelcomeEmail: user role is '${dbUser.role}' (not 'company') for ${user_id}; skipping welcome email`);
+      return;
+    }
+
+    const token = generateToken({ user_id }, "15m");
+    const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
+    
+    const html = getWelcomeEmailTemplate(verificationLink, companyName);
+
+    await sendEmail({
+      to: email,
+      subject: "Welcome to Hiralent - Verify Your Email",
+      html,
+    });
+    
+    console.log(`📧 Welcome email sent to ${email}`);
+  } catch (error: any) {
+    console.error("❌ Send Welcome Email Error:", error);
+    throw new Error("Failed to send welcome email");
+  }
+};
+
+export const sendLegacyCheckEmail = async (email: string, user_id: string, companyName: string) => {
+  try {
+    // Trace the call site and parameters to help diagnose unexpected sends
+    console.trace('TRACE: sendLegacyCheckEmail invoked', { email, user_id, env: process.env.NODE_ENV });
+    // Defensive check: confirm user exists and is a company before emailing for legacy/company verification.
+    const dbUser = await prisma.user.findUnique({ where: { user_id }, select: { role: true, email: true } });
+    if (!dbUser) {
+      console.warn(`sendLegacyCheckEmail: user not found: ${user_id} — skipping legacy check email`);
+      return;
+    }
+
+    if (dbUser.role !== 'company') {
+      console.log(`sendLegacyCheckEmail: user role is '${dbUser.role}' (not 'company') for ${user_id}; skipping legacy check email`);
+      return;
+    }
+
+  // Allow overriding the upload path via env; default to /company/upload
+  const resolvedUploadPath = process.env.FRONTEND_UPLOAD_PATH || '/upload';
+  const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const uploadLink = `${frontendUrl}${resolvedUploadPath}`;
+
+  const html = getLegacyCheckEmailTemplate(uploadLink, companyName);
+
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Company Legacy - Hiralent",
+      html,
+      from: `"Hiralent Team" <no-reply@hiralent.com>`
+    });
+    
+    console.log(`📧 Legacy check email sent to ${email}`);
+  } catch (error: any) {
+    console.error("❌ Send Legacy Check Email Error:", error);
+    throw new Error("Failed to send legacy check email");
+  }
+};
+
 export const signup = async (input: SignupInput) => {
   try {
-    const { email, password, full_name, role } = input;
+  const { email, password, full_name, role } = input;
 
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) throw new Error("Email already exists");
 
     const password_hash = await bcrypt.hash(password, 10);
+
+    // Map frontend role values to the DB role values used in the app
+    const mapRoleToDb = (r?: string) => {
+      if (!r) return 'candidate';
+      if (r === 'company_admin' || r === 'company') return 'company';
+      if (r === 'agency_admin' || r === 'agency') return 'agency';
+      if (r === 'superadmin') return 'superadmin';
+      if (r === 'candidate') return 'candidate';
+      return 'candidate';
+    };
+
+    const dbRole = mapRoleToDb(role);
+
     const user = await prisma.user.create({
       data: {
         email,
         password_hash,
         full_name,
-        role,
-        agency_id: null, 
+        role: dbRole,
+        agency_id: null,
         is_email_verified: false,
       },
     });
 
     const token = generateToken({ user_id: user.user_id, role: user.role });
-    await sendVerificationEmail(user.email, user.user_id);
+    
+    // Send emails depending on role (company only receives welcome + legacy check)
+    try {
+      console.log('🔔 Signup role for email sending:', { email: user.email, role: dbRole });
+      if (dbRole === 'company') {
+        // Company signups get welcome + legacy check (only to company email)
+        await sendWelcomeEmail(user.email, user.user_id, user.full_name);
+        await sendLegacyCheckEmail(user.email, user.user_id, user.full_name);
+      } else if (dbRole === 'candidate') {
+        // Candidate signups receive a verification email only
+        await sendVerificationEmail(user.email, user.user_id);
+      }
+    } catch (err) {
+      console.error('❌ Error sending post-signup emails:', err);
+    }
 
-    return { user, token };
+    return { 
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        is_email_verified: user.is_email_verified,
+        agency_id: user.agency_id,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      }, 
+      token 
+    };
   } catch (error: any) {
     console.error("❌ Signup Error:", error);
     return {
@@ -53,7 +201,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       where: { email },
       include: {
         candidateProfile: true,
-        candidateSkills: { // Add skills for candidates
+        candidateSkills: {
           orderBy: [
             { is_verified: 'desc' },
             { created_at: 'desc' }
@@ -84,7 +232,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       agency_id: user.agency_id,
     });
 
-    // Clean user object - same structure as getCandidateProfile
+    // Clean user object
     const cleanUser: CleanUser = {
       user_id: user.user_id,
       email: user.email,
@@ -103,7 +251,7 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
     
     if (user.role === 'candidate') {
       // For candidates: populate skills like getCandidateProfile
-      const populatedSkills = user.candidateSkills.map(skill => ({
+      const populatedSkills = (user.candidateSkills || []).map(skill => ({
         skill_id: skill.skill_id,
         skill_name: skill.skill_name,
         skill_category: skill.skill_category,
@@ -117,14 +265,11 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       if (user.candidateProfile) {
         profileData = {
           ...user.candidateProfile,
-          // Convert dates to ISO strings to match getCandidateProfile format
           created_at: user.candidateProfile.created_at.toISOString(),
           updated_at: user.candidateProfile.updated_at.toISOString(),
-          // Replace skill IDs with populated skills - same as getCandidateProfile
           skills: populatedSkills
         };
       } else {
-        // If no profile exists, return basic structure - same as getCandidateProfile
         profileData = {
           candidate_id: user.user_id,
           about_me: null,
@@ -143,20 +288,18 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
           preferred_locations: null,
           profile_picture_url: null,
           resume_url: null,
-          skills: populatedSkills, // Empty skills array for new profile
+          skills: populatedSkills,
           updated_at: new Date().toISOString(),
           video_intro_url: null,
         };
       }
     } else if (user.role === 'company') {
-      // For companies: return profile as-is (no skills to populate)
       profileData = user.companyProfile ? {
         ...user.companyProfile,
         created_at: user.companyProfile.created_at.toISOString(),
         updated_at: user.companyProfile.updated_at.toISOString()
       } : null;
     } else if (user.role === 'agency') {
-      // For agencies: return profile as-is (no skills to populate)
       profileData = user.agencyAdminProfile ? {
         ...user.agencyAdminProfile,
         created_at: user.agencyAdminProfile.created_at.toISOString(),
@@ -164,10 +307,9 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
       } : null;
     }
 
-    // Return same structure as getCandidateProfile
     return {
       user: cleanUser,
-      profile: profileData, // Now with populated skills for candidates
+      profile: profileData,
       token
     };
 
@@ -180,11 +322,10 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
   }
 };
 
-export const resendVerificationEmail = async (userId: string) => {
+export const resendVerificationEmail = async (user_id: string) => {
   try {
-    // User ko find karo
     const user = await prisma.user.findUnique({ 
-      where: { user_id: userId },
+      where: { user_id },
       select: { 
         email: true, 
         is_email_verified: true, 
@@ -200,7 +341,6 @@ export const resendVerificationEmail = async (userId: string) => {
       };
     }
 
-    // Agar email already verified hai
     if (user.is_email_verified) {
       return {
         error: true,
@@ -208,7 +348,6 @@ export const resendVerificationEmail = async (userId: string) => {
       };
     }
 
-    // Existing sendVerificationEmail function use karo
     await sendVerificationEmail(user.email, user.user_id);
 
     return { 
@@ -224,9 +363,9 @@ export const resendVerificationEmail = async (userId: string) => {
   }
 };
 
-export const sendVerificationEmail = async (email: string, userId: string) => {
+export const sendVerificationEmail = async (email: string, user_id: string) => {
   try {
-    const token = generateToken({ userId }, "15m");
+    const token = generateToken({ user_id }, "15m");
     const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
 
     await sendEmail({
@@ -235,7 +374,7 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
       html: `
       <div style="font-family: 'Segoe UI', sans-serif; background: #f9fafb; padding: 40px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 32px;">
-          <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to <span style="color:#111827;">Talenta</span> 👋</h2>
+          <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to <span style="color:#111827;">Hiralent</span> 👋</h2>
           <p style="font-size: 16px; color: #374151; line-height: 1.6;">
             Thanks for signing up! You're just one click away from activating your account.
           </p>
@@ -245,11 +384,11 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
             </a>
           </div>
           <p style="font-size: 14px; color: #6b7280;">
-            If you didn’t request this, you can safely ignore this email.
+            If you didn't request this, you can safely ignore this email.
           </p>
           <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
           <p style="font-size: 12px; color: #9ca3af; text-align: center;">
-            &copy; ${new Date().getFullYear()} Talenta. All rights reserved.
+            &copy; ${new Date().getFullYear()} Hiralent. All rights reserved.
           </p>
         </div>
       </div>
@@ -261,12 +400,11 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
   }
 };
 
-
 export const verifyEmail = async ({ token }: VerifyEmailInput) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { user_id: string };
     const user = await prisma.user.update({
-      where: { user_id: decoded.userId },
+      where: { user_id: decoded.user_id },
       data: { is_email_verified: true },
     });
 
@@ -276,7 +414,19 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
       agency_id: user.agency_id,
     });
 
-    return { user, token: authToken };
+    return { 
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        is_email_verified: user.is_email_verified,
+        agency_id: user.agency_id,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      }, 
+      token: authToken 
+    };
   } catch (error: any) {
     console.error("❌ Verify Email Error:", error);
     return {
@@ -286,7 +436,6 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
   }
 };
 
-
 export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
@@ -295,7 +444,7 @@ export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
       return { success: true };
     }
 
-    const token = generateToken({ userId: user.user_id }, "15m");
+    const token = generateToken({ user_id: user.user_id }, "15m");
     const resetLink = `${process.env.CLIENT_URL}/auth/reset-password?token=${token}`;
 
     const html = `
@@ -315,7 +464,7 @@ export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
 
     await sendEmail({
       to: email,
-      subject: "Reset your Talenta password",
+      subject: "Reset your Hiralent password",
       html,
     });
 
@@ -332,10 +481,10 @@ export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
 
 export const resetPassword = async ({ token, newPassword }: ResetPasswordInput) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { user_id: string };
     const hash = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
-      where: { user_id: decoded.userId },
+      where: { user_id: decoded.user_id },
       data: { password_hash: hash },
     });
     return { success: true };

@@ -14,7 +14,8 @@ import { AssessmentResults as AssessmentResultsType } from '@/src/types/assessme
 const AssessmentResultsPage = () => {
   const router = useRouter();
   const params = useParams();
-  const assessmentId = params.assessmentId as string;
+  // Guard useParams() which can be null/undefined in some Next runtime/type contexts
+  const assessmentId = params?.assessmentId ? String(params.assessmentId) : '';
 
   const [activeTab, setActiveTab] = useState<'results' | 'breakdown' | 'recommendations'>('results');
 
@@ -34,7 +35,7 @@ const AssessmentResultsPage = () => {
   useEffect(() => {
     if (!assessmentId) {
       toast.error('Assessment ID not found');
-      router.push('/candidate/dashboard/skills-assessment');
+      if (typeof window !== 'undefined') router.push('/candidate/dashboard/skills-assessment');
     }
   }, [assessmentId, router]);
 

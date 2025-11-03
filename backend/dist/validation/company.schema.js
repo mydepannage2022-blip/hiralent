@@ -39,6 +39,15 @@ exports.createCompanyProfileSchema = zod_1.z.object({
         .min(10, 'Company description must be at least 10 characters')
         .max(1000, 'Company description must be less than 1000 characters')
         .trim(),
+    // NEW FIELDS
+    registration_number: zod_1.z
+        .string()
+        .min(3, 'Registration number (RC) is required')
+        .trim(),
+    full_address: zod_1.z
+        .string()
+        .min(10, 'Full address is required')
+        .trim(),
     // Optional fields
     display_name: zod_1.z
         .string()
@@ -172,6 +181,15 @@ exports.updateCompanyProfileSchema = zod_1.z.object({
         .string()
         .max(50, 'Business type must be less than 50 characters')
         .optional(),
+    // NEW FIELDS
+    registration_number: zod_1.z
+        .string()
+        .min(3, 'Registration number (RC) is required')
+        .trim(),
+    full_address: zod_1.z
+        .string()
+        .min(10, 'Full address is required')
+        .trim(),
     employee_count: zod_1.z
         .number()
         .int()

@@ -1,40 +1,57 @@
-import jwt from "jsonwebtoken";
-import { Request, Response, NextFunction } from "express";
-import dotenv from "dotenv";
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken } from '../utils/jwt.util';
+import prisma from '../lib/prisma';
 
-dotenv.config();
+export const checkAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.header('Authorization');
+    let token: string | null =
+      authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : null;
 
-// ✅ This matches your global types in express.d.ts
-interface UserPayload {
-  user_id: string;
-  role: "candidate" | "company_admin" | "super_admin" | "agency_admin" | "agency" | "company";
-  agency_id?: string;
-  is_email_verified?: boolean;
-}
-
-
-export const checkAuth = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    res.status(401).json({ error: "Unauthorized: Token missing" });
-    return; // ✅ Explicitly return void
+    // ✅ Fallback sur cookie httpOnly
+    if (!token && (req as any).cookies?.token) {
+      token = (req as any).cookies.token;
     }
 
-  const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ error: true, message: 'Access denied. No token provided.' });
+    }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as UserPayload;
-    // console.log("Authorization Header:", req.headers.authorization);
-    // console.log("Decoded Token:", decoded);
-    req.user = decoded;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid or expired token" });
-    return; // ✅ Explicitly return void
+    const decoded = verifyToken(token) as { user_id?: string } | null;
+    if (!decoded?.user_id) {
+      return res.status(401).json({ error: true, message: 'Invalid token payload' });
+    }
+
+    // Vérifier que l'utilisateur existe toujours
+    const user = await prisma.user.findUnique({
+      where: { user_id: decoded.user_id },
+      select: {
+        user_id: true,
+        email: true,
+        role: true,
+        agency_id: true,
+        is_email_verified: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: true, message: 'User not found' });
+    }
+
+    // Attacher l'user au req pour les contrôleurs
+    (req as any).user = {
+      user_id: user.user_id,
+      email: user.email,
+      role: user.role,
+      agency_id: user.agency_id,
+    };
+
+    console.log('🔐 User authenticated:', user.user_id, user.email);
+    return next();
+  } catch (error) {
+    console.error('❌ Auth middleware error:', error);
+    return res.status(401).json({ error: true, message: 'Invalid token' });
   }
 };

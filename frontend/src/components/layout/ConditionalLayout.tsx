@@ -22,9 +22,7 @@ const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
     '/auth/'
   ];
 
-  const shouldHideLayout = excludeLayoutRoutes.some(route => 
-    pathname.startsWith(route)
-  );
+  const shouldHideLayout = pathname ? excludeLayoutRoutes.some(route => pathname.startsWith(route)) : false;
 
   return (
     <>
