@@ -6,9 +6,9 @@ export const checkRole = (...allowedRoles: string[]) => {
 
     if (!role || !allowedRoles.includes(role)) {
       res.status(403).json({ error: "Forbidden: Role not allowed" });
-      return; // ✅ ensures return type is void
+      return; 
     }
 
-    next(); // ✅ required for successful middleware chain
+    next(); 
   };
 };

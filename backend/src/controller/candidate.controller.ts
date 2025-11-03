@@ -462,3 +462,45 @@ export const getProfileController = async (req: Request, res: Response): Promise
     } as APIResponse);
   }
 };
+
+// ==================== PUBLIC PROFILE CONTROLLER ====================
+
+export const getPublicProfileController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { candidateId } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(candidateId)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid candidate ID format'
+      } as APIResponse);
+      return;
+    }
+
+    const profile = await candidateService.getPublicProfile(candidateId);
+
+    res.status(200).json({
+      success: true,
+      data: profile,
+      message: 'Public profile retrieved successfully'
+    } as APIResponse);
+  } catch (error: any) {
+    console.error('Error getting public profile:', error);
+    
+    if (error.message === 'Candidate profile not found') {
+      res.status(404).json({
+        success: false,
+        message: 'Candidate profile not found'
+      } as APIResponse);
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get public profile',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};

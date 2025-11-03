@@ -2,7 +2,45 @@ export interface SignupInput {
   email: string;
   password: string;
   full_name: string;
-  role: "candidate" | "company_admin" | "agency_admin";
+  role: "candidate" | "company_admin" | "agency_admin" | "superadmin";
+}
+// ✅ NEW: Admin Auth Types
+export interface AdminLoginInput {
+  email: string;
+  password: string;
+}
+
+export interface AdminLoginResponse {
+  success: boolean;
+  tempToken: string;
+  requiresMFA: boolean;
+  mfaSetup: boolean; // If true, admin needs to setup MFA first
+}
+
+export interface SetupMFAInput {
+  tempToken: string;
+}
+
+export interface SetupMFAResponse {
+  success: boolean;
+  qrCode: string; // Base64 image data URL
+  secret: string; // Backup secret key
+  manualEntryKey: string; // For manual entry
+}
+
+export interface VerifyMFAInput {
+  tempToken: string;
+  mfaToken: string; // 6-digit code from authenticator app
+}
+
+export interface AdminSessionResponse {
+  success: boolean;
+  sessionToken: string;
+  admin: {
+    user_id: string;
+    email: string;
+    full_name: string;
+  };
 }
 
 export interface LoginInput {
@@ -181,3 +219,156 @@ export interface LoginError {
 
 // Union type for login response (unchanged)
 export type LoginResponse = LoginSuccess | LoginError;
+
+
+
+
+// ________________________________________________________________________________________________________________________________________________________
+
+export interface DeleteAccountServiceRequest {
+  userId: string;
+  confirmation?: string;
+  reason?: string;
+  feedback?: string;
+}
+
+export interface DeleteAccountServiceResponse {
+  success: boolean;
+  message: string;
+  data: {
+    deleted_user_id: string;
+    deleted_user_email: string;
+    deleted_user_name: string;
+    deleted_role: string;
+    related_records_deleted: RelatedRecordsCount;
+    deletion_timestamp: string;
+  };
+}
+
+export interface RelatedRecordsCount {
+  candidateDocuments: number;
+  uploadedDocuments: number;
+  jobsPosted: number;
+  relocationCases: number;
+  filesToDelete: number;
+}
+
+export interface UserDeletionSummary {
+  user_info: {
+    user_id: string;
+    email: string;
+    full_name: string;
+    role: string;
+    created_at: Date;
+  };
+  related_records_count: {
+    candidateDocuments: number;
+    uploadedDocuments: number;
+    jobsPosted: number;
+    jobApplications: number;
+    assessments: number;
+    notifications: number;
+    relocationCases: number;
+    agencyReviews: number;
+    invitationsSent: number;
+  };
+  estimated_deletion_impact: {
+    database_records: number;
+    profile_exists: boolean;
+  };
+}
+
+export interface FileCleanupResult {
+  deleted_count: number;
+  failed_count: number;
+  total_files: number;
+  failed_files: string[];
+}
+
+export interface UserWithDeletionData {
+  user_id: string;
+  role: string;
+  email: string;
+  full_name: string;
+  candidateProfile?: {
+    profile_picture_url?: string | null;
+    resume_url?: string | null;
+    video_intro_url?: string | null;
+    resume_application_url?: string | null;
+  } | null;
+  companyProfile?: {
+    logo_url?: string | null;
+    banner_url?: string | null;
+  } | null;
+  agencyAdminProfile?: {
+    admin_id: string;
+  } | null;
+  candidateDocuments?: {
+    file_path?: string | null;
+    document_id: string;
+  }[];
+  uploadedDocuments?: {
+    storage_key: string;
+    preview_key?: string | null;
+    document_id: string;
+  }[];
+  jobsPosted?: {
+    job_id: string;
+  }[];
+  relocationCases?: {
+    case_id: string;
+  }[];
+}
+
+export type DeleteAccountErrorCode = 
+  | string
+  | string 
+  | string
+  | string
+  | string
+  | string
+  | string;
+
+export interface DeleteAccountError extends Error {
+  code?: DeleteAccountErrorCode;
+  details?: any;
+  user_id?: string;
+}
+
+export interface DeleteAccountAuditLog {
+  action: string;
+  user_id: string;
+  user_email: string;
+  user_role: string;
+  reason?: string;
+  feedback?: string;
+  related_records_count: RelatedRecordsCount;
+  timestamp: Date;
+  ip_address?: string;
+  user_agent?: string;
+}
+
+export interface DeleteAccountResponse {
+  success: boolean;
+  message: string;
+  data: {
+    deleted_user_id: string;
+    deleted_user_email: string;
+    deleted_user_name: string;
+    deleted_role: string;
+    related_records_deleted: {
+      candidateDocuments: number;
+      uploadedDocuments: number;
+      jobsPosted: number;
+      relocationCases: number;
+      filesToDelete: number;
+    };
+    deletion_timestamp: string;
+  };
+}
+
+export interface DeleteAccountErrorResponse {
+  error: string;
+  code?: string;
+  details?: any;
+}

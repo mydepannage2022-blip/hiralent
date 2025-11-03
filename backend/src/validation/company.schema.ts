@@ -47,6 +47,17 @@ export const createCompanyProfileSchema = z.object({
     .max(1000, 'Company description must be less than 1000 characters')
     .trim(),
 
+// NEW FIELDS
+  registration_number: z
+    .string()
+    .min(3, 'Registration number (RC) is required')
+    .trim(),
+    
+  full_address: z
+    .string()
+    .min(10, 'Full address is required')
+    .trim(),
+
   // Optional fields
   display_name: z
     .string()
@@ -210,6 +221,16 @@ export const updateCompanyProfileSchema = z.object({
     .string()
     .max(50, 'Business type must be less than 50 characters')
     .optional(),
+  // NEW FIELDS
+  registration_number: z
+    .string()
+    .min(3, 'Registration number (RC) is required')
+    .trim(),
+    
+  full_address: z
+    .string()
+    .min(10, 'Full address is required')
+    .trim(),
 
   employee_count: z
     .number()

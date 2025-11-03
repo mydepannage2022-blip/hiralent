@@ -67,7 +67,7 @@ export const getCompanyProfile = async (userId: string) => {
       throw new Error('User not found');
     }
 
-    if (user.role !== 'company') {
+    if (user.role !== 'company_admin') {
       throw new Error('User is not a company');
     }
 
@@ -99,7 +99,7 @@ export const updateCompanyProfile = async (userId: string, data: UpdateCompanyPr
       throw new Error('User not found');
     }
 
-    if (user.role !== 'company') {
+    if (user.role !== 'company_admin') {
       throw new Error('Only company users can update company profiles');
     }
 
