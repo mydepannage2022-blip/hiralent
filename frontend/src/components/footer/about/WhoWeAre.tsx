@@ -52,6 +52,4 @@ const WhoWeAre = () => {
             </div>
         </section>
     );
-};
-
-export default WhoWeAre;
+}

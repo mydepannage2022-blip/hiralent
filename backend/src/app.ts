@@ -36,6 +36,7 @@ import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import sessionRoutes from './routes/auth/session.routes';
+import questionRoutes from './routes/questions/question.routes';
 
 
 // Mount routes
@@ -50,8 +51,12 @@ app.use('/api/v1/auth/sessions', sessionRoutes);
 
 
 // Register admin auth routes
-app.use('/api/v1', adminAuthRoutes);
-app.use('/api/v1', adminVerificationRoutes);
+app.use('/api/v1/admin', adminAuthRoutes);
+app.use('/api/v1/admin', adminVerificationRoutes);
+
+
+//Question Bank
+app.use('/api/questions', questionRoutes);
 
 
 app.get('/', (req: Request, res: Response) => {

@@ -169,11 +169,11 @@ export default function VerifyEmailPage() {
           </p>
           <button 
             onClick={() => {
-              if (user.role === 'CANDIDATE') {
+              if (user.role === 'candidate') {
                 router.push('/candidate/dashboard');
-              } else if (user.role === 'COMPANY') {
+              } else if (user.role === 'company'|| user.role === 'company_admin') {
                 router.push('/company/dashboard');
-              } else if (user.role === 'AGENCY') {
+              } else if (user.role === 'agency') {
                 router.push('/agency/dashboard');
               } else {
                 router.push('/');

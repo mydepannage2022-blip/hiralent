@@ -1,43 +1,39 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl as awsGetSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const forcePathStyle =
-  String(process.env.S3_FORCE_PATH_STYLE ?? "true").toLowerCase() === "true";
+const endpoint = process.env.S3_ENDPOINT!;
+const region = process.env.S3_REGION || "us-east-1";
 
 export const s3 = new S3Client({
-  region: process.env.S3_REGION,
-  endpoint: process.env.S3_ENDPOINT, // http://127.0.0.1:9000  (or http://minio:9000 in docker)
-  forcePathStyle,                    // MinIO needs this
+  region,
+  endpoint,
+  forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY!,
     secretAccessKey: process.env.S3_SECRET_KEY!,
   },
 });
 
-const Bucket = process.env.S3_BUCKET!;
+export const s3Bucket = process.env.S3_BUCKET!;
 
-export async function s3PutObject(
-  Key: string,
-  Body: Buffer,
-  ContentType: string
-) {
-  await s3.send(new PutObjectCommand({ Bucket, Key, Body, ContentType }));
-  return Key;
+export async function s3PutObject(key: string, body: Buffer, contentType?: string) {
+  await s3.send(new PutObjectCommand({
+    Bucket: s3Bucket,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }));
+  return key;
 }
 
-export function s3SignedGetUrl(
-  Key: string,
-  expiresIn = Number(process.env.SIGNED_URL_TTL_SECONDS || 600)
-) {
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket, Key }), { expiresIn });
+export async function s3GetObject(key: string): Promise<Buffer> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: s3Bucket, Key: key }));
+  // @ts-ignore
+  return Buffer.from(await res.Body.transformToByteArray());
 }
 
-// Handy for debugging keys (optional)
-export function s3HeadObject(Key: string) {
-  return s3.send(new HeadObjectCommand({ Bucket, Key }));
+export async function s3SignedUrl(key: string, seconds?: number) {
+  const ttl = Number(process.env.SIGNED_URL_TTL_SECONDS || seconds || 600);
+  const cmd = new GetObjectCommand({ Bucket: s3Bucket, Key: key });
+  return awsGetSignedUrl(s3, cmd, { expiresIn: ttl });
 }
