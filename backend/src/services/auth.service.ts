@@ -33,7 +33,21 @@ export const signup = async (input: SignupInput) => {
       },
     });
 
-    const token = generateToken({ user_id: user.user_id, role: user.role });
+    const token = generateToken({
+  user_id: user.user_id,
+  role: user.role,
+  agency_id: user.agency_id,
+  email: user.email,
+  is_email_verified: user.is_email_verified,
+  // 🏢 company/company_admin → include company_id
+  ...(user.role === "company" || user.role === "company_admin"
+    ? { company_id: user.user_id }
+    : {}),
+  // 🏢 agency/agency_admin → include agency_id (fallback to own id if null)
+  ...(user.role === "agency" || user.role === "agency_admin"
+    ? { agency_id: user.agency_id ?? user.user_id }
+    : {}),
+});
     await sendVerificationEmail(user.email, user.user_id);
 
     return { user, token };
@@ -78,11 +92,19 @@ export const login = async ({ email, password }: LoginInput): Promise<LoginRespo
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) throw new Error("Invalid credentials");
 
-    const token = generateToken({
-      user_id: user.user_id,
-      role: user.role,
-      agency_id: user.agency_id,
-    });
+const token = generateToken({
+  user_id: user.user_id,
+  role: user.role,
+  agency_id: user.agency_id,
+  email: user.email,
+  is_email_verified: user.is_email_verified,
+  ...(user.role === "company" || user.role === "company_admin"
+    ? { company_id: user.user_id }
+    : {}),
+  ...(user.role === "agency" || user.role === "agency_admin"
+    ? { agency_id: user.agency_id ?? user.user_id }
+    : {}),
+});
 
     // Clean user object - same structure as getCandidateProfile
     const cleanUser: CleanUser = {
@@ -270,11 +292,19 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
       data: { is_email_verified: true },
     });
 
-    const authToken = generateToken({
-      user_id: user.user_id,
-      role: user.role,
-      agency_id: user.agency_id,
-    });
+const authToken = generateToken({
+  user_id: user.user_id,
+  role: user.role,
+  agency_id: user.agency_id,
+  email: user.email,
+  is_email_verified: user.is_email_verified,
+  ...(user.role === "company" || user.role === "company_admin"
+    ? { company_id: user.user_id }
+    : {}),
+  ...(user.role === "agency" || user.role === "agency_admin"
+    ? { agency_id: user.agency_id ?? user.user_id }
+    : {}),
+});
 
     return { user, token: authToken };
   } catch (error: any) {

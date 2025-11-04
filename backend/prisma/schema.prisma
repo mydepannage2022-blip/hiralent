@@ -108,6 +108,8 @@ model User {
 
   // back-relation: one user -> many uploaded docs
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
+
+  employerAssessments EmployerAssessment[] @relation("CompanyAssessments")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -198,8 +200,8 @@ model CompanyJob {
   location        String
   description     String
   salary_range    String?
-  required_skills String?
-  status          String // draft, active, paused, closed, cancelled
+  required_skills String[]
+  status          JobStatus @default(DRAFT) // draft, active, paused, closed, cancelled
 
   // Enhanced Job Fields
   job_type              String? // full_time, part_time, contract, internship
@@ -231,6 +233,18 @@ model CompanyJob {
   jobVector          JobVector?                 @relation("JobVector")
   relocationCases    RelocationCase[]           @relation("JobRelocationCases")
   interviewSchedules InterviewSchedule[] // Added relation without fields/references
+
+  employerAssessments EmployerAssessment[] @relation("JobAssessments")
+}
+
+// JOB STATUS enum 
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  CANCELLED
+  ARCHIVED
 }
 
 // Enhanced Job Application
@@ -326,6 +340,10 @@ model SkillAssessment {
   candidate User               @relation(fields: [candidate_id], references: [user_id])
   job       CompanyJob?        @relation(fields: [job_id], references: [job_id]) // Changed relation
   results   AssessmentResult[]
+  
+  //I add Those fields
+  employer_assessment_id String?
+  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id])
 
   @@map("skill_assessments")
 }
@@ -1457,4 +1475,79 @@ model UploadedDocument {
   @@index([subject_type, subject_id])
   @@index([uploaded_by])
   @@index([document_type])
+}
+
+// EMPLOYER ASSESSMENT MANAGEMENT
+model EmployerAssessment {
+  assessment_id     String   @id @default(uuid())
+  company_id        String   // company_admin user_id
+  job_id           String   // The job this assessment is for
+  title            String
+  description      String
+  status           EmployerAssessmentStatus // DRAFT, ACTIVE, etc.
+  assessment_type  AssessmentType
+  skill_category   String
+  difficulty       DifficultyLevel
+  time_limit       Int      @default(60)
+  total_questions  Int      @default(20)
+  passing_score    Int?     @default(70)
+  question_ids     String[]
+  settings         Json?
+  
+  // ADD THESE MISSING FIELDS:
+  creation_method  AssessmentCreationMethod
+  extracted_skills String[]
+  enhanced_data    Json?
+  auto_generated   Boolean  @default(false)
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  company User       @relation("CompanyAssessments", fields: [company_id], references: [user_id], onDelete: Cascade)
+  job     CompanyJob @relation("JobAssessments", fields: [job_id], references: [job_id], onDelete: Cascade)
+  
+  candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
+  competeChallenges CompeteChallenge[]
+
+  @@index([company_id])
+  @@index([job_id])
+  @@index([status])
+
+  @@map("employer_assessments")
+}
+
+model CompeteChallenge {
+  challenge_id    String   @id @default(uuid())
+  assessment_id   String
+  title           String
+  description     String?
+  candidate_ids   String[]
+  status          String   // scheduled, active, completed, cancelled
+  start_time      DateTime
+  end_time        DateTime
+  time_limit      Int
+  leaderboard     Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
+  @@index([assessment_id])
+  @@index([status])
+
+  @@map("compete_challenge")
+}
+
+enum EmployerAssessmentStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+// Add this enum 
+enum AssessmentCreationMethod {
+  JOB_DESCRIPTION_PARSE
+  CHATBOT_GUIDED
 }

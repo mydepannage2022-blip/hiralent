@@ -11,7 +11,9 @@ import {
   ChevronRight,
   LogOut,
   LucideIcon,
-  X
+  X,
+  Briefcase,
+  CheckSquare
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
@@ -48,6 +50,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
     { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
+      // NEW SECTIONS FOR EMPLOYER
+    { name: 'My Jobs', icon: Briefcase, href: '/company/dashboard/jobManagement' },
+    { name: 'My Assessments', icon: CheckSquare, href: '/company/dashboard/assessmentManagement' },
+
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },

@@ -36,6 +36,8 @@ import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import insightsRoutes from './routes/insights.routes';
+import jobRoutes from './routes/job.routes';
+import employerAssessmentRoutes from './routes/employerAssessment.routes';
 
 
 // Mount routes
@@ -45,11 +47,15 @@ app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
-// Register admin auth routes
-app.use('/api/v1', adminAuthRoutes);
-app.use('/api/v1', adminVerificationRoutes);
+
+// ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
+app.use('/api/v1/admin', adminAuthRoutes);
+app.use('/api/v1/admin', adminVerificationRoutes);
 
 app.use('/api/v1', insightsRoutes);
+
+app.use('/api/v1', jobRoutes);
+app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
