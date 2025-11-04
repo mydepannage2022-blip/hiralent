@@ -469,7 +469,7 @@ async generateBatchQuestions(req: Request, res: Response) {
         status: 'draft',
         aiGenerated: true,
         source: 'ai_gemini',
-        createdBy: userId  // ✅ TOUJOURS défini maintenant
+        createdBy: userId  //  TOUJOURS défini maintenant
       });
       savedQuestions.push(saved);
     }

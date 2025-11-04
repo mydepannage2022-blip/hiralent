@@ -5,6 +5,7 @@ node_modules/
 /config/firebase-adminsdk.json
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 distbackend/uploads/
 backend/uploads/
 *.zip
@@ -16,3 +17,6 @@ dist
 distbackend/uploads/
 backend/uploads/
 >>>>>>> f5158f792436409fab0da46af64b7c212cbeadbe
+=======
+dist
+>>>>>>> e650d1396141ae61a367693736c380a91be948dc
