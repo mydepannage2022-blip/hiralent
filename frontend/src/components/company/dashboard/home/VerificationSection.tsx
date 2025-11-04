@@ -1,13 +1,12 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Shield, Upload, CheckCircle, Clock, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/src/context/AuthContext";
 
 export default function VerificationSection() {
-  const { user } = useAuth();
+  const { user, token } = useAuth(); // <-- get token from context
   const [companyProfile, setCompanyProfile] = useState<any>(null);
+  const [companyId, setCompanyId] = useState<string>(""); // <-- keep real companyId here
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -15,30 +14,44 @@ export default function VerificationSection() {
 
   useEffect(() => {
     const fetchCompanyProfile = async () => {
-      const role = (user?.role || '').toString().toLowerCase();
-      if (!user || (role !== 'company' && role !== 'company_admin')) {
+      if (!user || user.role !== "company_admin") {
+        setIsLoading(false);
+        return;
+      }
+
+      if (!token) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
+        const response = await fetch("http://localhost:5000/api/v1/company/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const err = await response.text().catch(() => "");
+          console.error("profile error:", response.status, err);
           setIsLoading(false);
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/v1/company/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const data = await response.json();
+        const profile = data?.data?.profile || null;
+        setCompanyProfile(profile);
 
-        if (response.ok) {
-          const data = await response.json();
-          setCompanyProfile(data.data.profile);
-        }
+        // ✅ derive & store the REAL companyId (don’t use user_id)
+        const derivedCompanyId =
+          profile?.company_id ??
+          profile?.id ??
+          (user as any)?.company_id ??
+          "";
+
+        setCompanyId(derivedCompanyId);
+        console.log("✅ Using companyId:", derivedCompanyId);
       } catch (error) {
         console.error("Network error:", error);
       } finally {
@@ -47,9 +60,11 @@ export default function VerificationSection() {
     };
 
     fetchCompanyProfile();
-  }, [user]);
+  }, [user, token]); // include token
 
-  const companyId = user?.user_id || "";
+  // ❌ REMOVE this old line:
+  // const companyId = user?.user_id || "";
+
   const verificationStatus = companyProfile?.verification_status || "unverified";
   const verified = companyProfile?.verified || false;
   const verificationNotes = companyProfile?.verification_notes || "";
@@ -63,7 +78,6 @@ export default function VerificationSection() {
         </div>
       );
     }
-
     if (verificationStatus === "pending") {
       return (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full">
@@ -72,7 +86,6 @@ export default function VerificationSection() {
         </div>
       );
     }
-
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full">
         <AlertCircle className="w-4 h-4 text-gray-600" />
@@ -84,13 +97,14 @@ export default function VerificationSection() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      const validTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
       if (!validTypes.includes(selectedFile.type)) {
         alert("Please upload a PDF, JPG, or PNG file");
         return;
       }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        alert("File size must be less than 10MB");
+      // backend allows 15 MB → align UI to 15 MB
+      if (selectedFile.size > 15 * 1024 * 1024) {
+        alert("File size must be ≤ 15MB");
         return;
       }
       setFile(selectedFile);
@@ -98,13 +112,20 @@ export default function VerificationSection() {
   };
 
   const handleVerification = async () => {
+    if (!token) {
+      alert("❌ Session expired. Please login again.");
+      return;
+    }
     if (!file) {
       alert("Please upload a company registration document");
       return;
     }
-
+    if (!companyId) {
+      alert("Missing company ID. Please reload the page.");
+      return;
+    }
     if (!companyProfile?.registration_number || !companyProfile?.full_address) {
-      alert("Please complete your company profile with registration number and address first");
+      alert("Please complete your company profile (registration number & address) first");
       return;
     }
 
@@ -112,69 +133,112 @@ export default function VerificationSection() {
     setUploadProgress(0);
 
     try {
-      const token = localStorage.getItem('authToken');
-
+      // 1) create run
       setUploadProgress(10);
       const runRes = await fetch("http://localhost:5000/api/v1/verification/run/create", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ subject_type: "COMPANY", subject_id: companyId }),
+        body: JSON.stringify({
+          subject_type: "COMPANY",
+          subject_id: companyId, // ✅ real companyId
+        }),
       });
 
-      if (!runRes.ok) throw new Error("Failed to create verification run");
-
-      const { run_id } = await runRes.json();
+      if (!runRes.ok) {
+        const txt = await runRes.text().catch(() => "");
+        console.error("Run create failed:", runRes.status, txt);
+        handleHttpError(runRes.status, txt);
+        return;
+      }
+      const runData = await runRes.json();
+      const run_id = runData.run_id;
       setUploadProgress(20);
 
-      const formData = new FormData();
-      formData.append("document", file);
-      formData.append("runId", run_id);
-      formData.append("expected_company_name", companyProfile.company_name || "");
-      formData.append("expected_registration_number", companyProfile.registration_number || "");
-      formData.append("expected_address", companyProfile.full_address || "");
+      // 2) upload with OCR
+      const form = new FormData();
+      form.append("file", file);
+      form.append("document_type", "registration_cert");
+      form.append("perform_ocr", "true");
+      form.append("force_type", "company_doc");
+      form.append("run_id", run_id);
+      setUploadProgress(30);
 
-      setUploadProgress(40);
-      const ocrRes = await fetch("http://localhost:5000/api/ocr", {
+      const uploadRes = await fetch(`http://localhost:5000/api/v1/uploads/company/${companyId}`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData
+        headers: { Authorization: `Bearer ${token}` }, // don’t add Content-Type with FormData
+        body: form,
       });
 
-      if (!ocrRes.ok) throw new Error("OCR processing failed");
+      if (!uploadRes.ok) {
+        const txt = await uploadRes.text().catch(() => "");
+        console.error("Upload failed:", uploadRes.status, txt);
+        handleHttpError(uploadRes.status, txt);
+        return;
+      }
+      const uploadData = await uploadRes.json();
+      console.log("Uploaded:", uploadData);
       setUploadProgress(70);
 
+      // 3) finalize
       const finalizeRes = await fetch("http://localhost:5000/api/v1/verification/run/finalize", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ run_id, subject_type: "COMPANY", subject_id: companyId }),
+        body: JSON.stringify({
+          run_id,
+          subject_type: "COMPANY",
+          subject_id: companyId, // ✅ real companyId
+        }),
       });
 
-      if (!finalizeRes.ok) throw new Error("Failed to finalize verification");
+      if (!finalizeRes.ok) {
+        const txt = await finalizeRes.text().catch(() => "");
+        console.error("Finalize failed:", finalizeRes.status, txt);
+        handleHttpError(finalizeRes.status, txt);
+        return;
+      }
 
       setUploadProgress(100);
-      alert("Verification submitted successfully!");
-      setTimeout(() => window.location.reload(), 1500);
-
-    } catch (error: any) {
-      console.error("Verification error:", error);
-      alert(error.message || "Verification failed. Please try again.");
+      alert("✅ Verification submitted! Document uploaded to MinIO and processed with OCR.");
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e: any) {
+      console.error("Verification error:", e);
+      alert(`❌ ${e?.message || "Verification failed. Please try again."}`);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
 
+  function handleHttpError(status: number, text: string) {
+    const msg = (safeParse(text)?.error || text || "").toLowerCase();
+    if (status === 401) {
+      if (msg.includes("expired") || msg.includes("signature") || msg.includes("invalid")) {
+        alert("❌ Session invalid/expired. Please login again.");
+        window.location.href = "/company/login";
+      } else {
+        alert("❌ Unauthorized. Check you’re logged in with the correct company account.");
+      }
+    } else if (status === 403) {
+      alert("❌ Forbidden. You don’t have access to this company. Use the correct company account.");
+    } else {
+      alert(`❌ ${safeParse(text)?.error || "Request failed"}`);
+    }
+  }
+  function safeParse(s: string) {
+    try { return JSON.parse(s); } catch { return {}; }
+  }
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="animate-pulse flex space-x-4">
-          <div className="rounded-full bg-gray-200 h-12 w-12"></div>
+          <div className="rounded-full bg-gray-200 h-12 w-12" />
           <div className="flex-1 space-y-2 py-1">
             <div className="h-4 bg-gray-200 rounded w-3/4"></div>
             <div className="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -183,86 +247,84 @@ export default function VerificationSection() {
       </div>
     );
   }
-
-  // VERIFIED STATE
-// VERIFIED STATE - Premium Professional Badge
-if (verified || verificationStatus === "verified") {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="relative overflow-hidden bg-gradient-to-br from-white via-green-50/30 to-emerald-50/40 
-                 border border-green-200/60 rounded-2xl shadow-lg shadow-green-100/50 p-6"
-    >
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 opacity-[0.03]">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, rgb(34 197 94) 1px, transparent 0)`,
-          backgroundSize: '32px 32px'
-        }} />
-      </div>
-
-      {/* Content */}
-      <div className="relative flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Icon with glow effect */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-green-400/20 blur-xl rounded-full" />
-            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 
-                          flex items-center justify-center shadow-lg shadow-green-500/25
-                          ring-4 ring-green-100/50">
-              <Shield className="w-7 h-7 text-white" strokeWidth={2.5} />
-            </div>
-            {/* Checkmark badge */}
-            <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 
-                          rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30
-                          ring-3 ring-white">
-              <CheckCircle className="w-4 h-4 text-white" strokeWidth={3} />
-            </div>
-          </div>
-
-          {/* Text content */}
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">
-                Verified Business
-              </h3>
-              <div className="px-2 py-0.5 bg-green-100 rounded-md">
-                <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">
-                  Official
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 leading-tight">
-              Identity authenticated • Trusted by candidates
-            </p>
-          </div>
+  // VERIFIED STATE - Premium Professional Badge
+  if (verified || verificationStatus === "verified") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="relative overflow-hidden bg-gradient-to-br from-white via-green-50/30 to-emerald-50/40 
+                   border border-green-200/60 rounded-2xl shadow-lg shadow-green-100/50 p-6"
+      >
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(34 197 94) 1px, transparent 0)`,
+            backgroundSize: '32px 32px'
+          }} />
         </div>
 
-        {/* Status badge */}
-        <motion.div
-          initial={{ x: 10, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm 
-                   border border-green-200 rounded-xl shadow-sm"
-        >
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm font-semibold text-green-700">Active</span>
-        </motion.div>
-      </div>
+        {/* Content */}
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Icon with glow effect */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-400/20 blur-xl rounded-full" />
+              <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 
+                            flex items-center justify-center shadow-lg shadow-green-500/25
+                            ring-4 ring-green-100/50">
+                <Shield className="w-7 h-7 text-white" strokeWidth={2.5} />
+              </div>
+              {/* Checkmark badge */}
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 
+                            rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30
+                            ring-3 ring-white">
+                <CheckCircle className="w-4 h-4 text-white" strokeWidth={3} />
+              </div>
+            </div>
 
-      {/* Bottom accent line */}
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 origin-left"
-      />
-    </motion.div>
-  );
-}
+            {/* Text content */}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-gray-900 tracking-tight">
+                  Verified Business
+                </h3>
+                <div className="px-2 py-0.5 bg-green-100 rounded-md">
+                  <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">
+                    Official
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-tight">
+                Identity authenticated • Trusted by candidates
+              </p>
+            </div>
+          </div>
+
+          {/* Status badge */}
+          <motion.div
+            initial={{ x: 10, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm 
+                     border border-green-200 rounded-xl shadow-sm"
+          >
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-sm font-semibold text-green-700">Active</span>
+          </motion.div>
+        </div>
+
+        {/* Bottom accent line */}
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 origin-left"
+        />
+      </motion.div>
+    );
+  }
 
   // PENDING STATE
   if (verificationStatus === "pending") {
@@ -316,13 +378,21 @@ if (verified || verificationStatus === "verified") {
               </div>
 
               {isUploading && uploadProgress > 0 && (
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <motion.div
-                    className="bg-yellow-600 h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${uploadProgress}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
+                <div className="space-y-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <motion.div
+                      className="bg-yellow-600 h-2 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${uploadProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 text-center">
+                    {uploadProgress < 20 && "Creating verification run..."}
+                    {uploadProgress >= 20 && uploadProgress < 70 && "Uploading to MinIO & processing OCR..."}
+                    {uploadProgress >= 70 && uploadProgress < 100 && "Finalizing verification..."}
+                    {uploadProgress === 100 && "Complete!"}
+                  </p>
                 </div>
               )}
 
@@ -335,7 +405,7 @@ if (verified || verificationStatus === "verified") {
                 whileHover={{ scale: !isUploading && file ? 1.02 : 1 }}
                 whileTap={{ scale: !isUploading && file ? 0.98 : 1 }}
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={`w-4 h-4 ${isUploading ? 'animate-spin' : ''}`} />
                 {isUploading ? "Re-verifying..." : "Re-submit for Verification"}
               </motion.button>
             </div>
@@ -358,7 +428,7 @@ if (verified || verificationStatus === "verified") {
             <StatusBadge />
           </div>
           <p className="text-sm text-gray-600 mb-4">
-            Upload your company registration certificate to verify your company profile.
+            Upload your company registration certificate to verify your company profile. The document will be stored securely in MinIO and processed with OCR.
           </p>
 
           <div className="space-y-4">
@@ -391,13 +461,21 @@ if (verified || verificationStatus === "verified") {
             </div>
 
             {isUploading && uploadProgress > 0 && (
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <motion.div
-                  className="bg-blue-600 h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
+              <div className="space-y-2">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <motion.div
+                    className="bg-blue-600 h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${uploadProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+                <p className="text-xs text-gray-600 text-center">
+                  {uploadProgress < 20 && "Creating verification run..."}
+                  {uploadProgress >= 20 && uploadProgress < 70 && "Uploading to MinIO & processing OCR..."}
+                  {uploadProgress >= 70 && uploadProgress < 100 && "Finalizing verification..."}
+                  {uploadProgress === 100 && "Complete!"}
+                </p>
               </div>
             )}
 
@@ -410,7 +488,7 @@ if (verified || verificationStatus === "verified") {
               whileHover={{ scale: !isUploading && file ? 1.02 : 1 }}
               whileTap={{ scale: !isUploading && file ? 0.98 : 1 }}
             >
-              <Upload className="w-4 h-4" />
+              <Upload className={`w-4 h-4 ${isUploading ? 'animate-bounce' : ''}`} />
               {isUploading ? "Verifying..." : "Submit for Verification"}
             </motion.button>
           </div>

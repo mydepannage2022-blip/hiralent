@@ -1,57 +1,116 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.util';
-import prisma from '../lib/prisma';
+import { verifyTokenWithDetails } from '../utils/jwt.util';
+import * as blacklistService from '../services/auth/blacklist.service';
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    user_id: string;
+    role: string;
+    agency_id?: string;
+    session_id: string;
+    is_email_verified?: boolean;
+    email?: string;
+    full_name?: string;
+  };
+}
 
-export const checkAuth = async (req: Request, res: Response, next: NextFunction) => {
+
+export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.header('Authorization');
-    let token: string | null =
-      authHeader && authHeader.startsWith('Bearer ')
-        ? authHeader.slice(7)
-        : null;
-
-    // ✅ Fallback sur cookie httpOnly
-    if (!token && (req as any).cookies?.token) {
-      token = (req as any).cookies.token;
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'Access token required' 
+      });
     }
 
-    if (!token) {
-      return res.status(401).json({ error: true, message: 'Access denied. No token provided.' });
+    const token = authHeader.substring(7);
+    
+    const isBlacklisted = await blacklistService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'Session terminated. Please login again.' 
+      });
     }
 
-    const decoded = verifyToken(token) as { user_id?: string } | null;
-    if (!decoded?.user_id) {
-      return res.status(401).json({ error: true, message: 'Invalid token payload' });
+    const { payload, error, expired } = verifyTokenWithDetails(token);
+    
+    if (error || !payload) {
+      return res.status(401).json({ 
+        error: true, 
+        message: expired ? 'Token expired' : 'Invalid token' 
+      });
     }
 
-    // Vérifier que l'utilisateur existe toujours
-    const user = await prisma.user.findUnique({
-      where: { user_id: decoded.user_id },
-      select: {
-        user_id: true,
-        email: true,
-        role: true,
-        agency_id: true,
-        is_email_verified: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({ error: true, message: 'User not found' });
-    }
-
-    // Attacher l'user au req pour les contrôleurs
-    (req as any).user = {
-      user_id: user.user_id,
-      email: user.email,
-      role: user.role,
-      agency_id: user.agency_id,
+    req.user = {
+      user_id: payload.user_id,
+      role: payload.role,
+      agency_id: payload.agency_id,
+      session_id: payload.session_id || 'bypass',
+      is_email_verified: payload.is_email_verified,
+      email: payload.email,
+      full_name: payload.full_name
     };
 
-    console.log('🔐 User authenticated:', user.user_id, user.email);
-    return next();
-  } catch (error) {
-    console.error('❌ Auth middleware error:', error);
-    return res.status(401).json({ error: true, message: 'Invalid token' });
+    console.log('✅ Auth successful for user:', payload.user_id);
+    next();
+
+  } catch (error: any) {
+    console.error('❌ Auth error:', error);
+    res.status(500).json({ 
+      error: true, 
+      message: 'Authentication failed' 
+    });
   }
+};
+
+
+export const checkAuthLegacy = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: true, 
+        message: 'Access token required' 
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const { payload, error, expired } = verifyTokenWithDetails(token);
+    
+    if (error || !payload) {
+      return res.status(401).json({ 
+        error: true, 
+        message: expired ? 'Token expired' : 'Invalid token' 
+      });
+    }
+
+    req.user = {
+      user_id: payload.user_id,
+      role: payload.role,
+      agency_id: payload.agency_id,
+      session_id: payload.session_id || 'unknown'
+    };
+
+    next();
+  } catch (error: any) {
+    console.error('Auth Legacy Middleware Error:', error);
+    res.status(500).json({ 
+      error: true, 
+      message: 'Authentication failed' 
+    });
+  }
+};
+
+export const requireActiveSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.session_id || req.user.session_id === 'legacy') {
+    return res.status(401).json({ 
+      error: true, 
+      message: 'Active session required. Please login again.' 
+    });
+  }
+  next();
 };

@@ -54,6 +54,5 @@ export const sendEmail = async ({ to, subject, html, from }: EmailOptions): Prom
     }
   } catch (err) {
     console.error("❌ Failed to send email:", (err as Error).message);
-    // You could optionally rethrow here or notify admin team
   }
 };

@@ -3,5 +3,4 @@ node_modules/
 
 /src/generated/prisma
 /config/firebase-adminsdk.json
-distbackend/uploads/
-backend/uploads/
+dist

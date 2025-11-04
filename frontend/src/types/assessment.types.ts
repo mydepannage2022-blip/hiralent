@@ -3,7 +3,7 @@
 export interface Question {
   questionId: string;
   questionText: string;
-  type: 'MCQ' | 'CODING' | 'ESSAY' | 'TRUE_FALSE' | 'SCENARIO';
+  type: 'MCQ' | 'CODING' | 'ESSAY' | 'TRUE_FALSE' | 'SCENARIO' | 'SHORT_ANSWER'; 
   options?: QuestionOption[];
   timeLimit: number; // in seconds
   difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
@@ -49,17 +49,25 @@ export interface SubmitAnswerResponse {
 export interface StartAssessmentRequest {
   skillCategory: string;
   assessmentType: 'QUICK_CHECK' | 'COMPREHENSIVE';
-  difficultyLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 }
 
 export interface StartAssessmentResponse {
   success: boolean;
   data: {
     assessmentId: string;
+    skillCategory: string;        
+    assessmentType: string;       
     totalQuestions: number;
-    estimatedDuration: number; // in minutes
-    skillCategory: string;
-    assessmentType: string;
+    timeLimit: number;            
+    status: string;               
+    firstQuestion: {              
+      questionId: string;
+      questionText: string;
+      type: string;
+      options?: string[];
+      timeLimit: number;
+    };
   };
   message?: string;
 }
@@ -133,8 +141,13 @@ export interface AssessmentHistory {
     assessments: HistoryItem[];
     skillProgress: Record<string, SkillProgress>;
     total: number;
+    summary?: {  // ✅ ADD this
+      totalAssessments: number;
+      uniqueSkills: number;
+      averageScore: number;
+      totalTimeSpent: number;
+    };
   };
-  message?: string;
 }
 
 export interface HistoryItem {
@@ -144,17 +157,27 @@ export interface HistoryItem {
   skillLevel: string;
   completedAt: string;
   improvement?: string;
-  assessmentType: string;
-  status: 'COMPLETED' | 'IN_PROGRESS' | 'ABANDONED';
-  timeSpent: number;
   totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  timeSpent: number;
+  difficulty?: string;
+  provider?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendations?: string[];
+  confidenceScore?: number;
 }
+
 
 export interface SkillProgress {
   currentLevel: string;
-  trend: string;
+  trend: 'IMPROVING' | 'DECLINING' | 'STABLE';
   lastScore: number;
   previousScore?: number;
+  totalAttempts: number;
+  bestScore: number;
+  averageScore: number;
 }
 
 // ==================== SKILL RECOMMENDATIONS ====================
@@ -197,6 +220,7 @@ export interface AssessmentState {
   skillRecommendations: SkillRecommendation[];
   loading: boolean;
   error: string | null;
+  currentQuestion: Question | null;
 }
 
 export interface CurrentAssessment {
@@ -225,7 +249,7 @@ export interface SecurityViolation {
   id: string;
   type: 'TAB_SWITCH' | 'WINDOW_BLUR' | 'COPY_PASTE' | 'RIGHT_CLICK' | 'DEV_TOOLS' | 'INACTIVE_TIME';
   message: string;
-  details: string; // ✅ ADDED: Required field for compatibility
+  details: string;
   severity: 'low' | 'medium' | 'high';
   timestamp: Date;
 }

@@ -1,10 +1,8 @@
-// pages/auth/signup/uploadresume.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUploadResume } from '../../../../src/lib/auth/auth.queries';
-import { useAuth } from '@/src/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
@@ -14,38 +12,31 @@ const UploadResumePage = () => {
   const { mutate: uploadResumeMutation, isPending } = useUploadResume();
   const pageConfig = getAuthPageConfig('uploadresume');
   const [resume, setResume] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, processing, completed
+  const [uploadStatus, setUploadStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
+  const [forceProcessing, setForceProcessing] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
 
-  // Simulate processing progress
-  useEffect(() => {
-    if (uploadStatus === 'processing') {
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setUploadStatus('completed');
-            // Auto redirect after completion
-            setTimeout(() => {
-              if (user?.role === 'candidate') {
-                router.push('/candidate/dashboard');
-              } else if (user?.role === 'company' || user?.role === 'company_admin') {
-                router.push('/company/dashboard');
-              } else {
-                router.push('/');
-              }
-            }, 2000);
-            return 100;
-          }
-          return prev + 12.5; // 8 seconds = 8 * 12.5 = 100%
-        });
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [uploadStatus, router]);
+useEffect(() => {
+  if (forceProcessing) {
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setUploadStatus('completed');
+          // Auto redirect after 1 minute + 2 seconds delay
+          setTimeout(() => {
+            router.push('/auth/logout');
+          }, 2000);
+          return 100;
+        }
+        return prev + 1.67; // 60 seconds = 60 * 1.67 = ~100%
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }
+}, [forceProcessing, router]);
 
   const handleFileChange = (e: any) => {
     const file = e.target.files[0];
@@ -69,25 +60,32 @@ const UploadResumePage = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (resume) {
-      setUploadStatus('uploading');
-      try {
-        await uploadResumeMutation(resume);
-        setUploadStatus('processing');
-        setProgress(0);
-      } catch (error) {
-        setUploadStatus('idle');
-        alert('Upload failed. Please try again.');
+  e.preventDefault();
+  if (resume) {
+    setUploadStatus('uploading');
+    
+    uploadResumeMutation(resume, {
+      onSuccess: () => {
+        console.log('✅ Upload successful - but continuing timer');
+      },
+      onError: () => {
+        console.log('❌ Upload failed - but continuing timer');
       }
-    } else {
-      alert("Please select a valid resume");
-    }
-  };
+    });
+    
+    setTimeout(() => {
+      setUploadStatus('processing');
+      setProgress(0);
+      setForceProcessing(true); 
+    }, 2000); 
+    
+  } else {
+    alert("Please select a valid resume");
+  }
+};
 
   return (
     <>
-      {/* LOADING OVERLAY - Only shows when processing */}
       <AnimatePresence>
         {uploadStatus !== 'idle' && (
           <motion.div
@@ -103,7 +101,6 @@ const UploadResumePage = () => {
               transition={{ duration: 0.3 }}
             >
               <div className="text-center">
-                {/* Spinning Icon */}
                 <motion.div
                   className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-[#063B82] border-t-transparent"
                   animate={{ rotate: 360 }}
@@ -122,7 +119,6 @@ const UploadResumePage = () => {
                   {uploadStatus === 'completed' && "Redirecting you to complete setup..."}
                 </p>
 
-                {/* Progress Bar */}
                 {uploadStatus === 'processing' && (
                   <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
                     <motion.div 
@@ -142,15 +138,7 @@ const UploadResumePage = () => {
 
                 {uploadStatus === 'completed' && (
                   <motion.button
-                    onClick={() => {
-                      if (user?.role === 'candidate') {
-                        router.push('/candidate/dashboard');
-                      } else if (user?.role === 'company' || user?.role === 'company_admin') {
-                        router.push('/company/dashboard');
-                      } else {
-                        router.push('/');
-                      }
-                    }}
+                    onClick={() => router.push('/auth/logout')}
                     className="mt-4 px-6 py-2 bg-[#063B82] text-white rounded-lg text-sm hover:bg-[#052f6b] transition-colors"
                     whileHover={{ scale: 1.05 }}
                   >
@@ -206,7 +194,7 @@ const UploadResumePage = () => {
 
           {/* Only show skip if not loading */}
           {!isPending && (
-            <SmartLink href={user?.role === 'candidate' ? '/candidate/dashboard' : user?.role === 'company' || user?.role === 'company_admin' ? '/company/dashboard' : '/'}>
+            <SmartLink href={"/auth/logout"}>
               <motion.div
                 className="text-center text-gray-500 text-sm cursor-pointer hover:text-gray-700"
                 initial={{ opacity: 0 }}

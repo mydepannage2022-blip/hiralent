@@ -1,4 +1,3 @@
-// backend/src/services/company.service.ts
 import prisma from '../lib/prisma';
 import { CreateCompanyProfileData , UpdateCompanyProfileData} from '../types/company.types';
 
@@ -19,13 +18,13 @@ export const createCompanyProfile = async (userId: string, data: CreateCompanyPr
 
     const companyProfile = await prisma.companyProfile.create({
       data: {
-        company_id: userId, // Use user_id as company_id
+        company_id: userId,
         company_name: data.company_name,
         display_name: data.display_name || data.company_name,
         industry: data.industry,
         company_size: data.company_size,
         website: data.website,
-        headquarters: data.location, // Map location to headquarters
+        headquarters: data.location,
         description: data.description,
         founded_year: data.founded_year,
         contact_number: data.contact_number,
@@ -35,9 +34,9 @@ export const createCompanyProfile = async (userId: string, data: CreateCompanyPr
         business_type: data.business_type,
         employee_count: data.employee_count,
         remote_policy: data.remote_policy,
-        registration_number: data.registration_number, 
-        full_address: data.full_address,             
-        verified: false, 
+        registration_number: data.registration_number,
+        verified: false,
+        full_address: data.full_address,
         rating: null,
         total_jobs_posted: 0,
         active_jobs_count: 0
@@ -59,7 +58,6 @@ export const createCompanyProfile = async (userId: string, data: CreateCompanyPr
 
 export const getCompanyProfile = async (userId: string) => {
   try {
-    // Get user with company profile
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
       include: {
@@ -95,7 +93,6 @@ export const getCompanyProfile = async (userId: string) => {
 
 export const updateCompanyProfile = async (userId: string, data: UpdateCompanyProfileData) => {
   try {
-    // Check if user exists and has company role
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
       select: { user_id: true, role: true, companyProfile: true }
@@ -114,7 +111,6 @@ export const updateCompanyProfile = async (userId: string, data: UpdateCompanyPr
       throw new Error('Company profile not found');
     }
 
-    // Update company profile
     const updatedProfile = await prisma.companyProfile.update({
       where: { company_id: userId },
       data: {
@@ -132,7 +128,6 @@ export const updateCompanyProfile = async (userId: string, data: UpdateCompanyPr
 
 export const getCompanyStats = async (userId: string) => {
   try {
-    // Get company profile with related stats
     const companyProfile = await prisma.companyProfile.findUnique({
       where: { company_id: userId },
       select: {
@@ -150,7 +145,6 @@ export const getCompanyStats = async (userId: string) => {
       throw new Error('Company profile not found');
     }
 
-    // Get additional stats from related tables
     const stats = {
       profile: companyProfile,
       metrics: {
@@ -170,7 +164,6 @@ export const getCompanyStats = async (userId: string) => {
   }
 };
 
-// Helper function to calculate profile completion percentage
 const calculateProfileCompletion = (profile: any): number => {
   const requiredFields = [
     'company_name',
@@ -198,7 +191,6 @@ const calculateProfileCompletion = (profile: any): number => {
     if (profile[field]) completedOptional++;
   });
 
-  // Required fields are 70% weight, optional are 30%
   const requiredScore = (completedRequired / requiredFields.length) * 70;
   const optionalScore = (completedOptional / optionalFields.length) * 30;
 

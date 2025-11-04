@@ -1,24 +1,37 @@
-// src/types/express.ts
-import { Request } from 'express';
+import "express";
+import { AuthenticatedUser, SessionInfo } from './session.types';
 
+
+// ✅ AuthUser interface with all required properties
 export interface AuthUser {
-  user_id: string;  // Change from 'id' to 'user_id'
-  email: string;
+  user_id: string;
   role: string;
   agency_id?: string;
-  name?: string;
-  // Add other properties as needed
+  session_id: string;
+  is_email_verified?: boolean;
+  email?: string;
+  full_name?: string;
 }
 
-// Extend Express Request type
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: AuthenticatedUser;
+    validatedBody?: any;
+    sanitizedHTML?: string;
+    file?: Express.Multer.File;
+
+    files?: Express.Multer.File[];
+  }
+}
+
+// ✅ Re-export for easy importing
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthUser;
+      user?: AuthenticatedUser;
+      sessionInfo?: SessionInfo;
     }
   }
 }
 
-export interface AuthRequest extends Request {
-  user?: AuthUser;
-}
+export {};

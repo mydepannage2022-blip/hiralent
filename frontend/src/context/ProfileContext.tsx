@@ -31,6 +31,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
   const [assessmentState, setAssessmentStateInternal] = useState<AssessmentState>({
     currentAssessment: null,
     assessmentHistory: [],
+    currentQuestion: null,
     skillRecommendations: [],
     loading: false,
     error: null
@@ -135,6 +136,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     setAssessmentStateInternal(prevState => {
       const clearedState: AssessmentState = {
         currentAssessment: null,
+        currentQuestion: null,
         assessmentHistory: prevState.assessmentHistory,
         skillRecommendations: prevState.skillRecommendations,
         loading: false,

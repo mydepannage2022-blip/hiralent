@@ -32,22 +32,22 @@ class AdminAPIClient {
 
   // Verification Stats
   async getVerificationStats() {
-    return this.request('/admin/verifications/stats');
+    return this.request('/verifications/stats');
   }
 
   // Pending Verifications
   async getPendingVerifications() {
-    return this.request('/admin/verifications/pending');
+    return this.request('/verifications/pending');
   }
 
   // Company Details
   async getCompanyDetails(companyId: string) {
-    return this.request(`/admin/verifications/${companyId}`);
+    return this.request(`/verifications/${companyId}`);
   }
 
   // Approve Verification
   async approveVerification(companyId: string, notes?: string) {
-    return this.request(`/admin/verifications/approve/${companyId}`, {
+    return this.request(`/verifications/approve/${companyId}`, {
       method: 'POST',
       body: JSON.stringify({ notes }),
     });
@@ -55,7 +55,7 @@ class AdminAPIClient {
 
   // Reject Verification
   async rejectVerification(companyId: string, reason: string) {
-    return this.request(`/admin/verifications/reject/${companyId}`, {
+    return this.request(`/verifications/reject/${companyId}`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });

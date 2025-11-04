@@ -1,6 +1,6 @@
 import {
   s3PutObject as putObject,
-  s3SignedGetUrl as getSignedGetUrl,
+  s3SignedUrl as getSignedGetUrl,
 } from "../../lib/s3";
 
 const DEFAULT_TTL = Number(process.env.SIGNED_URL_TTL_SECONDS || 600);

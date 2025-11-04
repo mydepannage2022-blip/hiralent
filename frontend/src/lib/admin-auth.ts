@@ -17,7 +17,7 @@ export class AdminAuthService {
 
   // Step 1: Login
   static async login(email: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/admin/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -40,7 +40,7 @@ export class AdminAuthService {
 
   // Step 2: Setup MFA
   static async setupMFA(tempToken: string) {
-    const response = await fetch(`${API_BASE_URL}/admin/auth/setup-mfa`, {
+    const response = await fetch(`${API_BASE_URL}/auth/setup-mfa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tempToken }),
@@ -56,7 +56,7 @@ export class AdminAuthService {
 
   // Step 3: Verify MFA
   static async verifyMFA(tempToken: string, mfaToken: string) {
-    const response = await fetch(`${API_BASE_URL}/admin/auth/verify-mfa`, {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-mfa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tempToken, mfaToken }),
@@ -120,6 +120,6 @@ export class AdminAuthService {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(this.SESSION_TOKEN_KEY);
     localStorage.removeItem(this.TEMP_TOKEN_KEY);
-    window.location.href = '/admin/login';
+    window.location.href = '/login';
   }
 }
