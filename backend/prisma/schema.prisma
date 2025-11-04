@@ -132,8 +132,6 @@ model CompanyProfile {
   user                      User      @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
 }
 
-<<<<<<< HEAD
-=======
 model Question {
   id          String   @id @default(cuid())
   title       String
@@ -156,7 +154,6 @@ model Question {
 
 
 // Enhanced Agency Admin Profile
->>>>>>> wafaa
 model AgencyAdminProfile {
   admin_id         String   @id
   phone_number     String?
