@@ -28,6 +28,5 @@ export const sendEmail = async ({ to, subject, html }: EmailOptions): Promise<vo
     console.log(`📤 Email successfully sent to ${to} | Message ID: ${info.messageId}`);
   } catch (err) {
     console.error("❌ Failed to send email:", (err as Error).message);
-    // You could optionally rethrow here or notify admin team
   }
 };

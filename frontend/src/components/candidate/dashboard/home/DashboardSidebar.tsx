@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  User, 
-  Bell, 
-  MessageSquare, 
-  Settings, 
+import {
+  LayoutDashboard,
+  User,
+  Bell,
+  MessageSquare,
+  Settings,
   Activity,
   ChevronLeft,
   ChevronRight,
@@ -16,7 +16,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
 import LogoutModal from '../../../layout/LogoutModal';
-import { useAuth } from '../../../../context/AuthContext'; 
+import { useAuth } from '../../../../context/AuthContext';
 
 interface MenuItem {
   name: string;
@@ -32,9 +32,9 @@ interface DashboardSidebarProps {
   setIsMobileMenuOpen: (open: boolean) => void;
 }
 
-const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ 
-  isOpen, 
-  setIsOpen, 
+const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
+  isOpen,
+  setIsOpen,
   isMobile,
   isMobileMenuOpen,
   setIsMobileMenuOpen
@@ -86,26 +86,24 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   };
 
   // Mobile drawer styles
-  const mobileDrawerClasses = isMobile ? 
-    `fixed top-0 left-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-      isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-    }` 
+  const mobileDrawerClasses = isMobile ?
+    `fixed top-0 left-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+    }`
     : '';
 
   // Desktop sidebar styles  
-  const desktopSidebarClasses = !isMobile ? 
-    `flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'}` 
+  const desktopSidebarClasses = !isMobile ?
+    `flex bg-[#FFFFFF] rounded-xl ${isOpen ? 'lg:w-42 xl:w-64' : 'w-20'}`
     : '';
 
   return (
     <>
       <div className={isMobile ? mobileDrawerClasses : desktopSidebarClasses}>
-        <div className={`${
-          isMobile 
-            ? 'w-full h-full' 
+        <div className={`${isMobile
+            ? 'w-full h-full'
             : isOpen ? 'lg:w-42 xl:w-64' : 'w-20'
-        } flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl`}>
-          
+          } flex flex-col bg-white shadow-lg transition-all duration-300 ease-in-out rounded-xl`}>
+
           <div className='w-full flex-1'>
             {/* Header with Company Logo */}
             <div className="flex flex-row-reverse items-center justify-center py-4 px-4 border-b border-gray-200 relative">
@@ -121,7 +119,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   </div>
                 )}
               </div>
-              
+
               {/* Desktop Toggle Button */}
               {!isMobile && (
                 <button
@@ -149,7 +147,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
-                  
+
                   return (
                     <li key={item.name}>
                       <SmartLink
@@ -159,11 +157,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                           (isOpen && !isMobile) || isMobile 
                             ? 'lg:px-2 xl:px-4 py-3 space-x-3' 
                             : 'px-3 py-3 justify-center'
-                        } rounded-lg transition-all duration-200 ${
-                          isActive
+                          } rounded-lg transition-all duration-200 ${isActive
                             ? 'bg-[#EDEDED]'
                             : 'text-[#353535] hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <Icon size={22} className="flex-shrink-0 text-[#353535] text-sm" />
                         {((isOpen && !isMobile) || isMobile) && (
@@ -181,13 +178,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <div className='w-full p-4 border-t border-gray-200 mt-16'>
             <button 
               onClick={handleLogoutClick}
-              className={`w-full flex items-center cursor-pointer ${
-                (isOpen && !isMobile) || isMobile 
-                  ? 'px-4 py-3 space-x-3 justify-start' 
+              className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
+                  ? 'px-4 py-3 space-x-3 justify-start'
                   : 'px-3 py-3 justify-center'
-              } rounded-lg transition-all duration-200 hover:bg-gray-50`}
+                } rounded-lg transition-all duration-200 hover:bg-gray-50`}
             >
-              <LogOut size={22} className='flex-shrink-0 text-red-600' /> 
+              <LogOut size={22} className='flex-shrink-0 text-red-600' />
               {((isOpen && !isMobile) || isMobile) && (
                 <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>
               )}
@@ -197,11 +193,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       {/* Logout Modal */}
-      <LogoutModal 
-        isOpen={showLogoutModal}
-        onConfirm={handleLogoutConfirm}
-        onCancel={handleLogoutCancel}
-      />
+      <div className='z-50'>
+        <LogoutModal
+          isOpen={showLogoutModal}
+          onConfirm={handleLogoutConfirm}
+          onCancel={handleLogoutCancel}
+        />
+      </div>
     </>
   );
 };

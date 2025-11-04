@@ -34,10 +34,10 @@ const ChatShell: React.FC = () => {
     };
 
     return (
-        <div className="w-full max-w-4xl 2xl:max-w-7xl flex h-[100vh] 2xl:h-[calc(100vh-200px)] border rounded-lg overflow-hidden shadow-sm bg-white">
+        <div className="w-full lg:max-w-5xl 2xl:max-w-3/4 flex h-[100vh] 2xl:h-[calc(100vh-200px)] rounded-xl overflow-hidden bg-white">
             {/* Sidebar */}
             <div
-                className={`w-full md:w-1/3 border-r transition-all duration-300 ${selectedChatId ? "hidden md:flex" : "flex"
+                className={`w-full sm:w-1/3 md:w-xs 2xl:w-xl border-r border-gray-100 transition-all duration-300 ${selectedChatId ? "hidden sm:flex" : "flex"
                     }`}
             >
                 <ChatSidebar
@@ -49,7 +49,7 @@ const ChatShell: React.FC = () => {
 
             {/* Chat Window */}
             <div
-                className={`flex-1 transition-all duration-300 ${selectedChatId ? "flex" : "hidden md:flex"
+                className={`flex-1 transition-all duration-300 ${selectedChatId ? "flex" : "hidden sm:flex"
                     }`}
             >
                 <ChatWindow

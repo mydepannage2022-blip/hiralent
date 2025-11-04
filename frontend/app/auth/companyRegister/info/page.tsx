@@ -1,4 +1,3 @@
-// app/auth/companyRegister/info/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -8,7 +7,6 @@ import { getAuthPageConfig } from "../../../../config/authPagesConfig";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 import SmartLink from "@/src/components/layout/SmartLink";
 import { locationOptions } from "@/src/constants/groupedLocationOptions";
-// Types
 import { industryOptions } from "@/src/constants/groupedIndustriesOptions";
 import { useCreateCompanyProfile } from "@/src/lib/auth/auth.queries";
 
@@ -21,10 +19,15 @@ interface FormData {
   location: string;
   description: string;
 <<<<<<< HEAD
+<<<<<<< HEAD
   registrationNumber: string;
   fullAddress: string;
 =======
 >>>>>>> main
+=======
+  registrationNumber: string;
+  fullAddress: string;
+>>>>>>> f5158f792436409fab0da46af64b7c212cbeadbe
 }
 
 interface FormErrors {
@@ -49,6 +52,8 @@ interface FormTouched {
   registrationNumber?: boolean;
   fullAddress?: boolean;
 }
+
+
 
 interface OptionType {
   value: string;

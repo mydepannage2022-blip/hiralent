@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { QuestionService } from '../../services/question/Question.service';
 import { QuestionGeneratorService } from '../../services/question/QuestionGenerator.service';
+import { aiQuestionGenerationService } from '../../services/ai/ai-question-generation.service'; 
 
 export class QuestionController {
   private questionService: QuestionService;
@@ -66,17 +67,43 @@ export class QuestionController {
   }
 
   // POST /api/questions
-  async createQuestion(req: Request, res: Response) {
-    try {
-      const question = await this.questionService.createQuestion(req.body);
-      res.json({ success: true, question });
-    } catch (error: any) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
+// POST /api/questions
+async createQuestion(req: Request, res: Response) {
+  console.log('📝 [CONTROLLER] createQuestion called');
+  console.log('👤 [CONTROLLER] req.user:', req.user); // ✅ AJOUTÉ
+
+  try {
+    const userId = req.user?.user_id; // ✅ AJOUTÉ
+
+    // ✅ AJOUTÉ: Vérifier l'authentification
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User authentication required'
       });
     }
+
+    console.log('👤 [CONTROLLER] User ID:', userId); // ✅ AJOUTÉ
+
+    const question = await this.questionService.createQuestion({
+      ...req.body,
+      createdBy: userId,  // ✅ AJOUTÉ!
+      aiGenerated: false, // ✅ AJOUTÉ!
+      source: 'manual'    // ✅ AJOUTÉ!
+    });
+
+    console.log('💾 [CONTROLLER] Question created:', question.id);
+    console.log('👤 [CONTROLLER] Created by:', question.createdBy); // ✅ AJOUTÉ
+
+    res.json({ success: true, question });
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] createQuestion ERROR:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
+}
 
   // PUT /api/questions/:id
   async updateQuestion(req: Request, res: Response) {
@@ -167,6 +194,7 @@ export class QuestionController {
   } // ← ACCOLADE FERMANTE AJOUTÉE ICI !
 
   // POST /api/questions/generate
+  /*
   async generateQuestion(req: Request, res: Response) {
     try {
       const { topic, difficulty = 'medium' } = req.body;
@@ -199,7 +227,7 @@ export class QuestionController {
         error: error.message 
       });
     }
-  }
+  }*/
 
   // GET /api/questions/stats/overview
   async getStats(req: Request, res: Response) {
@@ -263,4 +291,210 @@ export class QuestionController {
       });
     }
   }
+  // ========================================
+  //  NOUVELLES MÉTHODES AI
+  // ========================================
+
+  /**
+   * Health check du AI service
+   */
+  async checkAIQuestionServiceHealth(req: Request, res: Response) {
+    console.log('[CONTROLLER] checkAIQuestionServiceHealth called');
+    
+    try {
+      const health = await aiQuestionGenerationService.checkHealth();
+      res.json({
+        success: true,
+        service: 'AI Question Generation',
+        status: health
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        success: false,
+        error: 'AI Question Generation service health check failed',
+        details: error.message
+      });
+    }
+  }
+
+  /**
+   * Génère une seule question via AI
+   */
+// Dans QuestionController - méthodes generateQuestion et generateBatchQuestions
+
+/**
+ * Génère une seule question via AI
+ */
+async generateQuestion(req: Request, res: Response) {
+  console.log('🤖 [CONTROLLER] generateQuestion called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { topic, difficulty } = req.body;
+    const userId = req.user?.user_id;
+
+    // ✅ CORRECTION: Exiger absolument l'authentification
+    if (!userId) {
+      console.log('❌ [CONTROLLER] User not authenticated for AI generation');
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for AI question generation',
+        details: 'Please log in to generate AI questions'
+      });
+    }
+
+    console.log('✅ [CONTROLLER] User authenticated:', userId);
+
+    // Validation du topic
+    if (!topic) {
+      return res.status(400).json({
+        success: false,
+        error: 'Topic is required'
+      });
+    }
+
+    console.log('🤖 [CONTROLLER] Calling AI service...');
+
+    const aiResponse = await aiQuestionGenerationService.generateQuestion({
+      topic,
+      difficulty: difficulty || 'medium'
+    });
+
+    if (!aiResponse.success || !aiResponse.question) {
+      throw new Error('AI generation failed: ' + (aiResponse.error || 'Unknown error'));
+    }
+
+    console.log('✅ [CONTROLLER] AI generation successful');
+    console.log('📝 [CONTROLLER] Question:', aiResponse.question.title);
+
+    // ✅ CORRECTION: S'assurer que createdBy est toujours défini
+    const savedQuestion = await this.questionService.createQuestion({
+      title: aiResponse.question.title,
+      description: aiResponse.question.explanation,
+      problemStatement: aiResponse.question.problemStatement,
+      difficulty: aiResponse.question.difficulty as 'easy' | 'medium' | 'hard',
+      skillTags: aiResponse.question.skillTags,
+      type: 'coding',
+      canonicalSolution: aiResponse.question.canonicalSolution,
+      testCases: aiResponse.question.testCases,
+      status: 'draft',
+      aiGenerated: true,
+      source: 'ai_gemini',
+      createdBy: userId  // ✅ TOUJOURS défini maintenant
+    });
+
+    console.log('💾 [CONTROLLER] Question saved:', savedQuestion.id);
+    console.log('👤 [CONTROLLER] Created by:', savedQuestion.createdBy);
+
+    res.status(201).json({
+      success: true,
+      message: 'Question generated and saved successfully',
+      question: savedQuestion
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateQuestion ERROR:', error.message);
+    
+    if (error.message.includes('AI service is not available')) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI Question Generation service is currently unavailable',
+        details: 'Please ensure the Python service is running on port 8000'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate question',
+      details: error.message
+    });
+  }
 }
+
+/**
+ * Génère plusieurs questions en batch
+ */
+async generateBatchQuestions(req: Request, res: Response) {
+  console.log('🤖 [CONTROLLER] generateBatchQuestions called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { topics, difficulty, countPerTopic } = req.body;
+    const userId = req.user?.user_id;
+
+    // ✅ CORRECTION: Exiger absolument l'authentification
+    if (!userId) {
+      console.log('❌ [CONTROLLER] User not authenticated for batch AI generation');
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for AI batch question generation',
+        details: 'Please log in to generate AI questions'
+      });
+    }
+
+    if (!topics || !Array.isArray(topics) || topics.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Topics array is required'
+      });
+    }
+
+    console.log('✅ [CONTROLLER] User authenticated:', userId);
+    console.log('🤖 [CONTROLLER] Generating batch for topics:', topics);
+
+    const result = await aiQuestionGenerationService.generateBatchQuestions(
+      topics,
+      difficulty || 'medium',
+      countPerTopic || 2
+    );
+
+    if (!result.success || !result.questions) {
+      throw new Error('Batch generation failed: ' + (result.error || 'Unknown error'));
+    }
+
+    console.log('✅ [CONTROLLER] Batch generation successful');
+    console.log('📝 [CONTROLLER] Generated', result.questions.length, 'questions');
+
+    const savedQuestions = [];
+    for (const question of result.questions) {
+      const saved = await this.questionService.createQuestion({
+        title: question.title,
+        description: question.explanation,
+        problemStatement: question.problemStatement,
+        difficulty: question.difficulty as 'easy' | 'medium' | 'hard',
+        skillTags: question.skillTags,
+        type: 'coding',
+        canonicalSolution: question.canonicalSolution,
+        testCases: question.testCases,
+        status: 'draft',
+        aiGenerated: true,
+        source: 'ai_gemini',
+        createdBy: userId  // ✅ TOUJOURS défini maintenant
+      });
+      savedQuestions.push(saved);
+    }
+
+    console.log('💾 [CONTROLLER] Saved', savedQuestions.length, 'questions');
+    console.log('👤 [CONTROLLER] All created by:', userId);
+
+    res.status(201).json({
+      success: true,
+      message: `Generated and saved ${savedQuestions.length} questions`,
+      count: savedQuestions.length,
+      questions: savedQuestions
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateBatchQuestions ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate batch questions',
+      details: error.message
+    });
+  }
+}
+}
+  
+
+  
+

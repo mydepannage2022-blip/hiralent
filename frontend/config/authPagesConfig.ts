@@ -176,7 +176,14 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
     testimonials: companyTestimonials,
     title: "Company Login",
     subtitle: "Access your company dashboard to manage jobs and candidates"
+  }  ,
+  companyVerification: {
+  backgroundImage: "/images/company.webp",
+  testimonials: companyTestimonials,
+  title: "Document Verification",
+  subtitle: "Upload your company registration documents for AI verification"
   }
+
 };
 
 // Utility function to get config for a specific page

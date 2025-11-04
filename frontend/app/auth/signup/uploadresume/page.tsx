@@ -1,4 +1,3 @@
-// pages/auth/signup/uploadresume.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,31 +12,31 @@ const UploadResumePage = () => {
   const { mutate: uploadResumeMutation, isPending } = useUploadResume();
   const pageConfig = getAuthPageConfig('uploadresume');
   const [resume, setResume] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, processing, completed
+  const [uploadStatus, setUploadStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
+  const [forceProcessing, setForceProcessing] = useState(false);
   const router = useRouter();
 
-  // Simulate processing progress
-  useEffect(() => {
-    if (uploadStatus === 'processing') {
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setUploadStatus('completed');
-            // Auto redirect after completion
-            setTimeout(() => {
-              router.push('/auth/logout');
-            }, 2000);
-            return 100;
-          }
-          return prev + 12.5; // 8 seconds = 8 * 12.5 = 100%
-        });
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [uploadStatus, router]);
+useEffect(() => {
+  if (forceProcessing) {
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setUploadStatus('completed');
+          // Auto redirect after 1 minute + 2 seconds delay
+          setTimeout(() => {
+            router.push('/auth/logout');
+          }, 2000);
+          return 100;
+        }
+        return prev + 1.67; // 60 seconds = 60 * 1.67 = ~100%
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }
+}, [forceProcessing, router]);
 
   const handleFileChange = (e: any) => {
     const file = e.target.files[0];
@@ -61,25 +60,32 @@ const UploadResumePage = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (resume) {
-      setUploadStatus('uploading');
-      try {
-        await uploadResumeMutation(resume);
-        setUploadStatus('processing');
-        setProgress(0);
-      } catch (error) {
-        setUploadStatus('idle');
-        alert('Upload failed. Please try again.');
+  e.preventDefault();
+  if (resume) {
+    setUploadStatus('uploading');
+    
+    uploadResumeMutation(resume, {
+      onSuccess: () => {
+        console.log('✅ Upload successful - but continuing timer');
+      },
+      onError: () => {
+        console.log('❌ Upload failed - but continuing timer');
       }
-    } else {
-      alert("Please select a valid resume");
-    }
-  };
+    });
+    
+    setTimeout(() => {
+      setUploadStatus('processing');
+      setProgress(0);
+      setForceProcessing(true); 
+    }, 2000); 
+    
+  } else {
+    alert("Please select a valid resume");
+  }
+};
 
   return (
     <>
-      {/* LOADING OVERLAY - Only shows when processing */}
       <AnimatePresence>
         {uploadStatus !== 'idle' && (
           <motion.div
@@ -95,7 +101,6 @@ const UploadResumePage = () => {
               transition={{ duration: 0.3 }}
             >
               <div className="text-center">
-                {/* Spinning Icon */}
                 <motion.div
                   className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-[#063B82] border-t-transparent"
                   animate={{ rotate: 360 }}
@@ -114,7 +119,6 @@ const UploadResumePage = () => {
                   {uploadStatus === 'completed' && "Redirecting you to complete setup..."}
                 </p>
 
-                {/* Progress Bar */}
                 {uploadStatus === 'processing' && (
                   <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
                     <motion.div 

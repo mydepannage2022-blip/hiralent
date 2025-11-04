@@ -27,7 +27,7 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
-import authRoutes from './routes/auth.routes';
+import authRoutes from './routes/auth/auth.routes';
 import candidateRoutes from './routes/candidate.routes';
 import companyRoutes from './routes/company.routes';
 import uploadRoutes from "./routes/upload.routes";

@@ -6,22 +6,22 @@ const DashboardJobStatistics = dynamic(() =>
   loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>
 });
 
-const DashboardProfilePercentage = dynamic(() => 
+const DashboardProfilePercentage = dynamic(() =>
   import("@/src/components/candidate/dashboard/home/analytics/DashboardProfilePercantage"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl"></div>
 });
 
-const DashboardStatus = dynamic(() => 
+const DashboardStatus = dynamic(() =>
   import("@/src/components/candidate/dashboard/home/analytics/DashbordStatus"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl"></div>
 });
 
-const MessagesModule = dynamic(() => 
+const MessagesModule = dynamic(() =>
   import("@/src/components/candidate/dashboard/home/DashboardChatModule"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-80 rounded-xl"></div>
 });
 
-const SavedJobs = dynamic(() => 
+const SavedJobs = dynamic(() =>
   import("@/src/components/candidate/dashboard/home/SavedJobs"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded-xl"></div>
 });

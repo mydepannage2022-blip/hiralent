@@ -4,28 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import Button from '@/src/components/layout/Button';
 import { Copy, Check } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
-import { ResumeLink as ResumeLinkType } from '@/src/types/profile';
-
-// MOCK DATA
-const mockResumeLink: ResumeLinkType = {
-  url: 'https://Joblin.com/u/LF-8752322',
-  qrCodeData: 'https://Joblin.com/u/LF-8752322'
-};
+import { useAuth } from '@/src/context/AuthContext';
 
 interface ResumeLinkProps {
-  data?: ResumeLinkType; // Optional ab
   className?: string;
 }
 
 export const ResumeLink: React.FC<ResumeLinkProps> = ({
-  data = mockResumeLink, // Default mock data
   className = ''
 }) => {
+  const { user } = useAuth();
   const [isCopied, setIsCopied] = useState(false);
   
+  // Generate real public profile URL using candidate ID and frontend URL
+  const getPublicProfileUrl = () => {
+    if (!user?.user_id) return '';
+    
+    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
+    return `${frontendUrl}/candidate/public-profile/${user.user_id}`;
+  };
+
+  const profileUrl = getPublicProfileUrl();
+  
   const handleCopyLink = async () => {
+    if (!profileUrl) return;
+    
     try {
-      await navigator.clipboard.writeText(data.url);
+      await navigator.clipboard.writeText(profileUrl);
       setIsCopied(true);
       
       // Reset copy state after 2 seconds
@@ -34,7 +39,7 @@ export const ResumeLink: React.FC<ResumeLinkProps> = ({
       console.error('Failed to copy link:', err);
       // Fallback for browsers that don't support clipboard API
       const textArea = document.createElement('textarea');
-      textArea.value = data.url;
+      textArea.value = profileUrl;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
@@ -43,6 +48,17 @@ export const ResumeLink: React.FC<ResumeLinkProps> = ({
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
+
+  // Don't render if no user or user_id
+  if (!user?.user_id) {
+    return (
+      <Card className={`w-full max-w-sm ${className}`}>
+        <CardContent className="p-6 text-center">
+          <p className="text-gray-500">Please log in to view your resume link</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={`w-full max-w-sm ${className}`}>
@@ -59,7 +75,7 @@ export const ResumeLink: React.FC<ResumeLinkProps> = ({
         {/* QR Code */}
         <div className="flex justify-center">
           <QRCodeDisplay 
-            url={data.url}
+            url={profileUrl}
             size={150}
           />
         </div>
@@ -67,7 +83,7 @@ export const ResumeLink: React.FC<ResumeLinkProps> = ({
         {/* Resume Link */}
         <div className="text-center space-y-3">
           <p className="text-blue-600 font-medium text-sm break-all">
-            {data.url}
+            {profileUrl}
           </p>
           
           <Button

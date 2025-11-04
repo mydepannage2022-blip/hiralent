@@ -189,6 +189,7 @@
     @apply bg-background text-foreground;
   }
 }
+
 .button-play {
   border: 0;
   background: transparent;
@@ -201,6 +202,7 @@
   border-style: solid;
   border-width: 10px 0 10px 15px;
 }
+
 .button-play.paused {
   height: 20px;
   border-style: double;
@@ -260,4 +262,26 @@
 .swiper-pagination-bullet-active {
   background-color: #000000 !important;
   /* active */
+}
+
+/* highlight block behind the heading */
+.name-highlight {
+  position: relative;
+  display: inline-block;
+  z-index: 10;
+  padding: 6px;
+  line-height: 1;
+}
+
+.name-highlight::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: 10px;
+  /* pushes the white block slightly below text top to match screenshot */
+  bottom: 0;
+  background: white;
+  z-index: -1;
+  transform: skewX(4deg);
 }

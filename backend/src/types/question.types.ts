@@ -12,6 +12,8 @@ export interface QuestionData {
   status?: 'draft' | 'pending_review' | 'approved' | 'rejected';
   aiGenerated?: boolean;
   source?: string;
+  createdBy?: string;  // ✅ AJOUTÉ!
+
 }
 
 export interface TestCase {

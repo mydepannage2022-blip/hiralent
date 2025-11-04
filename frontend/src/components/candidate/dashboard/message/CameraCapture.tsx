@@ -32,11 +32,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onClose, onCapture }) => 
 
         startCamera();
 
-        // ✅ Clean up camera on unmount
-        return () => stopCamera();
+        return () => {
+            stopCamera();
+        };
     }, [onClose]);
 
-    // ✅ Stops and releases the camera completely
+    // ✅ Stop and fully release the camera
     const stopCamera = () => {
         const stream = streamRef.current;
         if (stream) {
@@ -46,42 +47,50 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onClose, onCapture }) => 
             streamRef.current = null;
         }
 
+        // ✅ Forcefully detach video source
         if (videoRef.current) {
-            videoRef.current.pause();
-            // Clearing srcObject ensures camera is released
-            videoRef.current.srcObject = null;
-            // This extra step ensures full release in Chrome
-            videoRef.current.removeAttribute("srcObject");
-            videoRef.current.load();
+            try {
+                videoRef.current.pause();
+                videoRef.current.srcObject = null;
+                videoRef.current.removeAttribute("srcObject");
+                videoRef.current.load();
+            } catch (e) {
+                console.warn("Error stopping camera:", e);
+            }
         }
+
+        // ✅ Extra: give browser a short moment to release hardware
+        return new Promise((resolve) => setTimeout(resolve, 200));
     };
 
-    // ✅ Capture photo
-    const handleCapture = () => {
+    // ✅ Capture photo and instantly close camera
+    const handleCapture = async () => {
         const video = videoRef.current;
         if (!video) return;
 
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
-
         const ctx = canvas.getContext("2d");
         ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const dataUrl = canvas.toDataURL("image/png");
 
-        // Stop camera right away before sending
-        stopCamera();
+        // 🧩 Stop and release camera completely before closing
+        await stopCamera();
 
-        // Delay slightly to ensure browser fully releases camera
+        // 🧩 Close modal right after stream release
+        onClose();
+
+        // 🧩 Now send captured image
         setTimeout(() => {
             onCapture(dataUrl);
-        }, 150);
+        }, 100);
     };
 
-    // ✅ Close modal and stop camera
-    const handleClose = () => {
-        stopCamera();
+    // ✅ Handle manual close
+    const handleClose = async () => {
+        await stopCamera();
         onClose();
     };
 
@@ -108,10 +117,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onClose, onCapture }) => 
                 {/* Capture button */}
                 <button
                     onClick={handleCapture}
-                    className="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2"
+                    className="mt-3 bg-[#005DDC] hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2"
                 >
-                    <Camera size={20} />
-                    Capture
+                    <Camera size={24} />
                 </button>
             </div>
         </div>

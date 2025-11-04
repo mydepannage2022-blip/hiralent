@@ -111,6 +111,7 @@ export const signupSteps: Step[] = [
 ];
 
 // Configuration for company registration steps
+// Add step 3 in companySteps array
 export const companySteps: Step[] = [
   {
     id: 1,
@@ -119,8 +120,13 @@ export const companySteps: Step[] = [
   },
   {
     id: 2,
-    path: "/auth/companyRegister/info",
+    path: "/auth/companyRegister/info", 
     label: "Company Details"
+  },
+  {
+    id: 3,
+    path: "/auth/companyRegister/verification",
+    label: "Document Verification"
   }
 ];
 
