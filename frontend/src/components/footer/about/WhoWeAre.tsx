@@ -53,3 +53,5 @@ const WhoWeAre = () => {
         </section>
     );
 }
+
+export default WhoWeAre

@@ -34,8 +34,9 @@ async function processOne(job: { submissionId: string; assessmentId: string; que
       }
     } catch (ve) {
       if (ve instanceof ZodError) {
-        validationWarnings.push({ type: 'runner_schema', errors: ve.errors });
-        logger.warn({ submissionId: job.submissionId, validationErrors: ve.errors }, 'runner result schema validation failed');
+        // Zod v3 exposes `issues` for detailed validation info
+        validationWarnings.push({ type: 'runner_schema', issues: ve.issues });
+        logger.warn({ submissionId: job.submissionId, validationErrors: ve.issues }, 'runner result schema validation failed');
       } else {
         logger.warn({ submissionId: job.submissionId, err: String(ve) }, 'runner schema validation exception');
       }
@@ -47,8 +48,8 @@ async function processOne(job: { submissionId: string; assessmentId: string; que
       }
     } catch (ve) {
       if (ve instanceof ZodError) {
-        validationWarnings.push({ type: 'plagiarism_schema', errors: ve.errors });
-        logger.warn({ submissionId: job.submissionId, validationErrors: ve.errors }, 'plagiarism schema validation failed');
+        validationWarnings.push({ type: 'plagiarism_schema', issues: ve.issues });
+        logger.warn({ submissionId: job.submissionId, validationErrors: ve.issues }, 'plagiarism schema validation failed');
       } else {
         logger.warn({ submissionId: job.submissionId, err: String(ve) }, 'plagiarism schema validation exception');
       }

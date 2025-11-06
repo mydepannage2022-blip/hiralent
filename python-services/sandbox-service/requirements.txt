@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+docker
+grpcio
+grpcio-tools
+pika
+redis
+psutil
+pydantic
+typing-extensions

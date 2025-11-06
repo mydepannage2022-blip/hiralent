@@ -1,7 +1,11 @@
 import express, { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { generateToken } from '../utils/jwt.util';
 import { PrismaClient } from '@prisma/client';
 import { emitSubmissionEvent } from '../lib/submissionEmitter';
+import { main as runCompanyNotifier } from '../scripts/companyEmailNotifier';
+import * as authService from '../services/auth/auth.service';
+import * as companyService from '../services/company.service';
 
 const prisma = new PrismaClient();
 
@@ -35,6 +39,10 @@ router.post('/ensure-user', async (req: Request, res: Response) => {
   const full_name = String(req.body.full_name || req.query.full_name || 'Dev User');
 
   try {
+    // create a dev-friendly hashed password so login works locally
+    const devPassword = 'devpass';
+    const hashed = await bcrypt.hash(devPassword, 10);
+
     const user = await prisma.user.upsert({
       where: { user_id },
       update: {
@@ -44,14 +52,15 @@ router.post('/ensure-user', async (req: Request, res: Response) => {
       create: {
         user_id,
         email,
-        password_hash: 'dev-placeholder',
+        password_hash: hashed,
         full_name,
         role: 'candidate',
         is_email_verified: true,
       },
     });
 
-    return res.json({ user });
+  // return the dev password to make it easy to log in via /dev/login-test
+  return res.json({ user, devPassword });
   } catch (err) {
     console.error('ensure-user error:', err);
     return res.status(500).json({ error: 'Failed to ensure user' });
@@ -114,3 +123,97 @@ router.post('/emit-event', async (req: Request, res: Response) => {
 });
 
 export default router;
+
+// NOTE: additional dev-only endpoints are defined above. We add two helpers below
+// to trigger the company notifier and to resend verification emails without
+// modifying production controllers. Both are guarded by ENABLE_DEV_MINT.
+
+router.post('/notify-companies', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+
+  try {
+    await runCompanyNotifier();
+    return res.json({ ok: true, message: 'Company notifier executed' });
+  } catch (e) {
+    console.error('notify-companies error', e);
+    return res.status(500).json({ error: 'failed to run notifier' });
+  }
+});
+
+// resend verification by user_id or email (dev only)
+router.post('/send-verification', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+
+  const { user_id, email } = req.body || {};
+
+  try {
+    if (!user_id && !email) {
+      return res.status(400).json({ error: 'user_id or email required' });
+    }
+
+    let targetUserId = user_id as string | undefined;
+    if (!targetUserId && email) {
+      const u = await prisma.user.findUnique({ where: { email: String(email) } });
+      if (!u) return res.status(404).json({ error: 'user not found' });
+      targetUserId = u.user_id;
+    }
+
+    await authService.resendVerificationEmail(targetUserId!);
+    return res.json({ ok: true, message: 'Verification email queued/sent' });
+  } catch (e) {
+    console.error('send-verification error', e);
+    return res.status(500).json({ error: 'failed to send verification' });
+  }
+});
+
+// Dev helper: create a company profile for a given user_id (bypasses checkAuth)
+// Useful when the frontend flow fails during auth or token handling. This is
+// strictly dev-only and requires ENABLE_DEV_MINT=1.
+router.post('/dev/create-profile', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+
+  const { user_id, profile } = req.body || {};
+  if (!user_id || !profile) return res.status(400).json({ error: 'user_id and profile required' });
+
+  try {
+    const result = await companyService.createCompanyProfile(user_id, profile);
+    return res.json({ ok: true, result });
+  } catch (e: any) {
+    console.error('dev create-profile error', e);
+    return res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+// Dev helper: run the login service directly (bypasses HTTP validation) and
+// return the raw service result. Useful to see if the service returns a token
+// even if the frontend call is failing.
+router.post('/dev/login-test', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+
+  try {
+    const result = await authService.login({ email, password } as any, req);
+    return res.json({ ok: true, result });
+  } catch (e: any) {
+    console.error('dev login-test error', e);
+    return res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+// Dev helper: echo request headers/body so frontend payload can be inspected
+router.post('/dev/echo', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+  return res.json({ headers: req.headers, body: req.body });
+});

@@ -2,7 +2,7 @@ import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { enqueueRunInMemory } from '../queues/runs.queue';
 
-let queue: any | null = null;
+let queue: Queue | null = null;
 
 // Allow forcing in-memory queue for local development/testing even when REDIS_URL is set.
 const forceInMemory = (process.env.FORCE_INMEMORY || process.env.USE_IN_MEMORY_QUEUE) === '1' || (process.env.FORCE_INMEMORY || '').toLowerCase() === 'true';

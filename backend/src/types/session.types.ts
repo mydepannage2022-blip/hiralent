@@ -137,6 +137,8 @@ export interface CreateSessionRequest {
 }
 
 // Enhanced Request interface for Express
+import type { Request } from 'express';
+
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
   sessionInfo?: SessionInfo;

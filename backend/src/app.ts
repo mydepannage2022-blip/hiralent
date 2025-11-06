@@ -37,6 +37,7 @@ import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import sessionRoutes from './routes/auth/session.routes';
 import questionRoutes from './routes/questions/question.routes';
+// Dev-only routes are mounted below to avoid exposing them in production.
 
 
 // Mount routes
@@ -57,6 +58,18 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
+
+// Mount dev routes only in non-production to avoid touching production behavior
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    // require here so production bundles don't include dev-only code
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const devRoutes = require('./routes/dev.routes').default;
+    app.use('/dev', devRoutes);
+  } catch (e) {
+    console.warn('Dev routes not available:', (e as Error).message);
+  }
+}
 
 
 app.get('/', (req: Request, res: Response) => {

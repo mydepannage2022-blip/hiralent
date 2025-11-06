@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCompanyStats = exports.updateCompanyProfile = exports.getCompanyProfile = exports.createCompanyProfile = void 0;
-// backend/src/services/company.service.ts
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const createCompanyProfile = async (userId, data) => {
     try {
@@ -20,13 +19,13 @@ const createCompanyProfile = async (userId, data) => {
         }
         const companyProfile = await prisma_1.default.companyProfile.create({
             data: {
-                company_id: userId, // Use user_id as company_id
+                company_id: userId,
                 company_name: data.company_name,
                 display_name: data.display_name || data.company_name,
                 industry: data.industry,
                 company_size: data.company_size,
                 website: data.website,
-                headquarters: data.location, // Map location to headquarters
+                headquarters: data.location,
                 description: data.description,
                 founded_year: data.founded_year,
                 contact_number: data.contact_number,
@@ -37,8 +36,8 @@ const createCompanyProfile = async (userId, data) => {
                 employee_count: data.employee_count,
                 remote_policy: data.remote_policy,
                 registration_number: data.registration_number,
-                full_address: data.full_address,
                 verified: false,
+                full_address: data.full_address,
                 rating: null,
                 total_jobs_posted: 0,
                 active_jobs_count: 0
@@ -60,7 +59,6 @@ const createCompanyProfile = async (userId, data) => {
 exports.createCompanyProfile = createCompanyProfile;
 const getCompanyProfile = async (userId) => {
     try {
-        // Get user with company profile
         const user = await prisma_1.default.user.findUnique({
             where: { user_id: userId },
             include: {
@@ -94,7 +92,6 @@ const getCompanyProfile = async (userId) => {
 exports.getCompanyProfile = getCompanyProfile;
 const updateCompanyProfile = async (userId, data) => {
     try {
-        // Check if user exists and has company role
         const user = await prisma_1.default.user.findUnique({
             where: { user_id: userId },
             select: { user_id: true, role: true, companyProfile: true }
@@ -109,7 +106,6 @@ const updateCompanyProfile = async (userId, data) => {
         if (!user.companyProfile) {
             throw new Error('Company profile not found');
         }
-        // Update company profile
         const updatedProfile = await prisma_1.default.companyProfile.update({
             where: { company_id: userId },
             data: {
@@ -127,7 +123,6 @@ const updateCompanyProfile = async (userId, data) => {
 exports.updateCompanyProfile = updateCompanyProfile;
 const getCompanyStats = async (userId) => {
     try {
-        // Get company profile with related stats
         const companyProfile = await prisma_1.default.companyProfile.findUnique({
             where: { company_id: userId },
             select: {
@@ -143,7 +138,6 @@ const getCompanyStats = async (userId) => {
         if (!companyProfile) {
             throw new Error('Company profile not found');
         }
-        // Get additional stats from related tables
         const stats = {
             profile: companyProfile,
             metrics: {
@@ -163,7 +157,6 @@ const getCompanyStats = async (userId) => {
     }
 };
 exports.getCompanyStats = getCompanyStats;
-// Helper function to calculate profile completion percentage
 const calculateProfileCompletion = (profile) => {
     const requiredFields = [
         'company_name',
@@ -188,7 +181,6 @@ const calculateProfileCompletion = (profile) => {
         if (profile[field])
             completedOptional++;
     });
-    // Required fields are 70% weight, optional are 30%
     const requiredScore = (completedRequired / requiredFields.length) * 70;
     const optionalScore = (completedOptional / optionalFields.length) * 30;
     return Math.round(requiredScore + optionalScore);

@@ -18,16 +18,8 @@ interface FormData {
   website: string;
   location: string;
   description: string;
-<<<<<<< HEAD
   registrationNumber: string;
   fullAddress: string;
-=======
-<<<<<<< HEAD
-  registrationNumber: string;
-  fullAddress: string;
-=======
->>>>>>> main
->>>>>>> d394b2db68943cccb6eebd0aede745b27f3b96fa
 }
 
 interface FormErrors {

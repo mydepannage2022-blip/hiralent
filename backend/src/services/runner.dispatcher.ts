@@ -66,7 +66,8 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
           RunnerResultSchema.parse(resp.data);
         } catch (ve) {
           if (ve instanceof ZodError) {
-            logger.warn({ validationErrors: ve.errors }, 'runner HTTP response validation failed');
+            // ZodError exposes `issues` for detailed validation information
+            logger.warn({ validationErrors: ve.issues }, 'runner HTTP response validation failed');
           }
         }
         return resp.data;
@@ -96,7 +97,7 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
             RunnerResultSchema.parse(parsed);
           } catch (ve) {
             if (ve instanceof ZodError) {
-              logger.warn({ submissionAttempt: attempt, validationErrors: ve.errors }, 'runner response validation failed');
+              logger.warn({ submissionAttempt: attempt, validationErrors: ve.issues }, 'runner response validation failed');
             } else {
               logger.warn({ submissionAttempt: attempt, err: String(ve) }, 'runner response validation exception');
             }
@@ -142,8 +143,8 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
       try {
         RunnerResultSchema.parse(parsed);
       } catch (ve) {
-        if (ve instanceof ZodError) {
-          logger.warn({ validationErrors: ve.errors }, 'local runner retry response validation failed');
+          if (ve instanceof ZodError) {
+          logger.warn({ validationErrors: ve.issues }, 'local runner retry response validation failed');
         } else {
           logger.warn({ err: String(ve) }, 'local runner retry response validation exception');
         }

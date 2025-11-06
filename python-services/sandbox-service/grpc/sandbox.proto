@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package sandbox;
+
+service SandboxService {
+  rpc Run (RunRequest) returns (RunResponse) {}
+}
+
+message RunRequest {
+  string submission_id = 1;
+  string language = 2;
+  string artifact_path = 3;
+}
+
+message RunResponse {
+  string submission_id = 1;
+  string status = 2;
+  string result_uri = 3;
+}

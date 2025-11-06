@@ -1,16 +1,7 @@
 // backend/src/controller/company.controller.ts
 import { Request, Response } from "express";
 import * as companyService from "../services/company.service";
-
-// Temporary type assertion until the declaration file works
-interface AuthenticatedRequest extends Request {
-  user?: {
-    user_id: string;
-    role: string;
-    email: string;
-    agency_id?: string | null;
-  };
-}
+import type { AuthenticatedRequest } from "../types/session.types";
 
 export const createProfileController = async (req: Request, res: Response) => {
   try {

@@ -42,7 +42,7 @@ const Alert = ({ type, message, onClose }: {
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams?.get('token') ?? null;
   const { user } = useAuth();
   const router = useRouter();
   

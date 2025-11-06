@@ -22,17 +22,10 @@ export default function AdminLoginPage() {
 
       if (result.mfaSetup) {
         // First time - need to setup MFA
-<<<<<<< HEAD
         router.push('/admin/setup-mfa');
       } else if (result.requiresMFA) {
         // MFA already setup - need to verify
         router.push('/admin/verify-mfa');
-=======
-        router.push('/setup-mfa');
-      } else if (result.requiresMFA) {
-        // MFA already setup - need to verify
-        router.push('/verify-mfa');
->>>>>>> d394b2db68943cccb6eebd0aede745b27f3b96fa
       }
     } catch (err: any) {
       setError(err.message);

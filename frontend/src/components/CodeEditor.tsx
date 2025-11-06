@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Monaco } from '@monaco-editor/react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { api } from '../lib/auth/auth.api';
 import { useRunSubmission } from '../lib/useRunSubmission';
 
 type Props = {

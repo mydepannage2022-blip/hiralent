@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../../utils/email.util";
 import { generateToken } from "../../utils/jwt.util";
+import { getWelcomeEmailTemplate, getLegacyCheckEmailTemplate } from "../emailTemplates.service";
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -41,6 +42,29 @@ export const signup = async (input: SignupInput) => {
 
     const token = generateToken({ user_id: user.user_id, role: user.role });
     await sendVerificationEmail(user.email, user.user_id);
+
+    // Send company-specific welcome + legacy-check emails immediately for company signups.
+    try {
+      // Accept both 'company' and 'company_admin' roles as company signups
+      if (user.role === 'company' || user.role === 'company_admin') {
+        // Use token payload key 'userId' for verify flow compatibility
+        const verificationToken = generateToken({ userId: user.user_id }, '7d');
+        const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
+        const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
+        console.log('[post-signup-email] Sending welcome email to', user.email);
+        await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
+        console.log('[post-signup-email] Welcome email send attempted for', user.email);
+
+        // Legacy / upload link should point to the company's upload page (frontend)
+        const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
+        const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
+        console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
+        await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
+        console.log('[post-signup-email] Legacy-check email send attempted for', user.email);
+      }
+    } catch (err) {
+      console.error('Error sending post-signup company emails:', err);
+    }
 
     return { user, token };
   } catch (error: any) {
@@ -263,8 +287,16 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
       `,
     });
   } catch (error: any) {
-    console.error("Send Verification Email Error:", error);
-    throw new Error("Failed to send verification email");
+      console.error("Send Verification Email Error:", error);
+      // In development we don't want email delivery failures to break signup flows.
+      // When ENABLE_DEV_MINT=1 we log the error and continue so developers can
+      // create accounts without a working SMTP. In production we re-throw.
+      if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+        throw new Error("Failed to send verification email");
+      } else {
+        console.warn('DEV MODE: continuing despite email send failure');
+        return;
+      }
   }
 };
 
@@ -576,6 +608,10 @@ export const getUserDeletionSummary = async (userId: string) => {
       throw new Error('User not found');
     }
 
+    // Safely compute numeric counts (Prisma's _count can be a typed object)
+    const countsRecord = (user._count ?? {}) as Record<string, number>;
+    const databaseRecordsCount = Object.values(countsRecord).reduce((sum, count) => sum + (Number(count) || 0), 1);
+
     return {
       user_info: {
         user_id: user.user_id,
@@ -586,7 +622,7 @@ export const getUserDeletionSummary = async (userId: string) => {
       },
       related_records_count: user._count,
       estimated_deletion_impact: {
-        database_records: Object.values(user._count).reduce((sum, count) => sum + count, 1),
+        database_records: databaseRecordsCount,
         profile_exists: !!(user.candidateProfile || user.companyProfile || user.agencyAdminProfile)
       }
     };
