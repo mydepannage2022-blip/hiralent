@@ -27,7 +27,7 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
-import authRoutes from './routes/auth.routes';
+import authRoutes from './routes/auth/auth.routes';
 import candidateRoutes from './routes/candidate.routes';
 import companyRoutes from './routes/company.routes';
 import uploadRoutes from "./routes/upload.routes";
@@ -35,9 +35,11 @@ import ocrRoutes from './routes/ocr.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
+import sessionRoutes from './routes/auth/session.routes'
 import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
+
 
 
 // Mount routes
@@ -45,8 +47,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/ocr', ocrRoutes);
+app.use('/api/v1/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
+app.use('/api/v1/auth/sessions', sessionRoutes);
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
 app.use('/api/v1/admin', adminAuthRoutes);

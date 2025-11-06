@@ -24,3 +24,30 @@ export const ResetPasswordSchema = z.object({
 export const VerifyEmailSchema = z.object({
   token: z.string().min(10),
 });
+
+
+export const DeleteAccountSchema = z.object({
+  confirmation: z.string()
+    .optional()
+    .refine(
+      (val) => !val || val.toLowerCase().trim() === "delete my account",
+      { 
+        message: "Confirmation text must be exactly 'delete my account'" 
+      }
+    ),
+  
+  reason: z.enum([
+    "not_useful",
+    "too_expensive", 
+    "found_alternative",
+    "privacy_concerns",
+    "too_complicated",
+    "other"
+  ]).optional(),
+  
+  feedback: z.string()
+    .max(500, "Feedback cannot exceed 500 characters")
+    .optional()
+}).strict();
+
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountSchema>;

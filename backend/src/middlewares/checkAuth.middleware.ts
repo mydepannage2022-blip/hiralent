@@ -1,97 +1,95 @@
-import jwt from "jsonwebtoken";
-import { Request, Response, NextFunction } from "express";
-import dotenv from "dotenv";
+import { Request, Response, NextFunction } from 'express';
+import { verifyTokenWithDetails } from '../utils/jwt.util';
+import * as blacklistService from '../services/auth/blacklist.service';
 
-dotenv.config();
-
-// ✅ This matches your global types in express.d.ts
-interface UserPayload {
-  user_id: string;
-  role: "candidate" | "company_admin" | "super_admin" | "agency_admin" | "agency" | "company";
-  agency_id?: string;
-  company_id: string;
-  is_email_verified?: boolean;
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    user_id: string;
+    role: string;
+    agency_id?: string;
+    session_id: string;
+    is_email_verified?: boolean;
+    email?: string;
+    full_name?: string;
+    company_id?: string; // ✅ carry company_id from JWT
+  };
 }
 
-export const checkAuth = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  console.log("=== AUTH DEBUG ===");
-  console.log("Authorization Header:", req.headers.authorization);
-  console.log("Path:", req.path);
-  console.log("Method:", req.method);
-  
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    console.log("❌ No auth header found");
-    res.status(401).json({ 
-      ok: false, 
-      error: "Unauthorized: Token missing" 
-    });
-    return;
-  }
-
-  if (!authHeader.startsWith("Bearer ")) {
-    console.log("❌ Auth header doesn't start with 'Bearer '");
-    res.status(401).json({ 
-      ok: false, 
-      error: "Invalid authentication token" 
-    });
-    return;
-  }
-
-  const token = authHeader.split(" ")[1];
-  
-  console.log("Token extracted:", token?.substring(0, 20) + "...");
-  console.log("JWT_SECRET exists:", !!process.env.JWT_SECRET);
-
-  if (!token) {
-    console.log("❌ Token is empty after split");
-    res.status(401).json({ 
-      ok: false, 
-      error: "Invalid authentication token" 
-    });
-    return;
-  }
-
+export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as UserPayload;
-    
-    console.log("✅ Token decoded successfully");
-    console.log("User ID:", decoded.user_id);
-    console.log("Role:", decoded.role);
-    
-    req.user = decoded;
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: true, message: 'Access token required' });
+    }
+
+    const token = authHeader.substring(7);
+
+    // optional blacklist support
+    const isBlacklisted = await blacklistService.isTokenBlacklisted?.(token);
+    if (isBlacklisted) {
+      return res.status(401).json({ error: true, message: 'Session terminated. Please login again.' });
+    }
+
+    const { payload, error, expired } = verifyTokenWithDetails(token);
+    if (error || !payload) {
+      return res.status(401).json({ error: true, message: expired ? 'Token expired' : 'Invalid token' });
+    }
+
+    req.user = {
+      user_id: payload.user_id,
+      role: payload.role,
+      agency_id: payload.agency_id,
+      session_id: payload.session_id || 'bypass',
+      is_email_verified: payload.is_email_verified,
+      email: payload.email,
+      full_name: payload.full_name,
+      company_id: payload.company_id ?? undefined, // ✅ keep it on req.user
+    };
+
+    // (Optional) Enforce for company routes at middleware level:
+    // if ((req.user.role === 'company' || req.user.role === 'company_admin') && !req.user.company_id) {
+    //   return res.status(400).json({ success: false, message: 'Missing company_id in auth token' });
+    // }
+
     next();
   } catch (error: any) {
-    console.log("❌ JWT verification failed:", error.message);
-    console.log("Error name:", error.name);
-    
-    if (error.name === 'TokenExpiredError') {
-      console.log("⏰ Token has expired");
-      res.status(401).json({ 
-        ok: false, 
-        error: "Session expired. Please login again.",
-        code: "TOKEN_EXPIRED"
-      });
-    } else if (error.name === 'JsonWebTokenError') {
-      console.log("⚠ Invalid token format");
-      res.status(401).json({ 
-        ok: false, 
-        error: "Invalid token. Please login again.",
-        code: "INVALID_TOKEN"
-      });
-    } else {
-      console.log("⚠ Unknown token error");
-      res.status(401).json({ 
-        ok: false, 
-        error: "Invalid authentication token",
-        code: "AUTH_ERROR"
-      });
-    }
-    return;
+    console.error('❌ Auth error:', error);
+    res.status(500).json({ error: true, message: 'Authentication failed' });
   }
+};
+
+export const checkAuthLegacy = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: true, message: 'Access token required' });
+    }
+
+    const token = authHeader.substring(7);
+    const { payload, error, expired } = verifyTokenWithDetails(token);
+
+    if (error || !payload) {
+      return res.status(401).json({ error: true, message: expired ? 'Token expired' : 'Invalid token' });
+    }
+
+    req.user = {
+      user_id: payload.user_id,
+      role: payload.role,
+      agency_id: payload.agency_id,
+      session_id: payload.session_id || 'unknown',
+      company_id: payload.company_id ?? undefined, // ✅ keep it on legacy too
+    };
+
+    next();
+  } catch (error: any) {
+    console.error('Auth Legacy Middleware Error:', error);
+    res.status(500).json({ error: true, message: 'Authentication failed' });
+  }
+};
+
+export const requireActiveSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.session_id || req.user.session_id === 'legacy') {
+    return res.status(401).json({ error: true, message: 'Active session required. Please login again.' });
+  }
+  next();
 };

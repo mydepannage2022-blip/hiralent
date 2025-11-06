@@ -33,6 +33,34 @@ export const getCandidateProfile = async (): Promise<APIResponse> => {
   return response.data;
 };
 
+
+// ✅ Get public profile (no auth required)
+export const getPublicProfile = async (candidateId: string): Promise<APIResponse> => {
+  console.log('🚀 API Call - candidateId:', candidateId);
+  console.log('🌐 Base URL:', process.env.NEXT_PUBLIC_BASE_URL);
+  
+  // Create separate axios instance without auth interceptor for public calls
+  const publicApi = axios.create({
+    baseURL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  
+  const url = `/candidates/public-profile/${candidateId}`;
+  console.log('📡 Request URL:', `${publicApi.defaults.baseURL}${url}`);
+  
+  try {
+    const response = await publicApi.get(url);
+    console.log('✅ Success:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error:', error.message);
+    console.error('❌ Status:', error.response?.status);
+    console.error('❌ Data:', error.response?.data);
+    throw error;
+  }
+};
+
+
 // ==================== TYPE DEFINITIONS ====================
 
 export interface BasicInfoData {

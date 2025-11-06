@@ -34,7 +34,6 @@ const AccountSettings = () => {
   return (
     <div className='w-full flex justify-start items-start md:flex-row flex-col gap-3'>
       <div className='w-full md:w-2/3 flex flex-col justify-start gap-2 p-3 md:p-5 rounded-xl shadow-sm bg-white'>
-        <SettingsFullname />
         <SettingsAccount />
         <SecurityAccount />
         <NotificationAccount />
