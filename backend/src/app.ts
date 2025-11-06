@@ -36,6 +36,11 @@ import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import questionRoutes from './routes/questions/question.routes';
+import sessionRoutes from './routes/auth/session.routes'
+import insightsRoutes from './routes/insights.routes';
+import jobRoutes from './routes/job.routes';
+import employerAssessmentRoutes from './routes/employerAssessment.routes';
+
 
 
 // Mount routes
@@ -53,9 +58,19 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 //Question Bank
 app.use('/api/questions', questionRoutes);
 
+app.use('/api/v1/auth/sessions', sessionRoutes);
+
+// ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
+app.use('/api/v1/admin', adminAuthRoutes);
+app.use('/api/v1/admin', adminVerificationRoutes);
+
+app.use('/api/v1', insightsRoutes);
+
+app.use('/api/v1', jobRoutes);
+app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
 });
 
-export default app;
+  export default app;

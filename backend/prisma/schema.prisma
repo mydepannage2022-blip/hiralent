@@ -53,7 +53,7 @@ model User {
   phone_number      String?
   position          String?
   linkedin_url      String?
-  company_role      String?   // For company users: HR Manager, CEO, etc.
+  company_role      String? // For company users: HR Manager, CEO, etc.
   branding_notes    String?
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
@@ -64,70 +64,71 @@ model User {
   mfa_enabled       Boolean   @default(false)
 
   // Relations
-  agency                   Agency?                    @relation(fields: [agency_id], references: [agency_id])
-  candidateProfile         CandidateProfile?
-  companyProfile           CompanyProfile?            // Changed from recruiterProfile
-  agencyAdminProfile       AgencyAdminProfile?
-  auditLogs                AdminAuditLog[]
-  jobsPosted               CompanyJob[]               // Changed from RecruiterJob
-  jobApplications          JobApplication[]
-  assessments              SkillAssessment[]
-  aiInterviews             AIInterviewResult[]
-  notifications            Notification[]
-  progressUpdates          CandidateProgressTracker[]
-  progressUpdatesByMe      CandidateProgressTracker[] @relation("ProgressUpdatedBy")
-  invitationsSent          CompanyAgencyInvitation[]  @relation("CompanyInvites") // Changed from RecruiterInvitation
-  
-  // Candidate Flow Relations
-  candidateDocuments       CandidateDocument[]        @relation("CandidateDocuments")
-  candidateSkills          CandidateSkill[]          @relation("CandidateSkills")
-  skillExtractions         SkillExtraction[]         @relation("SkillExtractions")
-  careerPredictions        CareerPrediction[]        @relation("CareerPredictions")
-  jobRecommendations       JobRecommendation[]       @relation("JobRecommendations")
-  candidateVector          CandidateVector?          @relation("CandidateVector")
-  profileCompleteness      ProfileCompleteness?      @relation("ProfileCompleteness")
-  
-  // Relocation Flow Relations
-  relocationCases          RelocationCase[]          @relation("CandidateRelocationCases")
-  caseAssignments          CaseAssignment[]          @relation("AgentCaseAssignments")
-  agencyReviews            AgencyReview[]            @relation("ClientReviews")
-  
-  // AI-Powered Workflow Relations
-  sentMessages             CommunicationLog[]        @relation("SentMessages")
-  receivedMessages         CommunicationLog[]        @relation("ReceivedMessages")
-  companyAnalytics         HiringAnalytics[]         @relation("CompanyAnalytics")
-  generatedContent         GeneratedContent[]        @relation("GeneratedContent")
-  userAnalytics            UsageAnalytics[]          @relation("UserAnalytics")
-  aiFeedback               AIFeedback[]              @relation("AIFeedback")
-  sessions                 UserSession[]             @relation("UserSessions")  // ← AJOUTEZ CETTE LIGNE
+  agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile    CandidateProfile?
+  companyProfile      CompanyProfile? // Changed from recruiterProfile
+  agencyAdminProfile  AgencyAdminProfile?
+  auditLogs           AdminAuditLog[]
+  jobsPosted          CompanyJob[] // Changed from RecruiterJob
+  jobApplications     JobApplication[]
+  assessments         SkillAssessment[]
+  aiInterviews        AIInterviewResult[]
+  notifications       Notification[]
+  progressUpdates     CandidateProgressTracker[]
+  progressUpdatesByMe CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+  invitationsSent     CompanyAgencyInvitation[]  @relation("CompanyInvites") // Changed from RecruiterInvitation
 
-  
+  // Candidate Flow Relations
+  candidateDocuments  CandidateDocument[]  @relation("CandidateDocuments")
+  candidateSkills     CandidateSkill[]     @relation("CandidateSkills")
+  skillExtractions    SkillExtraction[]    @relation("SkillExtractions")
+  careerPredictions   CareerPrediction[]   @relation("CareerPredictions")
+  jobRecommendations  JobRecommendation[]  @relation("JobRecommendations")
+  candidateVector     CandidateVector?     @relation("CandidateVector")
+  profileCompleteness ProfileCompleteness? @relation("ProfileCompleteness")
+
+  // Relocation Flow Relations
+  relocationCases RelocationCase[] @relation("CandidateRelocationCases")
+  caseAssignments CaseAssignment[] @relation("AgentCaseAssignments")
+  agencyReviews   AgencyReview[]   @relation("ClientReviews")
+
+  // AI-Powered Workflow Relations
+  sentMessages     CommunicationLog[] @relation("SentMessages")
+  receivedMessages CommunicationLog[] @relation("ReceivedMessages")
+  companyAnalytics HiringAnalytics[]  @relation("CompanyAnalytics")
+  generatedContent GeneratedContent[] @relation("GeneratedContent")
+  userAnalytics    UsageAnalytics[]   @relation("UserAnalytics")
+  aiFeedback       AIFeedback[]       @relation("AIFeedback")
+  sessions UserSession[] @relation("UserSessions")
+
   // back-relation: one user -> many uploaded docs
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
-  
+
+  employerAssessments EmployerAssessment[] @relation("CompanyAssessments")
 }
 
+// Enhanced Company Profile (Previously RecruiterProfile)
 model CompanyProfile {
-  company_id        String   @id
-  
+  company_id String @id
+
   // Basic Company Info
-  company_name      String?  // Official registered company name
-  display_name      String?  // Display name (can be different from legal name)
-  industry          String?  // Technology, Healthcare, Finance, etc.
-  company_size      String?  // startup, small, medium, large, enterprise
-  website           String?
-  headquarters      String?  // Primary location
-  founded_year      Int?
-  description       String?  // Company description/about
-  
+  company_name String? // Official registered company name
+  display_name String? // Display name (can be different from legal name)
+  industry     String? // Technology, Healthcare, Finance, etc.
+  company_size String? // startup, small, medium, large, enterprise
+  website      String?
+  headquarters String? // Primary location
+  founded_year Int?
+  description  String? // Company description/about
+
   // Contact & Social
-  contact_number    String?
-  linkedin_profile  String?
-  twitter_handle    String?
-  facebook_page     String?
-  
+  contact_number   String?
+  linkedin_profile String?
+  twitter_handle   String?
+  facebook_page    String?
+
   // Business Details
-  business_type     String?  // public, private, non-profit, government
+  business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
   tax_id            String?  // Tax identification number
   employee_count    Int?     // Approximate number of employees
@@ -140,130 +141,141 @@ model CompanyProfile {
   verification_notes String? // Admin notes about verification
   
   // Hiring Details
-  hiring_volume     String?  // low, medium, high volume hiring
-  typical_roles     String[] // Common roles they hire for
-  hiring_regions    String[] // Geographic regions they hire from/for
-  remote_policy     String?  // fully_remote, hybrid, office_only
-  
+  hiring_volume  String? // low, medium, high volume hiring
+  typical_roles  String[] // Common roles they hire for
+  hiring_regions String[] // Geographic regions they hire from/for
+  remote_policy  String? // fully_remote, hybrid, office_only
+
   // Platform Specific
   logo_url          String?
   banner_url        String?
-  verified          Boolean  @default(false)
+  verified          Boolean   @default(false)
   verification_date DateTime?
-  rating            Float?   // Company rating from candidates
-  total_jobs_posted Int?     // Total jobs posted on platform
-  active_jobs_count Int?     // Currently active jobs
-  
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  rating            Float? // Company rating from candidates
+  total_jobs_posted Int? // Total jobs posted on platform
+  active_jobs_count Int? // Currently active jobs
 
-  user              User     @relation(fields: [company_id], references: [user_id])
+  // langue préférée pour les sorties AI: "en" | "ar" | "fr" (exemples)
+  preferred_language String? @default("en")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
+
 }
-
-model Question {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  problemStatement String
-  difficulty  String   // easy, medium, hard
-  skillTags   String[]
-  type        String   // coding, mcq, debugging
-  canonicalSolution String
-  testCases   Json     // { inputs: [], outputs: [] }
-  status      String   // draft, pending_review, approved, rejected
-  createdBy   String?  // user ID who created/generated
-  aiGenerated Boolean  @default(false)
-  source      String?  // ai_generated, web_scraped, manual
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("questions")
-}
-
 
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
-  admin_id         String   @id
-  phone_number     String?
-  position         String?
-  linkedin_url     String?
-  company_role     String?
-  branding_notes   String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  certifications   String[]
-  languages        String[]
-  license_details  String?
-  specialization   String[]
-  years_experience Int?
-  user             User     @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+  admin_id       String  @id
+  phone_number   String?
+  position       String?
+  linkedin_url   String?
+  company_role   String?
+  branding_notes String?
+
+  // Agency specific fields
+  license_details  String? // Professional license details
+  specialization   String[] // Areas of specialization
+  languages        String[] // Languages spoken
+  years_experience Int? // Years of experience in relocation services
+  certifications   String[] // Professional certifications
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
 }
 
+// Enhanced Job Model (Previously RecruiterJob)
 model CompanyJob {
-  job_id                String                     @id @default(uuid())
-  company_id            String
-  agency_id             String?
-  title                 String
-  location              String
-  description           String
-  salary_range          String?
-  required_skills       String?
-  status                String
-  job_type              String?
-  experience_level      String?
-  education_level       String?
-  remote_option         String?
-  visa_sponsored        Boolean?
-  relocation_assistance Boolean?
-  urgency_level         String?
-  department            String?
-  reporting_to          String?
-  team_size             Int?
-  application_deadline  DateTime?
-  max_applications      Int?
-  auto_reject_after     Int?
-  screening_questions   String[]
-  created_at            DateTime                   @default(now())
-  updated_at            DateTime                   @updatedAt
-  progressTrackers      CandidateProgressTracker[]
-  agency                Agency?                    @relation(fields: [agency_id], references: [agency_id])
-  company               User                       @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
-  applications          JobApplication[]
-  jobRecommendations    JobRecommendation[]        @relation("JobRecommendations")
-  jobVector             JobVector?                 @relation("JobVector")
-  interviewSchedules    InterviewSchedule[]
-  relocationCases       RelocationCase[]           @relation("JobRelocationCases")
-  assessments           SkillAssessment[]
+  job_id          String  @id @default(uuid())
+  company_id      String // Changed from recruiter_id
+  agency_id       String? // Optional: if job requires relocation services
+  title           String
+  location        String
+  description     String
+  salary_range    String?
+  required_skills String[]
+  status          JobStatus @default(DRAFT) // draft, active, paused, closed, cancelled
+
+  // Enhanced Job Fields
+  job_type              String? // full_time, part_time, contract, internship
+  experience_level      String? // entry, mid, senior, executive
+  education_level       String? // high_school, bachelor, master, phd
+  remote_option         String? // fully_remote, hybrid, office_only
+  visa_sponsored        Boolean? // Whether company sponsors visa
+  relocation_assistance Boolean? // Whether company provides relocation help
+  urgency_level         String? // low, medium, high, urgent
+  department            String? // Engineering, Marketing, Sales, etc.
+  reporting_to          String? // Position this role reports to
+  team_size             Int? // Size of team this role will join
+
+  // Application Settings
+  application_deadline DateTime?
+  max_applications     Int? // Maximum number of applications to accept
+  auto_reject_after    Int? // Days after which to auto-reject
+  screening_questions  String[] // Custom screening questions
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  company            User                       @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
+  agency             Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  applications       JobApplication[]
+  progressTrackers   CandidateProgressTracker[]
+  assessments        SkillAssessment[]
+  jobRecommendations JobRecommendation[]        @relation("JobRecommendations")
+  jobVector          JobVector?                 @relation("JobVector")
+  relocationCases    RelocationCase[]           @relation("JobRelocationCases")
+  interviewSchedules InterviewSchedule[] // Added relation without fields/references
+
+  employerAssessments EmployerAssessment[] @relation("JobAssessments")
+}
+
+// JOB STATUS enum 
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  CANCELLED
+  ARCHIVED
 }
 
 model JobApplication {
-  application_id      String              @id @default(uuid())
-  candidate_id        String
-  job_id              String
-  status              String
-  cover_letter        String?
-  applied_at          DateTime            @default(now())
-  updated_at          DateTime            @updatedAt
-  assessment_score    Float?
-  available_from      DateTime?
-  current_location    String?
-  interview_feedback  String?
-  rejection_reason    String?
+  application_id String   @id @default(uuid())
+  candidate_id   String
+  job_id         String
+  status         String // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  cover_letter   String?
+  applied_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Enhanced Application Fields
   salary_expectation  Float?
-  screening_answers   Json?
-  visa_status         String?
+  available_from      DateTime? // When candidate can start
+  visa_status         String? // citizen, permanent_resident, work_visa, student_visa, needs_sponsorship
   willing_to_relocate Boolean?
-  interview           AIInterviewResult?
-  candidate           User                @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job                 CompanyJob          @relation(fields: [job_id], references: [job_id])
-  interviewSchedules  InterviewSchedule[]
+  current_location    String?
+
+  // Screening & Assessment
+  screening_answers  Json? // Answers to custom screening questions
+  assessment_score   Float? // Overall assessment score
+  interview_feedback String? // Interview feedback from company
+  rejection_reason   String? // Reason for rejection
+
+  candidate          User                @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job                CompanyJob          @relation(fields: [job_id], references: [job_id]) // Changed relation
+  interview          AIInterviewResult?
+  interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
 }
 
 model CandidateProgressTracker {
   progress_id  String     @id @default(uuid())
   candidate_id String
   job_id       String
-  stage        String
+  stage        String // applied, screening, shortlisted, interviewed, offered, hired, rejected
   updated_by   String
   notes        String?
   updated_at   DateTime   @default(now())
@@ -287,70 +299,86 @@ model AIInterviewResult {
 }
 
 model SkillAssessment {
-  assessment_id        String           @id @default(uuid())
-  candidate_id         String
-  job_id               String?
-  provider             String
-  score                String?
-  status               AssessmentStatus @default(PENDING)
-  completed_at         DateTime?
-  created_at           DateTime         @default(now())
-  updated_at           DateTime         @updatedAt
+  assessment_id String           @id @default(uuid())
+  candidate_id  String
+  job_id        String?
+  provider      String
+  score         String?
+  status        AssessmentStatus @default(PENDING)
+  completed_at  DateTime?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
 
-  assessment_type      AssessmentType   @default(COMPREHENSIVE)
-  skill_category       String
-  difficulty           DifficultyLevel  @default(BEGINNER)
-  total_questions      Int              @default(20)
-  time_limit           Int              @default(30)
-  current_question     Int              @default(0)
-  started_at           DateTime?
-  questions            Json
-  answers              Json
-  overall_score        Float?
-  skill_level_result   String?
-  strengths            String[]
-  weaknesses           String[]
-  recommendations      String[]
-  ai_analysis          Json?
-  confidence_score     Float?
-
-  candidate            User             @relation(fields: [candidate_id], references: [user_id])
-  job                  CompanyJob?      @relation(fields: [job_id], references: [job_id]) // Changed relation
-  results              AssessmentResult[]
+  // AI Skill Assessment Fields
+  assessment_type    AssessmentType  @default(COMPREHENSIVE)
+  skill_category     String
+  difficulty         DifficultyLevel @default(BEGINNER)
+  total_questions    Int             @default(20)
+  time_limit         Int             @default(30)
+  current_question   Int             @default(0)
+  started_at         DateTime?
+  questions          Json
+  answers            Json
+  overall_score      Float?
+  skill_level_result String?
+  strengths          String[]
+  weaknesses         String[]
+  recommendations    String[]
+  ai_analysis        Json?
+  confidence_score   Float?
   summary            AssessmentSummary?
+
+
+  candidate User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job       CompanyJob?        @relation(fields: [job_id], references: [job_id]) // Changed relation
+  results   AssessmentResult[]
+  
+  //I add Those fields
+  employer_assessment_id String?
+  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id])
 
   @@map("skill_assessments")
 }
 
 model RelocationCase {
-  case_id              String               @id @default(uuid())
-  candidate_id         String
-  job_id               String?
-  agency_id            String
-  case_number          String               @unique
-  service_type         String
-  priority_level       String
-  status               String
+  case_id      String  @id @default(uuid())
+  candidate_id String
+  job_id       String? // Optional: linked to specific job
+  agency_id    String
+  case_number  String  @unique // Human readable case number
+
+  // Case Details
+  service_type         String // visa_processing, housing_assistance, documentation, full_relocation
+  priority_level       String // low, medium, high, urgent
+  status               String // initiated, in_progress, pending_documents, completed, cancelled
   estimated_completion DateTime?
   actual_completion    DateTime?
-  origin_country       String
-  destination_country  String
-  destination_city     String?
-  estimated_cost       Float?
-  actual_cost          Float?
-  payment_status       String?
-  case_manager_id      String?
-  notes                String?
-  documents_required   String[]
-  documents_received   String[]
-  created_at           DateTime             @default(now())
-  updated_at           DateTime             @updatedAt
-  assignments          CaseAssignment[]
-  documents            CaseDocument[]
-  updates              CaseProgressUpdate[]
-  agency               Agency               @relation(fields: [agency_id], references: [agency_id])
-  candidate            User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job                  CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
+
+  // Locations
+  origin_country      String
+  destination_country String
+  destination_city    String?
+
+  // Financial
+  estimated_cost Float?
+  actual_cost    Float?
+  payment_status String? // pending, partial, paid, refunded
+
+  // Case Management
+  case_manager_id    String? // Assigned case manager
+  notes              String?
+  documents_required String[] // List of required documents
+  documents_received String[] // List of received documents
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
+  agency      Agency               @relation(fields: [agency_id], references: [agency_id])
+  assignments CaseAssignment[]
+  updates     CaseProgressUpdate[]
+  documents   CaseDocument[]
 
   @@map("relocation_cases")
 }
@@ -858,33 +886,71 @@ model RelocationAnalytics {
   @@map("relocation_analytics")
 }
 
+enum InsightType {
+  recommendation
+  prediction
+  trend
+  alert
+  opportunity
+}
+
+enum InsightCategory {
+  hiring // With who? (team, staffing needs, key roles to hire)
+  performance // How well? (efficiency, KPIs, retention, product quality, team productivity)
+  market // Where? (industry, competitors, geography, positioning)
+  finance // How much? (revenue, costs, margins, runway, funding)
+  growth // How to improve? (expansion strategies, acquisition channels, partnerships)
+  business_model // How to make money? (revenue streams, pricing model, value capture)
+}
+
 model BusinessInsight {
-  insight_id        String    @id @default(uuid())
-  target_id         String
-  target_type       String
-  insight_type      String
-  category          String
+  insight_id  String @id @default(uuid())
+  target_id   String // company_id, agency_id, or system-wide
+  target_type String // company, agency, platform
+
+  // Insight Details
+  insight_type      InsightType
+  category          InsightCategory
   title             String
   description       String
   detailed_analysis String?
-  ai_model          String
-  confidence        Float
-  evidence          Json?
-  priority          String
-  action_required   Boolean   @default(false)
-  suggested_actions String[]
-  expected_impact   String?
-  status            String    @default("new")
-  viewed_at         DateTime?
-  acted_upon_at     DateTime?
-  feedback_rating   Int?
-  feedback_text     String?
-  expires_at        DateTime?
-  is_recurring      Boolean   @default(false)
-  next_update       DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
 
+  // AI Details
+  ai_model   String // Which AI model generated this
+  confidence Float? // 0-1 confidence score (now optional)
+  evidence   Json? // Supporting data/evidence
+  payload    Json? // raw structured JSON from the LLM
+
+  // Actionability
+  priority          String   @default("medium") // low, medium, high, critical
+  action_required   Boolean  @default(false)
+  suggested_actions String[] // Array of suggested actions
+  expected_impact   String? // Expected impact if acted upon
+
+  // Status
+  status          String    @default("new") // new, viewed, acted_upon, dismissed
+  viewed_at       DateTime?
+  acted_upon_at   DateTime?
+  feedback_rating Int? // 1-5 rating from user
+  feedback_text   String?
+
+  // Validity
+  expires_at   DateTime? // When this insight becomes stale
+  is_recurring Boolean   @default(false)
+  next_update  DateTime? // When to regenerate this insight
+
+  // Idempotency / dedupe (NEW)
+  /// Date-only bucket; 1 insight max per (company, category, day)
+  day_bucket      DateTime @default(dbgenerated("CURRENT_DATE"))
+  /// Optional stronger guard (hash of companyId|category|YYYY-MM-DD|content)
+  dedupe_checksum String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([target_type, target_id, category, day_bucket], map: "insight_daily_unique")
+  @@index([target_type, target_id])
+  @@index([dedupe_checksum])
   @@map("business_insights")
 }
 
@@ -1073,22 +1139,57 @@ model PlatformEvolution {
   @@map("platform_evolution")
 }
 
-model VerificationRun {
-  run_id          String                  @id @default(uuid())
-  subject_type    VerificationSubjectType
-  subject_id      String
-  status          VerificationRunStatus
-  started_at      DateTime                @default(now())
-  ended_at        DateTime?
-  risk_score      Float?
-  decision        VerificationDecision?
-  reason_codes    String[]                @default([])
-  agencyLatestOf  AgencyVerification?     @relation("AgencyLatestRun")
-  companyLatestOf CompanyVerification?    @relation("CompanyLatestRun")
-  signals         VerificationSignal[]
-  snapshot        VerificationSnapshot?
+// Add these enums first
+enum VerificationSubjectType {
+  COMPANY
+  AGENCY
 }
 
+enum VerificationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationDecision {
+  APPROVE
+  REJECT
+  MANUAL_REVIEW
+  NO_DECISION
+}
+
+enum VerificationCaseStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// Verification Run table
+model VerificationRun {
+  run_id       String                  @id @default(uuid())
+  subject_type VerificationSubjectType
+  subject_id   String
+  status       VerificationRunStatus
+  started_at   DateTime                @default(now())
+  ended_at     DateTime?
+  risk_score   Float?
+  decision     VerificationDecision?
+  reason_codes String[]                @default([])
+
+  signals  VerificationSignal[]
+  snapshot VerificationSnapshot?
+
+  companyLatestOf CompanyVerification? @relation("CompanyLatestRun")
+  agencyLatestOf  AgencyVerification?  @relation("AgencyLatestRun")
+}
+
+// Verification Signal table
 model VerificationSignal {
   signal_id   String          @id @default(uuid())
   run_id      String
@@ -1126,7 +1227,7 @@ model CompanyVerification {
 }
 
 model AgencyVerification {
-  verification_id        String                 @id @default(uuid())
+  verification_id        String    @id @default(uuid())
   agency_id              String
   license_status         String
   verification_documents Json
@@ -1261,27 +1362,70 @@ enum QuestionType {
   SCENARIO
   SHORT_ANSWER
 }
-// Add these enums first
-enum VerificationSubjectType {
-  COMPANY
-  AGENCY
+
+
+// EMPLOYER ASSESSMENT MANAGEMENT
+model EmployerAssessment {
+  assessment_id     String   @id @default(uuid())
+  company_id        String   // company_admin user_id
+  job_id           String   // The job this assessment is for
+  title            String
+  description      String
+  status           EmployerAssessmentStatus // DRAFT, ACTIVE, etc.
+  assessment_type  AssessmentType
+  skill_category   String
+  difficulty       DifficultyLevel
+  time_limit       Int      @default(60)
+  total_questions  Int      @default(20)
+  passing_score    Int?     @default(70)
+  question_ids     String[]
+  settings         Json?
+  
+  // ADD THESE MISSING FIELDS:
+  creation_method  AssessmentCreationMethod
+  extracted_skills String[]
+  enhanced_data    Json?
+  auto_generated   Boolean  @default(false)
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  company User       @relation("CompanyAssessments", fields: [company_id], references: [user_id], onDelete: Cascade)
+  job     CompanyJob @relation("JobAssessments", fields: [job_id], references: [job_id], onDelete: Cascade)
+  
+  candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
+  competeChallenges CompeteChallenge[]
+
+  @@index([company_id])
+  @@index([job_id])
+  @@index([status])
+
+  @@map("employer_assessments")
 }
 
-enum VerificationRunStatus {
-  QUEUED
-  RUNNING
-  COMPLETED
-  FAILED
+model CompeteChallenge {
+  challenge_id    String   @id @default(uuid())
+  assessment_id   String
+  title           String
+  description     String?
+  candidate_ids   String[]
+  status          String   // scheduled, active, completed, cancelled
+  start_time      DateTime
+  end_time        DateTime
+  time_limit      Int
+  leaderboard     Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
+  @@index([assessment_id])
+  @@index([status])
+
+  @@map("compete_challenge")
 }
 
-enum VerificationDecision {
-  APPROVE
-  REJECT
-  MANUAL_REVIEW
-  NO_DECISION
-}
-
-enum VerificationCaseStatus {
+enum EmployerAssessmentStatus {
   DRAFT
   PENDING_DOCUMENTS
   IN_REVIEW
@@ -1290,4 +1434,14 @@ enum VerificationCaseStatus {
   APPROVED
   REJECTED
   EXPIRED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+// Add this enum 
+enum AssessmentCreationMethod {
+  JOB_DESCRIPTION_PARSE
+  CHATBOT_GUIDED
 }
