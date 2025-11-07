@@ -1,6 +1,6 @@
 import toast from 'react-hot-toast';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword, deleteAccount, getUserSessions , terminateAllOtherSessions, terminateSession } from './auth.api';
+import { useMutation } from '@tanstack/react-query';
+import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile} from './auth.api';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
@@ -41,6 +41,55 @@ export const useSignup = () => {
   });
 };
 
+
+// export const useLogin = () => {
+//   const { login } = useAuth();
+//   const { setProfileData } = useProfile(); 
+//   const router = useRouter();
+
+//   return useMutation({
+//     mutationFn: loginapi,
+//     onSuccess: (data) => {
+//       if (data.error === true || data.success === false) {
+//         const errorMessage = data.message || 'Login failed';
+//         toast.error(errorMessage);
+//         return;
+//       }
+//       toast.success('Login successful!');
+//       login(data.user, data.token);
+      
+//       if (data.profile) {
+//         setProfileData(data.profile); 
+//         console.log('Profile data set in context:', data.profile);
+//       }
+
+//       console.log('User:', data.user);
+//       console.log('Profile:', data.profile);
+//       console.log('Token:', data.token);
+
+//       const redirectPath = localStorage.getItem('redirectAfterLogin');
+//       if (redirectPath) {
+//         localStorage.removeItem('redirectAfterLogin');
+//         router.push(redirectPath);
+//       } else {
+//         if (data.user.role === 'candidate') {
+//           router.push('/candidate/dashboard');
+//         } else if (data.user.role === 'company_admin') {
+//           router.push('/company/dashboard');
+//         } else if (data.user.role === 'agency') {
+//           router.push('/agency/dashboard');
+//         } else {
+//           router.push('/');
+//         }
+//       }
+//     },
+//     onError: (error: any) => {
+//       const errorMessage = error?.response?.data?.message || error.message || 'Login failed';
+//       console.error('Login failed:', errorMessage);
+//       toast.error(errorMessage);
+//     },
+//   });
+// };
 export const useLogin = () => {
   const { login } = useAuth();
   const { setProfileData } = useProfile();
@@ -222,158 +271,7 @@ export const useCreateCompanyProfile = () => {
     mutationFn: createCompanyProfile,
     onSuccess: () => {
       toast.success('Company profile created!');
-      router.push('/auth/companyRegister/verification');
+      router.push('/auth/logout');
     }
   });
 };
-
-
-
-export const useUploadCompanyDocument = () => {
-  const router = useRouter();
-  
-  return useMutation({
-    mutationFn: uploadCompanyDocument,
-    onSuccess: (data) => {
-      console.log('Document processed successfully:', data);
-      
-      if (!data.ok) {
-        const errorMessage = data.error || 'Document processing failed';
-        toast.error(errorMessage);
-        return;
-      }
-
-      // Success handling
-      if (data.type === 'company_doc' && data.parsed) {
-        toast.success('Document verified successfully!');
-        
-        // Optional: Auto-proceed to dashboard after success
-        // setTimeout(() => {
-        //   router.push('/company/dashboard');
-        // }, 2000);
-      } else {
-        toast.success('Document processed successfully!');
-      }
-    },
-    onError: (error: any) => {
-      console.error('❌ Document upload failed:', error);
-      const errorMessage = 
-        error?.response?.data?.error || 
-        error?.response?.data?.message || 
-        error.message || 
-        'Failed to process document';
-      toast.error(errorMessage);
-    },
-  });
-};
-
-
-
-export const useForgotPassword = () => {
-  return useMutation({
-    mutationFn: forgotPassword,
-    onSuccess: (data) => {
-      if (data.error) {
-        toast.error(data.message || 'Failed to send reset email');
-        return;
-      }
-      toast.success('Reset link sent to your email!');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to send reset email');
-    },
-  });
-};
-
-export const useResetPassword = () => {
-  const router = useRouter();
-  return useMutation({
-    mutationFn: resetPassword,
-    onSuccess: (data) => {
-      if (data.error) {
-        toast.error(data.message || 'Password reset failed');
-        return;
-      }
-      toast.success('Password reset successful! Please login.');
-      router.push('/auth/login');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Password reset failed');
-    },
-  });
-};
-
-
-
-export const useDeleteAccount = () => {
-  const router = useRouter();
-  
-  return useMutation({
-    mutationFn: deleteAccount,
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success('Account deleted successfully');
-        // Clear auth and redirect
-        localStorage.removeItem('auth_token');
-        router.push('/auth/login');
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to delete account');
-    }
-  });
-};
-
-
-
-export const useSessions = () => {
-  return useQuery({
-    queryKey: ['sessions'],
-    queryFn: getUserSessions,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
-    refetchOnWindowFocus: false,
-    retry: 2,
-    retryDelay: 1000,
-  });
-};
-
-// Terminate specific session
-export const useTerminateSession = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: terminateSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast.success('Session terminated successfully!');
-    },
-    onError: (error: any) => {
-      console.error('Error terminating session:', error);
-      toast.error('Failed to terminate session');
-    }
-  });
-};
-
-// Terminate all other sessions
-export const useTerminateAllOtherSessions = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: terminateAllOtherSessions,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast.success('All other sessions terminated!');
-    },
-    onError: (error: any) => {
-      console.error('Error terminating all sessions:', error);
-      toast.error('Failed to terminate all sessions');
-    }
-  });
-};
-
-
-
-
-
-

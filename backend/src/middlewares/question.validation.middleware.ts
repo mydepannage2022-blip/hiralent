@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import { ZodError,z } from 'zod';
 import {
   createQuestionSchema,
   updateQuestionSchema,
@@ -174,5 +174,44 @@ export function validateBulkOperation(req: Request, res: Response, next: NextFun
       success: false,
       error: 'Internal validation error'
     });
+  }}
+  /**
+ * Valide les données pour générer plusieurs questions en batch
+ */
+export function validateBatchGeneration(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Schéma de validation pour batch generation
+    const batchGenerationSchema = z.object({
+      topics: z.array(z.string())
+        .min(1, 'At least one topic is required')
+        .max(10, 'Maximum 10 topics allowed'),
+      difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+      countPerTopic: z.number()
+        .min(1, 'Minimum 1 question per topic')
+        .max(10, 'Maximum 10 questions per topic')
+        .optional()
+    });
+
+    req.body = batchGenerationSchema.parse(req.body);
+    next();
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const errors = error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid batch generation parameters',
+        details: errors
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal validation error'
+    });
   }
 }
+  

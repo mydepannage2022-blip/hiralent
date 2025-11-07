@@ -32,7 +32,7 @@ class AdminAPIClient {
 
   // Verification Stats
   async getVerificationStats() {
-    return this.request('/verifications/stats');
+    return this.request('/admin/verifications/stats');
   }
 
   // Pending Verifications

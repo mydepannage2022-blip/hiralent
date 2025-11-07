@@ -27,22 +27,25 @@ export const generateTokenLegacy = (
   }, process.env.JWT_SECRET!, { expiresIn: '7d' } as any);
 };
 
-// Generate token for login (includes session_id)
 export const generateTokenWithSession = (
   userId: string,
   role: string,
   sessionId: string,
   agencyId?: string,
-  deviceHash?: string
+  deviceHash?: string,
+  companyId?: string
 ): string => {
   return jwt.sign({
     user_id: userId,
     role,
     session_id: sessionId,
     ...(agencyId && { agency_id: agencyId }),
-    ...(deviceHash && { device_hash: deviceHash })
+    ...(deviceHash && { device_hash: deviceHash }),
+    ...(companyId && { company_id: companyId }) // ✅
   }, process.env.JWT_SECRET!, { expiresIn: '7d' } as any);
 };
+
+
 
 // Verify JWT token
 export const verifyToken = (token: string): any => {

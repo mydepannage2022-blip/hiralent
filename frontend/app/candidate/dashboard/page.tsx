@@ -1,7 +1,7 @@
 "use client"
 import dynamic from 'next/dynamic';
 
-const DashboardJobStatistics = dynamic(() =>
+const DashboardJobStatistics = dynamic(() => 
   import("@/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl"></div>
 });
@@ -32,10 +32,10 @@ export default function DashboardHome() {
       <div className='w-full md:w-2/3 flex flex-col justify-start items-center gap-2 bg-gray-50'>
         <DashboardProfilePercentage />
         <DashboardJobStatistics />
-        <DashboardStatus showOn="mobile" />
+        <DashboardStatus showOn="mobile"/>
       </div>
       <div className='w-full md:w-1/3 flex flex-col justify-start items-start gap-2'>
-        <DashboardStatus showOn="desktop" />
+        <DashboardStatus showOn="desktop"/>
         <SavedJobs />
       </div>
     </div>

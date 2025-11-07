@@ -35,9 +35,12 @@ import ocrRoutes from './routes/ocr.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
-import sessionRoutes from './routes/auth/session.routes';
 import questionRoutes from './routes/questions/question.routes';
-// Dev-only routes are mounted below to avoid exposing them in production.
+import sessionRoutes from './routes/auth/session.routes'
+import insightsRoutes from './routes/insights.routes';
+import jobRoutes from './routes/job.routes';
+import employerAssessmentRoutes from './routes/employerAssessment.routes';
+
 
 
 // Mount routes
@@ -45,15 +48,8 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/ocr', ocrRoutes);
+app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
-app.use('/api/v1/auth/sessions', sessionRoutes);
-
-
-
-// Register admin auth routes
-app.use('/api/v1/admin', adminAuthRoutes);
-app.use('/api/v1/admin', adminVerificationRoutes);
 
 
 //Question Bank
@@ -71,9 +67,19 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
+app.use('/api/v1/auth/sessions', sessionRoutes);
+
+// ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
+app.use('/api/v1/admin', adminAuthRoutes);
+app.use('/api/v1/admin', adminVerificationRoutes);
+
+app.use('/api/v1', insightsRoutes);
+
+app.use('/api/v1', jobRoutes);
+app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
 });
 
-export default app;
+  export default app;

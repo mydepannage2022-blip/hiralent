@@ -1,43 +1,41 @@
-import { OpenAI } from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 export class QuestionGeneratorService {
-  private openai: OpenAI | null;
+  private genAI: GoogleGenerativeAI | null;
   private hasValidApiKey: boolean;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY; // ← Changé de OPENAI_API_KEY
     
     if (!apiKey) {
-      console.warn('  OPENAI_API_KEY not found. AI features will be disabled.');
+      console.warn('⚠️  GEMINI_API_KEY not found. AI features will be disabled.');
       this.hasValidApiKey = false;
-      this.openai = null;
+      this.genAI = null;
     } else {
       this.hasValidApiKey = true;
-      this.openai = new OpenAI({
-        apiKey: apiKey
-      });
+      this.genAI = new GoogleGenerativeAI(apiKey); // ← GoogleGenerativeAI au lieu d'OpenAI
     }
   }
 
   // Generate coding question from topic
   async generateCodingQuestion(topic: string, difficulty: string = 'medium') {
     // Return mock data if no API key
-    if (!this.hasValidApiKey || !this.openai) {
-      console.warn('⚠️  Using mock data - OpenAI API key not configured');
+    if (!this.hasValidApiKey || !this.genAI) {
+      console.warn('⚠️  Using mock data - Gemini API key not configured');
       return this.getMockQuestion(topic, difficulty);
     }
 
     const prompt = `
     Create a ${difficulty} level coding question about ${topic}.
     
-    Return JSON format:
+    Return ONLY valid JSON format, no other text:
     {
       "title": "Question title",
       "problemStatement": "Clear problem description",
       "difficulty": "${difficulty}",
-      "skillTags": ["tag1", "tag2"],
+      "skillTags": ["${topic}", "programming"],
       "testCases": [
         {"input": "sample input", "output": "expected output"}
       ],
@@ -47,27 +45,65 @@ export class QuestionGeneratorService {
     `;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", "content": prompt }],
-        temperature: 0.7,
-      });
-
-      const aiResponse = completion.choices[0].message.content;
+      const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const aiResponse = response.text();
       
-      if (aiResponse) {
-        return JSON.parse(aiResponse);
-      } else {
-        throw new Error('AI returned empty response');
+      // Nettoyer la réponse (Gemini peut ajouter des ```json)
+      let cleanedResponse = aiResponse.trim();
+      if (cleanedResponse.startsWith("```json")) {
+        cleanedResponse = cleanedResponse.slice(7);
       }
+      if (cleanedResponse.endsWith("```")) {
+        cleanedResponse = cleanedResponse.slice(0, -3);
+      }
+      
+      console.log('✅ Gemini Response:', cleanedResponse);
+      
+      return JSON.parse(cleanedResponse);
+      
     } catch (error) {
-      console.error('Question generation failed:', error);
+      console.error('❌ Gemini question generation failed:', error);
       // Fallback to mock data on error
       return this.getMockQuestion(topic, difficulty);
     }
   }
 
-  // Mock data for development without API key
+  // Generate multiple questions in batch
+  async generateBatchQuestions(topics: string[], difficulty: string = 'medium', countPerTopic: number = 2) {
+    const allQuestions = [];
+    
+    for (const topic of topics) {
+      console.log(`🔄 Generating ${countPerTopic} questions for topic: ${topic}`);
+      
+      for (let i = 0; i < countPerTopic; i++) {
+        try {
+          const question = await this.generateCodingQuestion(topic, difficulty);
+          allQuestions.push({
+            id: `${topic}-${i}-${Date.now()}`,
+            ...question
+          });
+        } catch (error) {
+          console.error(`❌ Failed to generate question for ${topic}:`, error);
+          // Add mock question as fallback
+          const mockQuestion = this.getMockQuestion(topic, difficulty);
+          allQuestions.push({
+            id: `${topic}-fallback-${i}-${Date.now()}`,
+            ...mockQuestion
+          });
+        }
+      }
+    }
+    
+    return {
+      success: true,
+      generated_count: allQuestions.length,
+      questions: allQuestions
+    };
+  }
+
+  // Mock data for development without API key (garder le même)
   private getMockQuestion(topic: string, difficulty: string) {
     const mockQuestions = {
       'python': {
@@ -115,7 +151,7 @@ export class QuestionGeneratorService {
     return mockQuestions[key as keyof typeof mockQuestions];
   }
 
-  // Simaple web scraper
+  // Simple web scraper (garder le même)
   async scrapeProgrammingProblems(): Promise<any[]> {
     try {
       console.log('Web scraping temporarily disabled for development');

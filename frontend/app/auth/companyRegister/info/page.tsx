@@ -20,6 +20,10 @@ interface FormData {
   description: string;
   registrationNumber: string;
   fullAddress: string;
+<<<<<<< HEAD
+=======
+
+>>>>>>> wafaa-ihssane
 }
 
 interface FormErrors {

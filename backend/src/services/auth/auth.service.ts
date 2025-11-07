@@ -76,29 +76,19 @@ export const signup = async (input: SignupInput) => {
   }
 };
 
+// auth.service.ts (login)
+
+// auth.service.ts (login)
 export const login = async ({ email, password }: LoginInput, req?: any): Promise<LoginResponse> => {
   try {
-    const user: UserWithProfiles | null = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
       include: {
         candidateProfile: true,
-        candidateSkills: {
-          orderBy: [
-            { is_verified: 'desc' },
-            { created_at: 'desc' }
-          ]
-        },
-        companyProfile: true,
+        candidateSkills: { orderBy: [{ is_verified: 'desc' }, { created_at: 'desc' }] },
+        companyProfile: true,             // only profile we have
         agencyAdminProfile: true,
-        agency: {
-          select: {
-            agency_id: true,
-            name: true,
-            website: true,
-            logo_url: true,
-            status: true
-          }
-        }
+        agency: { select: { agency_id: true, name: true, website: true, logo_url: true, status: true } }
       }
     }) as UserWithProfiles | null;
 
@@ -109,23 +99,37 @@ export const login = async ({ email, password }: LoginInput, req?: any): Promise
 
     const sessionId = uuidv4();
 
+    // ✅ for both company & company_admin
+    const companyId =
+      (user.role === "company" || user.role === "company_admin")
+        ? (user.companyProfile?.company_id ?? user.user_id)
+        : undefined;
+
+    if ((user.role === "company" || user.role === "company_admin") && !companyId) {
+      throw new Error("Company account is not initialized (missing company_id).");
+    }
+
     const token = generateTokenWithSession(
       user.user_id,
       user.role,
       sessionId,
-      user.agency_id || undefined
+      user.agency_id || undefined,
+      undefined,     // deviceHash optional
+      companyId      // 👈 now included for both roles
     );
 
- 
-        await createSession({
-        userId: user.user_id,
-        jwtToken: token,
-        userAgent: req?.headers['user-agent'] || 'Unknown',
-        ipAddress: req ? getClientIP(req) : '127.0.0.1',
-        screenResolution: req?.body?.screenResolution,
-        timezone: req?.body?.timezone,
-        language: req?.body?.language
-      });
+    // DEV sanity check
+    // console.log("JWT payload on login:", jwt.decode(token));
+
+    await createSession({
+      userId: user.user_id,
+      jwtToken: token,
+      userAgent: req?.headers['user-agent'] || 'Unknown',
+      ipAddress: req ? getClientIP(req) : '127.0.0.1',
+      screenResolution: req?.body?.screenResolution,
+      timezone: req?.body?.timezone,
+      language: req?.body?.language
+    });
 
     const cleanUser: CleanUser = {
       user_id: user.user_id,
@@ -140,79 +144,73 @@ export const login = async ({ email, password }: LoginInput, req?: any): Promise
       agency: user.agency,
     };
 
-    let profileData = null;
-    
+    let profileData: any = null;
+
     if (user.role === 'candidate') {
-      const populatedSkills = user.candidateSkills.map(skill => ({
-        skill_id: skill.skill_id,
-        skill_name: skill.skill_name,
-        skill_category: skill.skill_category,
-        proficiency: skill.proficiency,
-        years_experience: skill.years_experience,
-        confidence_score: skill.confidence_score,
-        source_type: skill.source_type,
-        is_verified: skill.is_verified
+      const skills = user.candidateSkills.map(s => ({
+        skill_id: s.skill_id,
+        skill_name: s.skill_name,
+        skill_category: s.skill_category,
+        proficiency: s.proficiency,
+        years_experience: s.years_experience,
+        confidence_score: s.confidence_score,
+        source_type: s.source_type,
+        is_verified: s.is_verified
       }));
 
-      if (user.candidateProfile) {
-        profileData = {
-          ...user.candidateProfile,
-          created_at: user.candidateProfile.created_at.toISOString(),
-          updated_at: user.candidateProfile.updated_at.toISOString(),
-          skills: populatedSkills
-        };
-      } else {
-        profileData = {
-          candidate_id: user.user_id,
-          about_me: null,
-          city: null,
-          created_at: new Date().toISOString(),
-          education: null,
-          experience: null,
-          headline: null,
-          job_benefits: null,
-          languages: null,
-          links: null,
-          location: null,
-          minimum_salary_amount: null,
-          payment_period: null,
-          postal_code: null,
-          preferred_locations: null,
-          profile_picture_url: null,
-          resume_url: null,
-          skills: populatedSkills,
-          updated_at: new Date().toISOString(),
-          video_intro_url: null,
-        };
-      }
-    } else if (user.role === 'company') {
-      profileData = user.companyProfile ? {
-        ...user.companyProfile,
-        created_at: user.companyProfile.created_at.toISOString(),
-        updated_at: user.companyProfile.updated_at.toISOString()
-      } : null;
+      profileData = user.candidateProfile
+        ? { ...user.candidateProfile,
+            created_at: user.candidateProfile.created_at.toISOString(),
+            updated_at: user.candidateProfile.updated_at.toISOString(),
+            skills }
+        : {
+            candidate_id: user.user_id,
+            about_me: null,
+            city: null,
+            created_at: new Date().toISOString(),
+            education: null,
+            experience: null,
+            headline: null,
+            job_benefits: null,
+            languages: null,
+            links: null,
+            location: null,
+            minimum_salary_amount: null,
+            payment_period: null,
+            postal_code: null,
+            preferred_locations: null,
+            profile_picture_url: null,
+            resume_url: null,
+            skills,
+            updated_at: new Date().toISOString(),
+            video_intro_url: null,
+          };
+    } else if (user.role === 'company' || user.role === 'company_admin') {
+      profileData = user.companyProfile
+        ? {
+            ...user.companyProfile,
+            created_at: user.companyProfile.created_at.toISOString(),
+            updated_at: user.companyProfile.updated_at.toISOString()
+          }
+        : null;
     } else if (user.role === 'agency') {
-      profileData = user.agencyAdminProfile ? {
-        ...user.agencyAdminProfile,
-        created_at: user.agencyAdminProfile.created_at.toISOString(),
-        updated_at: user.agencyAdminProfile.updated_at.toISOString()
-      } : null;
+      profileData = user.agencyAdminProfile
+        ? {
+            ...user.agencyAdminProfile,
+            created_at: user.agencyAdminProfile.created_at.toISOString(),
+            updated_at: user.agencyAdminProfile.updated_at.toISOString()
+          }
+        : null;
     }
 
-    return {
-      user: cleanUser,
-      profile: profileData,
-      token
-    };
-
+    return { user: cleanUser, profile: profileData, token };
   } catch (error: any) {
     console.error("Login Error:", error);
-    return {
-      error: true,
-      message: error.message || "Login failed",
-    };
+    return { error: true, message: error.message || "Login failed" };
   }
 };
+
+
 
 export const resendVerificationEmail = async (userId: string) => {
   try {
