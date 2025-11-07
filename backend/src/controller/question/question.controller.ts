@@ -2,7 +2,11 @@ import { Request, Response } from 'express';
 import { QuestionService } from '../../services/question/Question.service';
 import { QuestionGeneratorService } from '../../services/question/QuestionGenerator.service';
 import { aiQuestionGenerationService } from '../../services/ai/ai-question-generation.service'; 
-
+import { 
+  ScrapingServiceResponse, 
+  ScrapingServiceHealth,
+  ScrapedQuestionData 
+} from '../../types/question.types';
 export class QuestionController {
   private questionService: QuestionService;
   private generatorService: QuestionGeneratorService;
@@ -493,6 +497,156 @@ async generateBatchQuestions(req: Request, res: Response) {
     });
   }
 }
+// Update the scraping methods in your controller
+
+/**
+ * Health check for scraping service
+ */
+async checkScrapeServiceHealth(req: Request, res: Response) {
+  console.log('🌐 [CONTROLLER] checkScrapeServiceHealth called');
+  
+  try {
+    const response = await fetch('http://localhost:8000/api/scrape-service/health');
+    const health = await response.json() as ScrapingServiceHealth;
+    
+    res.json({
+      success: true,
+      service: 'Web Scraping Service',
+      status: health.status
+    });
+  } catch (error: any) {
+    res.status(503).json({
+      success: false,
+      error: 'Web Scraping service health check failed',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Scrape questions from coding platforms via AI service
+ */
+
+async scrapeQuestions(req: Request, res: Response) {
+  console.log('🌐 [CONTROLLER] scrapeQuestions called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { urls, platform } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for web scraping'
+      });
+    }
+
+    if (!urls || !Array.isArray(urls) || urls.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'URLs array is required'
+      });
+    }
+
+    console.log('🌐 [CONTROLLER] Calling Python scraping service...');
+    console.log('📋 [CONTROLLER] URLs to scrape:', urls);
+
+    // Call Python scraping service
+    const scrapeResponse = await fetch('http://localhost:8000/api/scrape-questions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        urls, 
+        platform 
+      })
+    });
+
+    if (!scrapeResponse.ok) {
+      throw new Error(`Scraping service returned ${scrapeResponse.status}`);
+    }
+
+    const scrapeData = await scrapeResponse.json() as ScrapingServiceResponse;
+
+    if (!scrapeData.success) {
+      throw new Error(scrapeData.error || 'Scraping service failed');
+    }
+
+    console.log('✅ [CONTROLLER] Scraping successful, saving questions...');
+    console.log(`📝 [CONTROLLER] Scraped ${scrapeData.questions?.length || 0} questions`);
+
+    // Save scraped questions to database
+    const savedQuestions = [];
+    const errors = [];
+
+    if (scrapeData.questions && Array.isArray(scrapeData.questions)) {
+      for (const [index, questionData] of scrapeData.questions.entries()) {
+        try {
+          // Prepare the question data for database
+          const questionToSave = {
+            title: questionData.title,
+            description: questionData.description || `Scraped from ${questionData.platform || 'unknown platform'}`,
+            problemStatement: questionData.problemStatement,
+            difficulty: (questionData.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
+            skillTags: questionData.skillTags || [questionData.platform || 'coding'],
+            type: questionData.type || 'coding',
+            canonicalSolution: questionData.canonicalSolution || `# Solution placeholder for scraped question\n# Original source: ${questionData.sourceUrl}`,
+            testCases: questionData.testCases || { inputs: [], outputs: [] },
+            status: 'pending_review' as const,
+            createdBy: userId,
+            aiGenerated: false,
+            source: 'web_scraped' as const
+          };
+
+          console.log(`💾 [CONTROLLER] Saving question to database: ${questionData.title}`);
+
+          // Save to database using your QuestionService
+          const saved = await this.questionService.createQuestion(questionToSave);
+
+          savedQuestions.push(saved);
+          console.log(`✅ [CONTROLLER] Saved scraped question ${index + 1} to database:`, saved.id);
+
+        } catch (error: any) {
+          console.error(`❌ [CONTROLLER] Error saving scraped question ${index}:`, error.message);
+          errors.push({
+            index,
+            title: questionData.title,
+            error: error.message
+          });
+        }
+      }
+    }
+
+    console.log('💾 [CONTROLLER] Scraping completed');
+    console.log(`✅ Saved to DB: ${savedQuestions.length}, ❌ Errors: ${errors.length}`);
+
+    res.status(201).json({
+      success: true,
+      message: `Scraped ${scrapeData.questions?.length || 0} questions and saved ${savedQuestions.length} to database`,
+      scrapingResult: {
+        totalUrls: urls.length,
+        successfullyScraped: scrapeData.questions?.length || 0,
+        successfullySaved: savedQuestions.length,
+        scrapingFailed: urls.length - (scrapeData.questions?.length || 0),
+        savingErrors: errors.length
+      },
+      questions: savedQuestions,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] scrapeQuestions ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to scrape questions',
+      details: error.message
+    });
+  }
+}
+
+
 }
   
 

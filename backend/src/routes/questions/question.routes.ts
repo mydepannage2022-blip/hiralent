@@ -86,6 +86,15 @@ router.delete('/:id',
   checkAuth,
   controller.deleteQuestion.bind(controller)
 );
+// ========== WEB SCRAPING ROUTES ==========
+router.post('/scrape',
+  checkAuth,
+  controller.scrapeQuestions.bind(controller)
+);
+
+router.get('/scrape-service/health',
+  controller.checkScrapeServiceHealth.bind(controller)
+);
 
 // 404 handler
 router.use((req, res) => {

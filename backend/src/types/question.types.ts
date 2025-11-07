@@ -38,6 +38,38 @@ export interface PaginationResult<T> {
     totalPages: number;
   };
 }
+// ========== SCRAPING TYPES ==========
+
+export interface ScrapedQuestionData {
+  title: string;
+  description?: string;
+  problemStatement: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  skillTags?: string[];
+  type?: string;
+  canonicalSolution?: string;
+  testCases?: any;
+  sourceUrl?: string;
+  platform?: string;
+}
+
+export interface ScrapingServiceResponse {
+  success: boolean;
+  message?: string;
+  questions?: ScrapedQuestionData[];
+  error?: string;
+  total_urls?: number;
+  successful?: number;
+  failed?: number;
+[key: string]: any;
+}
+
+export interface ScrapingServiceHealth {
+  success: boolean;
+  status: string;
+  service?: string;
+  timestamp?: number;
+}
 
 // Helper type pour convertir les données en format Prisma
 export type QuestionCreateInput = Omit<QuestionData, 'testCases'> & {

@@ -598,19 +598,38 @@ const QuestionBankPage: React.FC = () => {
     setCurrentUserId(user?.user_id ?? null);
   }, [user]);
 
-  const loadQuestions = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("http://localhost:5000/api/questions", { headers: authHeaders() });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      setQuestions(data?.success && data.questions ? data.questions : []);
-    } catch (error) {
-      console.error("❌ Failed to load questions:", error);
-      setQuestions([]);
+const loadQuestions = async () => {
+  setLoading(true);
+  try {
+    // ✅ Demander jusqu'à 1000 questions
+    const response = await fetch("http://localhost:5000/api/questions?limit=1000&page=1", { 
+      headers: authHeaders() 
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    setLoading(false);
-  };
+    
+    const data = await response.json();
+    
+    let loadedQuestions = [];
+    
+    if (data?.success && data.questions) {
+      loadedQuestions = data.questions;
+    } else if (Array.isArray(data)) {
+      loadedQuestions = data;
+    } else if (data?.data && Array.isArray(data.data)) {
+      loadedQuestions = data.data;
+    }
+    
+    console.log('📥 Loaded questions:', loadedQuestions.length);
+    setQuestions(loadedQuestions);
+  } catch (error) {
+    console.error("❌ Failed to load questions:", error);
+    setQuestions([]);
+  }
+  setLoading(false);
+};
 
   useEffect(() => {
     loadQuestions();
@@ -728,30 +747,45 @@ const QuestionBankPage: React.FC = () => {
     setShowEditor(true);
   };
 
-  const handleSaveQuestion = async (questionData: Partial<Question>) => {
-    if (!requireAuth()) return;
-    try {
-      const url =
-        editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
-      const method = editorMode === "create" ? "POST" : "PUT";
+const handleSaveQuestion = async (questionData: Partial<Question>) => {
+  if (!requireAuth()) return;
+  try {
+    const url = editorMode === "create" 
+      ? "http://localhost:5000/api/questions" 
+      : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
+    const method = editorMode === "create" ? "POST" : "PUT";
 
-      const response = await fetch(url, {
-        method,
-        headers: authHeaders(),
-        body: JSON.stringify(questionData),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setShowEditor(false);
-        loadQuestions();
+    const response = await fetch(url, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(questionData),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setShowEditor(false);
+      
+      // Instead of reloading all questions, add the new one to state
+      if (editorMode === "create" && data.question) {
+        const newQuestion: Question = {
+          ...data.question,
+          createdBy: currentUserId, // Ensure createdBy is set
+        };
+        
+        setQuestions(prev => [newQuestion, ...prev]);
       } else {
-        alert("Failed to save question: " + (data.error || "Unknown error"));
+        // For edits, reload to ensure data consistency
+        await loadQuestions();
       }
-    } catch (error) {
-      console.error("Failed to save question:", error);
-      alert("Network error while saving question.");
+    } else {
+      alert("Failed to save question: " + (data.error || "Unknown error"));
     }
-  };
+  } catch (error) {
+    console.error("Failed to save question:", error);
+    alert("Network error while saving question.");
+  }
+};
 
   const handleAiGenerate = async (payload: {
     topic: string;

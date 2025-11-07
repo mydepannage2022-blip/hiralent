@@ -233,7 +233,7 @@ const ReviewQueuePage: React.FC = () => {
   const loadMyPending = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/questions", {
+      const res = await fetch("http://localhost:5000/api/questions?limit=9999", {
         headers: authHeaders(),
       });
       const data = await res.json();
