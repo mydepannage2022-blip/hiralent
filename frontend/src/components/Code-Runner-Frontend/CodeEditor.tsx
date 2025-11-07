@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Monaco } from '@monaco-editor/react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { useRunSubmission } from '../lib/useRunSubmission';
+import { useRunSubmission } from '../../lib/useRunSubmission';
 
 type Props = {
   questionId?: string | null;
