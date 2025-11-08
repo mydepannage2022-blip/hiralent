@@ -6,17 +6,20 @@ import {
   JobListFilters,
   IdParam,
   CompanyIdParam,
-  AgencyIdParam,
   isCompanyUser,
-  isAgencyUser,
   isSuperadmin,
 } from '../../types/job.types';
 import type { AuthUser } from '../../types/express';
 
-// Safe helpers that work even if user is optional on Request
+// ====================================================
+// ========== AUTH HELPERS ============================
+// ====================================================
 const getAuthUser = (req: Request) => (req as any).user as AuthUser | undefined;
 const getCompanyId = (req: Request) => getAuthUser(req)?.company_id ?? null;
-const getAgencyId  = (req: Request) => getAuthUser(req)?.agency_id ?? null;
+
+// ====================================================
+// ========== JOB CONTROLLER (NO AGENCIES) ============
+// ====================================================
 
 class JobController {
   // POST /jobs
@@ -26,15 +29,26 @@ class JobController {
       if (!isCompanyUser(user)) {
         return res.status(403).json({ success: false, message: 'Forbidden: company role required' });
       }
+
       const companyId = getCompanyId(req);
       if (!companyId) {
         return res.status(400).json({ success: false, message: 'Missing company_id in auth token' });
       }
+
       const data: CreateJobRequest = req.body;
       const job = await jobService.createJob(companyId, data);
-      return res.status(201).json({ success: true, data: job, message: 'Job created successfully' });
+
+      return res.status(201).json({
+        success: true,
+        data: job,
+        message: 'Job created successfully',
+      });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to create job', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create job',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -46,7 +60,6 @@ class JobController {
 
       const filters: JobListFilters = {
         company_id: undefined,
-        agency_id: undefined,
         status: (q.status as any) || 'ALL',
         department: (q.department as string) || undefined,
         job_type: (q.job_type as string) || undefined,
@@ -62,24 +75,24 @@ class JobController {
         sort_order: (q.sort_order as any) || 'desc',
       };
 
+      // 🔹 Company users see their company jobs
       if (isCompanyUser(user)) {
         filters.company_id = getCompanyId(req) ?? undefined;
         if (isSuperadmin(user) && q.company_id) filters.company_id = String(q.company_id);
-        if (q.agency_id !== undefined) filters.agency_id = String(q.agency_id);
-      } else if (isAgencyUser(user)) {
-        if (isSuperadmin(user) && q.agency_id) filters.agency_id = String(q.agency_id);
-        else filters.agency_id = getAgencyId(req);
-        if (q.company_id) filters.company_id = String(q.company_id);
       } else {
+        // 🔹 Public users see only active jobs
         filters.status = JobStatus.ACTIVE;
         if (q.company_id) filters.company_id = String(q.company_id);
-        if (q.agency_id !== undefined) filters.agency_id = String(q.agency_id);
       }
 
       const result = await jobService.listJobs(filters);
       return res.json({ success: true, data: result });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch jobs', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch jobs',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -92,18 +105,23 @@ class JobController {
 
       if (!isSuperadmin(user)) {
         if (isCompanyUser(user)) {
-          if (job.company_id !== getCompanyId(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
-        } else if (isAgencyUser(user)) {
-          const myAgency = getAgencyId(req);
-          if (job.agency_id && job.agency_id !== myAgency) return res.status(403).json({ success: false, message: 'Forbidden' });
+          if (job.company_id !== getCompanyId(req)) {
+            return res.status(403).json({ success: false, message: 'Forbidden' });
+          }
         } else {
-          if (job.status !== JobStatus.ACTIVE) return res.status(403).json({ success: false, message: 'Forbidden' });
+          if (job.status !== JobStatus.ACTIVE) {
+            return res.status(403).json({ success: false, message: 'Forbidden' });
+          }
         }
       }
 
       return res.json({ success: true, data: job });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch job', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch job',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -123,7 +141,11 @@ class JobController {
       const updated = await jobService.update(req.params.id, req.body);
       return res.json({ success: true, data: updated });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to update job', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update job',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -141,9 +163,16 @@ class JobController {
       }
 
       await jobService.delete(req.params.id);
-      return res.json({ success: true, data: { job_id: req.params.id, deleted: true } });
+      return res.json({
+        success: true,
+        data: { job_id: req.params.id, deleted: true },
+      });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to delete job', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to delete job',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -166,7 +195,11 @@ class JobController {
       const updated = await jobService.patchStatus(req.params.id, status);
       return res.json({ success: true, data: updated });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to update job status', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update job status',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -177,14 +210,20 @@ class JobController {
       if (!isCompanyUser(user)) {
         return res.status(403).json({ success: false, message: 'Forbidden: company role required' });
       }
+
       const companyId = getCompanyId(req);
       if (!companyId) {
         return res.status(400).json({ success: false, message: 'Missing company_id in auth token' });
       }
+
       const jobs = await jobService.getCompanyJobs(companyId);
       return res.json({ success: true, data: jobs });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch jobs', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch jobs',
+        error: err?.message ?? String(err),
+      });
     }
   }
 
@@ -192,31 +231,15 @@ class JobController {
   async getCompanyJobsById(req: Request<CompanyIdParam>, res: Response) {
     try {
       const user = getAuthUser(req);
-      const onlyActive = !isCompanyUser(user) && !isAgencyUser(user) && !isSuperadmin(user);
+      const onlyActive = !isCompanyUser(user) && !isSuperadmin(user);
       const jobs = await jobService.getCompanyJobsById(req.params.companyId, onlyActive);
       return res.json({ success: true, data: jobs });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch company jobs', error: err?.message ?? String(err) });
-    }
-  }
-
-  // GET /jobs/agency/:agencyId/jobs
-  async getAgencyJobsById(req: Request<AgencyIdParam>, res: Response) {
-    try {
-      const user = getAuthUser(req);
-      if (!isSuperadmin(user)) {
-        if (!isAgencyUser(user)) {
-          return res.status(403).json({ success: false, message: 'Forbidden: agency role required' });
-        }
-        const myAgency = getAgencyId(req);
-        if (!myAgency || myAgency !== req.params.agencyId) {
-          return res.status(403).json({ success: false, message: 'Forbidden: not your agency' });
-        }
-      }
-      const jobs = await jobService.getAgencyJobsById(req.params.agencyId);
-      return res.json({ success: true, data: jobs });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch agency jobs', error: err?.message ?? String(err) });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch company jobs',
+        error: err?.message ?? String(err),
+      });
     }
   }
 }

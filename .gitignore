@@ -5,3 +5,4 @@ node_modules/
 /config/firebase-adminsdk.json
 distbackend/uploads/
 backend/uploads/
+assessment-ai-service/venv/
