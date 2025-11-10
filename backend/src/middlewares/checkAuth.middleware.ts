@@ -11,7 +11,7 @@ export interface AuthenticatedRequest extends Request {
     is_email_verified?: boolean;
     email?: string;
     full_name?: string;
-    company_id?: string; // ✅ carry company_id from JWT
+    company_id?: string; //  carry company_id from JWT
   };
 }
 
@@ -43,7 +43,7 @@ export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: 
       is_email_verified: payload.is_email_verified,
       email: payload.email,
       full_name: payload.full_name,
-      company_id: payload.company_id ?? undefined, // ✅ keep it on req.user
+      company_id: payload.company_id ?? undefined, //  keep it on req.user
     };
 
     // (Optional) Enforce for company routes at middleware level:
@@ -77,7 +77,7 @@ export const checkAuthLegacy = async (req: AuthenticatedRequest, res: Response, 
       role: payload.role,
       agency_id: payload.agency_id,
       session_id: payload.session_id || 'unknown',
-      company_id: payload.company_id ?? undefined, // ✅ keep it on legacy too
+      company_id: payload.company_id ?? undefined, //  keep it on legacy too
     };
 
     next();
