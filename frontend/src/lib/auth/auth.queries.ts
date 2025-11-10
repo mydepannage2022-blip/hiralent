@@ -100,8 +100,6 @@ export const useLogin = () => {
     },
   });
 };
-
-
 export const useUpdateLocation = () => {
   const router = useRouter();
 
@@ -373,3 +371,9 @@ export const useTerminateAllOtherSessions = () => {
     }
   });
 };
+
+
+
+
+
+
