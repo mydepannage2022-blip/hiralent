@@ -107,8 +107,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <div className='w-full flex-1'>
             {/* Header with Company Logo */}
             <div className="flex flex-row-reverse items-center justify-center py-4 px-4 border-b border-gray-200 relative">
-              <div className={`flex flex-col items-center ${(isOpen && !isMobile) || isMobile ? 'space-x-3' : 'justify-center hidden'
-                }`}>
+              <div className={`flex flex-col items-center ${
+                (isOpen && !isMobile) || isMobile ? 'space-x-3' : 'justify-center hidden'
+              }`}>
                 <div className="rounded-lg flex items-center justify-center">
                   <img src="/images/logo.png" alt="Logo" className="w-30 h-9" />
                 </div>
@@ -152,8 +153,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}
-                        className={`w-full flex items-center cursor-pointer font-normal ${(isOpen && !isMobile) || isMobile
-                            ? 'lg:px-2 xl:px-4 py-3 space-x-3'
+                        className={`w-full flex items-center cursor-pointer font-normal ${
+                          (isOpen && !isMobile) || isMobile 
+                            ? 'lg:px-2 xl:px-4 py-3 space-x-3' 
                             : 'px-3 py-3 justify-center'
                           } rounded-lg transition-all duration-200 ${isActive
                             ? 'bg-[#EDEDED]'
@@ -174,7 +176,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           {/* Logout Button */}
           <div className='w-full p-4 border-t border-gray-200 mt-16'>
-            <button
+            <button 
               onClick={handleLogoutClick}
               className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
                   ? 'px-4 py-3 space-x-3 justify-start'

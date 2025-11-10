@@ -10,9 +10,9 @@ const prisma = new PrismaClient();
 
 export class JobService {
   async createJob(companyId: string, data: CreateJobRequest): Promise<Job> {
-    // First, verify the company user exists
+    // Verify the company user exists
     const companyUser = await prisma.user.findUnique({
-      where: { user_id: companyId }
+      where: { user_id: companyId },
     });
 
     if (!companyUser) {
@@ -24,10 +24,10 @@ export class JobService {
       throw new Error(`User ${companyId} is not a company user`);
     }
 
+    // Create job strictly owned by the company (no agency)
     return prisma.companyJob.create({
       data: {
         company_id: companyId,
-        agency_id: data.agency_id ?? null,
         title: data.title,
         location: data.location,
         description: data.description,
@@ -65,18 +65,22 @@ export class JobService {
     }) as unknown as Job | null;
   }
 
-  async update(jobId: string, data: Partial<CreateJobRequest & { status?: JobStatus }>): Promise<Job> {
+  async update(
+    jobId: string,
+    data: Partial<CreateJobRequest & { status?: JobStatus }>
+  ): Promise<Job> {
     const updateData: Prisma.CompanyJobUpdateInput = {
       ...data,
-      application_deadline: data.application_deadline === null
-        ? null
-        : data.application_deadline
-        ? new Date(data.application_deadline as any)
-        : undefined,
+      application_deadline:
+        data.application_deadline === null
+          ? null
+          : data.application_deadline
+          ? new Date(data.application_deadline as any)
+          : undefined,
     };
 
-    // Remove undefined values
-    Object.keys(updateData).forEach(key => {
+    // Remove undefined values so Prisma doesn't complain
+    Object.keys(updateData).forEach((key) => {
       if (updateData[key as keyof Prisma.CompanyJobUpdateInput] === undefined) {
         delete updateData[key as keyof Prisma.CompanyJobUpdateInput];
       }
@@ -99,7 +103,7 @@ export class JobService {
     }) as unknown as Job;
   }
 
-  /** Simple list by company */
+  /** List jobs for a specific company (company dashboard) */
   async getCompanyJobs(companyId: string): Promise<Job[]> {
     return prisma.companyJob.findMany({
       where: { company_id: companyId },
@@ -107,30 +111,24 @@ export class JobService {
     }) as unknown as Job[];
   }
 
-  /** Public list by companyId */
-  async getCompanyJobsById(companyId: string, onlyActive = false): Promise<Job[]> {
+  /** Public/company-specific listing by companyId */
+  async getCompanyJobsById(
+    companyId: string,
+    onlyActive = false
+  ): Promise<Job[]> {
     return prisma.companyJob.findMany({
-      where: { 
-        company_id: companyId, 
-        ...(onlyActive ? { status: JobStatus.ACTIVE } : {}) 
+      where: {
+        company_id: companyId,
+        ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
       },
       orderBy: { created_at: 'desc' },
     }) as unknown as Job[];
   }
 
-  /** Agency list */
-  async getAgencyJobsById(agencyId: string): Promise<Job[]> {
-    return prisma.companyJob.findMany({
-      where: { agency_id: agencyId },
-      orderBy: { created_at: 'desc' },
-    }) as unknown as Job[];
-  }
-
-  /** Generic filtered listing */
+  /** Generic filtered listing (no agencies) */
   async listJobs(filters: JobListFilters): Promise<JobListResponse> {
     const {
       company_id,
-      agency_id,
       status,
       department,
       job_type,
@@ -148,7 +146,6 @@ export class JobService {
 
     const where: Prisma.CompanyJobWhereInput = {
       ...(company_id ? { company_id } : {}),
-      ...(agency_id !== undefined ? { agency_id } : {}),
       ...(department ? { department } : {}),
       ...(job_type ? { job_type } : {}),
       ...(experience_level ? { experience_level } : {}),
@@ -189,6 +186,7 @@ export class JobService {
     ]);
 
     const total_pages = Math.max(1, Math.ceil(total_count / limit));
+
     return {
       jobs: rows as unknown as Job[],
       total_count,

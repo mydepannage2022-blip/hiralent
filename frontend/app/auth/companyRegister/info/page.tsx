@@ -20,6 +20,7 @@ interface FormData {
   description: string;
   registrationNumber: string;
   fullAddress: string;
+
 }
 
 interface FormErrors {

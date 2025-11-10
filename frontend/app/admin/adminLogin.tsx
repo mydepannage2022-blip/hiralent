@@ -22,6 +22,7 @@ export default function AdminLoginPage() {
 
       if (result.mfaSetup) {
         // First time - need to setup MFA
+
         router.push('/admin/setup-mfa');
       } else if (result.requiresMFA) {
         // MFA already setup - need to verify

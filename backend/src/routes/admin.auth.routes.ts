@@ -8,12 +8,12 @@ import {
 const router = express.Router();
 
 // Step 1: Login with email/password
-router.post('/admin/auth/login', adminLoginController);
+router.post('/auth/login', adminLoginController);
 
 // Step 2: Setup 2FA (first time)
-router.post('/admin/auth/setup-mfa', setupMFAController);
+router.post('/auth/setup-mfa', setupMFAController);
 
 // Step 3: Verify 2FA code
-router.post('/admin/auth/verify-mfa', verifyMFAController);
+router.post('/auth/verify-mfa', verifyMFAController);
 
 export default router;

@@ -14,18 +14,18 @@ const router = express.Router();
 router.use(adminSecurityStack);
 
 // Get verification statistics
-router.get('/admin/verifications/stats', getVerificationStatsController);
+router.get('/verifications/stats', getVerificationStatsController);
 
 // Get all pending verifications
-router.get('/admin/verifications/pending', getPendingVerificationsController);
+router.get('/verifications/pending', getPendingVerificationsController);
 
 // Get detailed info for specific company
-router.get('/admin/verifications/:company_id', getCompanyVerificationDetailsController);
+router.get('/verifications/:company_id', getCompanyVerificationDetailsController);
 
 // Approve company verification
-router.post('/admin/verifications/approve/:company_id', approveVerificationController);
+router.post('/verifications/approve/:company_id', approveVerificationController);
 
 // Reject company verification (send back for re-submission)
-router.post('/admin/verifications/reject/:company_id', rejectVerificationController);
+router.post('/verifications/reject/:company_id', rejectVerificationController);
 
 export default router;

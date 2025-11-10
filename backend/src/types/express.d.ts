@@ -9,7 +9,7 @@ export interface AuthUser {
   agency_id?: string;
   session_id: string;
   is_email_verified?: boolean;
-  company_id: string;
+  company_id?: string;
   email?: string; // Adding email for candidate flow
   full_name?: string; // Adding full_name for candidate flow
 }

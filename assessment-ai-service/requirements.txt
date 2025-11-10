@@ -1,16 +1,19 @@
-fastapi==0.115.5
-uvicorn[standard]==0.30.6
-pydantic==2.9.2
-python-dotenv==1.0.1
-redis==5.0.8
+# Remove all fixed versions - use latest compatible
+fastapi
+uvicorn
+pydantic
+python-multipart
+python-dotenv
 
-# Optional NLP libs (kept light; you can expand later)
-spacy==3.7.5
-# python -m spacy download en_core_web_sm  (run at build if you want)
+# Gemini 2.5 Flash - LATEST VERSIONS
+google-generativeai>=0.3.2
+langchain-google-genai>=0.1.0
+langchain
 
-# gRPC stubs for later integration (Wafaa / Youssra)
-grpcio==1.66.1
-grpcio-tools==1.66.1
-
-# HTTP client (fallbacks / internal calls)
-httpx==0.27.2
+# Other packages
+spacy
+scikit-learn
+redis
+httpx
+python-jose
+aiofiles

@@ -19,7 +19,5 @@ router.patch('/jobs/:id/status', (req, res) => jobController.patchJobStatus(req,
 router.get('/jobs/company/my-jobs', (req, res) => jobController.getMyCompanyJobs(req, res));
 router.get('/jobs/company/:companyId/jobs', (req, res) => jobController.getCompanyJobsById(req, res));
 
-// Agency-specific
-router.get('/jobs/agency/:agencyId/jobs', (req, res) => jobController.getAgencyJobsById(req, res));
 
 export default router;
