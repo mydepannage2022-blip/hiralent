@@ -50,6 +50,7 @@ app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
+app.use('/api/v1/auth/sessions', sessionRoutes);
 
 
 //Question Bank
@@ -67,7 +68,6 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-app.use('/api/v1/auth/sessions', sessionRoutes);
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
 app.use('/api/v1/admin', adminAuthRoutes);

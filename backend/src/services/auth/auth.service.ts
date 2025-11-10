@@ -75,9 +75,6 @@ export const signup = async (input: SignupInput) => {
     };
   }
 };
-
-// auth.service.ts (login)
-
 // auth.service.ts (login)
 export const login = async ({ email, password }: LoginInput, req?: any): Promise<LoginResponse> => {
   try {
