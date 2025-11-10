@@ -26,6 +26,10 @@ export default function AdminLoginPage() {
       } else if (result.requiresMFA) {
         // MFA already setup - need to verify
         router.push('/admin/verify-mfa');
+        router.push('/setup-mfa');
+      } else if (result.requiresMFA) {
+        // MFA already setup - need to verify
+        router.push('/verify-mfa');
       }
     } catch (err: any) {
       setError(err.message);
