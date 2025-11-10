@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { api } from '../lib/auth/auth.api';
+import { api } from '../../lib/auth/auth.api';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 

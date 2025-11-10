@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import CodeEditor from '../../src/components/CodeEditor';
+import CodeEditor from '../../src/components/Code-Runner-Frontend/CodeEditor';
 
 export default function Page() {
   return (
