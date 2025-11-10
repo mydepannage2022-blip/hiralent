@@ -1,124 +1,113 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import Loader from '../components/layout/Loader';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from "react";
+
+interface User {
+  user_id: string;
+  email: string;
+  is_email_verified: boolean;
+  full_name: string;
+  role: string;
+  phone_number?: string;
+  position?: string;
+  linkedin_url?: string;
+  agency_id?: string;
+  agency?: any;
+}
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   token: string | null;
-  login: (userData: any, token: string) => void;
+  login: (userData: User, authToken: string) => void;
   logout: () => void;
-  updateUser: (userData: any) => void;
-  updateToken: (token: string) => void; 
-  loading: boolean;
-  isHydrated: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // Check if we're on the client side
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('authToken');
-      const savedUser = localStorage.getItem('authUser');
+    // Load user and token from localStorage on mount
+    const storedToken = localStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("authUser");
 
-      console.log('Saved Token:', savedToken); // Debug
-      console.log('Saved User:', savedUser); // Debug
+    console.log("🔍 Loading from localStorage:");
+    console.log("Stored Token:", storedToken);
+    console.log("Stored User:", storedUser);
 
-      if (savedToken) {
-        setToken(savedToken);
-        console.log('Token set:', savedToken); // Debug
+    if (storedToken && storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setToken(storedToken);
+        setUser(parsedUser);
+        console.log("✅ Auth restored from localStorage");
+      } catch (error) {
+        console.error("❌ Failed to parse stored user:", error);
+        // Clear invalid data
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("authUser");
       }
-      
-      if (savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-          console.log('User set:', parsedUser); // Debug
-        } catch (error) {
-          console.error('Error parsing saved user:', error);
-          localStorage.removeItem('authUser'); // Remove corrupted data
-        }
-      }
-
-      setIsHydrated(true); // Mark as hydrated
-      setLoading(false);
+    } else {
+      console.log("⚠️ No stored auth found");
     }
   }, []);
 
-  const login = (userData: any, token: string) => {
-    console.log('Login called with:', { userData, token }); // Debug
-    
-    setUser(userData);
-    setToken(token);
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('authUser', JSON.stringify(userData));
-    }
-  };
+  const login = (userData: User, authToken: string) => {
+    console.log("🔐 Login called with:");
+    console.log("User:", userData);
+    console.log("Token:", authToken);
 
-  const updateUser = (userData: any) => {
-    console.log('✅ Updating user only:', userData);
-    setUser(userData);
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authUser', JSON.stringify(userData));
+    if (!authToken) {
+      console.error("❌ ERROR: Token is missing in login!");
+      return;
     }
-  };
 
-  const updateToken = (newToken: string) => {
-    console.log('✅ Updating token only:', newToken);
-    setToken(newToken);
+    // Save to state
+    setUser(userData);
+    setToken(authToken);
+
+    // Save to localStorage
+    localStorage.setItem("authToken", authToken);
+    localStorage.setItem("authUser", JSON.stringify(userData));
+
+    console.log("✅ Token saved to localStorage:", authToken.substring(0, 20) + "...");
+    console.log("✅ User saved to localStorage:", userData.email);
     
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', newToken);
-    }
+    // Verify it was saved
+    const verify = localStorage.getItem("authToken");
+    console.log("✅ Verification - Token in localStorage:", verify ? "YES" : "NO");
   };
 
 const logout = () => {
-  console.log('Logout called - clearing all data'); 
+  console.log("🚪 Logout called");
   
+  localStorage.removeItem('profileData');
+  localStorage.removeItem('profileCompleteness');
+  
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("authUser");
+
+  // ✅ Clear in-memory state too
   setUser(null);
   setToken(null);
-  
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
-    
-    localStorage.removeItem('profileData');
-    localStorage.removeItem('profileCompleteness');
-    
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('profile');
-    localStorage.removeItem('redirectAfterLogin');
-    
-    console.log('All localStorage cleared');
-  }
+
+  console.log("✅ Auth cleared from localStorage and state");
 };
 
-  if (!isHydrated) {
-    return <Loader/>; // Or your loading component
-  }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      login, 
-      logout, 
-      updateUser,   // ✅ NEW
-      updateToken,  // ✅ NEW
-      loading, 
-      isHydrated 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        isAuthenticated: !!user && !!token,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -126,6 +115,8 @@ const logout = () => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
   return context;
 };
