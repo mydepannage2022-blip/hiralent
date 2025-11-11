@@ -321,4 +321,24 @@ export class QuestionService {
       throw new Error(`Failed to get question stats: ${error.message}`);
     }
   }
+  /**
+ * Trouver une question par titre (pour éviter les doublons)
+ */
+async findByTitle(title: string): Promise<Question | null> {
+  try {
+    const question = await prisma.question.findFirst({
+      where: { 
+        title: {
+          equals: title,
+          mode: 'insensitive'
+        }
+      }
+    });
+    
+    return question;
+  } catch (error: any) {
+    console.error('❌ [SERVICE] findByTitle ERROR:', error);
+    return null;
+  }
+}
 }``

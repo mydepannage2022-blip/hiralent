@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 import random
 import json
 from typing import List, Dict, Any, Optional
@@ -1001,7 +1002,7 @@ async def get_enhanced_problems(
 @app.post("/api/scrape-questions")
 async def scrape_questions(request: Dict[str, Any]):
     """
-    Scrape questions from coding platforms
+    Scrape questions from coding platforms and transform to Prisma model format
     """
     try:
         data = request
@@ -1036,10 +1037,10 @@ async def scrape_questions(request: Dict[str, Any]):
                     question_data = scrape_generic_question(url)
                 
                 if question_data:
-                    question_data["platform"] = detected_platform
-                    question_data["sourceUrl"] = url
-                    scraped_questions.append(question_data)
-                    print(f"✅ Successfully scraped: {question_data['title']}")
+                    # TRANSFORM to match Prisma Question model
+                    transformed_question = transform_to_prisma_format(question_data, detected_platform, url)
+                    scraped_questions.append(transformed_question)
+                    print(f"✅ Successfully scraped & transformed: {question_data['title']}")
                 else:
                     print(f"❌ Failed to scrape: {url}")
                     
@@ -1054,10 +1055,12 @@ async def scrape_questions(request: Dict[str, Any]):
         if not scraped_questions:
             scraped_questions = create_mock_questions(urls, platform)
         
+        print(f"📦 Returning {len(scraped_questions)} questions in Prisma format")
+        
         return {
             "success": True,
             "message": f"Scraped {len(scraped_questions)} questions",
-            "questions": scraped_questions,
+            "questions": scraped_questions,  # ✅ Now in Prisma format
             "total_urls": len(urls),
             "successful": len(scraped_questions),
             "failed": len(urls) - len(scraped_questions)
@@ -1066,6 +1069,146 @@ async def scrape_questions(request: Dict[str, Any]):
     except Exception as e:
         print(f"❌ Scraping route error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+
+def transform_to_prisma_format(scraped_data: Dict, platform: str, source_url: str) -> Dict:
+    """
+    Transform scraped question data to match the Prisma Question model exactly
+    """
+    return {
+        # Required fields for Prisma model
+        "title": scraped_data.get("title", "Untitled Question"),
+        "description": scraped_data.get("description", f"Scraped from {platform}"),
+        "problemStatement": scraped_data.get("problemStatement", scraped_data.get("content", "Problem statement not available")),
+        "difficulty": scraped_data.get("difficulty", "medium"),
+        "skillTags": scraped_data.get("skillTags", scraped_data.get("tags", [platform])),
+        "type": scraped_data.get("type", "coding"),
+        "canonicalSolution": scraped_data.get("canonicalSolution", generate_solution_stub(scraped_data.get("language", "python"))),
+        "testCases": scraped_data.get("testCases", {
+            "inputs": [],
+            "outputs": [],
+            "examples": [
+                {
+                    "input": "sample_input_1",
+                    "output": "sample_output_1", 
+                    "explanation": "Basic test case"
+                }
+            ]
+        }),
+        
+        # Metadata fields
+        "status": "pending_review",  # Always review scraped content
+        "aiGenerated": False,
+        "source": "web_scraped",  # Critical for filtering!
+        
+        # Additional metadata for tracking
+        "metadata": {
+            "sourceUrl": source_url,
+            "platform": platform,
+            "scrapedAt": datetime.now().isoformat(),
+            "originalTitle": scraped_data.get("title"),
+            "votes": scraped_data.get("votes", 0),
+            "answers": scraped_data.get("answers", 0),
+            "views": scraped_data.get("views", 0),
+            "language": scraped_data.get("language", "unknown")
+        }
+    }
+
+def generate_solution_stub(language: str) -> str:
+    """Generate a solution stub based on programming language"""
+    stubs = {
+        'python': '''# Solution stub
+def solution():
+    """
+    Implement your solution here.
+    Return the appropriate result based on the problem requirements.
+    """
+    # TODO: Implement based on scraped problem
+    pass
+
+# Test cases
+if __name__ == "__main__":
+    # Add test cases based on problem requirements
+    result = solution()
+    print(f"Result: {result}")
+''',
+        'javascript': '''// Solution stub
+function solution() {
+    /**
+     * Implement your solution here.
+     * Return the appropriate result based on the problem requirements.
+     */
+    // TODO: Implement based on scraped problem
+}
+
+// Test cases
+// console.log(solution());
+''',
+        'java': '''// Solution stub
+public class Solution {
+    public static Object solution() {
+        /**
+         * Implement your solution here.
+         * Return the appropriate result based on the problem requirements.
+         */
+        // TODO: Implement based on scraped problem
+        return null;
+    }
+    
+    public static void main(String[] args) {
+        // Test your solution here
+        Object result = solution();
+        System.out.println("Result: " + result);
+    }
+}
+''',
+        'default': '''# Solution stub
+# Implement your solution based on the scraped problem requirements
+# This is a placeholder - update with actual solution logic
+'''
+    }
+    
+    return stubs.get(language, stubs['default'])
+
+def create_mock_questions(urls, platform):
+    """Create mock questions in Prisma format when scraping fails"""
+    mock_questions = []
+    
+    for i, url in enumerate(urls):
+        detected_platform = platform or detect_platform_from_url(url)
+        
+        mock_questions.append({
+            "title": f"Sample {detected_platform.capitalize()} Problem {i+1}",
+            "description": f"This is a mock description for a problem from {url}",
+            "problemStatement": f"Given this sample problem from {detected_platform}, write an efficient solution.\n\nThis is mock data since actual scraping failed.",
+            "difficulty": "medium",
+            "skillTags": [detected_platform, "algorithm", "data-structures"],
+            "type": "coding",
+            "canonicalSolution": generate_solution_stub("python"),
+            "testCases": {
+                "inputs": ["test_input_1", "test_input_2"],
+                "outputs": ["expected_output_1", "expected_output_2"],
+                "examples": [
+                    {
+                        "input": "sample_input",
+                        "output": "sample_output",
+                        "explanation": "Mock test case"
+                    }
+                ]
+            },
+            "status": "pending_review",
+            "aiGenerated": False,
+            "source": "web_scraped",
+            "metadata": {
+                "sourceUrl": url,
+                "platform": detected_platform,
+                "scrapedAt": datetime.now().isoformat(),
+                "isMock": True
+            }
+        })
+    
+    return mock_questions
+
+
 
 @app.get("/api/scrape-service/health")
 async def scrape_service_health():

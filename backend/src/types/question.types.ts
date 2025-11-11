@@ -70,6 +70,69 @@ export interface ScrapingServiceHealth {
   service?: string;
   timestamp?: number;
 }
+//  Interface pour la réponse du job de scraping
+export interface ScrapingJobResponse {
+  success: boolean;
+  execution_time_seconds: number;
+  total_collected: number;
+  spider_results: {
+    [key: string]: {
+      collected: number;
+      saved: number;
+      status: string;
+      error?: string;
+    };
+  };
+  corpus_stats: {
+    total_problems: number;
+    unprocessed: number;
+    by_source: Record<string, number>;
+    by_language: Record<string, number>;
+    mode: string;
+  };
+  timestamp: string;
+  mode: string;
+  data_source?: string;
+  error?: string;
+}
+
+// Interface pour un problème scrapé
+export interface ScrapedProblem {
+  source: string;
+  title: string;
+  content: string;
+  full_question_url?: string;
+  tags?: string[];
+  votes?: number;
+  answers?: number;
+  views?: number;
+  language: string;
+  difficulty: string;
+  problem_type?: string;
+  problemStatement?: string;
+  skillTags?: string[];
+  type?: string;
+  canonicalSolution?: string;
+  testCases?: any;
+  test_cases?: any;
+  status?: string;
+  aiGenerated?: boolean;
+  description?: string;
+}
+
+//  Interface pour la réponse des problèmes scrapés
+export interface ScrapedProblemsResponse {
+  problems: ScrapedProblem[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  };
+  mode: string;
+  data_source?: string;
+  error?: string;
+}
 
 // Helper type pour convertir les données en format Prisma
 export type QuestionCreateInput = Omit<QuestionData, 'testCases'> & {

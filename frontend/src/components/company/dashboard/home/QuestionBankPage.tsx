@@ -23,6 +23,16 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Network,
+  Globe,
+  Code2,
+  Database,
+  ExternalLink,
+  ArrowRight,
+  Link,
+  Plus,
+  Trash,
+  Copy,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "./QuestionEditor";
@@ -541,6 +551,218 @@ const Pagination: React.FC<{
     </div>
   );
 };
+/* =============================
+   URL Scraper Modal
+============================= */
+const UrlScraperModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onScrape: (urls: string[], platform: 'stackoverflow' | 'leetcode') => Promise<void>;
+  scraping: boolean;
+}> = ({ open, onClose, onScrape, scraping }) => {
+  const [urlsInput, setUrlsInput] = useState("");
+  const [platform, setPlatform] = useState<'stackoverflow' | 'leetcode'>('stackoverflow');
+
+  const urls = urlsInput
+    .split('\n')
+    .map(u => u.trim())
+    .filter(u => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://')));
+
+  const canSubmit = urls.length > 0;
+
+  useEffect(() => {
+    if (!open) {
+      setUrlsInput("");
+      setPlatform('stackoverflow');
+    }
+  }, [open]);
+
+  const handleAddSampleUrls = () => {
+    const samples = platform === 'stackoverflow' 
+      ? `https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
+https://stackoverflow.com/questions/419163/what-does-if-name-main-do
+https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator`
+      : `https://leetcode.com/problems/two-sum/
+https://leetcode.com/problems/add-two-numbers/
+https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
+    
+    setUrlsInput(samples);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <motion.div
+        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`${panel} relative w-full max-w-2xl overflow-hidden`}
+      >
+        {/* Header */}
+        <div className="px-6 py-5 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+                <Link className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Import from Custom URLs</h3>
+                <p className="text-xs text-pink-100">Paste specific question URLs to scrape</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {/* Platform selector */}
+          <div>
+            <label className="text-xs font-semibold text-gray-800 mb-2 block">
+              Select Platform
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPlatform('stackoverflow')}
+                className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
+                  platform === 'stackoverflow'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Code2 className="w-4 h-4" />
+                  StackOverflow
+                </div>
+              </button>
+              <button
+                onClick={() => setPlatform('leetcode')}
+                className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
+                  platform === 'leetcode'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Code2 className="w-4 h-4" />
+                  LeetCode
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* URL Input */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-gray-800">
+                Question URLs <span className="text-gray-500 font-normal">(one per line)</span>
+              </label>
+              <button
+                onClick={handleAddSampleUrls}
+                className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              >
+                <Copy className="w-3 h-3" />
+                Add Sample URLs
+              </button>
+            </div>
+            <textarea
+              value={urlsInput}
+              onChange={(e) => setUrlsInput(e.target.value)}
+              placeholder={`Paste ${platform === 'stackoverflow' ? 'StackOverflow' : 'LeetCode'} question URLs here...\n\nExample:\nhttps://${platform === 'stackoverflow' ? 'stackoverflow.com/questions/...' : 'leetcode.com/problems/...'}`}
+              rows={8}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+            />
+            
+            {urls.length > 0 && (
+              <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span className="font-semibold text-green-900">
+                    {urls.length} valid URL{urls.length > 1 ? 's' : ''} detected
+                  </span>
+                </div>
+                <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                  {urls.map((url, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-green-700">
+                      <div className="w-1 h-1 bg-green-500 rounded-full" />
+                      <span className="truncate">{url}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Info Banner */}
+          <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="flex items-start gap-2">
+              <ExternalLink className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-[11px] text-blue-900 leading-relaxed">
+                <span className="font-bold">How it works:</span> The system will visit each URL, 
+                extract the question content, and save it to your database. Make sure the URLs 
+                are publicly accessible.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!canSubmit || scraping}
+            onClick={() => onScrape(urls, platform)}
+            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
+              scraping || !canSubmit
+                ? "bg-purple-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
+            }`}
+          >
+            {scraping ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                Scraping...
+              </span>
+            ) : (
+              `Scrape ${urls.length} URL${urls.length > 1 ? 's' : ''}`
+            )}
+          </button>
+        </div>
+
+        {/* Loading overlay */}
+        <AnimatePresence>
+          {scraping && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
+            >
+              <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+};
 
 /* =============================
    Main Page
@@ -579,6 +801,10 @@ const QuestionBankPage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showSourceSelector, setShowSourceSelector] = useState(false);
+  const [showUrlScraper, setShowUrlScraper] = useState(false); // NOUVEAU
+  const [urlScraperPlatform, setUrlScraperPlatform] = useState<'stackoverflow' | 'leetcode'>('stackoverflow'); // NOUVEAU
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",
@@ -870,6 +1096,102 @@ const handleSaveQuestion = async (questionData: Partial<Question>) => {
     }
     setBatchGenerating(false);
   };
+  const handleImportScraped = async (source: string = 'stackoverflow', maxPages: number = 3) => {
+  if (!requireAuth()) return;
+  
+  const confirm = window.confirm(
+    `🌐 Import Real Programming Questions\n\n` +
+    `This will scrape ${maxPages} page(s) from ${source.toUpperCase()}\n` +
+    `Source: Real questions from professional developers\n\n` +
+    `Continue?`
+  );
+
+  
+  if (!confirm) return;
+  
+  setImporting(true);
+  setShowSourceSelector(false);
+  
+  try {
+    console.log(`🕷️ Starting import from ${source}...`);
+    
+    const response = await fetch('http://localhost:5000/api/questions/import-scraped', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        source: source,
+        max_pages: maxPages
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      alert(
+        `✅ Successfully imported ${data.imported_count} real questions from ${source.toUpperCase()}!\n\n` +
+        `📊 Import Statistics:\n` +
+        `• Total scraped: ${data.total_scraped}\n` +
+        `• Imported: ${data.imported_count}\n` +
+        `• Skipped (duplicates): ${data.skipped_count}\n` +
+        `• Errors: ${data.error_count}\n\n` +
+        `All questions are now in "Pending Review" status.`
+      );
+      
+      // Reload questions to show new imports
+      await loadQuestions();
+    } else {
+      alert(`❌ Failed to import: ${data.error}\n\n${data.details || ''}`);
+    }
+  } catch (error) {
+    console.error('Failed to import scraped questions:', error);
+    alert('❌ Network error during import.\n\nMake sure:\n• Backend is running on port 5000\n• Python AI service is running on port 8000');
+  } finally {
+    setImporting(false);
+  }
+};
+const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'leetcode') => {
+  if (!requireAuth()) return;
+  
+  setImporting(true);
+  setShowUrlScraper(false);
+  
+  try {
+    console.log(`🔗 Scraping ${urls.length} URLs from ${platform}...`);
+    
+    const response = await fetch('http://localhost:5000/api/questions/scrape', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        urls: urls,
+        platform: platform
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      alert(
+        `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
+        `📊 Scraping Statistics:\n` +
+        `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
+        `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
+        `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
+        `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
+        `All questions are now in "Pending Review" status.`
+      );
+      
+      // Reload questions
+      await loadQuestions();
+    } else {
+      alert(`❌ Failed to scrape: ${data.error}\n\n${data.details || ''}`);
+    }
+  } catch (error) {
+    console.error('Failed to scrape URLs:', error);
+    alert('❌ Network error during scraping.');
+  } finally {
+    setImporting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#F6FAFF_0%,#EEF4FF_100%)]">
@@ -1082,6 +1404,171 @@ const handleSaveQuestion = async (questionData: Partial<Question>) => {
                   </span>
                 )}
               </motion.button>
+
+              {/*  NOUVEAU: Import from Web Button */}
+              <div className="relative">
+                <motion.button
+                  onClick={() => setShowSourceSelector(!showSourceSelector)}
+                  disabled={importing}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                >
+                  {importing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      Importing...
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <Network className="w-4 h-4" />
+                      Import from Web
+                    </span>
+                  )}
+                </motion.button>
+ 
+
+              {/* NOUVEAU: Import from URL Button */}
+              <motion.button
+                onClick={() => setShowUrlScraper(true)}
+                disabled={importing}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-gradient-to-r mx-2 from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              >
+                {importing ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                    Scraping...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <Link className="w-4 h-4" />
+                    Import from URL
+                  </span>
+                )}
+              </motion.button>
+
+                {/* Source Selector Dropdown */}
+                <AnimatePresence>
+                  {showSourceSelector && !importing && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ type: "spring", duration: 0.3 }}
+                      className="absolute top-full mt-3 right-0 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-5 z-50 min-w-[420px]"
+                    >
+                      {/* Header */}
+                      <div className="mb-4 pb-4 border-b-2 border-gray-100">
+                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-orange-600" />
+                          Select Platform
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Import real programming questions from professional platforms
+                        </p>
+                      </div>
+
+                      {/* StackOverflow Option */}
+                      <motion.button
+                        onClick={() => handleImportScraped('stackoverflow', 2)}
+                        whileHover={{ scale: 1.02, x: 5 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl mb-3 border-2 border-orange-300 transition-all group shadow-sm hover:shadow-md"
+                      >
+                        {/* Icon */}
+                        <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Code2 className="w-7 h-7 text-white" />
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="text-left flex-1">
+                          <div className="font-black text-gray-900 text-base flex items-center gap-2">
+                            StackOverflow
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold border border-green-200">
+                              REAL DATA
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600 mt-0.5 font-medium">
+                            Real questions from 20M+ developers
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Database className="w-3 h-3" />
+                              ~15 questions
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              High quality
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Arrow */}
+                        <ArrowRight className="w-5 h-5 text-orange-600 group-hover:translate-x-1 transition-transform" />
+                      </motion.button>
+
+                      {/* LeetCode Option (Coming Soon) */}
+                      <motion.button
+                        onClick={() => handleImportScraped('leetcode', 2)}
+                        whileHover={{ scale: 1.02, x: 5 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-100 hover:from-yellow-100 hover:to-amber-200 rounded-xl mb-3 border-2 border-amber-300 transition-all group shadow-sm hover:shadow-md"
+                      >
+                        {/* Icon */}
+                        <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Code2 className="w-7 h-7 text-white" />
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="text-left flex-1">
+                          <div className="font-black text-gray-900 text-base flex items-center gap-2">
+                            LeetCode
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold border border-green-200">
+                              REAL DATA
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600 mt-0.5 font-medium">
+                            Algorithm challenges from LeetCode
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Database className="w-3 h-3" />
+                              ~20 questions
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              Algorithm focus
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Arrow */}
+                        <ArrowRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform" />
+                      </motion.button>
+
+                      {/* Info Banner */}
+                      <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                        <div className="flex items-start gap-2">
+                          <ExternalLink className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="text-[11px] text-blue-900 leading-relaxed">
+                            <span className="font-bold">Real Questions:</span> All scraped questions come from actual programming problems posted by real developers on these platforms. They will be imported with "Pending Review" status.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cancel Button */}
+                      <button
+                        onClick={() => setShowSourceSelector(false)}
+                        className="w-full mt-4 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
@@ -1287,40 +1774,40 @@ const handleSaveQuestion = async (questionData: Partial<Question>) => {
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-b-2 border-[#1B73E8]/20">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-[#1B73E8]" />
                         Question
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Skills
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Source
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Difficulty
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       <div className="flex items-center gap-1">
                         <Eye className="w-4 h-4 text-[#1B73E8]" />
                         Views
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       <div className="flex items-center gap-1">
                         <BarChart3 className="w-4 h-4 text-[#1B73E8]" />
                         Subs
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -1539,6 +2026,58 @@ const handleSaveQuestion = async (questionData: Partial<Question>) => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* FULL-PAGE importing overlay */}
+      <AnimatePresence>
+        {importing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-gradient-to-br from-orange-900/20 via-red-900/20 to-pink-900/20 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className={`${panel} px-8 py-6 max-w-md`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin" />
+                  <Network className="absolute inset-0 m-auto w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <div className="text-gray-900 font-bold text-lg">Scraping Real Questions...</div>
+                  <div className="text-gray-600 text-sm mt-1">
+                    Collecting questions from StackOverflow
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-5 flex items-center gap-2 text-xs text-gray-500">
+                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                Making HTTP requests to platform...
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NOUVEAU: URL Scraper Modal */}
+      <UrlScraperModal
+        open={showUrlScraper}
+        onClose={() => setShowUrlScraper(false)}
+        onScrape={handleScrapeUrls}
+        scraping={importing}
+      />
+
+      {showEditor && (
+        <QuestionEditor
+          question={editingQuestion || undefined}
+          onSave={handleSaveQuestion}
+          onCancel={() => setShowEditor(false)}
+          mode={editorMode}
+        />
+      )}
     </div>
   );
 };
