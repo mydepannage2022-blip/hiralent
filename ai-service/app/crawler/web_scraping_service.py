@@ -29,13 +29,18 @@ class WebScrapingService:
         try:
             # Import the REAL StackOverflowSpider from the same directory
             from .stackoverflow_spider import StackOverflowSpider
+            from .leetcode_spider import LeetCodeSpider  #  AJOUTÉ
+
             
             # Initialize REAL components
-            self.spiders = [StackOverflowSpider()]
+            self.spiders = [StackOverflowSpider(),LeetCodeSpider()]
+            
             self.processor = RealContentProcessor()
             self.corpus_manager = RealCorpusManager()
             
             logger.info("✅ REAL StackOverflow spider initialized successfully")
+            logger.info("✅ REAL LeetCode spider initialized successfully")  #  AJOUTÉ
+
             logger.info("🚀 REAL web scraping enabled - no test data")
             
         except ImportError as e:
