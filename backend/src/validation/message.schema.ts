@@ -146,7 +146,7 @@ export const ConversationResponseSchema = z.object({
   last_message: z.object({
     message_id: z.string().uuid(),
     content: z.string().nullable(),
-    message_type: MessageTypeEnum,
+    message_type: z.string().transform(val => val as MessageType),
     sender_id: z.string().uuid(),
     sent_at: z.date(),
     is_read: z.boolean()
