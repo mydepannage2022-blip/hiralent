@@ -1,6 +1,6 @@
 import toast from 'react-hot-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { signup , updateLocation, updateSalary , login as loginapi , uploadResume ,verifyEmail , resendVerificationEmail , uploadProfilePicture , createCompanyProfile, uploadCompanyDocument , resetPassword , forgotPassword, deleteAccount, getUserSessions , terminateAllOtherSessions, terminateSession } from './auth.api';
+import { signup, updateLocation, updateSalary, login as loginapi, uploadResume, verifyEmail, resendVerificationEmail, uploadProfilePicture, createCompanyProfile, uploadCompanyDocument, resetPassword, forgotPassword, deleteAccount, getUserSessions, terminateAllOtherSessions, terminateSession } from './auth.api';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
@@ -22,15 +22,15 @@ export const useSignup = () => {
 
       toast.success('Account created successfully!');
       login(data.user, data.token);
-      
+
       if (data.user.role === 'company_admin') {
         router.push('/auth/companyRegister/info');
       } else if (data.user.role === 'candidate') {
-        router.push('/auth/signup/location'); 
+        router.push('/auth/signup/location');
       } else if (data.user.role === 'agency') {
-        router.push('/agency/setup'); 
+        router.push('/agency/setup');
       } else {
-        router.push('/'); 
+        router.push('/');
       }
     },
     onError: (error: any) => {
@@ -46,7 +46,7 @@ export const useLogin = () => {
   const { setProfileData } = useProfile();
   const router = useRouter();
 
-  
+
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
@@ -61,7 +61,7 @@ export const useLogin = () => {
         toast.error(errorMessage);
         return;
       }
-      
+
       toast.success('Login successful!');
       login(data.user, data.token);
       if (data.profile) {
@@ -77,7 +77,7 @@ export const useLogin = () => {
       } else {
         // YEH BHI LOG KARO
         console.log('No stored redirect, checking role:', data.user.role);
-        
+
         if (data.user.role === 'candidate') {
           console.log('Redirecting to candidate dashboard');
           router.push('/candidate/dashboard');
@@ -166,7 +166,7 @@ export const useVerifyEmail = () => {
     onSuccess: (data) => {
       console.log("Email verified successfully:", data);
       toast.success('Email verified successfully!');
-      
+
       if (data.success && data.user && data.token) {
         login(data.user, data.token);
         router.push('/auth/logout');
@@ -199,7 +199,7 @@ export const useResendVerificationEmail = () => {
 
 export const useUploadProfilePicture = () => {
   const router = useRouter();
-  
+
   return useMutation({
     mutationFn: uploadProfilePicture,
     onSuccess: () => {
@@ -231,12 +231,12 @@ export const useCreateCompanyProfile = () => {
 
 export const useUploadCompanyDocument = () => {
   const router = useRouter();
-  
+
   return useMutation({
     mutationFn: uploadCompanyDocument,
     onSuccess: (data) => {
       console.log('Document processed successfully:', data);
-      
+
       if (!data.ok) {
         const errorMessage = data.error || 'Document processing failed';
         toast.error(errorMessage);
@@ -246,7 +246,7 @@ export const useUploadCompanyDocument = () => {
       // Success handling
       if (data.type === 'company_doc' && data.parsed) {
         toast.success('Document verified successfully!');
-        
+
         // Optional: Auto-proceed to dashboard after success
         // setTimeout(() => {
         //   router.push('/company/dashboard');
@@ -257,10 +257,10 @@ export const useUploadCompanyDocument = () => {
     },
     onError: (error: any) => {
       console.error('❌ Document upload failed:', error);
-      const errorMessage = 
-        error?.response?.data?.error || 
-        error?.response?.data?.message || 
-        error.message || 
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error.message ||
         'Failed to process document';
       toast.error(errorMessage);
     },
@@ -307,7 +307,7 @@ export const useResetPassword = () => {
 
 export const useDeleteAccount = () => {
   const router = useRouter();
-  
+
   return useMutation({
     mutationFn: deleteAccount,
     onSuccess: (data) => {
@@ -341,7 +341,7 @@ export const useSessions = () => {
 // Terminate specific session
 export const useTerminateSession = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: terminateSession,
     onSuccess: () => {
@@ -358,7 +358,7 @@ export const useTerminateSession = () => {
 // Terminate all other sessions
 export const useTerminateAllOtherSessions = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: terminateAllOtherSessions,
     onSuccess: () => {
@@ -370,10 +370,4 @@ export const useTerminateAllOtherSessions = () => {
       toast.error('Failed to terminate all sessions');
     }
   });
-};
-
-
-
-
-
-
+}; 
