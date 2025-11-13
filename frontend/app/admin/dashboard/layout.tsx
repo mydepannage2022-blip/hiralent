@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState, ReactNode, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   BadgeCheck,
@@ -9,10 +9,11 @@ import {
   FileWarning,
   Users,
   Settings,
+  LogOut,
 } from 'lucide-react';
 
 import DashboardSidebar from '@/src/components/company/dashboard/home/DashboardSidebar';
-import DashboardNavbar from '@/src/components/company/dashboard/home/DashboardNavbar';
+import AdminNavbar from '@/src/components/admin/AdminNavbar';
 
 export default function AdminDashboardLayout({
   children,
@@ -20,37 +21,38 @@ export default function AdminDashboardLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
 
-  // keep your existing auth logic
+  // Auth state
   const [admin, setAdmin] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // ui state (same pattern as company layout)
+  // UI state
   const [isOpen, setIsOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const checkAuth = () => {
+  // Use useCallback to memoize the checkAuth function
+  const checkAuth = useCallback(() => {
     try {
       const sessionToken = localStorage.getItem('sessionToken');
       const adminUser = localStorage.getItem('adminUser');
 
       if (sessionToken && adminUser) {
-        setAdmin(JSON.parse(adminUser));
+        const parsedAdmin = JSON.parse(adminUser);
+        setAdmin(parsedAdmin);
+        setLoading(false);
       } else {
         router.push('/admin/login');
       }
-    } catch {
+    } catch (error) {
+      console.error('Auth check error:', error);
       router.push('/admin/login');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [router]);
+
+  // Only run once on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const logout = () => {
     localStorage.removeItem('sessionToken');
@@ -61,30 +63,29 @@ export default function AdminDashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-slate-600 font-medium">Loading Admin Dashboard...</p>
         </div>
       </div>
     );
   }
 
-  // same shape the company sidebar expects
+  // Admin sidebar menu items
   const menuItems = [
     { name: 'Dashboard',     icon: LayoutDashboard, href: '/admin/dashboard' },
     { name: 'Verifications', icon: BadgeCheck,      href: '/admin/dashboard/verifications' },
     { name: 'Analytics',     icon: BarChart3,       href: '/admin/dashboard/analytics' },
-    // optional admin sections
     { name: 'Security Log',  icon: FileWarning,     href: '/admin/dashboard/security-log' },
     { name: 'Admins',        icon: Users,           href: '/admin/dashboard/admins' },
     { name: 'Settings',      icon: Settings,        href: '/admin/dashboard/settings' },
   ];
 
   return (
-    <div className="w-full bg-[#F9F9F9] flex justify-center items-center">
+    <div className="w-full bg-gradient-to-br from-blue-50 via-white to-indigo-50 min-h-screen flex justify-center items-center">
       <div className="w-full xl:max-w-9/10 flex justify-center items-start p-4 md:p-8 gap-4 md:gap-8">
-        {/* Desktop Sidebar (same component/style as company) */}
+        {/* Desktop Sidebar */}
         <div className="hidden lg:flex justify-start items-start sticky top-8 self-start">
           <DashboardSidebar
             isOpen={isOpen}
@@ -116,28 +117,43 @@ export default function AdminDashboardLayout({
           </div>
         )}
 
-        {/* Content column (same navbar style as company) */}
+        {/* Main Content Column */}
         <div className="w-full flex flex-col justify-start items-start">
-          <DashboardNavbar
+          {/* Custom Admin Navbar - shows admin user info */}
+          <AdminNavbar
             isMobileMenuOpen={isMobileMenuOpen}
             setIsMobileMenuOpen={setIsMobileMenuOpen}
           />
 
-          {/* Optional: small admin badge + quick logout (top-right actions can live in the navbar in your app; 
-              if not, keep a lightweight header here) */}
-          <div className="w-full py-2 flex items-center justify-between">
-            <div className="hidden md:flex items-center gap-2 text-xs text-[#1B73E8] font-medium bg-[#1B73E8]/10 px-2.5 py-1 rounded">
-              <span>SUPER ADMIN</span>
+          {/* Admin Info Bar with Logout */}
+          <div className="w-full mb-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md">
+                  <span className="text-white text-lg font-bold">
+                    {admin?.name?.charAt(0).toUpperCase() || admin?.email?.charAt(0).toUpperCase() || 'A'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">
+                    {admin?.name || 'Super Administrator'}
+                  </h3>
+                  <p className="text-sm text-slate-500">{admin?.email || 'admin@hiralent.com'}</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-sm transition-colors border border-red-200"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
-            <button
-              onClick={logout}
-              className="ml-auto text-sm text-red-600 hover:text-red-700 hover:underline"
-            >
-              Logout
-            </button>
           </div>
 
-          <div className="w-full py-4">{children}</div>
+          {/* Page Content */}
+          <div className="w-full">{children}</div>
         </div>
       </div>
     </div>
