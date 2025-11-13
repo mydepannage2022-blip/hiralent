@@ -95,6 +95,11 @@ router.post('/scrape',
 router.get('/scrape-service/health',
   controller.checkScrapeServiceHealth.bind(controller)
 );
+//  NOUVELLE ROUTE: Import automatique depuis StackOverflow
+router.post('/import-scraped',
+  checkAuth,
+  controller.importScrapedQuestions.bind(controller)
+);
 
 // 404 handler
 router.use((req, res) => {

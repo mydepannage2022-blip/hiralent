@@ -39,7 +39,7 @@ interface Question {
   skillTags: string[];
   type: "coding" | "mcq" | string;
   canonicalSolution: string;
-  testCases: TestCase[];
+  testCases: any; // Changed from TestCase[] to any to handle different formats
   status: "draft" | "pending_review" | "approved" | string;
   aiGenerated?: boolean;
   createdBy?: string;
@@ -230,6 +230,51 @@ const ReviewQueuePage: React.FC = () => {
     return true;
   };
 
+  // ✅ FIX: Helper to normalize testCases to array format
+  const normalizeTestCases = (testCases: any): TestCase[] => {
+    if (!testCases) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(testCases)) return testCases;
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof testCases === 'string') {
+      try {
+        const parsed = JSON.parse(testCases);
+        if (Array.isArray(parsed)) return parsed;
+        // If parsed object has examples
+        if (parsed.examples && Array.isArray(parsed.examples)) {
+          return parsed.examples;
+        }
+        return [];
+      } catch {
+        return [];
+      }
+    }
+    
+    // If it's an object with examples property
+    if (testCases.examples && Array.isArray(testCases.examples)) {
+      return testCases.examples;
+    }
+    
+    // If it's an object with inputs and outputs arrays
+    if (testCases.inputs && testCases.outputs && 
+        Array.isArray(testCases.inputs) && Array.isArray(testCases.outputs)) {
+      const result: TestCase[] = [];
+      const maxLen = Math.min(testCases.inputs.length, testCases.outputs.length);
+      for (let i = 0; i < maxLen; i++) {
+        result.push({
+          input: String(testCases.inputs[i]),
+          output: String(testCases.outputs[i])
+        });
+      }
+      return result;
+    }
+    
+    // Default fallback
+    return [];
+  };
+
   const loadMyPending = async () => {
     setLoading(true);
     try {
@@ -336,6 +381,12 @@ const ReviewQueuePage: React.FC = () => {
     setShowAllTC(false);
   }, [selected?.id]);
 
+  // ✅ FIX: Normalize test cases when selected question changes
+  const normalizedTestCases = useMemo(() => {
+    if (!selected) return [];
+    return normalizeTestCases(selected.testCases);
+  }, [selected]);
+
   if (!token || !currentUserId) {
     return (
       <div className="min-h-screen grid place-items-center bg-[#F6FAFF]">
@@ -416,8 +467,7 @@ const ReviewQueuePage: React.FC = () => {
             <div className="flex items-start gap-3">
               <motion.div
                 className="w-12 h-12 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-lg"
-                animate={{ rotate: [0, 360] }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        
               >
                 <Clock className="w-6 h-6 text-white" />
               </motion.div>
@@ -764,8 +814,7 @@ const ReviewQueuePage: React.FC = () => {
                     <div className="relative">
                       <h2 className="text-2xl font-black text-white flex items-center gap-2">
                         <motion.div
-                          animate={{ rotate: [0, 360] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                        
                         >
                           <Shield className="w-6 h-6" />
                         </motion.div>
@@ -862,7 +911,7 @@ const ReviewQueuePage: React.FC = () => {
                     </div>
                   </motion.div>
 
-                  {/* Test Cases */}
+                  {/* Test Cases - ✅ FIXED */}
                   <motion.div
                     className="mb-6"
                     initial={{ opacity: 0, y: 10 }}
@@ -883,64 +932,70 @@ const ReviewQueuePage: React.FC = () => {
                         animate={{ scale: [1, 1.1, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
-                        {selected.testCases?.length || 0}
+                        {normalizedTestCases.length}
                       </motion.span>
                     </div>
 
-                    <div className="space-y-3">
-                      {(selected.testCases || [])
-                        .slice(0, showAllTC ? selected.testCases.length : 2)
-                        .map((tc, i) => {
-                          const key: `tc-${number}` = `tc-${i}`;
-                          return (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.1 }}
-                              whileHover={{ scale: 1.02, x: 5 }}
-                              className="rounded-xl p-4 border border-gray-200 bg-white"
-                            >
-                              <div className="flex items-center gap-2 mb-2">
-                                <motion.div
-                                  className="w-6 h-6 bg-[#1B73E8] text-white rounded text-xs flex items-center justify-center font-bold"
-                                  whileHover={{ rotate: 360 }}
-                                  transition={{ duration: 0.5 }}
-                                >
-                                  {i + 1}
-                                </motion.div>
-                                <span className="text-xs text-gray-600 font-bold">TEST CASE #{i + 1}</span>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => onCopy(`INPUT:\n${tc.input}\n\nOUTPUT:\n${tc.output}`, key)}
-                                  className="ml-auto inline-flex items-center gap-2 text-xs px-2 py-1 rounded-md bg-white border border-gray-200 hover:bg-gray-50"
-                                >
-                                  {copied === key ? <ClipboardCheck className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
-                                  {copied === key ? "Copied" : "Copy"}
-                                </motion.button>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                <div className="bg-white rounded p-2 border border-gray-200">
-                                  <span className="text-gray-500 font-bold block mb-1">INPUT:</span>
-                                  <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
-                                    <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.input}</pre>
-                                  </ScrollShadow>
+                    {normalizedTestCases.length === 0 ? (
+                      <div className="rounded-xl p-4 border border-gray-200 bg-gray-50 text-center">
+                        <p className="text-sm text-gray-600">No test cases available</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {normalizedTestCases
+                          .slice(0, showAllTC ? normalizedTestCases.length : 2)
+                          .map((tc, i) => {
+                            const key: `tc-${number}` = `tc-${i}`;
+                            return (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                whileHover={{ scale: 1.02, x: 5 }}
+                                className="rounded-xl p-4 border border-gray-200 bg-white"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <motion.div
+                                    className="w-6 h-6 bg-[#1B73E8] text-white rounded text-xs flex items-center justify-center font-bold"
+                                    whileHover={{ rotate: 360 }}
+                                    transition={{ duration: 0.5 }}
+                                  >
+                                    {i + 1}
+                                  </motion.div>
+                                  <span className="text-xs text-gray-600 font-bold">TEST CASE #{i + 1}</span>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => onCopy(`INPUT:\n${tc.input}\n\nOUTPUT:\n${tc.output}`, key)}
+                                    className="ml-auto inline-flex items-center gap-2 text-xs px-2 py-1 rounded-md bg-white border border-gray-200 hover:bg-gray-50"
+                                  >
+                                    {copied === key ? <ClipboardCheck className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
+                                    {copied === key ? "Copied" : "Copy"}
+                                  </motion.button>
                                 </div>
-                                <div className="bg-white rounded p-2 border border-gray-200">
-                                  <span className="text-green-600 font-bold block mb-1">OUTPUT:</span>
-                                  <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
-                                    <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.output}</pre>
-                                  </ScrollShadow>
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                    </div>
 
-                    {selected.testCases && selected.testCases.length > 2 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  <div className="bg-white rounded p-2 border border-gray-200">
+                                    <span className="text-gray-500 font-bold block mb-1">INPUT:</span>
+                                    <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
+                                      <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.input}</pre>
+                                    </ScrollShadow>
+                                  </div>
+                                  <div className="bg-white rounded p-2 border border-gray-200">
+                                    <span className="text-green-600 font-bold block mb-1">OUTPUT:</span>
+                                    <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
+                                      <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.output}</pre>
+                                    </ScrollShadow>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                      </div>
+                    )}
+
+                    {normalizedTestCases.length > 2 && (
                       <div className="mt-3">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -948,7 +1003,7 @@ const ReviewQueuePage: React.FC = () => {
                           onClick={() => setShowAllTC((v) => !v)}
                           className="text-xs font-semibold text-[#1B73E8] hover:underline"
                         >
-                          {showAllTC ? "Show less" : `Show all (${selected.testCases.length})`}
+                          {showAllTC ? "Show less" : `Show all (${normalizedTestCases.length})`}
                         </motion.button>
                       </div>
                     )}

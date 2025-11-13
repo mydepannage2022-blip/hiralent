@@ -5,7 +5,10 @@ import { aiQuestionGenerationService } from '../../services/ai/ai-question-gener
 import { 
   ScrapingServiceResponse, 
   ScrapingServiceHealth,
-  ScrapedQuestionData 
+  ScrapedQuestionData,
+  ScrapingJobResponse,      //  NOUVEAU
+  ScrapedProblemsResponse,  //  NOUVEAU
+  ScrapedProblem            //  NOUVEAU
 } from '../../types/question.types';
 export class QuestionController {
   private questionService: QuestionService;
@@ -564,11 +567,14 @@ async scrapeQuestions(req: Request, res: Response) {
       })
     });
 
+    console.log('📡 [CONTROLLER] Python service response status:', scrapeResponse.status);
+
     if (!scrapeResponse.ok) {
       throw new Error(`Scraping service returned ${scrapeResponse.status}`);
     }
 
     const scrapeData = await scrapeResponse.json() as ScrapingServiceResponse;
+    console.log('📦 [CONTROLLER] Python service response:', scrapeData);
 
     if (!scrapeData.success) {
       throw new Error(scrapeData.error || 'Scraping service failed');
@@ -584,6 +590,8 @@ async scrapeQuestions(req: Request, res: Response) {
     if (scrapeData.questions && Array.isArray(scrapeData.questions)) {
       for (const [index, questionData] of scrapeData.questions.entries()) {
         try {
+          console.log(`💾 [CONTROLLER] Processing question ${index + 1}:`, questionData.title);
+
           // Prepare the question data for database
           const questionToSave = {
             title: questionData.title,
@@ -592,7 +600,7 @@ async scrapeQuestions(req: Request, res: Response) {
             difficulty: (questionData.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
             skillTags: questionData.skillTags || [questionData.platform || 'coding'],
             type: questionData.type || 'coding',
-            canonicalSolution: questionData.canonicalSolution || `# Solution placeholder for scraped question\n# Original source: ${questionData.sourceUrl}`,
+            canonicalSolution: questionData.canonicalSolution || `# Solution placeholder\n# Source: ${questionData.sourceUrl}`,
             testCases: questionData.testCases || { inputs: [], outputs: [] },
             status: 'pending_review' as const,
             createdBy: userId,
@@ -600,13 +608,17 @@ async scrapeQuestions(req: Request, res: Response) {
             source: 'web_scraped' as const
           };
 
-          console.log(`💾 [CONTROLLER] Saving question to database: ${questionData.title}`);
+          console.log(`📊 [CONTROLLER] Question data prepared:`, {
+            title: questionToSave.title,
+            difficulty: questionToSave.difficulty,
+            source: questionToSave.source
+          });
 
           // Save to database using your QuestionService
           const saved = await this.questionService.createQuestion(questionToSave);
 
           savedQuestions.push(saved);
-          console.log(`✅ [CONTROLLER] Saved scraped question ${index + 1} to database:`, saved.id);
+          console.log(`✅ [CONTROLLER] Saved scraped question to database:`, saved.id);
 
         } catch (error: any) {
           console.error(`❌ [CONTROLLER] Error saving scraped question ${index}:`, error.message);
@@ -617,6 +629,8 @@ async scrapeQuestions(req: Request, res: Response) {
           });
         }
       }
+    } else {
+      console.log('❌ [CONTROLLER] No questions array in response');
     }
 
     console.log('💾 [CONTROLLER] Scraping completed');
@@ -644,6 +658,209 @@ async scrapeQuestions(req: Request, res: Response) {
       details: error.message
     });
   }
+  
+}
+/**
+ * Importer automatiquement des questions scrapées
+ * Route: POST /api/questions/import-scraped
+ * Body: { source: "stackoverflow", max_pages: 3 }
+ */
+async importScrapedQuestions(req: Request, res: Response) {
+  console.log('🌐 [CONTROLLER] importScrapedQuestions called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const userId = req.user?.user_id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for scraping import'
+      });
+    }
+
+    const { source, max_pages } = req.body;
+    const sourceToUse = source || 'stackoverflow';
+    const maxPagesToUse = max_pages || 3;
+
+    console.log(`🕷️ [CONTROLLER] Starting scraping from ${sourceToUse}`);
+
+    // 1️⃣ Déclencher le scraping sur le service Python
+    console.log('📡 [CONTROLLER] Step 1: Trigger scraping job...');
+    const scrapeJobResponse = await fetch('http://localhost:8000/scraping/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sources: [sourceToUse],
+        max_pages: maxPagesToUse
+      })
+    });
+
+    if (!scrapeJobResponse.ok) {
+      throw new Error(`Scraping service returned ${scrapeJobResponse.status}`);
+    }
+
+    // ✅ TYPAGE CORRECT
+    const scrapeJobResult = await scrapeJobResponse.json() as ScrapingJobResponse;
+    console.log('✅ [CONTROLLER] Scraping job completed:', scrapeJobResult);
+
+    if (!scrapeJobResult.success) {
+      throw new Error(scrapeJobResult.error || 'Scraping job failed');
+    }
+
+    // 2️⃣ Récupérer les questions scrapées
+    console.log('📡 [CONTROLLER] Step 2: Fetching scraped problems...');
+    const problemsResponse = await fetch('http://localhost:8000/scraping/problems?limit=100');
+    
+    if (!problemsResponse.ok) {
+      throw new Error(`Failed to fetch scraped problems: ${problemsResponse.status}`);
+    }
+
+    // ✅ TYPAGE CORRECT
+    const problemsData = await problemsResponse.json() as ScrapedProblemsResponse;
+    console.log(`📊 [CONTROLLER] Retrieved ${problemsData.problems?.length || 0} problems`);
+
+    if (!problemsData.problems || problemsData.problems.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Scraping completed but no new questions found',
+        imported_count: 0,
+        scraping_stats: scrapeJobResult
+      });
+    }
+
+    // 3️⃣ Transformer et sauvegarder dans la DB
+    console.log('💾 [CONTROLLER] Step 3: Saving to database...');
+    const importedQuestions = [];
+    const skippedQuestions = [];
+    const errors = [];
+
+    for (const [index, scrapedProblem] of problemsData.problems.entries()) {
+      try {
+        // Vérifier les doublons
+        const existing = await this.questionService.findByTitle(scrapedProblem.title);
+        
+        if (existing) {
+          skippedQuestions.push(scrapedProblem.title);
+          console.log(`⏭️ [CONTROLLER] Skipped duplicate: ${scrapedProblem.title.substring(0, 50)}...`);
+          continue;
+        }
+
+        // Normaliser les test cases
+        const testCases = this.normalizeTestCases(
+          scrapedProblem.testCases || scrapedProblem.test_cases
+        );
+
+        // Préparer les données pour Prisma
+        const questionData = {
+          title: scrapedProblem.title || 'Untitled Question',
+          description: (scrapedProblem.content || scrapedProblem.description || '').substring(0, 500),
+          problemStatement: scrapedProblem.problemStatement || scrapedProblem.content || '',
+          difficulty: (scrapedProblem.difficulty || 'medium') as 'easy' | 'medium' | 'hard',
+          skillTags: scrapedProblem.skillTags || scrapedProblem.tags || [],
+          type: 'coding' as const,
+          canonicalSolution: scrapedProblem.canonicalSolution || '// Solution to be provided',
+          testCases: testCases,
+          status: 'pending_review' as const, 
+          createdBy: userId,
+          aiGenerated: false,
+          source: `web_scraped_${sourceToUse}_${scrapedProblem.language || 'general'}`
+        };
+
+        // Sauvegarder
+        const saved = await this.questionService.createQuestion(questionData);
+        importedQuestions.push(saved);
+        
+        console.log(`✅ [CONTROLLER] Imported ${index + 1}/${problemsData.problems.length}: ${saved.title.substring(0, 50)}...`);
+
+      } catch (error: any) {
+        console.error(`❌ [CONTROLLER] Error importing question ${index}:`, error.message);
+        errors.push({
+          index,
+          title: scrapedProblem.title,
+          error: error.message
+        });
+      }
+    }
+
+    // 4️⃣ Retourner le résultat
+    console.log('🎉 [CONTROLLER] Import completed!');
+    console.log(`✅ Imported: ${importedQuestions.length}`);
+    console.log(`⏭️ Skipped: ${skippedQuestions.length}`);
+    console.log(`❌ Errors: ${errors.length}`);
+
+    res.json({
+      success: true,
+      message: `Successfully imported ${importedQuestions.length} questions from ${sourceToUse}`,
+      imported_count: importedQuestions.length,
+      skipped_count: skippedQuestions.length,
+      error_count: errors.length,
+      total_scraped: problemsData.problems.length,
+      scraping_stats: scrapeJobResult,
+      questions: importedQuestions.map(q => ({
+        id: q.id,
+        title: q.title,
+        difficulty: q.difficulty,
+        source: q.source,
+        skillTags: q.skillTags
+      })),
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] importScrapedQuestions ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to import scraped questions',
+      details: error.message
+    });
+  }
+}
+/**
+ * Normaliser les test cases pour Prisma
+ */
+private normalizeTestCases(testCases: any): any[] {
+  if (!testCases) {
+    return [{ input: 'Sample input', output: 'Expected output' }];
+  }
+
+  // Si c'est déjà un array avec input/output
+  if (Array.isArray(testCases) && testCases.length > 0) {
+    if (testCases[0]?.input && testCases[0]?.output) {
+      return testCases;
+    }
+  }
+
+  // Si c'est un objet avec "examples"
+  if (typeof testCases === 'object' && testCases.examples && Array.isArray(testCases.examples)) {
+    return testCases.examples.map((ex: any) => ({
+      input: ex.input || 'test_input',
+      output: ex.output || 'expected_output'
+    }));
+  }
+
+  // Si c'est un objet avec "inputs" et "outputs"
+  if (typeof testCases === 'object' && testCases.inputs && testCases.outputs) {
+    const result = [];
+    const maxLen = Math.min(
+      Array.isArray(testCases.inputs) ? testCases.inputs.length : 0,
+      Array.isArray(testCases.outputs) ? testCases.outputs.length : 0
+    );
+    
+    for (let i = 0; i < maxLen; i++) {
+      result.push({
+        input: testCases.inputs[i] || 'test_input',
+        output: testCases.outputs[i] || 'expected_output'
+      });
+    }
+    
+    return result.length > 0 ? result : [{ input: 'Sample input', output: 'Expected output' }];
+  }
+
+  // Fallback
+  return [{ input: 'Sample input', output: 'Expected output' }];
 }
 
 

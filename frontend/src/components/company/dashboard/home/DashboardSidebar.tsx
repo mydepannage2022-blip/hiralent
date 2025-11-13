@@ -1,18 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  LayoutDashboard,
-  User,
-  Bell,
-  MessageSquare,
-  Settings,
-  Activity,
   ChevronLeft,
   ChevronRight,
   LogOut,
   LucideIcon,
-  BookOpen, // QUESTION BANK
-  Clock, // ReviewQueue
   X
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -32,7 +24,7 @@ interface DashboardSidebarProps {
   isMobile: boolean;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
-  menuItems: MenuItem[]; // 👈 dynamic menus
+  menuItems: MenuItem[];
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -41,7 +33,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isMobile,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  menuItems: propMenuItems,
+  menuItems,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -49,29 +41,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [activeItem, setActiveItem] = useState<string>("Dashboard");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const localMenuItems: MenuItem[] = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
-    { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
-    { name: 'Question Bank', icon: BookOpen, href: '/company/dashboard/questions' }, 
-    { name: 'Review Queue', icon: Clock, href: '/company/dashboard/review-queue' },
-    { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
-    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
-    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
-    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' }
-  ];
-
-  // Fusionnez et dédupliquez les tableaux par href (URL unique)
-  const allMenuItems = [...localMenuItems, ...propMenuItems].filter((item, index, array) => {
-    return array.findIndex(i => i.href === item.href) === index;
-  });
-
   // Update active item based on current pathname
   useEffect(() => {
-    const currentItem = allMenuItems.find((item) => item.href === pathname);
+    const currentItem = menuItems.find((item) => item.href === pathname);
     if (currentItem) {
       setActiveItem(currentItem.name);
     }
-  }, [pathname, allMenuItems]);
+  }, [pathname, menuItems]);
 
   const handleLogoutClick = () => setShowLogoutModal(true);
   const handleLogoutConfirm = () => {
@@ -149,11 +125,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             {/* Menu */}
             <nav className="mt-6 text-black">
               <ul className="space-y-2 px-4">
-                {allMenuItems.map((item) => {
+                {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
-                    <li key={`${item.name}-${item.href}`}> {/* ← Clé unique combinée */}
+                    <li key={`${item.name}-${item.href}`}>
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}

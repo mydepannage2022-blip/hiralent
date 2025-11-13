@@ -3,7 +3,7 @@ import * as authService from "../../services/auth/auth.service";
 
 export const signupController = async (req: Request, res: Response) => {
   try {
-    const data = await authService.signup(req.body);
+    const data = await authService.signup(req.body, req);
     res.status(201).json(data);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Signup failed";
