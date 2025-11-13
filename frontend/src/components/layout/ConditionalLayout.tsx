@@ -19,6 +19,7 @@ const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
     '/company/dashboard',
     '/agency/dashboard',
     '/admin/dashboard',
+    '/admin/login',
     '/auth/'
   ];
 
