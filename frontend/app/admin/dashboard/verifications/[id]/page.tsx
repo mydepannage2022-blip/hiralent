@@ -284,7 +284,7 @@ export default function CompanyVerificationDetail() {
               </h1>
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-lg border border-orange-200">
-                  📋 Pending Review
+                   Pending Review
                 </span>
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200">
                   Submitted {company.verification_submitted_at ? formatDate(company.verification_submitted_at) : 'Unknown date'}

@@ -554,42 +554,73 @@ const Pagination: React.FC<{
 /* =============================
    URL Scraper Modal
 ============================= */
+/* =============================
+   URL Scraper Modal
+============================= */
 const UrlScraperModal: React.FC<{
   open: boolean;
   onClose: () => void;
-  onScrape: (urls: string[], platform: 'stackoverflow' | 'leetcode') => Promise<void>;
+  onScrape: (
+    urls: string[],
+    platform: "stackoverflow" | "leetcode" | "hackerrank"
+  ) => Promise<void>;
   scraping: boolean;
 }> = ({ open, onClose, onScrape, scraping }) => {
   const [urlsInput, setUrlsInput] = useState("");
-  const [platform, setPlatform] = useState<'stackoverflow' | 'leetcode'>('stackoverflow');
+  const [platform, setPlatform] = useState<
+    "stackoverflow" | "leetcode" | "hackerrank"
+  >("stackoverflow");
 
   const urls = urlsInput
-    .split('\n')
-    .map(u => u.trim())
-    .filter(u => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://')));
+    .split("\n")
+    .map((u) => u.trim())
+    .filter(
+      (u) =>
+        u.length > 0 &&
+        (u.startsWith("http://") || u.startsWith("https://"))
+    );
 
   const canSubmit = urls.length > 0;
 
   useEffect(() => {
     if (!open) {
       setUrlsInput("");
-      setPlatform('stackoverflow');
+      setPlatform("stackoverflow");
     }
   }, [open]);
 
   const handleAddSampleUrls = () => {
-    const samples = platform === 'stackoverflow' 
-      ? `https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
+    const samples =
+      platform === "stackoverflow"
+        ? `https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
 https://stackoverflow.com/questions/419163/what-does-if-name-main-do
 https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator`
-      : `https://leetcode.com/problems/two-sum/
+        : platform === "leetcode"
+        ? `https://leetcode.com/problems/two-sum/
 https://leetcode.com/problems/add-two-numbers/
-https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
-    
+https://leetcode.com/problems/longest-substring-without-repeating-characters/`
+        : // ✅ HackerRank samples (from your backend example)
+          `https://www.hackerrank.com/challenges/simple-array-sum/problem
+https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
+
     setUrlsInput(samples);
   };
 
   if (!open) return null;
+
+  const platformLabel =
+    platform === "stackoverflow"
+      ? "StackOverflow"
+      : platform === "leetcode"
+      ? "LeetCode"
+      : "HackerRank";
+
+  const exampleDomain =
+    platform === "stackoverflow"
+      ? "stackoverflow.com/questions/..."
+      : platform === "leetcode"
+      ? "leetcode.com/problems/..."
+      : "hackerrank.com/challenges/...";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -613,7 +644,9 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
               </div>
               <div>
                 <h3 className="text-lg font-bold">Import from Custom URLs</h3>
-                <p className="text-xs text-pink-100">Paste specific question URLs to scrape</p>
+                <p className="text-xs text-pink-100">
+                  Paste specific question URLs to scrape
+                </p>
               </div>
             </div>
             <button
@@ -633,13 +666,13 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
             <label className="text-xs font-semibold text-gray-800 mb-2 block">
               Select Platform
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
-                onClick={() => setPlatform('stackoverflow')}
+                onClick={() => setPlatform("stackoverflow")}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
-                  platform === 'stackoverflow'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                  platform === "stackoverflow"
+                    ? "border-orange-500 bg-orange-50 text-orange-700"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -647,17 +680,33 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
                   StackOverflow
                 </div>
               </button>
+
               <button
-                onClick={() => setPlatform('leetcode')}
+                onClick={() => setPlatform("leetcode")}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
-                  platform === 'leetcode'
-                    ? 'border-amber-500 bg-amber-50 text-amber-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                  platform === "leetcode"
+                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <Code2 className="w-4 h-4" />
                   LeetCode
+                </div>
+              </button>
+
+              {/*  NEW: HackerRank button */}
+              <button
+                onClick={() => setPlatform("hackerrank")}
+                className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
+                  platform === "hackerrank"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Code2 className="w-4 h-4" />
+                  HackerRank
                 </div>
               </button>
             </div>
@@ -667,7 +716,10 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-gray-800">
-                Question URLs <span className="text-gray-500 font-normal">(one per line)</span>
+                Question URLs{" "}
+                <span className="text-gray-500 font-normal">
+                  (one per line)
+                </span>
               </label>
               <button
                 onClick={handleAddSampleUrls}
@@ -680,22 +732,25 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
             <textarea
               value={urlsInput}
               onChange={(e) => setUrlsInput(e.target.value)}
-              placeholder={`Paste ${platform === 'stackoverflow' ? 'StackOverflow' : 'LeetCode'} question URLs here...\n\nExample:\nhttps://${platform === 'stackoverflow' ? 'stackoverflow.com/questions/...' : 'leetcode.com/problems/...'}`}
+              placeholder={`Paste ${platformLabel} question URLs here...\n\nExample:\nhttps://${exampleDomain}`}
               rows={8}
               className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
             />
-            
+
             {urls.length > 0 && (
               <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
                   <span className="font-semibold text-green-900">
-                    {urls.length} valid URL{urls.length > 1 ? 's' : ''} detected
+                    {urls.length} valid URL{urls.length > 1 ? "s" : ""} detected
                   </span>
                 </div>
                 <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
                   {urls.map((url, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-green-700">
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 text-xs text-green-700"
+                    >
                       <div className="w-1 h-1 bg-green-500 rounded-full" />
                       <span className="truncate">{url}</span>
                     </div>
@@ -710,9 +765,9 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
             <div className="flex items-start gap-2">
               <ExternalLink className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-[11px] text-blue-900 leading-relaxed">
-                <span className="font-bold">How it works:</span> The system will visit each URL, 
-                extract the question content, and save it to your database. Make sure the URLs 
-                are publicly accessible.
+                <span className="font-bold">How it works:</span> The system
+                will visit each URL, extract the question content, and save it
+                to your database. Make sure the URLs are publicly accessible.
               </div>
             </div>
           </div>
@@ -741,7 +796,7 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
                 Scraping...
               </span>
             ) : (
-              `Scrape ${urls.length} URL${urls.length > 1 ? 's' : ''}`
+              `Scrape ${urls.length} URL${urls.length > 1 ? "s" : ""}`
             )}
           </button>
         </div>
@@ -763,6 +818,7 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
     </div>
   );
 };
+
 
 /* =============================
    Main Page
@@ -939,6 +995,37 @@ const loadQuestions = async () => {
       alert("Network error while updating status");
     }
   };
+  const handleDeleteQuestion = async (questionId: string) => {
+  if (!requireAuth()) return;
+  
+  const confirm = window.confirm(
+    "Are you sure you want to delete this question?\n\nThis action cannot be undone."
+  );
+  
+  if (!confirm) return;
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Remove the question from state
+      setQuestions(prev => prev.filter(q => q.id !== questionId));
+      
+      // Show success message
+      alert("Question deleted successfully!");
+    } else {
+      alert("Failed to delete question: " + (data.error || "Unknown error"));
+    }
+  } catch (error) {
+    console.error("Failed to delete question:", error);
+    alert("Network error while deleting question.");
+  }
+};
 
   const approveQuestion = async (questionId: string) => {
     if (!requireAuth()) return;
@@ -1149,49 +1236,55 @@ const handleSaveQuestion = async (questionData: Partial<Question>) => {
     setImporting(false);
   }
 };
-const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'leetcode') => {
+const handleScrapeUrls = async (
+  urls: string[],
+  platform: "stackoverflow" | "leetcode" | "hackerrank"
+) => {
   if (!requireAuth()) return;
-  
+
   setImporting(true);
   setShowUrlScraper(false);
-  
+
   try {
     console.log(`🔗 Scraping ${urls.length} URLs from ${platform}...`);
-    
-    const response = await fetch('http://localhost:5000/api/questions/scrape', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        urls: urls,
-        platform: platform
-      })
-    });
-    
+
+    const response = await fetch(
+      "http://localhost:5000/api/questions/scrape",
+      {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          urls: urls,
+          platform: platform, // ✅ now can be "hackerrank"
+        }),
+      }
+    );
+
     const data = await response.json();
-    
+
     if (data.success) {
       alert(
         `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
-        `📊 Scraping Statistics:\n` +
-        `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
-        `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
-        `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
-        `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
-        `All questions are now in "Pending Review" status.`
+          `📊 Scraping Statistics:\n` +
+          `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
+          `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
+          `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
+          `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
+          `All questions are now in "Pending Review" status.`
       );
-      
-      // Reload questions
+
       await loadQuestions();
     } else {
-      alert(`❌ Failed to scrape: ${data.error}\n\n${data.details || ''}`);
+      alert(`❌ Failed to scrape: ${data.error}\n\n${data.details || ""}`);
     }
   } catch (error) {
-    console.error('Failed to scrape URLs:', error);
-    alert('❌ Network error during scraping.');
+    console.error("Failed to scrape URLs:", error);
+    alert("❌ Network error during scraping.");
   } finally {
     setImporting(false);
   }
 };
+
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#F6FAFF_0%,#EEF4FF_100%)]">
@@ -1736,6 +1829,10 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteQuestion(question.id);
+                          }}
                           className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100"
                           title="Delete"
                         >
@@ -1948,6 +2045,7 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => handleDeleteQuestion(q.id)}
                               className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100"
                               title="Delete"
                             >

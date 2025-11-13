@@ -1,4 +1,3 @@
-# ai-service/app/crawler/leetcode_spider.py
 """
 LeetCode Spider - Scrapes programming problems from LeetCode
 """
@@ -8,6 +7,8 @@ import json
 import re
 from typing import List, Dict, Optional
 import logging
+import time
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -19,35 +20,48 @@ class LeetCodeSpider(BaseSpider):
     def __init__(self):
         super().__init__("leetcode", "https://leetcode.com")
         self.start_urls = [
-            "https://leetcode.com/problemset/all/?page=1",
-            "https://leetcode.com/problemset/all/?difficulty=EASY&page=1",
-            "https://leetcode.com/problemset/all/?difficulty=MEDIUM&page=1",
+            "https://leetcode.com/problemset/all/",
         ]
         self.api_base = "https://leetcode.com/graphql"
+        
+        # Add proper headers to mimic browser
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+        })
     
     def extract_problems(self, html: str) -> List[Dict]:
         """
         Extract problems from LeetCode HTML
-        LeetCode uses JavaScript/React, so we need to extract from script tags
         """
         problems = []
         soup = BeautifulSoup(html, 'html.parser')
         
         try:
-            # LeetCode embeds data in script tags with __NEXT_DATA__
+            # Method 1: Try to extract from __NEXT_DATA__
             script_tag = soup.find('script', {'id': '__NEXT_DATA__'})
-            
             if script_tag and script_tag.string:
+                logger.info("Found __NEXT_DATA__, extracting problems...")
                 data = json.loads(script_tag.string)
-                problem_list = self._extract_from_next_data(data)
-                problems.extend(problem_list)
-            else:
-                # Fallback: Try to extract from table rows
-                logger.warning("Could not find __NEXT_DATA__, trying table extraction")
+                problems.extend(self._extract_from_next_data(data))
+            
+            # Method 2: Try to extract from problem table
+            if not problems:
+                logger.info("Trying table extraction...")
                 problems.extend(self._extract_from_table(soup))
+                
+            # Method 3: Try API-based extraction
+            if not problems:
+                logger.info("Trying API extraction...")
+                problems.extend(self._extract_via_api())
                 
         except Exception as e:
             logger.error(f"Error extracting problems: {e}")
+            # Fallback to simple table extraction
+            problems.extend(self._extract_from_table_simple(soup))
         
         return problems
     
@@ -56,20 +70,25 @@ class LeetCodeSpider(BaseSpider):
         problems = []
         
         try:
-            # Navigate the nested structure
-            props = data.get('props', {})
-            page_props = props.get('pageProps', {})
+            # Navigate through the complex Next.js structure
+            queries = data.get('props', {}).get('pageProps', {}).get('dehydratedState', {}).get('queries', [])
             
-            # Different LeetCode pages have different structures
-            problem_list = (
-                page_props.get('problemsetQuestionList', {}).get('questions', []) or
-                page_props.get('questions', [])
-            )
-            
-            for problem_data in problem_list:
-                problem = self._parse_problem_data(problem_data)
-                if problem:
-                    problems.append(problem)
+            for query in queries:
+                query_data = query.get('state', {}).get('data', {})
+                
+                # Check for problems in different possible locations
+                problem_data = (
+                    query_data.get('problemsetQuestionList', {}).get('questions', []) or
+                    query_data.get('questionList', {}).get('questions', []) or
+                    query_data.get('questions', [])
+                )
+                
+                if problem_data and isinstance(problem_data, list):
+                    for problem in problem_data:
+                        parsed = self._parse_problem_data(problem)
+                        if parsed:
+                            problems.append(parsed)
+                    break
                     
         except Exception as e:
             logger.error(f"Error parsing __NEXT_DATA__: {e}")
@@ -77,37 +96,58 @@ class LeetCodeSpider(BaseSpider):
         return problems
     
     def _extract_from_table(self, soup: BeautifulSoup) -> List[Dict]:
-        """Fallback: Extract from HTML table"""
+        """Extract problems from the problems table"""
         problems = []
         
         try:
-            # Find problem rows in the table
-            rows = soup.find_all('div', {'role': 'row'})
+            # Look for problem rows - LeetCode uses specific selectors
+            rows = soup.select('[role="rowgroup"] [role="row"]') or soup.select('.reactable-data tr')
             
             for row in rows:
                 try:
-                    # Extract problem info from row
-                    title_link = row.find('a')
-                    if not title_link:
+                    # Extract title and link
+                    title_elem = row.find('a', href=re.compile(r'/problems/'))
+                    if not title_elem:
                         continue
                     
-                    title = title_link.get_text(strip=True)
-                    problem_url = f"https://leetcode.com{title_link.get('href', '')}"
+                    title = title_elem.get_text(strip=True)
+                    href = title_elem.get('href', '')
+                    problem_url = urljoin(self.base_url, href)
                     
                     # Extract difficulty
-                    difficulty_span = row.find('span', text=re.compile(r'(Easy|Medium|Hard)'))
-                    difficulty = difficulty_span.get_text(strip=True).lower() if difficulty_span else 'medium'
+                    difficulty_elem = row.find('span', class_=re.compile(r'difficulty'))
+                    if not difficulty_elem:
+                        # Try by text content
+                        difficulty_text = row.get_text()
+                        if 'Easy' in difficulty_text:
+                            difficulty = 'easy'
+                        elif 'Medium' in difficulty_text:
+                            difficulty = 'medium'
+                        elif 'Hard' in difficulty_text:
+                            difficulty = 'hard'
+                        else:
+                            difficulty = 'medium'
+                    else:
+                        difficulty_text = difficulty_elem.get_text(strip=True).lower()
+                        difficulty = difficulty_text if difficulty_text in ['easy', 'medium', 'hard'] else 'medium'
+                    
+                    # Extract acceptance rate (if available)
+                    acceptance_text = row.get_text()
+                    acceptance_match = re.search(r'(\d+(?:\.\d+)?)%', acceptance_text)
+                    acceptance_rate = float(acceptance_match.group(1)) if acceptance_match else 0.0
                     
                     problem = {
                         'source': 'leetcode',
                         'title': title,
-                        'content': f'Problem from LeetCode: {title}',
+                        'content': f'LeetCode Problem: {title}',
                         'full_question_url': problem_url,
                         'difficulty': difficulty,
-                        'tags': [],
-                        'language': 'multiple',  # LeetCode supports multiple languages
+                        'tags': [],  # Will be filled from detailed API call
+                        'language': 'multiple',
                         'votes': 0,
                         'answers': 0,
+                        'acceptance_rate': acceptance_rate,
+                        'problem_type': 'coding',
                     }
                     
                     problems.append(problem)
@@ -121,43 +161,192 @@ class LeetCodeSpider(BaseSpider):
         
         return problems
     
-    def _parse_problem_data(self, data: dict) -> Optional[Dict]:
-        """Parse individual problem data"""
+    def _extract_from_table_simple(self, soup: BeautifulSoup) -> List[Dict]:
+        """Simple fallback table extraction"""
+        problems = []
+        
         try:
-            # Extract fields
-            title = data.get('title', 'Untitled')
+            # Find all links to problems
+            problem_links = soup.find_all('a', href=re.compile(r'/problems/[^/]+/$'))
+            
+            for link in problem_links:
+                try:
+                    title = link.get_text(strip=True)
+                    if not title or title == ' ':
+                        continue
+                        
+                    href = link.get('href')
+                    problem_url = urljoin(self.base_url, href)
+                    
+                    # Try to find difficulty from parent elements
+                    parent_text = link.parent.get_text() if link.parent else ''
+                    
+                    if 'Easy' in parent_text:
+                        difficulty = 'easy'
+                    elif 'Medium' in parent_text:
+                        difficulty = 'medium'
+                    elif 'Hard' in parent_text:
+                        difficulty = 'hard'
+                    else:
+                        difficulty = 'medium'
+                    
+                    problem = {
+                        'source': 'leetcode',
+                        'title': title,
+                        'content': f'LeetCode Problem: {title}',
+                        'full_question_url': problem_url,
+                        'difficulty': difficulty,
+                        'tags': [],
+                        'language': 'multiple',
+                        'votes': 0,
+                        'answers': 0,
+                        'problem_type': 'coding',
+                    }
+                    
+                    problems.append(problem)
+                    
+                except Exception as e:
+                    logger.error(f"Error in simple extraction for {link}: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error in simple table extraction: {e}")
+        
+        return problems
+    
+    def _extract_via_api(self) -> List[Dict]:
+        """Try to extract problems via the GraphQL API"""
+        problems = []
+        
+        try:
+            # This query gets a list of problems
+            query = """
+            query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
+                problemsetQuestionList: questionList(
+                    categorySlug: $categorySlug
+                    limit: $limit
+                    skip: $skip
+                    filters: $filters
+                ) {
+                    total: totalNum
+                    questions: data {
+                        acRate
+                        difficulty
+                        frontendQuestionId: questionFrontendId
+                        isFavor
+                        paidOnly: isPaidOnly
+                        status
+                        title
+                        titleSlug
+                        topicTags {
+                            name
+                            slug
+                        }
+                    }
+                }
+            }
+            """
+            
+            variables = {
+                "categorySlug": "",
+                "skip": 0,
+                "limit": 50,  # Get first 50 problems
+                "filters": {}
+            }
+            
+            response = self.session.post(
+                self.api_base,
+                json={'query': query, 'variables': variables},
+                headers={
+                    'Content-Type': 'application/json',
+                    'Referer': 'https://leetcode.com/problemset/all/',
+                    'Origin': 'https://leetcode.com',
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                questions = data.get('data', {}).get('problemsetQuestionList', {}).get('questions', [])
+                
+                for question in questions:
+                    problem = self._parse_api_problem_data(question)
+                    if problem:
+                        problems.append(problem)
+                        
+        except Exception as e:
+            logger.error(f"Error in API extraction: {e}")
+        
+        return problems
+    
+    def _parse_api_problem_data(self, data: dict) -> Optional[Dict]:
+        """Parse problem data from API response"""
+        try:
+            title = data.get('title', '')
             title_slug = data.get('titleSlug', '')
             difficulty = data.get('difficulty', 'Medium').lower()
             
-            # Get topic tags
+            # Get tags
             topic_tags = data.get('topicTags', [])
-            tags = [tag.get('name', '') for tag in topic_tags]
+            tags = [tag.get('name', '') for tag in topic_tags if tag.get('name')]
             
-            # Stats
-            stats = data.get('stats', '{}')
-            if isinstance(stats, str):
-                stats = json.loads(stats)
-            
-            total_submitted = stats.get('totalSubmissionRaw', 0)
-            total_accepted = stats.get('totalAcceptedRaw', 0)
-            
-            # Construct problem URL
+            # Construct URL
             problem_url = f"https://leetcode.com/problems/{title_slug}/"
             
             problem = {
                 'source': 'leetcode',
                 'title': title,
-                'content': data.get('content', f'Problem: {title}'),
+                'content': f'LeetCode Problem: {title}',
                 'full_question_url': problem_url,
                 'difficulty': difficulty,
                 'tags': tags,
                 'language': 'multiple',
-                'votes': total_accepted,  # Using accepted as proxy for votes
-                'answers': total_submitted,
+                'votes': 0,
+                'answers': 0,
                 'problem_type': 'coding',
-                'leetcode_id': data.get('questionFrontendId', ''),
+                'leetcode_id': data.get('frontendQuestionId', ''),
                 'is_paid_only': data.get('paidOnly', False),
-                'acceptance_rate': self._calculate_acceptance_rate(total_accepted, total_submitted),
+                'acceptance_rate': data.get('acRate', 0),
+            }
+            
+            return problem
+            
+        except Exception as e:
+            logger.error(f"Error parsing API problem data: {e}")
+            return None
+    
+    def _parse_problem_data(self, data: dict) -> Optional[Dict]:
+        """Parse individual problem data from various sources"""
+        try:
+            # Handle different data structures
+            title = data.get('title') or data.get('questionTitle', 'Untitled')
+            title_slug = data.get('titleSlug') or data.get('questionTitleSlug', '')
+            
+            if not title or title == 'Untitled':
+                return None
+                
+            difficulty = data.get('difficulty', 'Medium').lower()
+            
+            # Get tags
+            topic_tags = data.get('topicTags', [])
+            tags = [tag.get('name', '') for tag in topic_tags if tag.get('name')]
+            
+            # Construct problem URL
+            problem_url = f"https://leetcode.com/problems/{title_slug}/" if title_slug else ''
+            
+            problem = {
+                'source': 'leetcode',
+                'title': title,
+                'content': data.get('content') or data.get('question') or f'Problem: {title}',
+                'full_question_url': problem_url,
+                'difficulty': difficulty,
+                'tags': tags,
+                'language': 'multiple',
+                'votes': 0,
+                'answers': 0,
+                'problem_type': 'coding',
+                'leetcode_id': data.get('questionFrontendId') or data.get('frontendQuestionId', ''),
+                'is_paid_only': data.get('paidOnly') or data.get('isPaidOnly', False),
+                'acceptance_rate': data.get('acRate') or data.get('acceptanceRate', 0),
             }
             
             return problem
@@ -166,82 +355,72 @@ class LeetCodeSpider(BaseSpider):
             logger.error(f"Error parsing problem data: {e}")
             return None
     
-    def _calculate_acceptance_rate(self, accepted: int, submitted: int) -> float:
-        """Calculate acceptance rate percentage"""
-        if submitted == 0:
-            return 0.0
-        return round((accepted / submitted) * 100, 2)
-    
     def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
         """Find the next page URL"""
         try:
-            # Look for pagination
-            next_button = soup.find('button', {'aria-label': 'next'})
+            # LeetCode uses client-side navigation, but we can try to construct the next page URL
+            current_url = getattr(self.session, 'url', self.start_urls[0])
             
-            if next_button and not next_button.get('disabled'):
-                # Extract current page from URL and increment
-                current_url = self.session.url if hasattr(self.session, 'url') else self.start_urls[0]
-                
-                # Extract page number
-                page_match = re.search(r'page=(\d+)', current_url)
-                if page_match:
-                    current_page = int(page_match.group(1))
-                    next_page = current_page + 1
-                    next_url = re.sub(r'page=\d+', f'page={next_page}', current_url)
-                    return next_url
+            # Extract current page number
+            page_match = re.search(r'page=(\d+)', current_url)
+            if page_match:
+                current_page = int(page_match.group(1))
+                next_page = current_page + 1
+                next_url = re.sub(r'page=\d+', f'page={next_page}', current_url)
+                return next_url
+            else:
+                # First page, add page parameter
+                if '?' in current_url:
+                    return f"{current_url}&page=2"
+                else:
+                    return f"{current_url}?page=2"
                     
         except Exception as e:
             logger.error(f"Error finding next page: {e}")
         
         return None
-    
-    def fetch_problem_details(self, problem_slug: str) -> Optional[Dict]:
-        """
-        Fetch detailed information for a specific problem using GraphQL API
-        This is optional and can be used to get full problem descriptions
-        """
-        query = """
-        query questionData($titleSlug: String!) {
-            question(titleSlug: $titleSlug) {
-                questionId
-                title
-                content
-                difficulty
-                topicTags {
-                    name
-                }
-                codeSnippets {
-                    lang
-                    code
-                }
-                sampleTestCase
-                exampleTestcases
-                hints
-            }
-        }
-        """
+
+    def crawl(self, max_pages: int = 3) -> List[Dict]:
+        """Override crawl to add delays between requests"""
+        all_problems = []
+        current_page = 1
+        next_url = self.start_urls[0]
         
-        try:
-            response = self.session.post(
-                self.api_base,
-                json={
-                    'query': query,
-                    'variables': {'titleSlug': problem_slug}
-                },
-                headers={
-                    'Content-Type': 'application/json',
-                    'Referer': f'https://leetcode.com/problems/{problem_slug}/'
-                }
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('data', {}).get('question')
+        while next_url and current_page <= max_pages:
+            try:
+                logger.info(f"📄 Crawling page {current_page}: {next_url}")
                 
-        except Exception as e:
-            logger.error(f"Error fetching problem details for {problem_slug}: {e}")
+                response = self.session.get(next_url)
+                if response.status_code != 200:
+                    logger.error(f"Failed to fetch page {current_page}: HTTP {response.status_code}")
+                    break
+                
+                problems = self.extract_problems(response.text)
+                logger.info(f"✅ Found {len(problems)} problems on page {current_page}")
+                all_problems.extend(problems)
+                
+                # Get next page
+                soup = BeautifulSoup(response.text, 'html.parser')
+                next_url = self.get_next_page(soup)
+                current_page += 1
+                
+                # Be respectful - add delay between requests
+                time.sleep(2)
+                
+            except Exception as e:
+                logger.error(f"Error crawling page {current_page}: {e}")
+                break
         
-        return None
+        # Remove duplicates based on title
+        seen_titles = set()
+        unique_problems = []
+        for problem in all_problems:
+            if problem['title'] not in seen_titles:
+                seen_titles.add(problem['title'])
+                unique_problems.append(problem)
+        
+        logger.info(f"🎯 Total unique problems found: {len(unique_problems)}")
+        return unique_problems
 
 
 # Test the spider
@@ -261,7 +440,6 @@ if __name__ == "__main__":
     
     # Show sample
     if problems:
-        print("\n📋 Sample Problem:")
-        sample = problems[0]
-        for key, value in sample.items():
-            print(f"  {key}: {value}")
+        print("\n📋 Sample Problems:")
+        for i, problem in enumerate(problems[:3]):  # Show first 3
+            print(f"  {i+1}. {problem['title']} ({problem['difficulty']}) - {problem['full_question_url']}")
