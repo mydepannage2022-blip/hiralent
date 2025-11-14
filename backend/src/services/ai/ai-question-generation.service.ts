@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 
 // Configuration
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-const AI_TIMEOUT = 30000; // 30 secondes
+const AI_TIMEOUT = 60000; // 30 secondes
 
 // Types
 interface AIQuestionRequest {

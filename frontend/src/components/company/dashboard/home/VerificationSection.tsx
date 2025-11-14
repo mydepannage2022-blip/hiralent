@@ -41,10 +41,7 @@ export default function VerificationSection() {
         const profile = data?.data?.profile || null;
         setCompanyProfile(profile);
 
-        // ✅ FIXED: In your backend, company_id = user_id
-        // The profile.company_id should be the same as user.user_id
-        const derivedCompanyId = user.user_id; // Use the user ID directly
-
+        const derivedCompanyId = user.user_id;
         setCompanyId(derivedCompanyId);
         console.log("✅ Using companyId (user_id):", derivedCompanyId);
         console.log("✅ Profile data:", profile);
@@ -247,22 +244,6 @@ export default function VerificationSection() {
     );
   }
 
-  {/* Debug display */}
-  {process.env.NODE_ENV === 'development' && (
-    <div className="text-xs bg-yellow-50 p-3 rounded-lg mb-4 border border-yellow-200">
-      <p className="font-semibold text-yellow-800 mb-2">🔍 Debug Company Info:</p>
-      <div className="space-y-1">
-        <p>Company ID: <span className={companyId ? "text-green-600 font-medium" : "text-red-600 font-medium"}>"{companyId}" {!companyId && "❌ EMPTY"}</span></p>
-        <p>User ID: "{user?.user_id}"</p>
-        <p>Loading Company ID: <span className={isLoadingCompanyId ? "text-yellow-600" : "text-green-600"}>{isLoadingCompanyId ? "⏳ Yes" : "✅ No"}</span></p>
-        <p>Profile Loaded: <span className={companyProfile ? "text-green-600" : "text-red-600"}>{companyProfile ? "✅ Yes" : "❌ No"}</span></p>
-        <p>Profile company_id: "{companyProfile?.company_id}"</p>
-        <p>Has Registration: <span className={companyProfile?.registration_number ? "text-green-600" : "text-red-600"}>{companyProfile?.registration_number ? "✅ Yes" : "❌ No"}</span></p>
-        <p>Has Address: <span className={companyProfile?.full_address ? "text-green-600" : "text-red-600"}>{companyProfile?.full_address ? "✅ Yes" : "❌ No"}</span></p>
-      </div>
-    </div>
-  )}
-
   // VERIFIED STATE
   if (verified || verificationStatus === "verified") {
     return (
@@ -273,7 +254,25 @@ export default function VerificationSection() {
         className="relative overflow-hidden bg-gradient-to-br from-white via-green-50/30 to-emerald-50/40 
                    border border-green-200/60 rounded-2xl shadow-lg shadow-green-100/50 p-6"
       >
-        {/* ... verified state JSX ... */}
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-gray-900">Company Verified ✅</h3>
+              <StatusBadge />
+            </div>
+            <p className="text-sm text-gray-600">
+              Your company has been successfully verified! You now have full access to all platform features.
+            </p>
+            {companyProfile?.verification_date && (
+              <p className="text-xs text-gray-500 mt-2">
+                Verified on {new Date(companyProfile.verification_date).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        </div>
       </motion.div>
     );
   }
@@ -282,7 +281,93 @@ export default function VerificationSection() {
   if (verificationStatus === "pending") {
     return (
       <div className="bg-white rounded-lg border border-yellow-200 p-6">
-        {/* ... pending state JSX ... */}
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+            <Clock className="w-6 h-6 text-yellow-600" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-gray-900">Verification Pending</h3>
+              <StatusBadge />
+            </div>
+            <p className="text-sm text-gray-600 mb-3">
+              Your verification documents are being reviewed. This usually takes 1-2 business days.
+            </p>
+            
+            {verificationNotes && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                <p className="text-xs font-medium text-yellow-800 mb-1">Review Notes:</p>
+                <p className="text-xs text-yellow-700">{verificationNotes}</p>
+              </div>
+            )}
+
+            {companyProfile?.verification_submitted_at && (
+              <p className="text-xs text-gray-500 mb-4">
+                Submitted: {new Date(companyProfile.verification_submitted_at).toLocaleDateString()}
+              </p>
+            )}
+
+            {/* Re-upload Option */}
+            <div className="mt-4 pt-4 border-t border-yellow-200">
+              <p className="text-sm text-gray-700 mb-3 font-medium">
+                Need to update your document?
+              </p>
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-600
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-medium
+                    file:bg-yellow-50 file:text-yellow-700
+                    hover:file:bg-yellow-100
+                    cursor-pointer border border-gray-300 rounded-lg"
+                  disabled={isUploading || isLoadingCompanyId}
+                />
+                {file && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    {file.name}
+                  </p>
+                )}
+
+                {isUploading && uploadProgress > 0 && (
+                  <div className="space-y-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <motion.div
+                        className="bg-yellow-600 h-2 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${uploadProgress}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600 text-center">
+                      {uploadProgress < 20 && "Creating verification run..."}
+                      {uploadProgress >= 20 && uploadProgress < 70 && "Uploading to MinIO & processing OCR..."}
+                      {uploadProgress >= 70 && uploadProgress < 100 && "Finalizing verification..."}
+                      {uploadProgress === 100 && "Complete!"}
+                    </p>
+                  </div>
+                )}
+
+                <motion.button
+                  onClick={handleVerification}
+                  disabled={!file || isUploading || isLoadingCompanyId}
+                  className="w-full bg-yellow-600 text-white py-2.5 px-4 rounded-lg font-medium
+                    hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed
+                    flex items-center justify-center gap-2 text-sm transition-colors"
+                  whileHover={{ scale: !isUploading && file && !isLoadingCompanyId ? 1.02 : 1 }}
+                  whileTap={{ scale: !isUploading && file && !isLoadingCompanyId ? 0.98 : 1 }}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isUploading ? 'animate-spin' : ''}`} />
+                  {isUploading ? "Re-submitting..." : "Re-submit Document"}
+                </motion.button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -328,7 +413,7 @@ export default function VerificationSection() {
                 </p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Accepted formats: PDF, JPG, PNG (Max 10MB)
+                Accepted formats: PDF, JPG, PNG (Max 15MB)
               </p>
             </div>
 
