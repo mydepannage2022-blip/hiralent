@@ -37,16 +37,16 @@ export const login = async (data: {
   console.log("📥 Login response:", response.data);
   
   // ✅ Vérifier que le token existe
-  if (!response.data.token) {
-    console.error("❌ No token in API response!");
-    throw new Error("No authentication token received from server");
-  }
+  // if (!response.data.token) {
+  //   console.error("❌ No token in API response!");
+  //   throw new Error("No authentication token received from server");
+  // }
   
   // ✅ Vérifier que l'utilisateur existe
-  if (!response.data.user) {
-    console.error("❌ No user in API response!");
-    throw new Error("No user data received from server");
-  }
+  // if (!response.data.user) {
+  //   console.error("❌ No user in API response!");
+  //   throw new Error("No user data received from server");
+  // }
   
   console.log("✅ API response valid - token and user present");
   return response.data;

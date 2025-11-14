@@ -105,6 +105,9 @@ model User {
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 
   employerAssessments EmployerAssessment[] @relation("CompanyAssessments")
+  conversations_p1  Conversation[] @relation("ConversationP1")
+  conversations_p2  Conversation[] @relation("ConversationP2")  
+  sent_messages     Message[]      @relation("UserMessages")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -1461,4 +1464,52 @@ enum EmployerAssessmentStatus {
 enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
+}
+
+// Conversation Model
+model Conversation {
+  conversation_id   String    @id @default(uuid())
+  participant_1_id  String    
+  participant_2_id  String    
+  last_message_at   DateTime?
+  last_message_id   String?
+  unread_count_p1   Int       @default(0)
+  unread_count_p2   Int       @default(0)
+  is_archived_p1    Boolean   @default(false)
+  is_archived_p2    Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  // Relations add karne hain
+  participant_1     User      @relation("ConversationP1", fields: [participant_1_id], references: [user_id])
+  participant_2     User      @relation("ConversationP2", fields: [participant_2_id], references: [user_id])
+  messages          Message[]
+  
+  @@unique([participant_1_id, participant_2_id])
+  @@map("conversations")
+}
+
+// Message Model  
+model Message {
+  message_id      String       @id @default(uuid())
+  conversation_id String
+  sender_id       String
+  content         String?
+  reply_to_id     String?      
+  message_type    String       @default("text")
+  file_url        String?
+  file_name       String?
+  file_size       Int?
+  is_read         Boolean      @default(false)
+  is_deleted      Boolean      @default(false)
+  sent_at         DateTime     @default(now())
+  read_at         DateTime?
+  
+  // Relations
+  conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+  sender          User         @relation("UserMessages", fields: [sender_id], references: [user_id])
+  reply_to        Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
+  replies         Message[]    @relation("MessageReplies")
+  
+  @@map("messages")
 }

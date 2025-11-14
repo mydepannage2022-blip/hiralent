@@ -21,7 +21,64 @@ import {
   LoginResponse,
 } from "../../types/auth.types";
 import { DeleteAccountRequest } from "../../validation/auth.schema";
-export const signup = async (input: SignupInput) => {
+
+
+// export const signup = async (input: SignupInput) => {
+//   try {
+//     const { email, password, full_name, role } = input;
+
+//     const exists = await prisma.user.findUnique({ where: { email } });
+//     if (exists) throw new Error("Email already exists");
+
+//     const password_hash = await bcrypt.hash(password, 10);
+//     const user = await prisma.user.create({
+//       data: {
+//         email,
+//         password_hash,
+//         full_name,
+//         role,
+//         agency_id: null, 
+//         is_email_verified: false,
+//       },
+//     });
+
+//     const token = generateToken({ user_id: user.user_id, role: user.role });
+//     await sendVerificationEmail(user.email, user.user_id);
+
+//     // Send company-specific welcome + legacy-check emails immediately for company signups.
+//     try {
+//       // Accept both 'company' and 'company_admin' roles as company signups
+//       if (user.role === 'company' || user.role === 'company_admin') {
+//         // Use token payload key 'userId' for verify flow compatibility
+//         const verificationToken = generateToken({ userId: user.user_id }, '7d');
+//         const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
+//         const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
+//         console.log('[post-signup-email] Sending welcome email to', user.email);
+//         await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
+//         console.log('[post-signup-email] Welcome email send attempted for', user.email);
+
+//         // Legacy / upload link should point to the company's upload page (frontend)
+//         const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
+//         const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
+//         console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
+//         await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
+//         console.log('[post-signup-email] Legacy-check email send attempted for', user.email);
+//       }
+//     } catch (err) {
+//       console.error('Error sending post-signup company emails:', err);
+//     }
+
+//     return { user, token };
+//   } catch (error: any) {
+//     console.error("Signup Error:", error);
+//     return {
+//       error: true,
+//       message: error.message || "Signup failed",
+//     };
+//   }
+// };
+
+export const signup = async (input: SignupInput, req?: any) => {
   try {
     const { email, password, full_name, role } = input;
 
@@ -40,14 +97,32 @@ export const signup = async (input: SignupInput) => {
       },
     });
 
-    const token = generateToken({ user_id: user.user_id, role: user.role });
+    const sessionId = uuidv4();
+    const companyId = user.role === "company_admin" ? user.user_id : undefined;
+
+    const token = generateTokenWithSession(
+      user.user_id,
+      user.role,
+      sessionId,
+      user.agency_id || undefined,
+      undefined,
+      companyId
+    );
+
+    await createSession({
+      userId: user.user_id,
+      jwtToken: token,
+      userAgent: req?.headers['user-agent'] || 'Unknown',
+      ipAddress: req ? getClientIP(req) : '127.0.0.1',
+      screenResolution: req?.body?.screenResolution,
+      timezone: req?.body?.timezone,
+      language: req?.body?.language
+    });
+
     await sendVerificationEmail(user.email, user.user_id);
 
-    // Send company-specific welcome + legacy-check emails immediately for company signups.
     try {
-      // Accept both 'company' and 'company_admin' roles as company signups
       if (user.role === 'company' || user.role === 'company_admin') {
-        // Use token payload key 'userId' for verify flow compatibility
         const verificationToken = generateToken({ userId: user.user_id }, '7d');
         const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
         const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
@@ -55,7 +130,6 @@ export const signup = async (input: SignupInput) => {
         await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
         console.log('[post-signup-email] Welcome email send attempted for', user.email);
 
-        // Legacy / upload link should point to the company's upload page (frontend)
         const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
         const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
         console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
@@ -76,9 +150,8 @@ export const signup = async (input: SignupInput) => {
   }
 };
 
-// auth.service.ts (login)
 
-// auth.service.ts (login)
+
 export const login = async ({ email, password }: LoginInput, req?: any): Promise<LoginResponse> => {
   try {
     const user = await prisma.user.findUnique({

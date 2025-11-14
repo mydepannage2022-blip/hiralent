@@ -10,7 +10,6 @@ const allowedOrigins = [
   'https://hiralent.vercel.app'
 ];
 
-// CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     // allow requests like Postman or server-to-server without origin
@@ -40,7 +39,7 @@ import sessionRoutes from './routes/auth/session.routes'
 import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
-
+import messageRoutes from './routes/message.routes'
 
 
 // Mount routes
@@ -50,6 +49,10 @@ app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
+app.use('/api/v1/auth/sessions', sessionRoutes);
+
+
+app.use('/api/v1/messages', messageRoutes);
 
 
 //Question Bank
@@ -67,7 +70,6 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-app.use('/api/v1/auth/sessions', sessionRoutes);
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
 app.use('/api/v1/admin', adminAuthRoutes);

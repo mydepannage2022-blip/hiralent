@@ -11,7 +11,7 @@ export interface AuthenticatedRequest extends Request {
     is_email_verified?: boolean;
     email?: string;
     full_name?: string;
-    company_id?: string; //  carry company_id from JWT
+    company_id?: string;
   };
 }
 
