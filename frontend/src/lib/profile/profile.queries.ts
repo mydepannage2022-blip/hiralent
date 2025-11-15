@@ -29,6 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export const useProfileCompleteness = () => {
   const { setProfileCompleteness } = useProfile();
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: ['profileCompleteness'],
@@ -44,20 +45,29 @@ export const useProfileCompleteness = () => {
         return data;
       } catch (error: any) {
         console.error('Profile completeness failed:', error);
-        
+
         if (error?.response?.status === 401) {
-          console.log('Unauthorized - redirecting to login');
-          
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authUser');
+          console.log('Unauthorized when loading profile completeness');
+
+          // If we already have a user in-memory (signup just happened and the
+          // client persisted the user before the cookie is accepted by the
+          // browser), avoid an immediate redirect to /auth/login which would
+          // clear UI state. Instead, return null and let higher-level flows
+          // handle retry/login. Only force a redirect when there is no known
+          // in-memory user.
+          if (!user) {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('authUser');
+            }
+            window.location.href = '/auth/login';
+            return null;
           }
-          
-          window.location.href = '/auth/login';
+
           return null;
         }
-        
-        throw error; 
+
+        throw error;
       }
     },
     staleTime: 15 * 60 * 1000,

@@ -10,7 +10,6 @@ const allowedOrigins = [
   'https://hiralent.vercel.app'
 ];
 
-// CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     // allow requests like Postman or server-to-server without origin
@@ -35,11 +34,12 @@ import ocrRoutes from './routes/ocr.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
+import questionRoutes from './routes/questions/question.routes';
 import sessionRoutes from './routes/auth/session.routes'
 import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
-
+import messageRoutes from './routes/message.routes'
 
 
 // Mount routes
@@ -47,9 +47,29 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/ocr', ocrRoutes);
+app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
 app.use('/api/v1/auth/sessions', sessionRoutes);
+
+
+app.use('/api/v1/messages', messageRoutes);
+
+
+//Question Bank
+app.use('/api/questions', questionRoutes);
+
+// Mount dev routes only in non-production to avoid touching production behavior
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    // require here so production bundles don't include dev-only code
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const devRoutes = require('./routes/dev.routes').default;
+    app.use('/dev', devRoutes);
+  } catch (e) {
+    console.warn('Dev routes not available:', (e as Error).message);
+  }
+}
+
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
 app.use('/api/v1/admin', adminAuthRoutes);

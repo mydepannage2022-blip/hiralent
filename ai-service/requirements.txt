@@ -1,0 +1,16 @@
+﻿# Web Framework (versions compatibles)
+fastapi==0.100.0
+uvicorn==0.23.0
+
+# AI (seulement gemini)
+google-generativeai==0.3.0
+
+
+# Web requests
+requests==2.31.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# NOTE: On évite pydantic, langchain, beautifulsoup4 pour l'instant
+# On les ajoutera plus tard si vraiment nécessaires

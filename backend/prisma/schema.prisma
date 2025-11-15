@@ -105,6 +105,9 @@ model User {
   uploadedDocuments UploadedDocument[] @relation("UserUploadedDocuments")
 
   employerAssessments EmployerAssessment[] @relation("CompanyAssessments")
+  conversations_p1  Conversation[] @relation("ConversationP1")
+  conversations_p2  Conversation[] @relation("ConversationP2")  
+  sent_messages     Message[]      @relation("UserMessages")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -141,29 +144,46 @@ model CompanyProfile {
   verification_notes String? // Admin notes about verification
   
   // Hiring Details
-  hiring_volume  String? // low, medium, high volume hiring
-  typical_roles  String[] // Common roles they hire for
-  hiring_regions String[] // Geographic regions they hire from/for
-  remote_policy  String? // fully_remote, hybrid, office_only
-
+  hiring_volume     String?  // low, medium, high volume hiring
+  typical_roles     String[] // Common roles they hire for
+  hiring_regions    String[] // Geographic regions they hire from/for
+  remote_policy     String?  // fully_remote, hybrid, office_only
+  
   // Platform Specific
   logo_url          String?
   banner_url        String?
-  verified          Boolean   @default(false)
+  verified          Boolean  @default(false)
   verification_date DateTime?
-  rating            Float? // Company rating from candidates
-  total_jobs_posted Int? // Total jobs posted on platform
-  active_jobs_count Int? // Currently active jobs
+  rating            Float?   // Company rating from candidates
+  total_jobs_posted Int?     // Total jobs posted on platform
+  active_jobs_count Int?     // Currently active jobs
+  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  // langue préférée pour les sorties AI: "en" | "ar" | "fr" (exemples)
-  preferred_language String? @default("en")
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
-
+  user              User     @relation(fields: [company_id], references: [user_id])
 }
+
+model Question {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  problemStatement String
+  difficulty  String   // easy, medium, hard
+  skillTags   String[]
+  type        String   // coding, mcq, debugging
+  canonicalSolution String
+  testCases   Json     // { inputs: [], outputs: [] }
+  status      String   // draft, pending_review, approved, rejected
+  createdBy   String?  // user ID who created/generated
+  aiGenerated Boolean  @default(false)
+  source      String?  // ai_generated, web_scraped, manual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("questions")
+}
+
 
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
@@ -709,34 +729,50 @@ model AssessmentResult {
   @@map("assessment_results")
 }
 
-model AssessmentSummary {
-  summary_id            String          @id @default(uuid())
-  assessment_id         String          @unique
-  overall_score         Float
-  skill_level           String
-  pass_status           String
-  correct_answers       Int
-  incorrect_answers     Int
-  partial_answers       Int             @default(0)
-  total_questions       Int
-  accuracy_rate         Float
-  total_time_spent      Int
-  avg_time_per_question Float
-  category_scores       Json?
-  difficulty_scores     Json
-  strengths             String[]
-  weaknesses            String[]
-  recommendations       String[]
-  next_steps            String[]
-  ai_confidence         Float
-  achievements          String[]        @default([])
-  badges_earned         String[]        @default([])
-  created_at            DateTime        @default(now())
-  updated_at            DateTime        @updatedAt
-  assessment            SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
 
+model AssessmentSummary {
+  summary_id          String          @id @default(uuid())
+  assessment_id       String          @unique
+  
+  // Overall Metrics
+  overall_score       Float
+  skill_level         String          // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  pass_status         String          // passed, failed, needs_review
+  
+  // Performance Breakdown
+  correct_answers     Int
+  incorrect_answers   Int
+  partial_answers     Int             @default(0)
+  total_questions     Int
+  accuracy_rate       Float           // percentage
+  
+  // Time Metrics
+  total_time_spent    Int             // seconds
+  avg_time_per_question Float         // seconds
+  
+  // Category-wise Performance (JSON)
+  category_scores     Json?           // { "React Basics": 85, "Hooks": 70 }
+  difficulty_scores   Json            // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
+  
+  // AI Insights
+  strengths           String[]
+  weaknesses          String[]
+  recommendations     String[]
+  next_steps          String[]
+  ai_confidence       Float
+  
+  // Achievements (Optional)
+  achievements        String[]        @default([])
+  badges_earned       String[]        @default([])
+  
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  
+  assessment          SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
   @@map("assessment_summaries")
 }
+
 
 model QuestionBank {
   question_id      String          @id @default(uuid())
@@ -1411,6 +1447,13 @@ model CompeteChallenge {
 
 enum EmployerAssessmentStatus {
   DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
   ACTIVE
   PAUSED
   COMPLETED
@@ -1421,4 +1464,52 @@ enum EmployerAssessmentStatus {
 enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
+}
+
+// Conversation Model
+model Conversation {
+  conversation_id   String    @id @default(uuid())
+  participant_1_id  String    
+  participant_2_id  String    
+  last_message_at   DateTime?
+  last_message_id   String?
+  unread_count_p1   Int       @default(0)
+  unread_count_p2   Int       @default(0)
+  is_archived_p1    Boolean   @default(false)
+  is_archived_p2    Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  // Relations add karne hain
+  participant_1     User      @relation("ConversationP1", fields: [participant_1_id], references: [user_id])
+  participant_2     User      @relation("ConversationP2", fields: [participant_2_id], references: [user_id])
+  messages          Message[]
+  
+  @@unique([participant_1_id, participant_2_id])
+  @@map("conversations")
+}
+
+// Message Model  
+model Message {
+  message_id      String       @id @default(uuid())
+  conversation_id String
+  sender_id       String
+  content         String?
+  reply_to_id     String?      
+  message_type    String       @default("text")
+  file_url        String?
+  file_name       String?
+  file_size       Int?
+  is_read         Boolean      @default(false)
+  is_deleted      Boolean      @default(false)
+  sent_at         DateTime     @default(now())
+  read_at         DateTime?
+  
+  // Relations
+  conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+  sender          User         @relation("UserMessages", fields: [sender_id], references: [user_id])
+  reply_to        Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
+  replies         Message[]    @relation("MessageReplies")
+  
+  @@map("messages")
 }

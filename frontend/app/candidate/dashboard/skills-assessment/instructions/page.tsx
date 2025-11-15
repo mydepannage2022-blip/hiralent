@@ -9,9 +9,9 @@ const AssessmentInstructionsPage = () => {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
-  const assessmentId = searchParams.get('id');
-  const skillId = searchParams.get('skill');
-  const assessmentType = searchParams.get('type') as 'QUICK_CHECK' | 'COMPREHENSIVE';
+  const assessmentId = searchParams?.get?.('id') ?? '';
+  const skillId = searchParams?.get?.('skill') ?? '';
+  const assessmentType = (searchParams?.get?.('type') as 'QUICK_CHECK' | 'COMPREHENSIVE') ?? 'COMPREHENSIVE';
 
   // Mock assessment info - replace with API call later
   const [assessmentInfo, setAssessmentInfo] = useState({

@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+grpcio
+grpcio-tools
+transformers
+sentence-transformers
+tree-sitter
+tree-sitter-python
+scikit-learn
+numpy
+pika
+redis
+pinecone-client

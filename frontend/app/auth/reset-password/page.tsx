@@ -19,7 +19,7 @@ const ResetPasswordPage = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const tokenFromUrl = searchParams.get('token');
+    const tokenFromUrl = searchParams?.get('token') ?? null;
     setToken(tokenFromUrl);
   }, [searchParams]);
 

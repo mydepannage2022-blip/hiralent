@@ -153,3 +153,19 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 ---
 
 **This README is fully up-to-date as of September 2025. For any new features, follow the same modular and domain-driven structure.**
+
+---
+
+## Dev: Code Runner
+
+I added a small Monaco-powered code runner for local testing at `app/code-run`.
+
+Run it locally:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open: http://localhost:3000/code-run

@@ -1,22 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  LayoutDashboard,
-  User,
-  Bell,
-  MessageSquare,
-  Settings,
-  Activity,
   ChevronLeft,
   ChevronRight,
   LogOut,
   LucideIcon,
-  X,
-} from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
-import SmartLink from "../../../layout/SmartLink";
-import LogoutModal from "../../../layout/LogoutModal";
-import { useAuth } from "../../../../context/AuthContext";
+  X
+} from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import SmartLink from '../../../layout/SmartLink';
+import LogoutModal from '../../../layout/LogoutModal';
+import { useAuth } from '../../../../context/AuthContext'; 
 
 interface MenuItem {
   name: string;
@@ -30,7 +24,7 @@ interface DashboardSidebarProps {
   isMobile: boolean;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
-  menuItems: MenuItem[]; // 👈 dynamic menus
+  menuItems: MenuItem[];
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -47,6 +41,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [activeItem, setActiveItem] = useState<string>("Dashboard");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Update active item based on current pathname
   useEffect(() => {
     const currentItem = menuItems.find((item) => item.href === pathname);
     if (currentItem) {
@@ -134,7 +129,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
-                    <li key={item.name}>
+                    <li key={`${item.name}-${item.href}`}>
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}
@@ -157,10 +152,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </ul>
             </nav>
           </div>
-
-          {/* Logout */}
-          <div className="w-full p-4 border-t border-gray-200">
-            <button
+        
+          {/* Logout Button */}
+          <div className='w-full p-4 border-t border-gray-200'>
+            <button 
               onClick={handleLogoutClick}
               className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
                   ? "px-4 py-3 space-x-3 justify-start"

@@ -6,19 +6,23 @@ import { useAuth } from "../../context/AuthContext";
 import Loader from "./Loader";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathnameRaw = usePathname();
+  const pathname = pathnameRaw ?? '/';
 
   useEffect(() => {
-    if (!loading && !token) {
-      localStorage.setItem("redirectAfterLogin", pathname); 
-      router.replace("/auth/login");
+    if (!loading && !user) {
+      // Small debounce: allow a short window for auth persistence (httpOnly cookie flows)
+      // to finish (interceptor/login) before we redirect to the login page.
+      localStorage.setItem("redirectAfterLogin", pathname);
+      const t = setTimeout(() => router.replace("/auth/login"), 200);
+      return () => clearTimeout(t);
     }
-  }, [token, loading, pathname, router]);
+  }, [user, loading, pathname, router]);
 
   if (loading) return <Loader/>; 
-  if (!token) return null; 
+  if (!user) return null; 
 
   return <>{children}</>;
 }

@@ -1,0 +1,35 @@
+name: Build and smoke-test runner image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build runner image
+        run: |
+          docker build -t hiralent-runner:test -f runner-python/Dockerfile runner-python
+
+      - name: Smoke test runner image
+        run: |
+          set -eo pipefail
+          echo "Running container smoke test..."
+          docker run --rm -v $GITHUB_WORKSPACE/runner-python/fixtures:/work:ro --network none hiralent-runner:test python /opt/runner/entrypoint.py > out.json || true
+          cat out.json
+          if grep -q '"passed": true' out.json; then
+            echo "Smoke test passed"
+          else
+            echo "Smoke test failed" && exit 1
+          fi

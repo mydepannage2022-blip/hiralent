@@ -1,0 +1,4 @@
+[
+  { "input": "2 3\n", "expected": "5\n" },
+  { "input": "10 15\n", "expected": "25\n" }
+]

@@ -34,7 +34,9 @@ export const createCompanyProfile = async (userId: string, data: CreateCompanyPr
         business_type: data.business_type,
         employee_count: data.employee_count,
         remote_policy: data.remote_policy,
-        verified: false,
+        registration_number: data.registration_number, 
+        full_address: data.full_address,             
+        verified: false, 
         rating: null,
         total_jobs_posted: 0,
         active_jobs_count: 0
@@ -67,7 +69,8 @@ export const getCompanyProfile = async (userId: string) => {
       throw new Error('User not found');
     }
 
-    if (user.role !== 'company_admin') {
+    const userRoleLower = (user.role || '').toString().toLowerCase();
+    if (userRoleLower !== 'company' && userRoleLower !== 'company_admin') {
       throw new Error('User is not a company');
     }
 
@@ -99,7 +102,8 @@ export const updateCompanyProfile = async (userId: string, data: UpdateCompanyPr
       throw new Error('User not found');
     }
 
-    if (user.role !== 'company_admin') {
+    const userRoleLowerUpdate = (user.role || '').toString().toLowerCase();
+    if (userRoleLowerUpdate !== 'company' && userRoleLowerUpdate !== 'company_admin') {
       throw new Error('Only company users can update company profiles');
     }
 

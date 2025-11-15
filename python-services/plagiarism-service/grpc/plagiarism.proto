@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package plagiarism;
+
+service PlagiarismService {
+  rpc Analyze (AnalyzeRequest) returns (AnalyzeResponse) {}
+}
+
+message AnalyzeRequest {
+  string submission_id = 1;
+  string artifact_uri = 2;
+}
+
+message AnalyzeResponse {
+  string submission_id = 1;
+  double risk_score = 2;
+  string report_uri = 3;
+}

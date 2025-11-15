@@ -233,6 +233,27 @@ npm run dev
 ```
 The server will start on the port defined in `.env` (default: 4000).
 
+## 16. Code Execution & Plagiarism (new)
+
+We added a lightweight run worker and services to support code execution, grading and web-plagiarism checks.
+
+- `src/services/externalClients.ts` — wrappers for calls to external teams (Wafaa for test-cases and vector DB; Ihssane for skill radar). Runs in mock mode by default (set `EXTERNALS_MOCK=0` to opt-out).
+- `src/services/plagiarism.service.ts` — uses embeddings + vector search from external client to compute a plagiarism score and evidence list.
+- `src/services/execution.service.ts` — orchestrates fetching test cases, running them (mock runner), invoking plagiarism check, and updating skill radar.
+- `src/workers/run.worker.ts` — poller worker that processes run jobs and persists results to `codeSubmission`.
+
+Run the worker for local development:
+
+```bash
+npm run worker:run
+```
+
+Environment flags:
+
+- `EXTERNALS_MOCK=1` (default in non-production): use local mock implementations for embeddings, search and test-cases.
+- `REDIS_URL` — if present the queue will use bullmq/Redis; otherwise an in-memory queue is used for local testing.
+
+
 ---
 
 ## 15. Contact
