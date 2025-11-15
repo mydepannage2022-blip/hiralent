@@ -24,7 +24,19 @@ def create_app() -> FastAPI:
     # (later): add custom exception handlers
     # (later): add metrics middleware (Prometheus etc.)
 
-    
+        # Root landing page
+    @app.get("/", tags=["default"])
+    async def root():
+        return {
+            "service": settings.SERVICE_NAME,
+            "description": "🚀 Welcome to the AI Assessment Service — powering intelligent Job Description parsing, chatbot-guided assessment creation, and skill radar insights.",
+            "version": "1.0.0",
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "health": "/health",
+            "api_base": "/api/v1"
+        }
+
     # Health check endpoint
     @app.get("/health")
     async def health_check():
