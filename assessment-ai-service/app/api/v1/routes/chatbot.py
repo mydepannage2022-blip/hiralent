@@ -24,7 +24,8 @@ async def start_chatbot(request: ChatbotStartRequest) -> ChatbotResponse:
         )
 
     try:
-        session = chatbot_engine.start_session(request)
+        # ✅ await the coroutine
+        session = await chatbot_engine.start_session(request)
 
         if not session.messages:
             # Engine should always push a first assistant message
@@ -67,7 +68,7 @@ async def send_chatbot_message(request: ChatbotMessageRequest) -> ChatbotRespons
         )
 
     try:
-        response = chatbot_engine.process_message(
+        response = await chatbot_engine.process_message(
             request.session_id,
             request.message,
         )
