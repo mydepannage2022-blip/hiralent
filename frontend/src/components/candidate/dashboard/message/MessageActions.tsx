@@ -1,85 +1,144 @@
+// src/components/candidate/dashboard/message/MessageActions.tsx
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import { EllipsisVertical, Copy, Reply, Trash, Smile } from "lucide-react";
+import React from "react";
+import { 
+  Reply, 
+  Trash2, 
+  Copy, 
+  Heart,
+  MoreVertical,
+  Download,
+  Forward,
+  Star
+} from "lucide-react";
 
 interface MessageActionsProps {
-    onCopy?: () => void;
-    onReply?: () => void;
-    onDelete?: () => void;
-    // open floating react bar near the message
-    onOpenReactBar?: () => void;
+  onReply?: () => void;
+  onDelete?: () => void;
+  onCopy?: () => void;
+  onReact?: () => void;
+  onForward?: () => void;
+  onStar?: () => void;
+  onDownload?: () => void;
+  isMine: boolean;
+  isCompact?: boolean;
 }
 
 export default function MessageActions({
-    onCopy,
-    onReply,
-    onDelete,
-    onOpenReactBar,
+  onReply,
+  onDelete,
+  onCopy,
+  onReact,
+  onForward,
+  onStar,
+  onDownload,
+  isMine,
+  isCompact = false,
 }: MessageActionsProps) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
+  const actions = [
+    {
+      icon: Reply,
+      label: "Reply",
+      onClick: onReply,
+      show: !!onReply,
+      color: "text-gray-600 hover:text-blue-600",
+    },
+    {
+      icon: Heart,
+      label: "React", 
+      onClick: onReact,
+      show: !!onReact,
+      color: "text-gray-600 hover:text-red-500",
+    },
+    {
+      icon: Forward,
+      label: "Forward",
+      onClick: onForward,
+      show: !!onForward,
+      color: "text-gray-600 hover:text-green-600",
+    },
+    {
+      icon: Star,
+      label: "Star",
+      onClick: onStar,
+      show: !!onStar,
+      color: "text-gray-600 hover:text-yellow-500",
+    },
+    {
+      icon: Copy,
+      label: "Copy",
+      onClick: onCopy,
+      show: !!onCopy,
+      color: "text-gray-600 hover:text-gray-800",
+    },
+    {
+      icon: Download,
+      label: "Download",
+      onClick: onDownload,
+      show: !!onDownload,
+      color: "text-gray-600 hover:text-indigo-600",
+    },
+    {
+      icon: Trash2,
+      label: "Delete",
+      onClick: onDelete,
+      show: isMine && !!onDelete,
+      color: "text-gray-600 hover:text-red-600",
+    },
+  ];
 
-    useEffect(() => {
-        const handleClick = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener("mousedown", handleClick);
-        return () => document.removeEventListener("mousedown", handleClick);
-    }, []);
+  const visibleActions = actions.filter(action => action.show);
 
+  if (visibleActions.length === 0) {
+    return null;
+  }
+
+  if (isCompact) {
     return (
-        <div ref={ref} className="relative">
+      <div className="flex gap-1">
+        {visibleActions.slice(0, 3).map((action, index) => {
+          const Icon = action.icon;
+          return (
             <button
-                onClick={() => setOpen((s) => !s)}
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
-                aria-label="Message actions"
+              key={index}
+              onClick={action.onClick}
+              className={`p-1 rounded-full transition-all duration-200 ${action.color} hover:bg-gray-100`}
+              title={action.label}
             >
-                <EllipsisVertical size={16} />
+              <Icon size={14} />
             </button>
-
-            {open && (
-                <div className="absolute right-0 top-6 w-40 bg-white shadow-lg border border-gray-200 rounded-lg z-50 text-sm overflow-hidden">
-                    <button
-                        onClick={() => {
-                            setOpen(false);
-                            onCopy?.();
-                        }}
-                        className="flex items-center w-full px-3 py-2 hover:bg-gray-50"
-                    >
-                        <Copy size={14} className="mr-2" /> Copy
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setOpen(false);
-                            onReply?.();
-                        }}
-                        className="flex items-center w-full px-3 py-2 hover:bg-gray-50"
-                    >
-                        <Reply size={14} className="mr-2" /> Reply
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setOpen(false);
-                            onOpenReactBar?.();
-                        }}
-                        className="flex items-center w-full px-3 py-2 hover:bg-gray-50"
-                    >
-                        <Smile size={14} className="mr-2" /> React
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setOpen(false);
-                            onDelete?.();
-                        }}
-                        className="flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50"
-                    >
-                        <Trash size={14} className="mr-2" /> Delete
-                    </button>
-                </div>
-            )}
-        </div>
+          );
+        })}
+        {visibleActions.length > 3 && (
+          <button className="p-1 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200">
+            <MoreVertical size={14} />
+          </button>
+        )}
+      </div>
     );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 bg-white shadow-xl rounded-lg border border-gray-200 p-1 min-w-[80px]">
+      {visibleActions.map((action, index) => {
+        const Icon = action.icon;
+        return (
+          <button
+            key={index}
+            onClick={action.onClick}
+            className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-all duration-200 ${action.color} hover:bg-gray-50`}
+            title={action.label}
+          >
+            <Icon size={12} />
+            <span className="hidden sm:inline whitespace-nowrap">
+              {action.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
+
+// Export types for use in other components
+export type { MessageActionsProps };

@@ -20,7 +20,10 @@ import {
   Target,
   Lightbulb,
   Terminal,
-  FlaskConical
+  FlaskConical,
+  List,
+  CheckSquare,
+  Type
 } from 'lucide-react';
 
 interface Question {
@@ -34,6 +37,15 @@ interface Question {
   canonicalSolution: string;
   testCases: Array<{ input: string; output: string }>;
   status: string;
+  // MCQ specific fields
+  options?: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 interface QuestionEditorProps {
@@ -58,15 +70,27 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     type: 'coding',
     canonicalSolution: '',
     testCases: [{ input: '', output: '' }],
-    status: 'draft'
+    status: 'draft',
+    options: {
+      A: '',
+      B: '',
+      C: '',
+      D: ''
+    },
+    correctAnswer: '',
+    explanation: ''
   });
 
   const [newTag, setNewTag] = useState('');
-  const [activeTab, setActiveTab] = useState<'details' | 'solution' | 'tests'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'solution' | 'tests' | 'mcq'>('details');
 
   useEffect(() => {
     if (question) {
       setFormData(question);
+      // Set active tab based on question type
+      if (question.type === 'mcq') {
+        setActiveTab('mcq');
+      }
     }
   }, [question]);
 
@@ -110,6 +134,53 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }));
   };
 
+  const handleOptionChange = (optionKey: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      options: {
+        ...prev.options,
+        [optionKey]: value
+      }
+    }));
+  };
+
+  const handleCorrectAnswerChange = (answerKey: string) => {
+    setFormData(prev => ({
+      ...prev,
+      correctAnswer: answerKey
+    }));
+  };
+
+  const handleMultipleCorrectAnswers = (answerKey: string) => {
+    const currentAnswers = formData.correctAnswer?.split(',') || [];
+    let newAnswers: string[];
+
+    if (currentAnswers.includes(answerKey)) {
+      newAnswers = currentAnswers.filter(a => a !== answerKey);
+    } else {
+      newAnswers = [...currentAnswers, answerKey];
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      correctAnswer: newAnswers.sort().join(',')
+    }));
+  };
+
+  const handleTypeChange = (newType: string) => {
+    setFormData(prev => ({
+      ...prev,
+      type: newType
+    }));
+
+    // Switch to appropriate tab when type changes
+    if (newType === 'mcq') {
+      setActiveTab('mcq');
+    } else {
+      setActiveTab('details');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -140,6 +211,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   const currentDifficulty = difficultyConfig[formData.difficulty as keyof typeof difficultyConfig];
+  const isMCQ = formData.type === 'mcq';
+
+  const getTabs = () => {
+    const baseTabs = [
+      { id: 'details' as const, label: 'Details', icon: FileText }
+    ];
+
+    if (isMCQ) {
+      return [
+        ...baseTabs,
+        { id: 'mcq' as const, label: 'MCQ Options', icon: List }
+      ];
+    } else {
+      return [
+        ...baseTabs,
+        { id: 'solution' as const, label: 'Solution', icon: Code },
+        { id: 'tests' as const, label: 'Tests', icon: TestTube }
+      ];
+    }
+  };
+
+  const tabs = getTabs();
 
   return (
     <motion.div
@@ -209,16 +302,50 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               </motion.button>
             </div>
 
+            {/* Question Type Selector */}
+            <div className="flex items-center gap-4 mt-4">
+              <div className="flex items-center gap-2">
+                <Type className="w-4 h-4 text-blue-200" />
+                <span className="text-sm font-bold text-white">Question Type:</span>
+              </div>
+              <div className="flex gap-2">
+                <motion.button
+                  type="button"
+                  onClick={() => handleTypeChange('coding')}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    !isMCQ 
+                      ? 'bg-white text-[#1B73E8] shadow-md' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Code className="w-4 h-4" />
+                  Coding
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => handleTypeChange('mcq')}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    isMCQ 
+                      ? 'bg-white text-[#1B73E8] shadow-md' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                  Multiple Choice
+                </motion.button>
+              </div>
+            </div>
+
             {/* Compact Tab Navigation */}
             <div className="flex gap-2 mt-4">
-              {[
-                { id: 'details', label: 'Details', icon: FileText },
-                { id: 'solution', label: 'Solution', icon: Code },
-                { id: 'tests', label: 'Tests', icon: TestTube }
-              ].map((tab) => (
+              {tabs.map((tab) => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                     activeTab === tab.id
                       ? 'bg-white text-[#1B73E8] shadow-md'
@@ -243,7 +370,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         </div>
 
         {/* Compact Form Content */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 180px)' }}>
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 220px)' }}>
           <AnimatePresence mode="wait">
             {/* Details Tab */}
             {activeTab === 'details' && (
@@ -534,6 +661,97 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       ))}
                     </AnimatePresence>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* MCQ Options Tab */}
+            {activeTab === 'mcq' && (
+              <motion.div
+                key="mcq"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6"
+              >
+                {/* MCQ Options */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                      <List className="w-4 h-4 text-[#1B73E8]" />
+                      Multiple Choice Options
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <CheckSquare className="w-3 h-3" />
+                      <span>Select correct answers below</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {['A', 'B', 'C', 'D'].map((optionKey) => (
+                      <motion.div
+                        key={optionKey}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-sm">
+                            {optionKey}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formData.correctAnswer?.includes(optionKey) || false}
+                              onChange={() => handleMultipleCorrectAnswers(optionKey)}
+                              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-xs font-bold text-gray-700">Correct Answer</span>
+                          </div>
+                        </div>
+                        <textarea
+                          required
+                          value={formData.options?.[optionKey as keyof typeof formData.options] || ''}
+                          onChange={(e) => handleOptionChange(optionKey, e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 text-sm bg-white border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                          placeholder={`Enter option ${optionKey}...`}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {formData.correctAnswer && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-4 p-3 bg-green-50 border-2 border-green-200 rounded-xl"
+                    >
+                      <div className="flex items-center gap-2 text-green-800">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-bold">
+                          Correct Answers: {formData.correctAnswer.split(',').join(', ')}
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Explanation */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
+                    <Lightbulb className="w-4 h-4 text-[#1B73E8]" />
+                    Explanation
+                  </label>
+                  <textarea
+                    value={formData.explanation || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, explanation: e.target.value }))}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                    placeholder="Explain why these answers are correct..."
+                  />
                 </div>
               </motion.div>
             )}

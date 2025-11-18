@@ -234,7 +234,7 @@ export const getJobRecommendations = async (
             skill_match: JSON.stringify(matchReasoning),
             ai_reasoning: matchReasoning.reasoning,
           },
-        });z
+        });
       }
 
       recommendations.push({

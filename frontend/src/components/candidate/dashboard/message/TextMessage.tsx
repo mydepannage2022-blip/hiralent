@@ -1,12 +1,28 @@
+// src/components/candidate/dashboard/message/TextMessage.tsx
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { Message } from "./mockData";
 import { MapPin } from "lucide-react";
 import MessageActions from "./MessageActions";
 import EmojiPicker from "emoji-picker-react";
 
+// Use LegacyMessage type
+interface LegacyMessage {
+  id: string | number;
+  sender: "me" | "them";
+  text: string;
+  type: "text" | "voice" | "image" | "video" | "file" | "location";
+  fileName?: string;
+  timestamp: string;
+  replyTo?: {
+    sender: "me" | "them";
+    text: string;
+    type: "text" | "voice" | "image" | "video" | "file" | "location";
+    fileName?: string;
+  };
+}
+
 interface TextMessageProps {
-  msg: Message;
+  msg: LegacyMessage; // Changed from Message to LegacyMessage
   reaction?: string;
   onReply?: () => void;
   onDelete?: () => void;
@@ -45,8 +61,9 @@ export default function TextMessage({
   const ReplyBubble = () =>
     msg.replyTo ? (
       <div
-        className={`mb-1 p-2 rounded-lg ${isMine ? "bg-blue-50" : "bg-gray-100"
-          } border-l-4 ${isMine ? "border-blue-600" : "border-gray-400"}`}
+        className={`mb-1 p-2 rounded-lg ${
+          isMine ? "bg-blue-50" : "bg-gray-100"
+        } border-l-4 ${isMine ? "border-blue-600" : "border-gray-400"}`}
       >
         <p className="font-medium text-gray-700 text-xs truncate">
           {msg.replyTo.sender === "me" ? "You" : "Them"}
@@ -69,106 +86,98 @@ export default function TextMessage({
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
       <div
-        className={`group px-4 py-2 rounded-xl text-sm max-w-[70%] relative ${isMine
+        className={`group px-4 py-2 rounded-xl text-sm max-w-[70%] relative ${
+          isMine
             ? "bg-[#EFF5FF] text-black rounded-br-none"
             : "bg-[#F9F9F9] text-black rounded-bl-none"
-          }`}
+        }`}
       >
         {/* Action buttons (reply, delete, copy, react) */}
         <div
-          className={`absolute top-1 ${isMine ? "left-1" : "right-1"
-            } opacity-0 group-hover:opacity-100 transition`}
+          className={`absolute top-1 ${
+            isMine ? "-left-16" : "-right-16"
+          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
         >
           <MessageActions
             onReply={onReply}
             onDelete={onDelete}
+            onReact={() => setShowReactBar(!showReactBar)}
             onCopy={onCopy}
-            onOpenReactBar={() => {
-              setShowReactBar((s) => !s);
-              setShowPicker(false);
-            }}
+            isMine={isMine}
           />
         </div>
 
-        {/* Reaction bar (above the message) */}
+        {/* Reaction picker bar */}
         {showReactBar && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-gray-200 shadow-lg rounded-full px-2 py-1 z-40 flex items-center gap-2">
-            {emojis.map((e) =>
-              e === "➕" ? (
-                <div key="plus" className="relative">
-                  <button
-                    className="text-lg px-2 rounded-full hover:bg-gray-100"
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      setShowPicker((p) => !p);
-                    }}
-                  >
-                    ➕
-                  </button>
-
-                  {showPicker && (
-                    <div
-                      ref={pickerRef}
-                      className={`absolute top-8 z-50 shadow-xl rounded-md ${isMine
-                          ? "right-0 translate-x-[10%]" // your messages → anchored to right
-                          : "left-0 -translate-x-[10%]" // others → anchored to left
-                        }`}
-                      style={{ maxWidth: "min(90vw, 320px)" }}
-                    >
-                      <EmojiPicker
-                        onEmojiClick={(emojiData) => {
-                          onReact?.(emojiData.emoji);
-                          setShowPicker(false);
-                          setShowReactBar(false);
-                        }}
-                        height={320}
-                        width={280}
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  key={e}
-                  className="text-lg px-1 rounded-full hover:bg-gray-100"
-                  onClick={() => {
-                    onReact?.(e);
+          <div
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+          >
+            {emojis.map((emoji, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (emoji === "➕") {
+                    setShowPicker(!showPicker);
+                  } else {
+                    onReact?.(emoji);
                     setShowReactBar(false);
-                    setShowPicker(false);
-                  }}
-                >
-                  {e}
-                </button>
-              )
-            )}
+                  }
+                }}
+                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Emoji picker */}
+        {showPicker && (
+          <div
+            ref={pickerRef}
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-80 z-20`}
+          >
+            <EmojiPicker
+              onEmojiClick={(emojiObj) => {
+                onReact?.(emojiObj.emoji);
+                setShowPicker(false);
+                setShowReactBar(false);
+              }}
+            />
           </div>
         )}
 
         {/* Reply bubble */}
         <ReplyBubble />
 
-        {/* Message text or location */}
-        {isLocation ? (
-          <a
-            href={msg.text}
-            target="_blank"
-            rel="noreferrer"
-            className="underline text-blue-500 flex items-center"
-          >
-            <MapPin size={16} className="mr-1" /> Open Map
-          </a>
-        ) : (
-          <span>{msg.text}</span>
-        )}
+        {/* Main content */}
+        <div>
+          {isLocation && (
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin size={16} className="text-blue-600" />
+              <span className="text-xs text-blue-600 font-medium">Location</span>
+            </div>
+          )}
+          
+          <p className="whitespace-pre-wrap break-words">
+            {msg.text}
+          </p>
+        </div>
 
         {/* Reaction display */}
         {reaction && (
-          <div className="absolute -bottom-3 right-2 text-lg">{reaction}</div>
+          <div className="absolute -bottom-2 -right-2 bg-white border border-gray-200 rounded-full px-1 text-sm">
+            {reaction}
+          </div>
         )}
 
         {/* Timestamp */}
-        <div className="text-[10px] mt-1 text-right text-gray-500">
-          {msg.timestamp}
+        <div className="flex justify-end mt-2">
+          <span className="text-xs text-gray-500">{msg.timestamp}</span>
         </div>
       </div>
     </div>

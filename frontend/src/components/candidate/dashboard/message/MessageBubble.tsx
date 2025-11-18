@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import type { Message } from "./types";
+import type { Message } from "./message.types";
 
 export default function MessageBubble({ message }: { message: Message }) {
     const align = message.fromMe ? "ml-auto" : "mr-auto";
