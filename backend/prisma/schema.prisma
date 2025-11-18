@@ -7,9 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AgencyType {
+  VISA
+  RELOCATION
+  INTEGRATION
+}
+
+
 model Agency {
   agency_id             String                    @id @default(uuid())
   name                  String
+  email          String?   @unique
+  phone          String?
+  type                  AgencyType?
   billing_contact_email String
   owner_user_id         String
   status                String
