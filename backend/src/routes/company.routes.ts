@@ -17,9 +17,9 @@ const router = Router();
 router.get('/health', (req, res) => {
   res.json({ message: 'Company routes working', timestamp: new Date().toISOString() });
 });
-router.get('/profile', getProfileController);  // <-- Celle-ci manque !
 
 router.use(checkAuth);
+router.get('/profile', getProfileController);  // <-- Celle-ci manque !
 
 router.post(
   '/create-profile',
