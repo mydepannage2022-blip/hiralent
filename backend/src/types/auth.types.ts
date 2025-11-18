@@ -4,7 +4,7 @@ export interface SignupInput {
   full_name: string;
   role: "candidate" | "company_admin" | "agency_admin" | "superadmin";
 }
-// ✅ NEW: Admin Auth Types
+
 export interface AdminLoginInput {
   email: string;
   password: string;
@@ -14,7 +14,7 @@ export interface AdminLoginResponse {
   success: boolean;
   tempToken: string;
   requiresMFA: boolean;
-  mfaSetup: boolean; // If true, admin needs to setup MFA first
+  mfaSetup: boolean;
 }
 
 export interface SetupMFAInput {
@@ -23,14 +23,14 @@ export interface SetupMFAInput {
 
 export interface SetupMFAResponse {
   success: boolean;
-  qrCode: string; // Base64 image data URL
-  secret: string; // Backup secret key
-  manualEntryKey: string; // For manual entry
+  qrCode: string;
+  secret: string;
+  manualEntryKey: string;
 }
 
 export interface VerifyMFAInput {
   tempToken: string;
-  mfaToken: string; // 6-digit code from authenticator app
+  mfaToken: string;
 }
 
 export interface AdminSessionResponse {
@@ -80,12 +80,14 @@ export interface UserWithProfiles {
   created_at: Date;
   updated_at: Date;
   last_login_at: Date | null;
-  candidateProfile?: any;
-  companyProfile?: any;
-  agencyAdminProfile?: any;
   
-  // Add candidateSkills relation for login function
-  candidateSkills?: Array<{
+  // ✅ FIXED: Changed to PascalCase to match Prisma
+  CandidateProfile?: any;
+  CompanyProfile?: any;
+  AgencyAdminProfile?: any;
+  
+  // ✅ FIXED: Changed to PascalCase
+  CandidateSkill?: Array<{
     skill_id: string;
     candidate_id: string;
     skill_name: string;
@@ -100,7 +102,8 @@ export interface UserWithProfiles {
     updated_at: Date;
   }>;
   
-  agency?: {
+  // ✅ FIXED: Changed to PascalCase
+  Agency?: {
     agency_id: string;
     name: string;
     website: string | null;
@@ -109,7 +112,6 @@ export interface UserWithProfiles {
   };
 }
 
-// ✅ UPDATED: Clean user response (no profile inside)
 export interface CleanUser {
   user_id: string;
   email: string;
@@ -127,10 +129,8 @@ export interface CleanUser {
     logo_url: string | null;
     status: string;
   };
-  // ❌ REMOVED: profile field
 }
 
-// ✅ NEW: Profile types based on role
 export interface CandidateProfile {
   candidate_id: string;
   resume_url?: string | null;
@@ -138,7 +138,7 @@ export interface CandidateProfile {
   profile_picture_url?: string | null;
   headline?: string | null;
   about_me?: string | null;
-  skills?: any; // Changed: Can be string[] (IDs) or PopulatedSkill[] depending on context
+  skills?: any;
   education?: string | null;
   experience?: string | null;
   languages?: string | null;
@@ -150,8 +150,8 @@ export interface CandidateProfile {
   payment_period?: string | null;
   job_benefits?: string | null;
   links?: string | null;
-  created_at: string; // Changed to string for ISO format consistency
-  updated_at: string; // Changed to string for ISO format consistency
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CompanyProfile {
@@ -184,8 +184,8 @@ export interface CompanyProfile {
   rating?: number | null;
   total_jobs_posted?: number | null;
   active_jobs_count?: number | null;
-  created_at: string; // Changed to string for ISO format consistency
-  updated_at: string; // Changed to string for ISO format consistency
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AgencyAdminProfile {
@@ -200,28 +200,22 @@ export interface AgencyAdminProfile {
   languages?: string[] | null;
   years_experience?: number | null;
   certifications?: string[] | null;
-  created_at: string; // Changed to string for ISO format consistency
-  updated_at: string; // Changed to string for ISO format consistency
+  created_at: string;
+  updated_at: string;
 }
 
-// ✅ UPDATED: Success login response with separate profile
 export interface LoginSuccess {
   user: CleanUser;
-  profile: CandidateProfile | CompanyProfile | AgencyAdminProfile | null; // ✅ Separate profile object
+  profile: CandidateProfile | CompanyProfile | AgencyAdminProfile | null;
   token: string;
 }
 
-// Error login response (unchanged)
 export interface LoginError {
   error: true;
   message: string;
 }
 
-// Union type for login response (unchanged)
 export type LoginResponse = LoginSuccess | LoginError;
-
-
-
 
 // ________________________________________________________________________________________________________________________________________________________
 
@@ -262,13 +256,14 @@ export interface UserDeletionSummary {
     created_at: Date;
   };
   related_records_count: {
-    candidateDocuments: number;
-    uploadedDocuments: number;
-    jobsPosted: number;
-    jobApplications: number;
+    // ✅ FIXED: Changed to PascalCase
+    CandidateDocument: number;
+    UploadedDocument: number;
+    CompanyJob: number;
+    JobApplication: number;
     assessments: number;
     notifications: number;
-    relocationCases: number;
+    relocation_cases: number;
     agencyReviews: number;
     invitationsSent: number;
   };
@@ -290,32 +285,33 @@ export interface UserWithDeletionData {
   role: string;
   email: string;
   full_name: string;
-  candidateProfile?: {
+  // ✅ FIXED: Changed to PascalCase
+  CandidateProfile?: {
     profile_picture_url?: string | null;
     resume_url?: string | null;
     video_intro_url?: string | null;
     resume_application_url?: string | null;
   } | null;
-  companyProfile?: {
+  CompanyProfile?: {
     logo_url?: string | null;
     banner_url?: string | null;
   } | null;
-  agencyAdminProfile?: {
+  AgencyAdminProfile?: {
     admin_id: string;
   } | null;
-  candidateDocuments?: {
+  CandidateDocument?: {
     file_path?: string | null;
     document_id: string;
   }[];
-  uploadedDocuments?: {
+  UploadedDocument?: {
     storage_key: string;
     preview_key?: string | null;
     document_id: string;
   }[];
-  jobsPosted?: {
+  CompanyJob?: {
     job_id: string;
   }[];
-  relocationCases?: {
+  relocation_cases?: {
     case_id: string;
   }[];
 }
