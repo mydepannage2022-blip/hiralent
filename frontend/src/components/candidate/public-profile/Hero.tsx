@@ -49,7 +49,7 @@ export default function Hero({ profile }: HeroProps) {
         <section className="px-4 sm:p-0 relative bg-[#EFF5FF] overflow-hidden">
             {/* Background SVG shape */}
             <svg
-                className="absolute right-[-250px] top-[550px] w-[575px] h-[575px] sm:right-[115px] sm:top-[440px] sm:w-[615px] sm:h-[615px] md:right-[340px] md:top-[450px] md:w-[640px] md:h-[640px] lg:right-[-150px] lg:top-[115px] lg:w-[1024px] lg:h-[1024px] xl:right-[-100px] xl:top-[115px] 2xl:right-[400px] 2xl:top-[115px] xl:w-[1080px] xl:h-[1080px] text-[#005DDC] z-0"
+                className="absolute right-[-250px] top-[550px] w-[575px] h-[575px] sm:right-[0px] sm:top-[350px] sm:w-[615px]sm:h-[615px] md:right-[0px] md:top-[350px] md:w-[640px] md:h-[640px] lg:right-[-150px] lg:top-[115px] lg:w-[1024px] lg:h-[1024px] xl:right-[-100px] xl:top-[115px] 2xl:right-[400px] 2xl:top-[115px] xl:w-[1080px] xl:h-[1080px] text-[#005DDC] z-0"
                 viewBox="0 0 1304 1294"
                 xmlns="http://www.w3.org/2000/svg"
             >
@@ -59,7 +59,7 @@ export default function Hero({ profile }: HeroProps) {
                 />
             </svg>
 
-            <div className="sm:max-w-[690px] md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl container mx-auto py-40 pb-80 lg:py-40 grid lg:grid-cols-2 gap-8 items-start relative z-10">
+            <div className="sm:max-w-[690px] md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl container mx-auto py-40 pb-80 sm:py-40 grid lg:grid-cols-2 gap-8 items-start relative z-10">
                 {/* LEFT: Text block */}
                 <div className="max-w-xl">
                     <h1 className="text-4xl sm:text-5xl lg:text-5xl font-bold leading-tight text-[#111827]">
@@ -163,7 +163,7 @@ export default function Hero({ profile }: HeroProps) {
 
                 {/* RIGHT: Profile Card */}
                 <div className="relative">
-                    <div className="absolute lg:left-[-25px] lg:top-10">
+                    <div className="absolute -top-5 left-0 sm:-top-100 sm:left-110 md:left-130 md:-top-100 lg:left-[-18px] lg:-top-10">
                         <ProfileCard profile={profile} />
                     </div>
                 </div>
