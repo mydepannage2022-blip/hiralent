@@ -1,5 +1,12 @@
 import { Prisma } from '@prisma/client';
 
+//NEW: MCQ Options Interface
+export interface MCQOptions {
+  A: string;
+  B: string;
+  C: string;
+  D: string;
+}
 export interface QuestionData {
   title: string;
   description: string;
@@ -9,10 +16,15 @@ export interface QuestionData {
   type: string;
   canonicalSolution: string;
   testCases: TestCase[];
+  //  NEW: For MCQ Questions
+  options?: MCQOptions;
+  correctAnswer?: string; // "A" or "B,C" for multiple correct
+  explanation?: string;
+
   status?: 'draft' | 'pending_review' | 'approved' | 'rejected';
   aiGenerated?: boolean;
   source?: string;
-  createdBy?: string;  // ✅ AJOUTÉ!
+  createdBy?: string;  //  AJOUTÉ!
 
 }
 
@@ -27,6 +39,8 @@ export interface QuestionFilters {
   difficulty?: string;
   status?: string;
   search?: string;
+  type?: string; // NEW: Filter by type
+
 }
 
 export interface PaginationResult<T> {
@@ -49,6 +63,10 @@ export interface ScrapedQuestionData {
   type?: string;
   canonicalSolution?: string;
   testCases?: any;
+   //  NEW: MCQ support in scraping
+  options?: MCQOptions;
+  correctAnswer?: string;
+  explanation?: string;
   sourceUrl?: string;
   platform?: string;
 }
@@ -115,6 +133,12 @@ export interface ScrapedProblem {
   canonicalSolution?: string;
   testCases?: any;
   test_cases?: any;
+
+  //  NEW: MCQ support
+  options?: MCQOptions;
+  correctAnswer?: string;
+  explanation?: string;
+
   status?: string;
   aiGenerated?: boolean;
   description?: string;
@@ -137,8 +161,12 @@ export interface ScrapedProblemsResponse {
 // Helper type pour convertir les données en format Prisma
 export type QuestionCreateInput = Omit<QuestionData, 'testCases'> & {
   testCases: Prisma.InputJsonValue;
+  options?: Prisma.InputJsonValue; //  NEW
+
 };
 
 export type QuestionUpdateInput = Partial<Omit<QuestionData, 'testCases'>> & {
   testCases?: Prisma.InputJsonValue;
+  options?: Prisma.InputJsonValue; //  NEW
+
 };

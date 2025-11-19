@@ -54,6 +54,15 @@ interface Question {
   type?: "coding" | "mcq" | string;
   canonicalSolution?: string;
   testCases?: Array<{ input: string; output: string }>;
+    // MCQ specific fields
+  options?: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer?: string;
+  explanation?: string;
   views?: number;
   submissions?: number;
   successRate?: number;
@@ -843,11 +852,15 @@ const QuestionBankPage: React.FC = () => {
     status: string;
     search: string;
     source: "all" | "ai" | "manual";
+    type: string; // ADD THIS
+
+    
   }>({
     difficulty: "",
     status: "",
     search: "",
     source: "all",
+    type:"",
   });
 
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
@@ -929,16 +942,17 @@ const loadQuestions = async () => {
   };
 
   // Filter questions
-  const filteredQuestions = mine.filter((q) => {
-    const s = filters.search.trim().toLowerCase();
-    const matchSearch =
-      !s || q.title.toLowerCase().includes(s) || (q.skillTags && q.skillTags.some((tag) => tag.toLowerCase().includes(s)));
-    const matchDifficulty = !filters.difficulty || q.difficulty === filters.difficulty;
-    const matchStatus = !filters.status || q.status === filters.status;
-    const isAI = !!q.aiGenerated || (q.source && q.source.startsWith("ai"));
-    const matchSource = filters.source === "all" ? true : filters.source === "ai" ? isAI : !isAI;
-    return matchSearch && matchDifficulty && matchStatus && matchSource;
-  });
+const filteredQuestions = mine.filter((q) => {
+  const s = filters.search.trim().toLowerCase();
+  const matchSearch =
+    !s || q.title.toLowerCase().includes(s) || (q.skillTags && q.skillTags.some((tag) => tag.toLowerCase().includes(s)));
+  const matchDifficulty = !filters.difficulty || q.difficulty === filters.difficulty;
+  const matchStatus = !filters.status || q.status === filters.status;
+  const matchType = !filters.type || q.type === filters.type; // ADD THIS
+  const isAI = !!q.aiGenerated || (q.source && q.source.startsWith("ai"));
+  const matchSource = filters.source === "all" ? true : filters.source === "ai" ? isAI : !isAI;
+  return matchSearch && matchDifficulty && matchStatus && matchType && matchSource; // ADD matchType here
+});
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
@@ -1429,6 +1443,18 @@ const handleScrapeUrls = async (
                 <option value="rejected">Rejected</option>
               </select>
 
+              {/* Type Filter - ADD THIS */}
+              <select
+                value={filters.type || ""}
+                onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+                className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              >
+                <option value="">All Types</option>
+                <option value="coding">Coding</option>
+                <option value="mcq">Multiple Choice</option>
+              </select>
+
+
               {/* Source segmented */}
               <div className="flex items-center bg-gray-100 rounded-xl p-1">
                 {(["all", "ai", "manual"] as const).map((src) => (
@@ -1680,10 +1706,11 @@ const handleScrapeUrls = async (
             ))}
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence>
               {paginatedQuestions.map((question, idx) => {
                 const isAI = !!question.aiGenerated || (question.source && question.source.startsWith("ai"));
+                const isMCQ = question.type === "mcq";
                 const statusPill =
                   question.status === "approved"
                     ? "bg-green-50 text-green-700 border-green-200"
@@ -1767,13 +1794,46 @@ const handleScrapeUrls = async (
 
                       {question.type && (
                         <div className="mb-3">
-                          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
-                            {question.type.toUpperCase()}
+                          <span className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border ${
+                            isMCQ 
+                              ? "bg-purple-50 text-purple-700 border-purple-200" 
+                              : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          }`}>
+                            {isMCQ ? "MULTIPLE CHOICE" : "CODING"}
                           </span>
                         </div>
                       )}
 
                       <p className="text-sm text-[#2b3952]/80 mb-4 line-clamp-2">{question.description}</p>
+
+                      {/* MCQ Preview */}
+                      {isMCQ && question.options && (
+                        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-3 h-3 text-purple-600" />
+                            <span className="text-xs font-semibold text-purple-700">Options Preview</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-xs">
+                            {Object.entries(question.options).slice(0, 4).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-1">
+                                <span className={`w-4 h-4 flex items-center justify-center text-[10px] font-bold rounded ${
+                                  question.correctAnswer?.includes(key)
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-200 text-gray-600"
+                                }`}>
+                                  {key}
+                                </span>
+                                <span className="text-gray-600 truncate">{value as string}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {question.correctAnswer && (
+                            <div className="mt-2 text-xs text-green-600 font-medium">
+                              Correct: {question.correctAnswer}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap gap-2 mb-4">
                         {question.skillTags &&

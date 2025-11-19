@@ -86,37 +86,47 @@ export class QuestionService {
   /**
    * Créer une nouvelle question
    */
-  async createQuestion(data: any): Promise<Question> {
-    console.log('📝 [SERVICE] createQuestion called');
-    console.log('👤 [SERVICE] Created by:', data.createdBy);
-    
-    try {
-      const question = await prisma.question.create({
-        data: {
-          title: data.title,
-          description: data.description || '',
-          problemStatement: data.problemStatement,
-          difficulty: data.difficulty,
-          skillTags: data.skillTags || [],
-          type: data.type || 'coding',
-          canonicalSolution: data.canonicalSolution || '',
-          testCases: data.testCases || {},
-          status: data.status || 'draft',
-          createdBy: data.createdBy,
-          aiGenerated: data.aiGenerated || false,
-          source: data.source || 'manual'
-        }
-      });
+async createQuestion(data: any): Promise<Question> {
+  console.log('📝 [SERVICE] createQuestion called - Type:', data.type);
+  
+  try {
+    const questionData: any = {
+      title: data.title,
+      description: data.description || '',
+      problemStatement: data.problemStatement,
+      difficulty: data.difficulty,
+      skillTags: data.skillTags || [],
+      type: data.type || 'coding',
+      status: data.status || 'draft',
+      createdBy: data.createdBy,
+      aiGenerated: data.aiGenerated || false,
+      source: data.source || 'manual'
+    };
 
-      console.log('✅ [SERVICE] Question created:', question.id);
-      console.log('👤 [SERVICE] Created by:', question.createdBy);
-      
-      return question;
-    } catch (error: any) {
-      console.error('❌ [SERVICE] createQuestion ERROR:', error);
-      throw new Error(`Failed to create question: ${error.message}`);
+    // Handle different question types
+    if (data.type === 'coding') {
+      questionData.canonicalSolution = data.canonicalSolution || '';
+      questionData.testCases = data.testCases || {};
+    } else if (data.type === 'mcq') {
+      questionData.options = data.options || {};
+      questionData.correctAnswer = data.correctAnswer || '';
+      questionData.explanation = data.explanation || '';
+      // For MCQ, we can store empty values for coding-specific fields
+      questionData.canonicalSolution = '';
+      questionData.testCases = {};
     }
+
+    const question = await prisma.question.create({
+      data: questionData
+    });
+
+    console.log('✅ [SERVICE] Question created:', question.id, 'Type:', question.type);
+    return question;
+  } catch (error: any) {
+    console.error('❌ [SERVICE] createQuestion ERROR:', error);
+    throw new Error(`Failed to create question: ${error.message}`);
   }
+}
 
   /**
    * Mettre à jour une question
