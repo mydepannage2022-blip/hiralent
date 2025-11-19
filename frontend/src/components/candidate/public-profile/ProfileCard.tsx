@@ -45,9 +45,9 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
     };
 
     return (
-        <div className="bg-white rounded-3xl shadow-lg p-6 w-full max-w-sm mx-auto">
+        <div className="bg-white rounded-3xl shadow-lg p-4 sm:p-6 w-[250px] md:w-[400px] mx-auto">
             {/* Profile Picture */}
-            <div className="relative w-24 h-24 mx-auto mb-4">
+            <div className="relative w-12 h-12 sm:w-24 sm:h-24 mx-auto mb-1 sm:mb-4">
                 {profile.profile_picture_url ? (
                     <Image
                         src={profile.profile_picture_url}
@@ -76,7 +76,7 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
             </div>
 
             {/* Name and Position */}
-            <div className="text-center mb-4">
+            <div className="text-center mb-1 sm:mb-4">
                 <h3 className="text-lg font-bold text-gray-900">
                     {profile.full_name || 'Professional'}
                 </h3>
@@ -86,13 +86,13 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
             </div>
 
             {/* Location */}
-            <div className="flex items-center justify-center gap-2 mb-4 text-sm text-gray-600">
+            <div className="flex items-center justify-center gap-2 mb-1 sm:mb-4 text-sm text-gray-600">
                 <MapPin className="w-4 h-4" />
                 <span>{getLocationDisplay()}</span>
             </div>
 
             {/* Profile Stats */}
-            <div className="space-y-3 mb-6">
+            <div className="space-y-1 sm:space-y-3 mb-3 sm:mb-6">
                 {/* Profile Completion */}
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Profile Completed</span>
@@ -148,8 +148,8 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
 
             {/* Skills Preview */}
             {profile.skills.length > 0 && (
-                <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Top Skills</h4>
+                <div className="sm:mb-6">
+                    <h4 className="text-sm font-semibold text-gray-900 sm:mb-3">Top Skills</h4>
                     <div className="flex flex-wrap gap-2">
                         {profile.skills.slice(0, 6).map((skill, index) => (
                             <span
@@ -176,12 +176,12 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
             )}
 
             {/* Action Button */}
-            <button className="w-full bg-[#005DDC] text-white py-3 px-4 rounded-xl font-medium hover:bg-[#0052c4] transition-colors">
+            <button className="w-full bg-[#005DDC] text-white py-1 px-4 sm:py-3 sm:px-4 rounded-xl font-medium hover:bg-[#0052c4] transition-colors">
                 View Full Profile
             </button>
 
             {/* Contact Info */}
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-100 text-center">
                 <p className="text-xs text-gray-500">
                     Available for opportunities
                 </p>

@@ -25,7 +25,7 @@ export default function ExperienceSection({ experience }: ExperienceSectionProps
     const totalExperience = calculateTotalExperience();
 
     return (
-        <div className="bg-white rounded-lg p-6">
+        <div className="bg-white rounded-lg p-6 max-w-[295px] sm:max-w-full">
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Work Experience</h3>
