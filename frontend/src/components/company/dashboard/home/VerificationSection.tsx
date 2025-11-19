@@ -260,7 +260,7 @@ export default function VerificationSection() {
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-900">Company Verified ✅</h3>
+              <h3 className="font-semibold text-gray-900">Company Verified </h3>
               <StatusBadge />
             </div>
             <p className="text-sm text-gray-600">
