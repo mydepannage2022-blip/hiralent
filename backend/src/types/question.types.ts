@@ -170,3 +170,57 @@ export type QuestionUpdateInput = Partial<Omit<QuestionData, 'testCases'>> & {
   options?: Prisma.InputJsonValue; //  NEW
 
 };
+// Add these to your existing types file
+
+export interface MCQGenerationRequest {
+  topic: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
+export interface MCQBatchGenerationRequest {
+  topics: string[];
+  difficulty?: 'easy' | 'medium' | 'hard';
+  count_per_topic?: number;
+}
+
+export interface MCQQuestionData {
+  title: string;
+  description: string;
+  difficulty: string;
+  skillTags: string[];
+  type: 'mcq';
+  options: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface MCQGenerationResponse {
+  success: boolean;
+  question?: MCQQuestionData;
+  metadata?: {
+    topic: string;
+    difficulty: string;
+    type: string;
+    source: string;
+  };
+  error?: string;
+}
+
+export interface MCQBatchGenerationResponse {
+  success: boolean;
+  generated_count?: number;
+  failed_count?: number;
+  questions?: MCQQuestionData[];
+  metadata?: {
+    topics: string[];
+    difficulty: string;
+    type: string;
+    count_per_topic: number;
+  };
+  error?: string;
+}

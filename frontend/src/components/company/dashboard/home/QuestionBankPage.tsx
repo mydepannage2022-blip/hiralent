@@ -139,7 +139,7 @@ const AiGenerateModal: React.FC<{
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
         className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
@@ -147,86 +147,137 @@ const AiGenerateModal: React.FC<{
         animate={{ opacity: 1 }}
         onClick={onClose}
       />
-      {/* Card */}
+      
+      {/* Card - REDUCED SIZE */}
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-xl overflow-hidden`}
+        className={`${panel} relative w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col`}
       >
-        {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white">
+        {/* Header - COMPACT */}
+        <div className={`px-4 py-3 ${
+          type === "mcq" 
+            ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600" 
+            : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"
+        } text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-                <Zap className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                {type === "mcq" ? (
+                  <FileText className="w-4 h-4 text-white" />
+                ) : (
+                  <Zap className="w-4 h-4 text-white" />
+                )}
               </div>
               <div>
-                <h3 className="text-lg font-bold">Generate AI Question</h3>
-                <p className="text-xs text-blue-100">Guide the AI for better results.</p>
+                <h3 className="text-base font-bold">
+                  Generate AI {type === "mcq" ? "MCQ" : "Coding"}
+                </h3>
+                <p className="text-[10px] text-blue-100">
+                  {type === "mcq" 
+                    ? "Multiple-choice question" 
+                    : "Coding challenge"}
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
               aria-label="Close"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        {/* Body - SCROLLABLE */}
+        <div className="px-4 py-4 space-y-3 overflow-y-auto flex-1">
+          {/* Topic */}
           <div>
-            <label className="text-xs font-semibold text-gray-800">Topic *</label>
+            <label className="text-[11px] font-semibold text-gray-800">Topic *</label>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Java loops, React hooks, SQL joins…"
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={
+                type === "mcq"
+                  ? "e.g., accounting, marketing..."
+                  : "e.g., Java loops, React hooks..."
+              }
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-800">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+          {/* Type Selector - COMPACT */}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-800 mb-1.5 block">
+              Question Type *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setType("coding")}
+                className={`px-3 py-2.5 rounded-lg border-2 font-semibold text-xs transition-all ${
+                  type === "coding"
+                    ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8] shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-800">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                <div className="flex flex-col items-center gap-1">
+                  <Code2 className="w-4 h-4" />
+                  <span>Coding</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setType("mcq")}
+                className={`px-3 py-2.5 rounded-lg border-2 font-semibold text-xs transition-all ${
+                  type === "mcq"
+                    ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
               >
-                <option value="coding">Coding</option>
-                <option value="mcq">Multiple Choice</option>
-              </select>
+                <div className="flex flex-col items-center gap-1">
+                  <FileText className="w-4 h-4" />
+                  <span>MCQ</span>
+                </div>
+              </button>
             </div>
           </div>
 
+          {/* Difficulty */}
           <div>
-            <label className="text-xs font-semibold text-gray-800">Tags (comma separated)</label>
+            <label className="text-[11px] font-semibold text-gray-800">Difficulty</label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as any)}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-800">
+              Tags {type === "mcq" && <span className="text-gray-500 font-normal">(optional)</span>}
+            </label>
             <input
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="e.g., java, arrays, loops"
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={
+                type === "mcq"
+                  ? "e.g., finance, business"
+                  : "e.g., java, arrays"
+              }
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100"
+                    className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100"
                   >
                     #{t}
                   </span>
@@ -235,10 +286,11 @@ const AiGenerateModal: React.FC<{
             )}
           </div>
 
+          {/* Test Case Count - ONLY for coding */}
           {type === "coding" && (
             <div>
-              <label className="text-xs font-semibold text-gray-800">
-                Number of sample test cases
+              <label className="text-[11px] font-semibold text-gray-800">
+                Test cases
               </label>
               <input
                 type="number"
@@ -249,37 +301,60 @@ const AiGenerateModal: React.FC<{
                   const n = Math.max(2, Math.min(8, +e.target.value || 2));
                   setTestCaseCount(n);
                 }}
-                className="mt-2 w-28 rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                className="mt-1 w-24 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
               />
-              <p className="text-[11px] text-gray-500 mt-1">
-                AI will try to include at least this many examples.
+              <p className="text-[10px] text-gray-500 mt-1">
+                Number of sample test cases
               </p>
             </div>
           )}
+
+          {/* Info Banner - COMPACT */}
+          <div className={`p-2 rounded-lg border ${
+            type === "mcq"
+              ? "bg-purple-50 border-purple-200"
+              : "bg-blue-50 border-blue-200"
+          }`}>
+            <div className="flex items-start gap-1.5">
+              <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
+                type === "mcq" ? "text-purple-600" : "text-blue-600"
+              }`} />
+              <div className={`text-[10px] leading-relaxed ${
+                type === "mcq" ? "text-purple-900" : "text-blue-900"
+              }`}>
+                <span className="font-bold">AI-Powered:</span>{" "}
+                {type === "mcq"
+                  ? "MCQ with 4 options & correct answer"
+                  : "Complete challenge with test cases"}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
+        {/* Footer - COMPACT */}
+        <div className="px-4 py-3 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             disabled={!canSubmit || generating}
             onClick={() => onGenerate({ topic, difficulty, type, tags, testCaseCount })}
-            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
+            className={`px-4 py-1.5 rounded-lg font-semibold text-sm text-white transition-all ${
               generating || !canSubmit
-                ? "bg-[#1B73E8]/60 cursor-not-allowed"
+                ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
+                : type === "mcq"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
                 : "bg-[#1B73E8] hover:bg-[#1557B0] shadow"
             }`}
           >
-            {generating ? "Generating…" : "Generate"}
+            {generating ? "Generating…" : `Generate`}
           </button>
         </div>
 
-        {/* Inline generating overlay */}
+        {/* Loading overlay */}
         <AnimatePresence>
           {generating && (
             <motion.div
@@ -288,7 +363,11 @@ const AiGenerateModal: React.FC<{
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
             >
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
+              <div className={`w-10 h-10 border-4 ${
+                type === "mcq"
+                  ? "border-purple-200 border-t-purple-600"
+                  : "border-blue-200 border-t-[#1B73E8]"
+              } rounded-full animate-spin`} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -296,7 +375,6 @@ const AiGenerateModal: React.FC<{
     </div>
   );
 };
-
 const AiBatchModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -304,12 +382,14 @@ const AiBatchModal: React.FC<{
     topics: string[];
     difficulty: "easy" | "medium" | "hard";
     countPerTopic: number;
+    type: "coding" | "mcq";
   }) => Promise<void>;
   generating: boolean;
 }> = ({ open, onClose, onGenerate, generating }) => {
   const [topicsInput, setTopicsInput] = useState<string>("");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [countPerTopic, setCountPerTopic] = useState<number>(2);
+  const [type, setType] = useState<"coding" | "mcq">("coding");
 
   const topics = topicsInput
     .split(/[\n,]/g)
@@ -323,13 +403,14 @@ const AiBatchModal: React.FC<{
       setTopicsInput("");
       setDifficulty("medium");
       setCountPerTopic(2);
+      setType("coding");
     }
   }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
         className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -337,43 +418,98 @@ const AiBatchModal: React.FC<{
         onClick={onClose}
       />
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-xl overflow-hidden`}
+        className={`${panel} relative w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col`}
       >
-        <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white">
+        {/* Header - COMPACT */}
+        <div className={`px-4 py-3 ${
+          type === "mcq"
+            ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600"
+            : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"
+        } text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-bold">Generate Batch (AI)</h3>
-                <p className="text-xs text-blue-100">Matches API: topics[], difficulty, countPerTopic</p>
+                <h3 className="text-base font-bold">
+                  Generate Batch {type === "mcq" ? "MCQs" : "Coding"}
+                </h3>
+                <p className="text-[10px] text-blue-100">
+                  Multiple topics, bulk generation
+                </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" aria-label="Close">
-              <X className="w-5 h-5 text-white" />
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10" aria-label="Close">
+              <X className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        {/* Body - SCROLLABLE */}
+        <div className="px-4 py-4 space-y-3 overflow-y-auto flex-1">
+          {/* Type Selector - COMPACT */}
           <div>
-            <label className="text-xs font-semibold text-gray-800">
-              Topics * <span className="font-normal text-gray-500">(comma or newline separated)</span>
+            <label className="text-[11px] font-semibold text-gray-800 mb-1.5 block">
+              Question Type *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setType("coding")}
+                className={`px-3 py-2 rounded-lg border-2 font-semibold text-xs transition-all ${
+                  type === "coding"
+                    ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5">
+                  <Code2 className="w-4 h-4" />
+                  Coding
+                </div>
+              </button>
+
+              <button
+                onClick={() => setType("mcq")}
+                className={`px-3 py-2 rounded-lg border-2 font-semibold text-xs transition-all ${
+                  type === "mcq"
+                    ? "border-purple-600 bg-purple-50 text-purple-700"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5">
+                  <FileText className="w-4 h-4" />
+                  MCQ
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Topics */}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-800">
+              Topics * <span className="font-normal text-gray-500">(comma or newline)</span>
             </label>
             <textarea
               value={topicsInput}
               onChange={(e) => setTopicsInput(e.target.value)}
-              placeholder={`python, javascript, java\n(or one per line)`}
-              rows={4}
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={
+                type === "mcq"
+                  ? `accounting, marketing, nursing`
+                  : `python, javascript, java`
+              }
+              rows={3}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {topics.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {topics.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100">
+                  <span key={t} className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                    type === "mcq"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : "bg-blue-50 text-[#1B73E8] border-blue-100"
+                  }`}>
                     #{t}
                   </span>
                 ))}
@@ -381,13 +517,14 @@ const AiBatchModal: React.FC<{
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Difficulty and Count */}
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-gray-800">Difficulty</label>
+              <label className="text-[11px] font-semibold text-gray-800">Difficulty</label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8]"
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8]"
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
@@ -396,36 +533,58 @@ const AiBatchModal: React.FC<{
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-800">Count per topic</label>
+              <label className="text-[11px] font-semibold text-gray-800">Per topic</label>
               <input
                 type="number"
                 min={1}
                 max={20}
                 value={countPerTopic}
                 onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))}
-                className="mt-2 w-28 rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8]"
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1B73E8]"
               />
+            </div>
+          </div>
+
+          {/* Info Banner - COMPACT */}
+          <div className={`p-2 rounded-lg border ${
+            type === "mcq"
+              ? "bg-purple-50 border-purple-200"
+              : "bg-blue-50 border-blue-200"
+          }`}>
+            <div className="flex items-start gap-1.5">
+              <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
+                type === "mcq" ? "text-purple-600" : "text-blue-600"
+              }`} />
+              <div className={`text-[10px] leading-relaxed ${
+                type === "mcq" ? "text-purple-900" : "text-blue-900"
+              }`}>
+                <span className="font-bold">Total:</span>{" "}
+                {countPerTopic} × {topics.length} = {topics.length * countPerTopic} questions
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
+        {/* Footer - COMPACT */}
+        <div className="px-4 py-3 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             disabled={!canSubmit || generating}
-            onClick={() => onGenerate({ topics, difficulty, countPerTopic })}
-            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
+            onClick={() => onGenerate({ topics, difficulty, countPerTopic, type })}
+            className={`px-4 py-1.5 rounded-lg font-semibold text-sm text-white transition-all ${
               generating || !canSubmit
-                ? "bg-[#1B73E8]/60 cursor-not-allowed"
+                ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
+                : type === "mcq"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
                 : "bg-[#1B73E8] hover:bg-[#1557B0] shadow"
             }`}
           >
-            {generating ? "Generating…" : "Generate Batch"}
+            {generating ? "Generating…" : `Generate ${topics.length * countPerTopic}`}
           </button>
         </div>
 
@@ -437,7 +596,11 @@ const AiBatchModal: React.FC<{
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
             >
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
+              <div className={`w-10 h-10 border-4 ${
+                type === "mcq"
+                  ? "border-purple-200 border-t-purple-600"
+                  : "border-blue-200 border-t-[#1B73E8]"
+              } rounded-full animate-spin`} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -445,7 +608,6 @@ const AiBatchModal: React.FC<{
     </div>
   );
 };
-
 /* =============================
    Pagination Component
 ============================= */

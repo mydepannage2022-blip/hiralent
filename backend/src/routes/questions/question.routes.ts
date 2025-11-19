@@ -45,7 +45,19 @@ router.get('/stats/overview',
   checkAuth,
   controller.getStats.bind(controller)
 );
+// ========== MCQ GENERATION ROUTES (ADD THESE) ==========
 
+router.post('/generate-mcq',
+  checkAuth,
+  checkAIServiceAvailable,
+  controller.generateMCQQuestion.bind(controller)
+);
+
+router.post('/generate-mcq-batch',
+  checkAuth,
+  checkAIServiceAvailable,
+  controller.generateMCQBatch.bind(controller)
+);
 // GET /api/questions/:id
 router.get('/:id', 
   controller.getQuestionById.bind(controller)
@@ -109,6 +121,8 @@ router.use((req, res) => {
     error: `Cannot ${req.method} /api/questions${req.url}`
   });
 });
+
+
 
 console.log('✅ Question routes loaded successfully');
 

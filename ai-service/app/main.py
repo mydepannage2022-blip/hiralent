@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
+from typing import Optional, Dict, Any
+
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import random
@@ -995,6 +997,198 @@ async def get_enhanced_problems(
         limit=limit, offset=offset, 
         language=language, source=source, difficulty=difficulty
     )
+
+
+# =============================================================================
+# MCQ GENERATION ROUTES (FIXED - ACCEPTS JSON BODY)
+# =============================================================================
+
+@app.post("/generate/mcq-only")
+async def generate_mcq_question(request: Request):
+    """
+    Dedicated endpoint for MCQ generation (JSON body)
+    
+    Body:
+        {
+            "topic": "accounting",
+            "difficulty": "medium"
+        }
+    """
+    try:
+        if not GEMINI_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini AI service not available"
+            )
+        
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topic = body.get("topic")
+        difficulty = body.get("difficulty", "medium")
+        
+        if not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Topic is required in request body"
+            )
+        
+        result = gemini_ai_service.generate_question(topic, difficulty, "mcq")
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=500,
+                detail=f"MCQ generation failed: {result.get('error', 'Unknown error')}"
+            )
+        
+        return {
+            "success": True,
+            "question": result["data"],
+            "metadata": {
+                "topic": topic,
+                "difficulty": difficulty,
+                "type": "mcq",
+                "source": result.get("source", "unknown")
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/generate/mcq-batch")
+async def generate_mcq_batch(request: Request):
+    """
+    Dedicated endpoint for batch MCQ generation (JSON body)
+    
+    Body:
+        {
+            "topics": ["python", "nursing", "marketing"],
+            "difficulty": "medium",
+            "count_per_topic": 5
+        }
+    """
+    try:
+        if not GEMINI_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini AI service not available"
+            )
+        
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topics = body.get("topics", ["python"])
+        difficulty = body.get("difficulty", "medium")
+        count_per_topic = body.get("count_per_topic", 5)
+        
+        if not topics:
+            raise HTTPException(
+                status_code=400,
+                detail="Topics list is required"
+            )
+        
+        result = gemini_ai_service.generate_batch(
+            topics=topics,
+            difficulty=difficulty,
+            question_type="mcq",
+            count_per_topic=count_per_topic
+        )
+        
+        return {
+            "success": True,
+            "generated_count": result["generated_count"],
+            "failed_count": result.get("failed_count", 0),
+            "questions": result["questions"],
+            "metadata": {
+                "topics": topics,
+                "difficulty": difficulty,
+                "type": "mcq",
+                "count_per_topic": count_per_topic
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/generate/single")
+async def generate_single_question_enhanced(request: Request):
+    """
+    Universal endpoint - generates coding OR MCQ questions (JSON body)
+    
+    Body:
+        {
+            "topic": "python",
+            "difficulty": "medium",
+            "question_type": "mcq"
+        }
+    """
+    try:
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topic = body.get("topic")
+        difficulty = body.get("difficulty", "medium")
+        question_type = body.get("question_type", "coding")
+        
+        if not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Topic is required"
+            )
+        
+        if question_type == "mcq":
+            if not GEMINI_AVAILABLE:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Gemini AI service required for MCQ generation"
+                )
+            
+            result = gemini_ai_service.generate_question(topic, difficulty, "mcq")
+            
+            if not result["success"]:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"MCQ generation failed: {result.get('error')}"
+                )
+            
+            return {
+                "success": True,
+                "question": result["data"],
+                "metadata": {
+                    "topic": topic,
+                    "difficulty": difficulty,
+                    "type": "mcq",
+                    "source": result.get("source", "unknown")
+                }
+            }
+        
+        # Original coding question logic
+        return await generate_question(body)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 # =============================================================================
 # WEB SCRAPING URL-BASED ROUTES (ADD THESE)
 # =============================================================================
