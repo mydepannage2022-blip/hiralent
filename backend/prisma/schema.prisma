@@ -13,6 +13,12 @@ enum AgencyType {
   INTEGRATION
 }
 
+enum AgencyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
 
 model Agency {
   agency_id             String                    @id @default(uuid())
@@ -20,9 +26,9 @@ model Agency {
   email          String?   @unique
   phone          String?
   type                  AgencyType?
-  billing_contact_email String
-  owner_user_id         String
-  status                String
+  billing_contact_email String?
+  owner_user_id         String?
+  status                AgencyStatus              @default(PENDING)
   created_at            DateTime                  @default(now())
   updated_at            DateTime                  @updatedAt
   approval_notes        String?
@@ -41,6 +47,8 @@ model Agency {
   service_description   String?
   success_rate          Float?
   total_cases_handled   Int?
+  business_license_url  String?
+  rejection_reason      String?
   subscription          AgencySubscription?
   jobs                  CompanyJob[]
   users                 User[]

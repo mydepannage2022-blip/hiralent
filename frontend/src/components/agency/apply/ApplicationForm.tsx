@@ -70,14 +70,18 @@ const ApplicationForm: React.FC = () => {
     const newErrors: Record<string, string> = {};
 
     if (!agencyName.trim()) newErrors.agencyName = "Agency name is required.";
-    if (!email.trim()) newErrors.email = "Email is required.";
+    if (!email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email.";
+    }
     if (!phone.trim()) newErrors.phone = "Phone number is required.";
     if (!agencyType) newErrors.agencyType = "Please select an agency type.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
+  
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -85,28 +89,48 @@ const ApplicationForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // TODO: Hook this up to your backend endpoint (e.g. POST /api/agency/apply)
-      // const formData = new FormData();
-      // formData.append("name", agencyName);
-      // formData.append("email", email);
-      // formData.append("phone", phone);
-      // formData.append("type", agencyType);
-      // formData.append("description", description);
-      // formData.append("website", website);
-      // formData.append("operatingCountries", JSON.stringify(operatingCountries));
-      // formData.append("serviceCategories", JSON.stringify(serviceCategories));
-      // if (businessLicense) {
-      //   formData.append("businessLicense", businessLicense);
-      // }
-      //
-      // await fetch("/api/agency/apply", {
-      //   method: "POST",
-      //   body: formData,
-      // });
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agency/apply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: agencyName,
+          email,
+          phone,
+          type: agencyType,
+          description,
+          website,
+          operatingCountries,
+          serviceCategories,
+        }),
+      });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle error response
+        setErrors({ submit: data.message || "Failed to submit application" });
+        return;
+      }
+
+      // Success!
       setSubmitted(true);
+      
+      // Clear form
+      setAgencyName("");
+      setEmail("");
+      setPhone("");
+      setAgencyType("");
+      setDescription("");
+      setWebsite("");
+      setOperatingCountries([]);
+      setServiceCategories([]);
+      setBusinessLicense(null);
+      
     } catch (err) {
       console.error("Failed to submit agency application", err);
+      setErrors({ submit: "Network error. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -139,11 +163,23 @@ const ApplicationForm: React.FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p className="font-medium">Thank you for applying! 🎉</p>
+            <p className="font-medium">Thank you for applying!</p>
             <p>
               We’ve received your application. Our team will review your details
               and contact you shortly.
             </p>
+          </motion.div>
+        )}
+
+        {/* Error message */}
+        {errors.submit && (
+          <motion.div
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="font-medium">Submission Failed</p>
+            <p>{errors.submit}</p>
           </motion.div>
         )}
 
