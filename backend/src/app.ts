@@ -26,6 +26,7 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
+import agencyRoutes from './routes/agency.routes';
 import authRoutes from './routes/auth/auth.routes';
 import candidateRoutes from './routes/candidate.routes';
 import companyRoutes from './routes/company.routes';
@@ -43,6 +44,7 @@ import messageRoutes from './routes/message.routes'
 
 
 // Mount routes
+app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
