@@ -10,6 +10,7 @@ import {
   Users,
   Settings,
   LogOut,
+  Building2,
 } from 'lucide-react';
 
 import DashboardSidebar from '@/src/components/company/dashboard/home/DashboardSidebar';
@@ -76,6 +77,7 @@ export default function AdminDashboardLayout({
   const menuItems = [
     { name: 'Dashboard',     icon: LayoutDashboard, href: '/admin/dashboard' },
     { name: 'Verifications', icon: BadgeCheck,      href: '/admin/dashboard/verifications' },
+    { name: 'Agencies',      icon: Building2,       href: '/admin/dashboard/agencies' },
     { name: 'Analytics',     icon: BarChart3,       href: '/admin/dashboard/analytics' },
     { name: 'Security Log',  icon: FileWarning,     href: '/admin/dashboard/security-log' },
     { name: 'Admins',        icon: Users,           href: '/admin/dashboard/admins' },
