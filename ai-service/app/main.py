@@ -1,4 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from asyncio.log import logger
+import re
+from urllib.parse import urljoin
+from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
+from typing import Optional, Dict, Any
+
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import random
@@ -8,12 +13,19 @@ import sys
 import os
 import asyncio
 import time
-import logging
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 import abc
 from urllib.robotparser import RobotFileParser
+# Add this import at the top with other imports
+import logging
+from typing import List, Dict, Optional, Any
+import re
+from datetime import datetime
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 print("🚀 Starting Hiralent AI Service...")
 
@@ -292,6 +304,426 @@ class StackOverflowSpider(BaseSpider):
     def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
         """Trouve le lien vers la page suivante"""
         return None  # Une seule page pour le test
+    
+
+# Add this after your existing BaseSpider and StackOverflowSpider classes
+
+class LeetCodeSpider(BaseSpider):
+    """
+    Advanced spider for scraping LeetCode problems with complete details
+    """
+    
+    def __init__(self):
+        super().__init__("leetcode", "https://leetcode.com")
+        self.start_urls = [
+            "https://leetcode.com/problemset/all/",
+        ]
+        self.api_base = "https://leetcode.com/graphql"
+        
+        # Add proper headers to mimic browser
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+        })
+
+    def get_detailed_problem_info(self, title_slug: str) -> Optional[Dict]:
+        """
+        Get detailed problem information including test cases and solutions via GraphQL API
+        """
+        query = """
+        query getQuestionDetail($titleSlug: String!) {
+            question(titleSlug: $titleSlug) {
+                questionId
+                questionFrontendId
+                title
+                titleSlug
+                content
+                difficulty
+                categoryTitle
+                codeSnippets {
+                    lang
+                    langSlug
+                    code
+                }
+                sampleTestCase
+                exampleTestcases
+                exampleTestcaseList
+                metaData
+                hints
+                solution {
+                    id
+                    canSeeDetail
+                    paidOnly
+                    hasVideoSolution
+                    paidOnlyVideo
+                    __typename
+                }
+                topicTags {
+                    name
+                    slug
+                }
+                companyTagStats
+                stats
+                judgerAvailable
+                judgeType
+                mysqlSchemas
+                enableRunCode
+                enableTestMode
+                enableDebugger
+                libraryUrl
+                adminUrl
+                challengeQuestion {
+                    id
+                    date
+                    incompleteChallengeCount
+                    streakCount
+                    type
+                    __typename
+                }
+                note
+            }
+        }
+        """
+        
+        variables = {"titleSlug": title_slug}
+        
+        try:
+            response = self.session.post(
+                self.api_base,
+                json={'query': query, 'variables': variables},
+                headers={
+                    'Content-Type': 'application/json',
+                    'Referer': f'https://leetcode.com/problems/{title_slug}/',
+                    'Origin': 'https://leetcode.com',
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('data', {}).get('question')
+            else:
+                logger.error(f"API request failed for {title_slug}: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error fetching detailed info for {title_slug}: {e}")
+            return None
+
+    def extract_problems(self, html: str) -> List[Dict]:
+        """
+        Extract problems from LeetCode HTML with enhanced data extraction
+        """
+        problems = []
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        try:
+            # Method 1: Extract from __NEXT_DATA__
+            script_tag = soup.find('script', {'id': '__NEXT_DATA__'})
+            if script_tag and script_tag.string:
+                logger.info("Found __NEXT_DATA__, extracting problems...")
+                data = json.loads(script_tag.string)
+                problems.extend(self._extract_from_next_data(data))
+            
+            # Method 2: Extract from problem table
+            if not problems:
+                logger.info("Trying table extraction...")
+                problems.extend(self._extract_from_table(soup))
+                
+            # Method 3: Try API-based extraction
+            if not problems:
+                logger.info("Trying API extraction...")
+                problems.extend(self._extract_via_api())
+                
+        except Exception as e:
+            logger.error(f"Error extracting problems: {e}")
+            problems.extend(self._extract_from_table_simple(soup))
+        
+        return problems
+
+    def _extract_from_next_data(self, data: dict) -> List[Dict]:
+        """Extract problems from __NEXT_DATA__ structure"""
+        problems = []
+        
+        try:
+            queries = data.get('props', {}).get('pageProps', {}).get('dehydratedState', {}).get('queries', [])
+            
+            for query in queries:
+                query_data = query.get('state', {}).get('data', {})
+                
+                problem_data = (
+                    query_data.get('problemsetQuestionList', {}).get('questions', []) or
+                    query_data.get('questionList', {}).get('questions', []) or
+                    query_data.get('questions', [])
+                )
+                
+                if problem_data and isinstance(problem_data, list):
+                    for problem in problem_data:
+                        parsed = self._parse_problem_data(problem)
+                        if parsed:
+                            problems.append(parsed)
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Error parsing __NEXT_DATA__: {e}")
+        
+        return problems
+
+    def _extract_from_table(self, soup: BeautifulSoup) -> List[Dict]:
+        """Extract problems from the problems table"""
+        problems = []
+        
+        try:
+            rows = soup.select('[role="rowgroup"] [role="row"]') or soup.select('.reactable-data tr')
+            
+            for row in rows:
+                try:
+                    title_elem = row.find('a', href=re.compile(r'/problems/'))
+                    if not title_elem:
+                        continue
+                    
+                    title = title_elem.get_text(strip=True)
+                    href = title_elem.get('href', '')
+                    problem_url = urljoin(self.base_url, href)
+                    title_slug = self.extract_title_slug(problem_url)
+                    
+                    # Extract difficulty
+                    difficulty_elem = row.find('span', class_=re.compile(r'difficulty'))
+                    if difficulty_elem:
+                        difficulty_text = difficulty_elem.get_text(strip=True).lower()
+                        difficulty = difficulty_text if difficulty_text in ['easy', 'medium', 'hard'] else 'medium'
+                    else:
+                        difficulty = 'medium'
+                    
+                    # Extract acceptance rate
+                    acceptance_text = row.get_text()
+                    acceptance_match = re.search(r'(\d+(?:\.\d+)?)%', acceptance_text)
+                    acceptance_rate = float(acceptance_match.group(1)) if acceptance_match else 0.0
+                    
+                    problem = {
+                        'source': 'leetcode',
+                        'title': title,
+                        'title_slug': title_slug,
+                        'content': f'LeetCode Problem: {title}',
+                        'full_question_url': problem_url,
+                        'difficulty': difficulty,
+                        'tags': [],
+                        'skillTags': [],
+                        'language': 'multiple',
+                        'votes': 0,
+                        'answers': 0,
+                        'acceptance_rate': acceptance_rate,
+                        'problem_type': 'coding',
+                        'type': 'coding',
+                        'status': 'pending_review',
+                        'aiGenerated': False,
+                        'source_scraped': 'web_scraped',
+                    }
+                    
+                    problems.append(problem)
+                    
+                except Exception as e:
+                    logger.error(f"Error parsing problem row: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error in table extraction: {e}")
+        
+        return problems
+
+    def _extract_from_table_simple(self, soup: BeautifulSoup) -> List[Dict]:
+        """Simple fallback table extraction"""
+        problems = []
+        
+        try:
+            problem_links = soup.find_all('a', href=re.compile(r'/problems/[^/]+/$'))
+            
+            for link in problem_links:
+                try:
+                    title = link.get_text(strip=True)
+                    if not title or title == ' ':
+                        continue
+                        
+                    href = link.get('href')
+                    problem_url = urljoin(self.base_url, href)
+                    title_slug = self.extract_title_slug(problem_url)
+                    
+                    parent_text = link.parent.get_text() if link.parent else ''
+                    
+                    if 'Easy' in parent_text:
+                        difficulty = 'easy'
+                    elif 'Medium' in parent_text:
+                        difficulty = 'medium'
+                    elif 'Hard' in parent_text:
+                        difficulty = 'hard'
+                    else:
+                        difficulty = 'medium'
+                    
+                    problem = {
+                        'source': 'leetcode',
+                        'title': title,
+                        'title_slug': title_slug,
+                        'content': f'LeetCode Problem: {title}',
+                        'full_question_url': problem_url,
+                        'difficulty': difficulty,
+                        'tags': [],
+                        'skillTags': [],
+                        'language': 'multiple',
+                        'votes': 0,
+                        'answers': 0,
+                        'problem_type': 'coding',
+                        'type': 'coding',
+                        'status': 'pending_review',
+                        'aiGenerated': False,
+                        'source_scraped': 'web_scraped',
+                    }
+                    
+                    problems.append(problem)
+                    
+                except Exception as e:
+                    logger.error(f"Error in simple extraction for {link}: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error in simple table extraction: {e}")
+        
+        return problems
+
+    def _extract_via_api(self) -> List[Dict]:
+        """Try to extract problems via the GraphQL API"""
+        problems = []
+        
+        try:
+            query = """
+            query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
+                problemsetQuestionList: questionList(
+                    categorySlug: $categorySlug
+                    limit: $limit
+                    skip: $skip
+                    filters: $filters
+                ) {
+                    total: totalNum
+                    questions: data {
+                        acRate
+                        difficulty
+                        frontendQuestionId: questionFrontendId
+                        isFavor
+                        paidOnly: isPaidOnly
+                        status
+                        title
+                        titleSlug
+                        topicTags {
+                            name
+                            slug
+                        }
+                    }
+                }
+            }
+            """
+            
+            variables = {
+                "categorySlug": "",
+                "skip": 0,
+                "limit": 20,  # Reduced for testing
+                "filters": {}
+            }
+            
+            response = self.session.post(
+                self.api_base,
+                json={'query': query, 'variables': variables},
+                headers={
+                    'Content-Type': 'application/json',
+                    'Referer': 'https://leetcode.com/problemset/all/',
+                    'Origin': 'https://leetcode.com',
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                questions = data.get('data', {}).get('problemsetQuestionList', {}).get('questions', [])
+                
+                for question in questions:
+                    problem = self._parse_api_problem_data(question)
+                    if problem:
+                        problems.append(problem)
+                        
+        except Exception as e:
+            logger.error(f"Error in API extraction: {e}")
+        
+        return problems
+
+    def _parse_api_problem_data(self, data: dict) -> Optional[Dict]:
+        """Parse problem data from API response"""
+        try:
+            title = data.get('title', '')
+            title_slug = data.get('titleSlug', '')
+            difficulty = data.get('difficulty', 'Medium').lower()
+            
+            topic_tags = data.get('topicTags', [])
+            tags = [tag.get('name', '') for tag in topic_tags if tag.get('name')]
+            
+            problem_url = f"https://leetcode.com/problems/{title_slug}/"
+            
+            problem = {
+                'source': 'leetcode',
+                'title': title,
+                'title_slug': title_slug,
+                'content': f'LeetCode Problem: {title}',
+                'full_question_url': problem_url,
+                'difficulty': difficulty,
+                'tags': tags,
+                'skillTags': tags,
+                'language': 'multiple',
+                'votes': 0,
+                'answers': 0,
+                'problem_type': 'coding',
+                'type': 'coding',
+                'leetcode_id': data.get('frontendQuestionId', ''),
+                'is_paid_only': data.get('paidOnly', False),
+                'acceptance_rate': data.get('acRate', 0),
+                'status': 'pending_review',
+                'aiGenerated': False,
+                'source_scraped': 'web_scraped',
+            }
+            
+            return problem
+            
+        except Exception as e:
+            logger.error(f"Error parsing API problem data: {e}")
+            return None
+
+    def extract_title_slug(self, url: str) -> Optional[str]:
+        """Extract title slug from problem URL"""
+        try:
+            match = re.search(r'/problems/([^/]+)/', url)
+            return match.group(1) if match else None
+        except Exception as e:
+            logger.error(f"Error extracting title slug from {url}: {e}")
+            return None
+
+    def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
+        """Find the next page URL"""
+        try:
+            current_url = getattr(self.session, 'url', self.start_urls[0])
+            
+            page_match = re.search(r'page=(\d+)', current_url)
+            if page_match:
+                current_page = int(page_match.group(1))
+                next_page = current_page + 1
+                next_url = re.sub(r'page=\d+', f'page={next_page}', current_url)
+                return next_url
+            else:
+                if '?' in current_url:
+                    return f"{current_url}&page=2"
+                else:
+                    return f"{current_url}?page=2"
+                    
+        except Exception as e:
+            logger.error(f"Error finding next page: {e}")
+        
+        return None
 # =============================================================================
 # CONTENT PROCESSOR AND CORPUS MANAGER
 # =============================================================================
@@ -378,7 +810,7 @@ class WebScrapingService:
         """Initialize web scraping components"""
         try:
             # Initialize real components - now they're in the same file
-            self.spiders = [StackOverflowSpider()]
+            self.spiders = [StackOverflowSpider(),LeetCodeSpider()]
             self.processor = ContentProcessor()
             self.corpus_manager = CorpusManager()
             
@@ -995,6 +1427,431 @@ async def get_enhanced_problems(
         limit=limit, offset=offset, 
         language=language, source=source, difficulty=difficulty
     )
+
+@app.post("/scraping/leetcode/url")
+async def scrape_leetcode_by_url(request: dict):
+    """
+    Scrape a specific LeetCode problem by URL
+    """
+    try:
+        url = request.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+        
+        print(f"🔍 Scraping LeetCode URL: {url}")
+        
+        # Extract title slug from URL
+        title_slug = extract_leetcode_slug(url)
+        if not title_slug:
+            raise HTTPException(status_code=400, detail="Invalid LeetCode URL")
+        
+        print(f"📝 Extracted title slug: {title_slug}")
+        
+        # Create LeetCode spider instance
+        leetcode_spider = LeetCodeSpider()
+        
+        # Get detailed problem info using GraphQL API
+        print(f"🔄 Fetching problem details from LeetCode API...")
+        detailed_info = leetcode_spider.get_detailed_problem_info(title_slug)
+        
+        if not detailed_info:
+            print(f"❌ Failed to fetch problem details for {title_slug}")
+            raise HTTPException(status_code=404, detail="Problem not found or access denied")
+        
+        print(f"✅ Successfully fetched problem: {detailed_info.get('title', 'Unknown')}")
+        
+        # Transform to Prisma format
+        problem_data = transform_leetcode_to_prisma_format(detailed_info, url)
+        
+        return {
+            "success": True,
+            "message": "LeetCode problem scraped successfully",
+            "problem": problem_data,
+            "metadata": {
+                "url": url,
+                "title_slug": title_slug,
+                "scraped_at": datetime.now().isoformat()
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error scraping LeetCode URL: {e}")
+        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+
+def extract_leetcode_slug(url: str) -> Optional[str]:
+    """Extract title slug from LeetCode URL"""
+    try:
+        print(f"🔧 Extracting slug from URL: {url}")
+        # Handle different LeetCode URL formats
+        patterns = [
+            r'leetcode\.com/problems/([^/?]+)',
+            r'leetcode\.com/problems/([^/?]+)/description',
+            r'leetcode\.com/problems/([^/?]+)/?'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                slug = match.group(1)
+                print(f"✅ Extracted slug: {slug}")
+                return slug
+        print(f"❌ No slug found in URL: {url}")
+        return None
+    except Exception as e:
+        logger.error(f"Error extracting slug from {url}: {e}")
+        return None
+
+def transform_leetcode_to_prisma_format(leetcode_data: Dict, source_url: str) -> Dict:
+    """Transform LeetCode data to Prisma Question model format"""
+    
+    print(f"🔄 Transforming LeetCode data to Prisma format...")
+    
+    # Extract test cases
+    test_cases = parse_leetcode_test_cases(leetcode_data)
+    
+    # Extract canonical solution (Python preferred)
+    canonical_solution = extract_leetcode_solution(leetcode_data)
+    
+    # Extract tags
+    topic_tags = [tag['name'] for tag in leetcode_data.get('topicTags', [])]
+    
+    # Get content and clean HTML tags
+    content = leetcode_data.get('content', '')
+    # Simple HTML tag removal
+    content_clean = re.sub('<[^<]+?>', '', content)
+    
+    transformed_data = {
+        # Required Prisma fields
+        "title": leetcode_data.get('title', 'LeetCode Problem'),
+        "description": f"LeetCode Problem: {leetcode_data.get('title', '')}",
+        "problemStatement": content_clean[:2000],  # Limit length
+        "difficulty": leetcode_data.get('difficulty', 'medium').lower(),
+        "skillTags": topic_tags,
+        "type": "coding",
+        "canonicalSolution": canonical_solution,
+        "testCases": test_cases,
+        
+        # MCQ fields (null for coding problems)
+        "options": None,
+        "correctAnswer": None,
+        "explanation": leetcode_data.get('hints', [])[:3],  # Use first 3 hints as explanation
+        
+        # Metadata
+        "status": "pending_review",
+        "aiGenerated": False,
+        "source": "web_scraped",
+        
+        # Additional LeetCode metadata
+        "metadata": {
+            "sourceUrl": source_url,
+            "platform": "leetcode",
+            "leetcodeId": leetcode_data.get('questionFrontendId'),
+            "titleSlug": leetcode_data.get('titleSlug'),
+            "category": leetcode_data.get('categoryTitle'),
+            "hints": leetcode_data.get('hints', []),
+            "isPaidOnly": leetcode_data.get('isPaidOnly', False),
+            "scrapedAt": datetime.now().isoformat(),
+            "contentLength": len(content)
+        }
+    }
+    
+    print(f"✅ Transformed data for: {transformed_data['title']}")
+    return transformed_data
+
+def parse_leetcode_test_cases(leetcode_data: Dict) -> Dict:
+    """Parse test cases from LeetCode data"""
+    test_cases = {
+        "inputs": [],
+        "outputs": [],
+        "examples": []
+    }
+    
+    try:
+        print(f"🔧 Parsing test cases...")
+        
+        # Get sample test case
+        sample_test_case = leetcode_data.get('sampleTestCase', '')
+        if sample_test_case:
+            test_cases["inputs"].append(sample_test_case)
+            print(f"✅ Added sample test case: {sample_test_case[:50]}...")
+        
+        # Get example test cases
+        example_testcases = leetcode_data.get('exampleTestcases', '')
+        if example_testcases:
+            # Split multiple test cases (usually separated by newlines)
+            cases = example_testcases.split('\n')
+            for i, case in enumerate(cases):
+                if case.strip():
+                    test_cases["examples"].append({
+                        "input": case.strip(),
+                        "output": f"Expected output for test case {i+1}",
+                        "explanation": f"Example test case {i+1} from LeetCode"
+                    })
+            print(f"✅ Added {len(cases)} example test cases")
+        
+        # Get example test case list
+        example_testcase_list = leetcode_data.get('exampleTestcaseList', [])
+        for i, case in enumerate(example_testcase_list):
+            if case.strip():
+                test_cases["examples"].append({
+                    "input": case.strip(),
+                    "output": f"Expected output for example {i+1}",
+                    "explanation": f"Example {i+1} from LeetCode"
+                })
+        print(f"✅ Added {len(example_testcase_list)} test cases from list")
+                
+    except Exception as e:
+        logger.error(f"Error parsing LeetCode test cases: {e}")
+        # Add a default test case if parsing fails
+        test_cases["examples"].append({
+            "input": "Default input",
+            "output": "Default output", 
+            "explanation": "Default test case"
+        })
+    
+    print(f"📊 Total test cases: {len(test_cases['examples'])} examples")
+    return test_cases
+
+def extract_leetcode_solution(leetcode_data: Dict) -> str:
+    """Extract canonical solution from LeetCode data"""
+    try:
+        print(f"🔧 Extracting solution...")
+        code_snippets = leetcode_data.get('codeSnippets', [])
+        
+        # Prefer Python 3 solution
+        python_snippets = [s for s in code_snippets if s.get('langSlug') == 'python3']
+        if python_snippets:
+            solution = python_snippets[0].get('code', '')
+            print(f"✅ Found Python solution ({len(solution)} chars)")
+            return solution
+        
+        # Fallback to any available solution
+        if code_snippets:
+            solution = code_snippets[0].get('code', '')
+            print(f"✅ Found {code_snippets[0].get('lang', 'unknown')} solution ({len(solution)} chars)")
+            return solution
+            
+    except Exception as e:
+        logger.error(f"Error extracting LeetCode solution: {e}")
+    
+    # Default solution stub
+    default_solution = """# LeetCode Solution
+# Problem: {title}
+# Difficulty: {difficulty}
+
+class Solution:
+    def main(self):
+        \"\"\"
+        Implement your solution here
+        \"\"\"
+        pass
+
+# Test your solution
+if __name__ == "__main__":
+    solution = Solution()
+    result = solution.main()
+    print(f"Result: {{result}}")
+""".format(
+        title=leetcode_data.get('title', 'Unknown'),
+        difficulty=leetcode_data.get('difficulty', 'medium')
+    )
+    
+    print(f"⚠️ Using default solution template")
+    return default_solution
+
+
+# =============================================================================
+# MCQ GENERATION ROUTES (FIXED - ACCEPTS JSON BODY)
+# =============================================================================
+
+@app.post("/generate/mcq-only")
+async def generate_mcq_question(request: Request):
+    """
+    Dedicated endpoint for MCQ generation (JSON body)
+    
+    Body:
+        {
+            "topic": "accounting",
+            "difficulty": "medium"
+        }
+    """
+    try:
+        if not GEMINI_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini AI service not available"
+            )
+        
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topic = body.get("topic")
+        difficulty = body.get("difficulty", "medium")
+        
+        if not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Topic is required in request body"
+            )
+        
+        result = gemini_ai_service.generate_question(topic, difficulty, "mcq")
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=500,
+                detail=f"MCQ generation failed: {result.get('error', 'Unknown error')}"
+            )
+        
+        return {
+            "success": True,
+            "question": result["data"],
+            "metadata": {
+                "topic": topic,
+                "difficulty": difficulty,
+                "type": "mcq",
+                "source": result.get("source", "unknown")
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/generate/mcq-batch")
+async def generate_mcq_batch(request: Request):
+    """
+    Dedicated endpoint for batch MCQ generation (JSON body)
+    
+    Body:
+        {
+            "topics": ["python", "nursing", "marketing"],
+            "difficulty": "medium",
+            "count_per_topic": 5
+        }
+    """
+    try:
+        if not GEMINI_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini AI service not available"
+            )
+        
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topics = body.get("topics", ["python"])
+        difficulty = body.get("difficulty", "medium")
+        count_per_topic = body.get("count_per_topic", 5)
+        
+        if not topics:
+            raise HTTPException(
+                status_code=400,
+                detail="Topics list is required"
+            )
+        
+        result = gemini_ai_service.generate_batch(
+            topics=topics,
+            difficulty=difficulty,
+            question_type="mcq",
+            count_per_topic=count_per_topic
+        )
+        
+        return {
+            "success": True,
+            "generated_count": result["generated_count"],
+            "failed_count": result.get("failed_count", 0),
+            "questions": result["questions"],
+            "metadata": {
+                "topics": topics,
+                "difficulty": difficulty,
+                "type": "mcq",
+                "count_per_topic": count_per_topic
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/generate/single")
+async def generate_single_question_enhanced(request: Request):
+    """
+    Universal endpoint - generates coding OR MCQ questions (JSON body)
+    
+    Body:
+        {
+            "topic": "python",
+            "difficulty": "medium",
+            "question_type": "mcq"
+        }
+    """
+    try:
+        # Parse JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON body: {str(e)}"
+            )
+        
+        topic = body.get("topic")
+        difficulty = body.get("difficulty", "medium")
+        question_type = body.get("question_type", "coding")
+        
+        if not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Topic is required"
+            )
+        
+        if question_type == "mcq":
+            if not GEMINI_AVAILABLE:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Gemini AI service required for MCQ generation"
+                )
+            
+            result = gemini_ai_service.generate_question(topic, difficulty, "mcq")
+            
+            if not result["success"]:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"MCQ generation failed: {result.get('error')}"
+                )
+            
+            return {
+                "success": True,
+                "question": result["data"],
+                "metadata": {
+                    "topic": topic,
+                    "difficulty": difficulty,
+                    "type": "mcq",
+                    "source": result.get("source", "unknown")
+                }
+            }
+        
+        # Original coding question logic
+        return await generate_question(body)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 # =============================================================================
 # WEB SCRAPING URL-BASED ROUTES (ADD THESE)
 # =============================================================================

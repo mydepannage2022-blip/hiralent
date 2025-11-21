@@ -8,7 +8,10 @@ import {
   ScrapedQuestionData,
   ScrapingJobResponse,      //  NOUVEAU
   ScrapedProblemsResponse,  //  NOUVEAU
-  ScrapedProblem            //  NOUVEAU
+  ScrapedProblem ,           //  NOUVEAU
+  MCQGenerationResponse,        // ADD THIS
+  MCQBatchGenerationResponse    // ADD THIS
+
 } from '../../types/question.types';
 export class QuestionController {
   private questionService: QuestionService;
@@ -861,6 +864,231 @@ private normalizeTestCases(testCases: any): any[] {
 
   // Fallback
   return [{ input: 'Sample input', output: 'Expected output' }];
+}
+// Add these methods to your QuestionController class
+
+/**
+ * Generate a single MCQ question via AI
+ * Route: POST /api/questions/generate-mcq
+ */
+async generateMCQQuestion(req: Request, res: Response) {
+  console.log('🎯 [CONTROLLER] generateMCQQuestion called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { topic, difficulty } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      console.log('❌ [CONTROLLER] User not authenticated for MCQ generation');
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for MCQ generation',
+        details: 'Please log in to generate MCQ questions'
+      });
+    }
+
+    if (!topic) {
+      return res.status(400).json({
+        success: false,
+        error: 'Topic is required'
+      });
+    }
+
+    console.log('🎯 [CONTROLLER] Calling Python MCQ service...');
+    console.log('📋 [CONTROLLER] Topic:', topic, 'Difficulty:', difficulty || 'medium');
+
+    // Call Python AI service for MCQ generation
+    const mcqResponse = await fetch('http://localhost:8000/generate/mcq-only', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic,
+        difficulty: difficulty || 'medium'
+      })
+    });
+
+    if (!mcqResponse.ok) {
+      throw new Error(`MCQ service returned ${mcqResponse.status}`);
+    }
+
+    const mcqData = await mcqResponse.json() as MCQGenerationResponse;
+    console.log('✅ [CONTROLLER] MCQ generation successful');
+
+    if (!mcqData.success || !mcqData.question) {
+      throw new Error(mcqData.error || 'MCQ generation failed');
+    }
+
+    // Save MCQ to database
+    const savedQuestion = await this.questionService.createQuestion({
+      title: mcqData.question.title,
+      description: mcqData.question.description,
+      problemStatement: mcqData.question.description, // For MCQ, description = problem
+      difficulty: mcqData.question.difficulty as 'easy' | 'medium' | 'hard',
+      skillTags: mcqData.question.skillTags,
+      type: 'mcq', // ✅ MCQ type
+      
+      // MCQ-specific fields
+      options: mcqData.question.options,
+      correctAnswer: mcqData.question.correctAnswer,
+      explanation: mcqData.question.explanation,
+      
+      // No canonical solution or test cases for MCQ
+      canonicalSolution: null,
+      testCases: null,
+      
+      status: 'draft',
+      aiGenerated: true,
+      source: 'ai_gemini_mcq',
+      createdBy: userId
+    });
+
+    console.log('💾 [CONTROLLER] MCQ saved:', savedQuestion.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'MCQ question generated and saved successfully',
+      question: savedQuestion
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateMCQQuestion ERROR:', error.message);
+    
+    if (error.message.includes('service returned')) {
+      return res.status(503).json({
+        success: false,
+        error: 'MCQ Generation service is currently unavailable',
+        details: 'Please ensure the Python service is running on port 8000'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate MCQ question',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Generate multiple MCQ questions in batch
+ * Route: POST /api/questions/generate-mcq-batch
+ */
+async generateMCQBatch(req: Request, res: Response) {
+  console.log('🎯 [CONTROLLER] generateMCQBatch called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { topics, difficulty, count_per_topic } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      console.log('❌ [CONTROLLER] User not authenticated for batch MCQ generation');
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for batch MCQ generation'
+      });
+    }
+
+    if (!topics || !Array.isArray(topics) || topics.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Topics array is required'
+      });
+    }
+
+    console.log('🎯 [CONTROLLER] Generating MCQ batch for topics:', topics);
+
+    // Call Python AI service for batch MCQ generation
+    const batchResponse = await fetch('http://localhost:8000/generate/mcq-batch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topics,
+        difficulty: difficulty || 'medium',
+        count_per_topic: count_per_topic || 5
+      })
+    });
+
+    if (!batchResponse.ok) {
+      throw new Error(`MCQ batch service returned ${batchResponse.status}`);
+    }
+
+    const batchData = await batchResponse.json() as MCQBatchGenerationResponse;
+    console.log('✅ [CONTROLLER] MCQ batch generation successful');
+    console.log('📊 [CONTROLLER] Generated', batchData.generated_count, 'MCQ questions');
+
+    if (!batchData.success || !batchData.questions) {
+      throw new Error(batchData.error || 'MCQ batch generation failed');
+    }
+
+    // Save all MCQs to database
+    const savedQuestions = [];
+    const errors = [];
+
+    for (const [index, mcqQuestion] of batchData.questions.entries()) {
+      try {
+        const saved = await this.questionService.createQuestion({
+          title: mcqQuestion.title,
+          description: mcqQuestion.description,
+          problemStatement: mcqQuestion.description,
+          difficulty: mcqQuestion.difficulty as 'easy' | 'medium' | 'hard',
+          skillTags: mcqQuestion.skillTags,
+          type: 'mcq',
+          
+          // MCQ-specific fields
+          options: mcqQuestion.options,
+          correctAnswer: mcqQuestion.correctAnswer,
+          explanation: mcqQuestion.explanation,
+          
+          canonicalSolution: null,
+          testCases: null,
+          
+          status: 'draft',
+          aiGenerated: true,
+          source: 'ai_gemini_mcq',
+          createdBy: userId
+        });
+
+        savedQuestions.push(saved);
+        console.log(`✅ [CONTROLLER] Saved MCQ ${index + 1}/${batchData.questions.length}`);
+
+      } catch (error: any) {
+        console.error(`❌ [CONTROLLER] Error saving MCQ ${index}:`, error.message);
+        errors.push({
+          index,
+          title: mcqQuestion.title,
+          error: error.message
+        });
+      }
+    }
+
+    console.log('💾 [CONTROLLER] Batch MCQ save completed');
+    console.log(`✅ Saved: ${savedQuestions.length}, ❌ Errors: ${errors.length}`);
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${batchData.generated_count} MCQs and saved ${savedQuestions.length} to database`,
+      generated_count: batchData.generated_count,
+      saved_count: savedQuestions.length,
+      failed_count: batchData.failed_count || 0,
+      error_count: errors.length,
+      questions: savedQuestions,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateMCQBatch ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate MCQ batch',
+      details: error.message
+    });
+  }
 }
 
 
