@@ -1480,6 +1480,158 @@ async def scrape_leetcode_by_url(request: dict):
         logger.error(f"Error scraping LeetCode URL: {e}")
         raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
+@app.post("/scraping/leetcode/test")
+async def test_leetcode_scraping(request: dict):
+    """
+    Test LeetCode scraping with the working approach
+    """
+    try:
+        url = request.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+        
+        print(f"🧪 Testing LeetCode scraping for: {url}")
+        
+        # Extract title slug from URL
+        title_slug = extract_leetcode_slug(url)
+        if not title_slug:
+            raise HTTPException(status_code=400, detail="Invalid LeetCode URL")
+        
+        print(f"📝 Extracted title slug: {title_slug}")
+        
+        # Use the working GraphQL query directly
+        query = {
+            "operationName": "questionData",
+            "variables": {"titleSlug": title_slug},
+            "query": """
+            query questionData($titleSlug: String!) {
+                question(titleSlug: $titleSlug) {
+                    questionId
+                    title
+                    titleSlug
+                    content
+                    difficulty
+                    exampleTestcases
+                    codeSnippets {
+                        lang
+                        langSlug
+                        code
+                    }
+                    sampleTestCase
+                    topicTags {
+                        name
+                        slug
+                    }
+                }
+            }
+            """
+        }
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': f'https://leetcode.com/problems/{title_slug}/'
+        }
+        
+        print("🔄 Sending GraphQL request...")
+        response = requests.post(
+            "https://leetcode.com/graphql",
+            json=query,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data and data['data']['question']:
+                problem_data = data['data']['question']
+                print(f"✅ Successfully fetched: {problem_data.get('title', 'Unknown')}")
+                
+                # ✅ GET THE CONTENT AND CLEAN IT
+                raw_content = problem_data.get('content', '')
+                clean_description = clean_html_content(raw_content)
+                
+                return {
+                    "success": True,
+                    "message": "LeetCode scraping test successful",
+                    "data": {
+                        "question_id": problem_data.get('questionId'),
+                        "title": problem_data.get('title'),
+                        "title_slug": problem_data.get('titleSlug'),
+                        "difficulty": problem_data.get('difficulty'),
+                        "topics": [tag['name'] for tag in problem_data.get('topicTags', [])],
+                        
+                        # ✅ ADD THESE - THE ACTUAL DESCRIPTION
+                        "description": clean_description,
+                        "description_preview": clean_description[:500] + "..." if len(clean_description) > 500 else clean_description,
+                        "description_length": len(clean_description),
+                        "has_content": bool(raw_content),
+                        
+                        # ✅ FULL TEST CASES
+                        "test_cases": problem_data.get('exampleTestcases', ''),
+                        "sample_test_case": problem_data.get('sampleTestCase', ''),
+                        
+                        # CODE SNIPPETS
+                        "code_snippets": [s['lang'] for s in problem_data.get('codeSnippets', [])],
+                        
+                        # ✅ ADD URL
+                        "url": f"https://leetcode.com/problems/{problem_data.get('titleSlug')}/"
+                    }
+                }
+            else:
+                print("❌ No question data in response")
+                return {
+                    "success": False,
+                    "error": "No question data found in response"
+                }
+        else:
+            print(f"❌ HTTP Error: {response.status_code}")
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}",
+                "response_text": response.text[:500] if response.text else "No response text"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in test scraping: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def clean_html_content(html_content: str) -> str:
+    """
+    Clean HTML content and extract readable text
+    """
+    if not html_content:
+        return ""
+    
+    try:
+        from bs4 import BeautifulSoup
+        
+        # Parse HTML
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text
+        text = soup.get_text()
+        
+        # Clean up whitespace
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return text
+        
+    except Exception as e:
+        # Fallback: simple regex to remove HTML tags
+        import re
+        return re.sub('<[^<]+?>', '', html_content)
+    
 def extract_leetcode_slug(url: str) -> Optional[str]:
     """Extract title slug from LeetCode URL"""
     try:
@@ -1661,7 +1813,15 @@ if __name__ == "__main__":
     print(f"⚠️ Using default solution template")
     return default_solution
 
-
+@app.get("/scraping/debug")
+async def debug_scraping():
+    """Debug endpoint to test basic connectivity"""
+    return {
+        "status": "debug_route_working",
+        "message": "Debug route is accessible",
+        "timestamp": datetime.now().isoformat(),
+        "scraping_available": SCRAPING_AVAILABLE
+    }
 # =============================================================================
 # MCQ GENERATION ROUTES (FIXED - ACCEPTS JSON BODY)
 # =============================================================================

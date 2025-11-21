@@ -112,6 +112,25 @@ router.post('/import-scraped',
   checkAuth,
   controller.importScrapedQuestions.bind(controller)
 );
+// ========== LEETCODE SCRAPING ROUTES (NEW) ==========
+router.get('/scrape/leetcode/health',
+  controller.checkLeetCodeScrapingHealth.bind(controller)
+);
+
+router.post('/scrape/leetcode/test',
+  checkAuth,
+  controller.testLeetCodeScraping.bind(controller)
+);
+
+router.post('/scrape/leetcode/url',
+  checkAuth,
+  controller.scrapeLeetCodeByUrl.bind(controller)
+);
+
+router.post('/scrape/leetcode/batch',
+  checkAuth,
+  controller.scrapeLeetCodeBatch.bind(controller)
+);
 
 // 404 handler
 router.use((req, res) => {
