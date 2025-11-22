@@ -1464,6 +1464,7 @@ enum EmployerAssessmentStatus {
 enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
+  MANUAL
 }
 
 // Conversation Model

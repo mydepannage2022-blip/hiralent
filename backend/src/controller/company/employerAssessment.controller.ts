@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import EmployerAssessmentService from '../../services/company/employerAssessment.service';
-import type { AuthUser } from '../../types/express.d'; // keep your file as-is
+import type { AuthUser } from '../../types/express.d';
 
 // Local helper type: an Express Request that definitely has a user
 type AuthedReq = Request & { user: AuthUser };
@@ -35,6 +35,19 @@ export const createWithChatbot = asyncHandler(async (req: AuthedReq, res: Respon
   res.status(201).json(result);
 });
 
+// POST /api/employer-assessments/chatbot/message
+export const sendChatbotMessage = asyncHandler(async (req: AuthedReq, res: Response) => {
+  const company_id = req.user.user_id;
+  const { session_id, message } = req.body;
+
+  const result = await EmployerAssessmentService.sendChatbotMessageService(company_id, {
+    session_id,
+    message,
+  });
+
+  res.json(result);
+});
+
 // GET /api/employer-assessments/:assessment_id
 export const getById = asyncHandler(async (req: AuthedReq, res: Response) => {
   const company_id = req.user.user_id;
@@ -56,6 +69,14 @@ export const update = asyncHandler(async (req: AuthedReq, res: Response) => {
   const company_id = req.user.user_id;
   const payload = { ...req.body, company_id }; // prevent spoofing company_id
   const result = await EmployerAssessmentService.update(company_id, payload);
+  res.json(result);
+});
+
+// PATCH /api/employer-assessments/status
+export const updateStatus = asyncHandler(async (req: AuthedReq, res: Response) => {
+  const company_id = req.user.user_id;
+  const payload = { ...req.body, company_id };
+  const result = await EmployerAssessmentService.updateStatus(company_id, payload);
   res.json(result);
 });
 
