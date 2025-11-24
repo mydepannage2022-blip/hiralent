@@ -224,3 +224,72 @@ export interface MCQBatchGenerationResponse {
   };
   error?: string;
 }
+
+export interface LeetCodeTestResponse {
+  success: boolean;
+  message: string;
+  version?: string;
+  data?: {
+    question_id: string;
+    title: string;
+    title_slug: string;
+    difficulty: string;
+    topics: string[];
+    description: string;
+    description_preview: string;
+    description_length: number;
+    has_content: boolean;
+    test_cases: string;
+    sample_test_case: string;
+    code_snippets: string[];
+    url: string;
+  };
+  error?: string;
+}
+
+export interface LeetCodeScrapeResponse {
+  success: boolean;
+  message: string;
+  problem?: {
+    title: string;
+    description: string;
+    problemStatement: string;
+    difficulty: string;
+    skillTags: string[];
+    type: string;
+    canonicalSolution: string;
+    testCases: any;
+    metadata: {
+      sourceUrl: string;
+      platform: string;
+      leetcodeId: string;
+      titleSlug: string;
+    };
+  };
+  metadata?: {
+    url: string;
+    title_slug: string;
+    scraped_at: string;
+  };
+  error?: string;
+}
+
+export interface LeetCodeBatchScrapeRequest {
+  urls: string[];
+}
+
+export interface LeetCodeBatchScrapeResponse {
+  success: boolean;
+  message: string;
+  results: {
+    total: number;
+    successful: number;
+    failed: number;
+    saved: number;
+  };
+  questions?: any[];
+  errors?: Array<{
+    url: string;
+    error: string;
+  }>;
+}

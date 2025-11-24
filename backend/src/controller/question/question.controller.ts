@@ -10,7 +10,10 @@ import {
   ScrapedProblemsResponse,  //  NOUVEAU
   ScrapedProblem ,           //  NOUVEAU
   MCQGenerationResponse,        // ADD THIS
-  MCQBatchGenerationResponse    // ADD THIS
+  MCQBatchGenerationResponse,   // ADD THIS
+  LeetCodeTestResponse,
+  LeetCodeScrapeResponse,
+  LeetCodeBatchScrapeResponse
 
 } from '../../types/question.types';
 export class QuestionController {
@@ -1089,6 +1092,443 @@ async generateMCQBatch(req: Request, res: Response) {
       details: error.message
     });
   }
+}
+
+/**
+ * Health check for LeetCode scraping service
+ * Route: GET /api/questions/scrape/leetcode/health
+ */
+async checkLeetCodeScrapingHealth(req: Request, res: Response) {
+  console.log('🔍 [CONTROLLER] checkLeetCodeScrapingHealth called');
+  
+  try {
+    const response = await fetch('http://localhost:8000/scraping/leetcode/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: 'https://leetcode.com/problems/two-sum/'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`LeetCode scraping service returned ${response.status}`);
+    }
+
+    const data = await response.json() as LeetCodeTestResponse;
+    
+    res.json({
+      success: true,
+      service: 'LeetCode Scraping Service',
+      status: data.success ? 'healthy' : 'unhealthy',
+      test_problem: data.data ? {
+        title: data.data.title,
+        difficulty: data.data.difficulty,
+        description_length: data.data.description_length,
+        has_content: data.data.has_content
+      } : null
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] LeetCode health check error:', error.message);
+    res.status(503).json({
+      success: false,
+      service: 'LeetCode Scraping Service',
+      status: 'unavailable',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Test LeetCode scraping with a URL (returns data without saving)
+ * Route: POST /api/questions/scrape/leetcode/test
+ */
+async testLeetCodeScraping(req: Request, res: Response) {
+  console.log('🧪 [CONTROLLER] testLeetCodeScraping called');
+  
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'LeetCode URL is required'
+      });
+    }
+
+    // Validate URL format
+    if (!url.includes('leetcode.com/problems/')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid LeetCode URL. Expected format: https://leetcode.com/problems/problem-name/'
+      });
+    }
+
+    console.log('📡 [CONTROLLER] Testing LeetCode URL:', url);
+
+    const response = await fetch('http://localhost:8000/scraping/leetcode/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (!response.ok) {
+      throw new Error(`LeetCode scraping service returned ${response.status}`);
+    }
+
+    const data = await response.json() as LeetCodeTestResponse;
+    
+    console.log('✅ [CONTROLLER] LeetCode test successful:', data.data?.title);
+
+    res.json({
+      success: data.success,
+      message: data.message,
+      data: data.data
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] testLeetCodeScraping error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to test LeetCode scraping',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Scrape a single LeetCode problem and save to database
+ * Route: POST /api/questions/scrape/leetcode/url
+ */
+async scrapeLeetCodeByUrl(req: Request, res: Response) {
+  console.log('🌐 [CONTROLLER] scrapeLeetCodeByUrl called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { url } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for LeetCode scraping'
+      });
+    }
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'LeetCode URL is required'
+      });
+    }
+
+    // Validate URL format
+    if (!url.includes('leetcode.com/problems/')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid LeetCode URL. Expected format: https://leetcode.com/problems/problem-name/'
+      });
+    }
+
+    console.log('📡 [CONTROLLER] Scraping LeetCode URL:', url);
+
+    // Call Python scraping service
+    const response = await fetch('http://localhost:8000/scraping/leetcode/url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`LeetCode scraping failed: ${response.status} - ${errorText}`);
+    }
+
+    const scrapeData = await response.json() as LeetCodeScrapeResponse;
+
+    if (!scrapeData.success || !scrapeData.problem) {
+      throw new Error(scrapeData.error || 'Failed to scrape LeetCode problem');
+    }
+
+    console.log('✅ [CONTROLLER] LeetCode scraping successful:', scrapeData.problem.title);
+
+    // Check for duplicates
+    const existingQuestion = await this.questionService.findByTitle(scrapeData.problem.title);
+    if (existingQuestion) {
+      return res.status(409).json({
+        success: false,
+        error: 'Question already exists in database',
+        existing_id: existingQuestion.id,
+        title: existingQuestion.title
+      });
+    }
+
+    // Prepare question data for database
+    const questionData = {
+      title: scrapeData.problem.title,
+      description: scrapeData.problem.description.substring(0, 1000),
+      problemStatement: scrapeData.problem.problemStatement,
+      difficulty: this.normalizeDifficulty(scrapeData.problem.difficulty),
+      skillTags: scrapeData.problem.skillTags || [],
+      type: 'coding' as const,
+      canonicalSolution: scrapeData.problem.canonicalSolution || '# Solution to be implemented',
+      testCases: this.normalizeLeetCodeTestCases(scrapeData.problem.testCases),
+      status: 'pending_review' as const,
+      createdBy: userId,
+      aiGenerated: false,
+      source: 'leetcode_scraped'
+    };
+
+    // Save to database
+    const savedQuestion = await this.questionService.createQuestion(questionData);
+
+    console.log('💾 [CONTROLLER] LeetCode question saved:', savedQuestion.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'LeetCode problem scraped and saved successfully',
+      question: savedQuestion,
+      metadata: scrapeData.metadata
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] scrapeLeetCodeByUrl error:', error.message);
+    
+    if (error.message.includes('404')) {
+      return res.status(404).json({
+        success: false,
+        error: 'LeetCode problem not found or access denied (might be premium)',
+        details: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to scrape LeetCode problem',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Scrape multiple LeetCode problems in batch
+ * Route: POST /api/questions/scrape/leetcode/batch
+ */
+async scrapeLeetCodeBatch(req: Request, res: Response) {
+  console.log('🌐 [CONTROLLER] scrapeLeetCodeBatch called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { urls } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for batch LeetCode scraping'
+      });
+    }
+
+    if (!urls || !Array.isArray(urls) || urls.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'URLs array is required'
+      });
+    }
+
+    // Limit batch size
+    if (urls.length > 20) {
+      return res.status(400).json({
+        success: false,
+        error: 'Maximum 20 URLs allowed per batch'
+      });
+    }
+
+    // Validate all URLs
+    const invalidUrls = urls.filter(url => !url.includes('leetcode.com/problems/'));
+    if (invalidUrls.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid LeetCode URLs detected',
+        invalid_urls: invalidUrls
+      });
+    }
+
+    console.log('📡 [CONTROLLER] Scraping', urls.length, 'LeetCode URLs...');
+
+    const results = {
+      total: urls.length,
+      successful: 0,
+      failed: 0,
+      saved: 0,
+      skipped: 0
+    };
+
+    const savedQuestions: any[] = [];
+    const errors: Array<{ url: string; error: string }> = [];
+    const skipped: Array<{ url: string; reason: string }> = [];
+
+    // Process each URL
+    for (const [index, url] of urls.entries()) {
+      try {
+        console.log(`📄 [CONTROLLER] Processing ${index + 1}/${urls.length}: ${url}`);
+
+        // Call Python service for this URL
+        const response = await fetch('http://localhost:8000/scraping/leetcode/url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const scrapeData = await response.json() as LeetCodeScrapeResponse;
+
+        if (!scrapeData.success || !scrapeData.problem) {
+          throw new Error(scrapeData.error || 'Scraping failed');
+        }
+
+        results.successful++;
+
+        // Check for duplicates
+        const existing = await this.questionService.findByTitle(scrapeData.problem.title);
+        if (existing) {
+          results.skipped++;
+          skipped.push({
+            url,
+            reason: `Already exists: ${existing.id}`
+          });
+          console.log(`⏭️ [CONTROLLER] Skipped duplicate: ${scrapeData.problem.title}`);
+          continue;
+        }
+
+        // Save to database
+        const questionData = {
+          title: scrapeData.problem.title,
+          description: scrapeData.problem.description.substring(0, 1000),
+          problemStatement: scrapeData.problem.problemStatement,
+          difficulty: this.normalizeDifficulty(scrapeData.problem.difficulty),
+          skillTags: scrapeData.problem.skillTags || [],
+          type: 'coding' as const,
+          canonicalSolution: scrapeData.problem.canonicalSolution || '# Solution to be implemented',
+          testCases: this.normalizeLeetCodeTestCases(scrapeData.problem.testCases),
+          status: 'pending_review' as const,
+          createdBy: userId,
+          aiGenerated: false,
+          source: 'leetcode_scraped'
+        };
+
+        const saved = await this.questionService.createQuestion(questionData);
+        savedQuestions.push(saved);
+        results.saved++;
+
+        console.log(`✅ [CONTROLLER] Saved: ${saved.title}`);
+
+        // Rate limiting - wait 1.5 seconds between requests
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+      } catch (error: any) {
+        results.failed++;
+        errors.push({
+          url,
+          error: error.message
+        });
+        console.error(`❌ [CONTROLLER] Error scraping ${url}:`, error.message);
+      }
+    }
+
+    console.log('🎉 [CONTROLLER] Batch scraping completed');
+    console.log(`✅ Successful: ${results.successful}, 💾 Saved: ${results.saved}, ⏭️ Skipped: ${results.skipped}, ❌ Failed: ${results.failed}`);
+
+    res.status(201).json({
+      success: true,
+      message: `Processed ${results.total} URLs: ${results.saved} saved, ${results.skipped} skipped, ${results.failed} failed`,
+      results,
+      questions: savedQuestions,
+      skipped: skipped.length > 0 ? skipped : undefined,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] scrapeLeetCodeBatch error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process batch LeetCode scraping',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Normalize difficulty to lowercase
+ */
+private normalizeDifficulty(difficulty: string): 'easy' | 'medium' | 'hard' {
+  const normalized = difficulty?.toLowerCase() || 'medium';
+  if (['easy', 'medium', 'hard'].includes(normalized)) {
+    return normalized as 'easy' | 'medium' | 'hard';
+  }
+  return 'medium';
+}
+
+/**
+ * Normalize LeetCode test cases to standard format
+ */
+private normalizeLeetCodeTestCases(testCases: any): Array<{ input: string; output: string }> {
+  if (!testCases) {
+    return [{ input: 'Sample input', output: 'Expected output' }];
+  }
+
+  // If already in correct format
+  if (Array.isArray(testCases) && testCases.length > 0 && testCases[0]?.input !== undefined) {
+    return testCases;
+  }
+
+  // If it's an object with examples
+  if (testCases.examples && Array.isArray(testCases.examples)) {
+    return testCases.examples.map((ex: any) => ({
+      input: ex.input || '',
+      output: ex.output || ''
+    }));
+  }
+
+  // If it's an object with inputs/outputs arrays
+  if (testCases.inputs && testCases.outputs) {
+    const result = [];
+    const len = Math.min(
+      Array.isArray(testCases.inputs) ? testCases.inputs.length : 0,
+      Array.isArray(testCases.outputs) ? testCases.outputs.length : 0
+    );
+    for (let i = 0; i < len; i++) {
+      result.push({
+        input: String(testCases.inputs[i] || ''),
+        output: String(testCases.outputs[i] || '')
+      });
+    }
+    return result.length > 0 ? result : [{ input: 'Sample input', output: 'Expected output' }];
+  }
+
+  // If it's a string (raw test cases from LeetCode)
+  if (typeof testCases === 'string') {
+    const lines = testCases.split('\n').filter((l: string) => l.trim());
+    if (lines.length > 0) {
+      return [{
+        input: lines.join('\n'),
+        output: 'Expected output (to be determined)'
+      }];
+    }
+  }
+
+  return [{ input: 'Sample input', output: 'Expected output' }];
 }
 
 
