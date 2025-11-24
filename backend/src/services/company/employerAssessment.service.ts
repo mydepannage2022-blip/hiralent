@@ -21,73 +21,22 @@ import {
   UpdateAssessmentResponse,
   DeleteAssessmentResponse,
   AssessmentCreationStep,
+  UpdateAssessmentStatusRequest,
 } from '../../types/employerAssessment.types';
+
+import {
+  callJDParse,
+  startChatbotSession,
+  sendChatbotMessage,      // ⬅️ NEW: send message to chatbot
+  JDParseApiResponse,
+  ChatbotApiResponse,
+} from '../../clients/assessment-ai-service.client';
 
 import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
-// ================== AI MICROSERVICE (PYTHON) ==================
-
-const AI_BASE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-
-async function aiFetch<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${AI_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`AI service error ${res.status}: ${text}`);
-  }
-
-  return res.json() as Promise<T>;
-}
-
-// Shapes retournés par le microservice Python
-type JDParseResponse = {
-  analysis: SkillsAnalysis;
-  requirements: Record<string, string[]>;
-};
-
-type ChatbotSessionDTO = {
-  session_id: string;
-  company_id: string;
-  job_id?: string;
-  messages: any[];
-  current_step: string;
-  created_at: string;
-  updated_at: string;
-  assessment_data?: any;
-  method: 'chatbot_guided';
-};
-
-type ChatbotResponseDTO = {
-  session: ChatbotSessionDTO;
-  reply: string;
-  is_completed: boolean;
-};
-
-const AI = {
-  jdParse: (payload: { job_description: string; job_title?: string }) =>
-    aiFetch<JDParseResponse>('/jd/parse', payload),
-
-  extractSkills: (payload: { job_description: string; job_title?: string }) =>
-    aiFetch<SkillExtractionResponse>('/skills/extract', payload),
-
-  chatbotStart: (payload: {
-    company_id: string;
-    job_id?: string;
-    initial_data?: any;
-  }) => aiFetch<ChatbotResponseDTO>('/chatbot/start', payload),
-
-  chatbotMessage: (payload: { session_id: string; message: string }) =>
-    aiFetch<ChatbotResponseDTO>('/chatbot/message', payload),
-};
-
-// ================== HELPERS ==================
+/* ================== HELPERS ================== */
 
 function toPrismaCreation(m: TsCreationMethod): PrismaCreationMethod {
   switch (m) {
@@ -95,8 +44,10 @@ function toPrismaCreation(m: TsCreationMethod): PrismaCreationMethod {
       return PrismaCreationMethod.JOB_DESCRIPTION_PARSE;
     case TsCreationMethod.CHATBOT_GUIDED:
       return PrismaCreationMethod.CHATBOT_GUIDED;
+    case TsCreationMethod.MANUAL:
+      return PrismaCreationMethod.MANUAL;
     default:
-      throw new Error(`Unknown creation method: ${m as never}`);
+      throw new Error(`Unknown creation method: ${m}`);
   }
 }
 
@@ -106,6 +57,8 @@ function toTsCreation(m: PrismaCreationMethod): TsCreationMethod {
       return TsCreationMethod.JOB_DESCRIPTION_PARSE;
     case PrismaCreationMethod.CHATBOT_GUIDED:
       return TsCreationMethod.CHATBOT_GUIDED;
+    case PrismaCreationMethod.MANUAL:
+      return TsCreationMethod.MANUAL;
   }
 }
 
@@ -133,12 +86,14 @@ function mapPrismaAssessment(a: any): EmployerAssessment {
     difficulty: a.difficulty,
     time_limit: a.time_limit,
     total_questions: a.total_questions,
+    passing_score: a.passing_score ?? undefined,
     question_ids: a.question_ids,
     created_at: a.created_at,
     updated_at: a.updated_at,
     enhanced_data: a.enhanced_data ?? undefined,
     auto_generated: a.auto_generated ?? undefined,
     creation_method: toTsCreation(a.creation_method),
+    extracted_skills: a.extracted_skills ?? [],
     job: a.job
       ? {
           title: a.job.title,
@@ -156,26 +111,26 @@ function mapPrismaAssessment(a: any): EmployerAssessment {
 }
 
 function mapChatbotSession(
-  dto: ChatbotSessionDTO,
+  session: ChatbotApiResponse['session'],
 ): AssessmentCreationResponse['chatbot_session'] {
   const step =
-    (dto.current_step as AssessmentCreationStep) ??
+    (session.current_step as AssessmentCreationStep) ??
     AssessmentCreationStep.WELCOME;
 
   return {
-    session_id: dto.session_id,
-    company_id: dto.company_id,
-    job_id: dto.job_id,
-    messages: dto.messages || [],
+    session_id: session.session_id,
+    company_id: session.company_id,
+    job_id: session.job_id,
+    messages: session.messages || [],
     current_step: step,
-    created_at: new Date(dto.created_at),
-    updated_at: new Date(dto.updated_at),
-    assessment_data: dto.assessment_data,
+    created_at: new Date(session.created_at),
+    updated_at: new Date(session.updated_at),
+    assessment_data: session.assessment_data,
     method: TsCreationMethod.CHATBOT_GUIDED,
   };
 }
 
-// ================== VALIDATION ==================
+/* ================== VALIDATION ================== */
 
 async function assertCompanyOwnsJob(company_id: string, job_id: string) {
   const job = await prisma.companyJob.findUnique({ where: { job_id } });
@@ -192,7 +147,7 @@ async function assertCompanyExists(company_id: string) {
   return user;
 }
 
-// ================== SERVICE FUNCTIONS ==================
+/* ================== SERVICE FUNCTIONS ================== */
 
 export async function createEmployerAssessmentFromRequest(
   company_id: string,
@@ -249,15 +204,15 @@ export async function createEmployerAssessment(
       job_id: payload.job_id,
       title: payload.title,
       description: payload.description,
-      status: PrismaEmployerAssessmentStatus.DRAFT,
+      status: payload.status || PrismaEmployerAssessmentStatus.DRAFT,
       assessment_type: payload.assessment_type as PrismaAssessmentType,
       skill_category: payload.skill_category,
       difficulty: payload.difficulty as PrismaDifficultyLevel,
       time_limit: payload.time_limit ?? 60,
       total_questions: payload.total_questions ?? 20,
-      passing_score: 70,
-      question_ids: [],
-      settings: {},
+      passing_score: payload.passing_score ?? 70,
+      question_ids: payload.question_ids ?? [],
+      settings: payload.settings ?? {},
       creation_method: toPrismaCreation(payload.creation_method),
       extracted_skills: payload.extracted_skills ?? [],
       enhanced_data: (payload.enhanced_data as any) ?? undefined,
@@ -291,7 +246,8 @@ export async function createEmployerAssessmentFromJobDescription(
   await assertCompanyExists(company_id);
   const job = await assertCompanyOwnsJob(company_id, args.job_id);
 
-  const jd = await AI.jdParse({
+  // 1️⃣ Call AI microservice (FastAPI)
+  const jd: JDParseApiResponse = await callJDParse({
     job_description: args.job_description,
     job_title: args.job_title ?? job.title,
   });
@@ -349,6 +305,7 @@ export async function createEmployerAssessmentWithChatbot(
   await assertCompanyExists(company_id);
   await assertCompanyOwnsJob(company_id, args.job_id);
 
+  // We create a draft assessment row immediately, then let chatbot refine it.
   const created = await prisma.employerAssessment.create({
     data: {
       assessment_id: randomUUID(),
@@ -373,7 +330,8 @@ export async function createEmployerAssessmentWithChatbot(
     include: { job: true, _count: { select: { candidateAssessments: true } } },
   });
 
-  const chatbot = await AI.chatbotStart({
+  // 1️⃣ Start chatbot session in AI service
+  const chatbot: ChatbotApiResponse = await startChatbotSession({
     company_id,
     job_id: created.job_id,
     initial_data: {
@@ -393,6 +351,29 @@ export async function createEmployerAssessmentWithChatbot(
     next_steps: ['Continue in chatbot to finalize requirements and link questions'],
   };
 }
+
+/* =============== CHATBOT MESSAGE SERVICE =============== */
+
+export async function sendChatbotMessageService(
+  company_id: string,
+  payload: { session_id: string; message: string },
+): Promise<ChatbotApiResponse> {
+  await assertCompanyExists(company_id);
+
+  if (!payload.session_id) throw new Error('session_id is required');
+  if (!payload.message) throw new Error('message is required');
+
+  // 1️⃣ Call AI microservice – delegate to client
+  const aiResponse = await sendChatbotMessage({
+    session_id: payload.session_id,
+    message: payload.message,
+  });
+
+  // 2️⃣ Just return AI response (session + reply + is_completed)
+  return aiResponse;
+}
+
+/* ================== CRUD ================== */
 
 export async function getEmployerAssessmentById(
   company_id: string,
@@ -442,11 +423,25 @@ export async function updateEmployerAssessment(
   const updated = await prisma.employerAssessment.update({
     where: { assessment_id: payload.assessment_id },
     data: {
+      // Basic info
       title: payload.title ?? undefined,
       description: payload.description ?? undefined,
-      status:
-        (payload.status as PrismaEmployerAssessmentStatus) ?? undefined,
+      status: payload.status ?? undefined,
       job_id: payload.job_id ?? undefined,
+
+      // Assessment configuration
+      assessment_type: payload.assessment_type ?? undefined,
+      skill_category: payload.skill_category ?? undefined,
+      difficulty: payload.difficulty ?? undefined,
+      time_limit: payload.time_limit ?? undefined,
+      total_questions: payload.total_questions ?? undefined,
+      passing_score: payload.passing_score ?? undefined,
+
+      // Skills and data
+      extracted_skills: payload.extracted_skills ?? undefined,
+
+      // Settings and metadata
+      settings: payload.settings ?? undefined,
     },
     include: { job: true, _count: { select: { candidateAssessments: true } } },
   });
@@ -456,7 +451,7 @@ export async function updateEmployerAssessment(
     | undefined;
 
   if (payload.regenerate_with_chatbot) {
-    const chatbot = await AI.chatbotStart({
+    const chatbot: ChatbotApiResponse = await startChatbotSession({
       company_id,
       job_id: updated.job_id,
       initial_data: {
@@ -465,6 +460,7 @@ export async function updateEmployerAssessment(
         job_description: updated.description,
       },
     });
+
     chatbot_session = mapChatbotSession(chatbot.session);
   }
 
@@ -473,6 +469,28 @@ export async function updateEmployerAssessment(
     regenerated: Boolean(payload.regenerate_with_chatbot),
     chatbot_session,
   };
+}
+
+export async function updateEmployerAssessmentStatus(
+  company_id: string,
+  payload: UpdateAssessmentStatusRequest,
+): Promise<EmployerAssessment> {
+  await assertCompanyExists(company_id);
+
+  const existing = await prisma.employerAssessment.findFirst({
+    where: { assessment_id: payload.assessment_id, company_id },
+  });
+  if (!existing) throw new Error('Assessment not found');
+
+  const updated = await prisma.employerAssessment.update({
+    where: { assessment_id: payload.assessment_id },
+    data: {
+      status: payload.status,
+    },
+    include: { job: true, _count: { select: { candidateAssessments: true } } },
+  });
+
+  return mapPrismaAssessment(updated);
 }
 
 export async function removeEmployerAssessment(
@@ -497,15 +515,16 @@ export async function removeEmployerAssessment(
   };
 }
 
-// Optionnel : objet "service" si tu veux même ergonomie qu'avant
 export const EmployerAssessmentService = {
   createFromRequest: createEmployerAssessmentFromRequest,
   create: createEmployerAssessment,
   createFromJobDescription: createEmployerAssessmentFromJobDescription,
   createWithChatbot: createEmployerAssessmentWithChatbot,
+  sendChatbotMessageService, // ⬅️ exported on the service object
   getById: getEmployerAssessmentById,
   list: listEmployerAssessments,
   update: updateEmployerAssessment,
+  updateStatus: updateEmployerAssessmentStatus,
   remove: removeEmployerAssessment,
 };
 

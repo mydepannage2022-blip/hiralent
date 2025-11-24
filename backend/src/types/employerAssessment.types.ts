@@ -3,8 +3,9 @@ import { AssessmentType, DifficultyLevel, EmployerAssessmentStatus, AssessmentSt
 // ==================== ASSESSMENT CREATION METHODS ====================
 
 export enum AssessmentCreationMethod {
-  JOB_DESCRIPTION_PARSE = 'job_description_parse',
-  CHATBOT_GUIDED = 'chatbot_guided'
+  JOB_DESCRIPTION_PARSE = 'JOB_DESCRIPTION_PARSE',
+  CHATBOT_GUIDED = 'CHATBOT_GUIDED',
+  MANUAL = 'MANUAL'
 }
 
 export interface JobDescriptionParseRequest {
@@ -194,12 +195,14 @@ export interface EmployerAssessment {
   difficulty: DifficultyLevel;
   time_limit: number;
   total_questions: number;
+  passing_score?: number;
   question_ids: string[];
   created_at: Date;
   updated_at: Date;
   enhanced_data?: EnhancedAssessmentData;
   auto_generated?: boolean;
   creation_method: AssessmentCreationMethod;
+  extracted_skills: string[];
   
   job?: {
     title: string;
@@ -223,10 +226,14 @@ export interface CreateEmployerAssessmentRequest {
   difficulty: DifficultyLevel;
   time_limit?: number;
   total_questions?: number;
+  passing_score?: number;
   extracted_skills: string[];
   enhanced_data?: EnhancedAssessmentData;
   auto_generated?: boolean;
   creation_method: AssessmentCreationMethod;
+  status?: EmployerAssessmentStatus;
+  question_ids?: string[];
+  settings?: any;
 }
 
 export interface AssessmentCandidateProgress {
@@ -263,13 +270,25 @@ export interface UpdateEmployerAssessmentRequest {
   assessment_id: string;
   company_id: string; // For authorization
   
-  // Only these fields can be updated
+  // All fields that employer can update from frontend
   title?: string;
   description?: string;
   status?: EmployerAssessmentStatus;
-  
-  // If job changes, we regenerate assessment
   job_id?: string;
+  
+  // Assessment configuration
+  assessment_type?: AssessmentType;
+  skill_category?: string;
+  difficulty?: DifficultyLevel;
+  time_limit?: number;
+  total_questions?: number;
+  passing_score?: number;
+  
+  // Skills and data
+  extracted_skills?: string[];
+  
+  // Settings and metadata
+  settings?: any;
   
   // Regenerate with chatbot - creates new session
   regenerate_with_chatbot?: boolean;
@@ -291,4 +310,12 @@ export interface DeleteAssessmentResponse {
   assessment_id: string;
   deleted: boolean;
   message: string;
+}
+
+// ==================== STATUS UPDATE INTERFACE ====================
+
+export interface UpdateAssessmentStatusRequest {
+  assessment_id: string;
+  company_id: string;
+  status: EmployerAssessmentStatus;
 }
