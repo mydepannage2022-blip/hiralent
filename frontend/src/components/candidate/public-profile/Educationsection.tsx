@@ -69,7 +69,7 @@ export default function EducationSection({ education }: EducationSectionProps) {
     const currentlyStudying = education.some(edu => edu.currently_studying);
 
     return (
-        <div className="bg-white rounded-lg p-2 sm:p-6">
+        <div className="bg-white rounded-lg p-3 sm:p-6">
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Education</h3>
