@@ -62,7 +62,7 @@ const BlogSection = () => {
   ];
 
   return (
-    <div className='w-full flex justify-center items-center bg-[#F8F9FA] py-16'>
+    <div className='w-full flex justify-center items-center bg-[#F8F9FA] pt-2 pb-8 sm:py-16'>
       <div className='lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col gap-12'>
         {/* Header Section */}
         <motion.div
@@ -119,12 +119,12 @@ const BlogSection = () => {
               {/* Blog Content */}
               <div className='p-6 flex flex-col gap-4'>
                 {/* Blog Category */}
-                <h3 className='text-[#FAF4EED9] uppercase font-semibold hover:text-[#005DDC] transition-colors duration-300'>
+                <h3 className='text-sm sm:text-base text-[#FAF4EED9] uppercase font-semibold hover:text-[#005DDC] transition-colors duration-300'>
                   {post.category}
                 </h3>
 
                 {/* Blog Title */}
-                <h3 className='text-white text-2xl font-semibold hover:text-[#005DDC] transition-colors duration-300 sm:w-[275px]'>
+                <h3 className='text-white text-xl sm:text-2xl font-semibold hover:text-[#005DDC] transition-colors duration-300 sm:w-[275px]'>
                   {post.title}
                 </h3>
 
@@ -145,7 +145,7 @@ const BlogSection = () => {
                 {/* Read More Link */}
                 <motion.a
                   href="#"
-                  className='text-white text-sm font-medium hover:underline inline-flex items-center gap-1'
+                  className='text-white text-xs sm:text-sm font-medium hover:underline inline-flex items-center gap-1'
                   whileHover={{ x: 5 }}
                   transition={{ duration: 0.2 }}
                 >
