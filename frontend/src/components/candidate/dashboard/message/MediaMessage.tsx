@@ -52,7 +52,7 @@ export default function MediaMessage({
     });
   };
 
-  return (
+  return ( 
     <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
       <div
         className={`max-w-[70%] flex flex-col ${isMine ? "items-end" : "items-start"

@@ -69,7 +69,7 @@ export default function EducationSection({ education }: EducationSectionProps) {
     const currentlyStudying = education.some(edu => edu.currently_studying);
 
     return (
-        <div className="bg-white rounded-lg p-6 max-w-[288px] sm:max-w-full">
+        <div className="bg-white rounded-lg p-3 sm:p-6">
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Education</h3>
@@ -84,15 +84,15 @@ export default function EducationSection({ education }: EducationSectionProps) {
             {/* Education Stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="text-center bg-blue-50 rounded-lg p-3">
-                    <div className="text-lg font-bold text-blue-600">{degreeCount}</div>
+                    <div className="text-xs sm:text-lg font-bold text-blue-600">{degreeCount}</div>
                     <div className="text-xs text-blue-800">Degrees</div>
                 </div>
                 <div className="text-center bg-orange-50 rounded-lg p-3">
-                    <div className="text-lg font-bold text-orange-600">{certificationCount}</div>
+                    <div className="text-xs sm:text-lg font-bold text-orange-600">{certificationCount}</div>
                     <div className="text-xs text-orange-800">Certificates</div>
                 </div>
                 <div className="text-center bg-green-50 rounded-lg p-3">
-                    <div className="text-lg font-bold text-green-600">
+                    <div className="text-xs sm:text-lg font-bold text-green-600">
                         {currentlyStudying ? 'Active' : 'Complete'}
                     </div>
                     <div className="text-xs text-green-800">Status</div>
@@ -170,9 +170,9 @@ export default function EducationSection({ education }: EducationSectionProps) {
             {/* Education Summary */}
             <div className="mt-6 bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    {/* <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                         <GraduationCap className="w-5 h-5 text-white" />
-                    </div>
+                    </div> */}
                     <div>
                         <h4 className="font-semibold text-gray-900">Educational Background</h4>
                         <p className="text-sm text-gray-600">
