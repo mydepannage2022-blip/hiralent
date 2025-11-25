@@ -3,6 +3,7 @@ import re
 from urllib.parse import urljoin
 from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
 from typing import Optional, Dict, Any
+from app.routes import variation_routes
 
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -1115,6 +1116,21 @@ app.add_middleware(
 )
 
 # =============================================================================
+# VARIATION ENGINE ROUTES
+# =============================================================================
+try:
+    from app.routes.variation_routes import router as variation_router
+    app.include_router(variation_router)
+    print("✅ Variation Engine routes loaded successfully")
+except ImportError as e:
+    print(f"⚠️ Variation Engine routes not available: {e}")
+    # Create a simple fallback route
+    @app.get("/variations/health")
+    async def variation_fallback():
+                return {"error": "Variation Engine not available", "available": False}
+
+
+# =============================================================================
 # MOCK QUESTIONS DATA
 # =============================================================================
 MOCK_QUESTIONS = {
@@ -1261,7 +1277,9 @@ async def health():
         "version": "1.0.0",
         "services_available": {
             "gemini_ai": GEMINI_AVAILABLE,
-            "web_scraping": SCRAPING_AVAILABLE
+            "web_scraping": SCRAPING_AVAILABLE,
+            "variation_engine": True  #  NEW
+
         }
     }
 
@@ -2237,7 +2255,6 @@ async def scrape_service_health():
         "timestamp": time.time()
     }
 
-# You already have this one, so you can remove the duplicate
 # @app.get("/health") already exists
 def detect_platform_from_url(url):
     """Auto-detect the platform from URL"""
@@ -2455,7 +2472,7 @@ def scrape_generic_question(url):
         return None
 
 
-# Add this to your existing health check if you have one
+#  this to your existing health check if you have one
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
