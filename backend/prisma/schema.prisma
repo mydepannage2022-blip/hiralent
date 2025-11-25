@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -91,6 +92,7 @@ model User {
   assessments         SkillAssessment[]
   userAnalytics       UsageAnalytics[]           @relation("UserAnalytics")
   sessions            UserSession[]              @relation("UserSessions")
+  code_submissions    CodeSubmission[]
 }
 
 model CompanyProfile {
@@ -133,25 +135,24 @@ model CompanyProfile {
 }
 
 model Question {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  problemStatement String
-  difficulty  String   // easy, medium, hard
-  skillTags   String[]
-  type        String   // coding, mcq, debugging
+  id                String   @id @default(cuid())
+  title             String
+  description       String
+  problemStatement  String
+  difficulty        String // easy, medium, hard
+  skillTags         String[]
+  type              String // coding, mcq, debugging
   canonicalSolution String
-  testCases   Json     // { inputs: [], outputs: [] }
-  status      String   // draft, pending_review, approved, rejected
-  createdBy   String?  // user ID who created/generated
-  aiGenerated Boolean  @default(false)
-  source      String?  // ai_generated, web_scraped, manual
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  testCases         Json // { inputs: [], outputs: [] }
+  status            String // draft, pending_review, approved, rejected
+  createdBy         String? // user ID who created/generated
+  aiGenerated       Boolean  @default(false)
+  source            String? // ai_generated, web_scraped, manual
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("questions")
 }
-
 
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
@@ -288,6 +289,7 @@ model SkillAssessment {
   summary            AssessmentSummary?
   candidate          User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job                CompanyJob?        @relation(fields: [job_id], references: [job_id])
+  submissions        CodeSubmission[]
 
   @@map("skill_assessments")
 }
@@ -1233,6 +1235,36 @@ enum VerificationDecision {
   REJECT
   MANUAL_REVIEW
   NO_DECISION
+}
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
+}
+
+model CodeSubmission {
+  submission_id   String           @id @default(uuid())
+  assessment_id   String
+  candidate_id    String
+  question_id     String
+  language        String
+  code            String
+  status          SubmissionStatus @default(PENDING)
+  score           Float?
+  runtime_ms      Int?
+  memory_kb       Int?
+  plagiarism_risk Float?
+  evidence        Json?
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  candidate  User            @relation(fields: [candidate_id], references: [user_id], onDelete: Restrict)
+  assessment SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Restrict)
+
+  @@map("code_submissions")
 }
 
 enum VerificationCaseStatus {

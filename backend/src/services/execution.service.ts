@@ -12,7 +12,7 @@ export async function run_submission_and_grade(opts: { submissionId: string; que
   // 2. Execute via runner dispatch
   let runnerResult: any = null;
   try {
-    runnerResult = await dispatch_to_runner(opts.code, testCases, Number(process.env.RUNNER_TIMEOUT_MS || 20000));
+    runnerResult = await dispatch_to_runner(opts.code, testCases, Number(process.env.RUNNER_TIMEOUT_MS || 20000), opts.language);
   } catch (e) {
     // fall back to a safe failure result
     console.error('Runner dispatch failed', e);

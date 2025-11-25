@@ -15,6 +15,12 @@ app.use(cors({
   origin: function (origin, callback) {
     // allow requests like Postman or server-to-server without origin
     if (!origin) return callback(null, true);
+
+    // In development allow any localhost origin (different ports like 3001)
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -37,6 +43,8 @@ import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import sessionRoutes from './routes/auth/session.routes';
 import questionRoutes from './routes/questions/question.routes';
+import submissionsRoutes from './routes/submissions';
+import executionRoutes from './routes/execution.routes';
 // Dev-only routes are mounted below to avoid exposing them in production.
 
 
@@ -58,6 +66,12 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
+
+// Submission endpoints (create, fetch)
+app.use('/api/v1/submissions', submissionsRoutes);
+
+// Execution-related endpoints (SSE stream, convenience fetch)
+app.use('/api/v1', executionRoutes);
 
 // Mount dev routes only in non-production to avoid touching production behavior
 if (process.env.NODE_ENV !== 'production') {

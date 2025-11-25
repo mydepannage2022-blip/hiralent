@@ -16,14 +16,47 @@ const RUNNER_DOCKER_IMAGE = process.env.RUNNER_DOCKER_IMAGE || '';
 const USE_RUNSC = process.env.RUNNER_USE_RUNSC === '1';
 const TEST_TIMEOUT_S = process.env.TEST_TIMEOUT_S || '2.0';
 
-async function writeWorkDir(code: string, testCases: { input: string; expected_output: string }[]) {
+async function writeWorkDir(code: string, testCases: { input: string; expected_output?: string; expected?: string }[], language = 'python') {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'runner-'));
-  // write code as main.py for python for now
-  await fs.writeFile(path.join(tmp, 'main.py'), code, 'utf-8');
+  // write code to a language-specific filename
+  const lang = (language || 'python').toLowerCase();
+  let filename = 'main.py';
+  if (lang === 'python' || lang === 'py') filename = 'main.py';
+  else if (['js','javascript','node'].includes(lang)) filename = 'main.js';
+  else if (['ts','typescript'].includes(lang)) filename = 'main.ts';
+  else if (lang === 'java') filename = 'Main.java';
+  else if (lang === 'cpp' || lang === 'c++') filename = 'main.cpp';
+  else if (lang === 'go') filename = 'main.go';
+  else if (lang === 'ruby' || lang === 'rb') filename = 'main.rb';
+
+  await fs.writeFile(path.join(tmp, filename), code, 'utf-8');
   // write tests.json expected by runner entrypoint
-  const tests = testCases.map((t) => ({ input: t.input, expected: t.expected_output }));
+  const tests = testCases.map((t) => ({ input: t.input, expected: t.expected || t.expected_output }));
   await fs.writeFile(path.join(tmp, 'tests.json'), JSON.stringify(tests), 'utf-8');
   return tmp;
+}
+
+async function tryRunPythonWithAlternatives(entrypoint: string, env: NodeJS.ProcessEnv, timeoutMs: number) {
+  const candidates = ['python', 'py', 'python3'];
+  let lastErr: any = null;
+  for (const exe of candidates) {
+    try {
+      logger.info({ exe }, 'trying python executable');
+      const out = await runProcess([exe, entrypoint], env, undefined, timeoutMs);
+      return out;
+    } catch (e: any) {
+      lastErr = e;
+      // If the executable was not found, try the next candidate
+      if (e && (e.code === 'ENOENT' || String(e).includes('spawn') && String(e).includes('ENOENT'))) {
+        logger.warn({ exe }, 'python executable not found, trying next');
+        continue;
+      }
+      // other errors: log and try next (allow retry logic above to handle it)
+      logger.warn({ exe, err: String(e) }, 'python attempt failed, trying next candidate');
+    }
+  }
+  // none succeeded
+  throw lastErr || new Error('no python executable found');
 }
 
 function runProcess(cmd: string[], env: NodeJS.ProcessEnv, cwd?: string, timeoutMs = 20000): Promise<string> {
@@ -51,15 +84,15 @@ function runProcess(cmd: string[], env: NodeJS.ProcessEnv, cwd?: string, timeout
   });
 }
 
-export async function dispatch_to_runner(code: string, testCases: { input: string; expected_output: string }[], timeoutMs = 20000) {
-  const workdir = await writeWorkDir(code, testCases);
+export async function dispatch_to_runner(code: string, testCases: { input: string; expected_output?: string; expected?: string }[], timeoutMs = 20000, language = 'python') {
+  const workdir = await writeWorkDir(code, testCases, language);
 
   // If an HTTP runner service is configured, prefer calling it (useful for a local FastAPI stub)
   const runnerHttp = process.env.RUNNER_HTTP_URL;
   if (runnerHttp) {
     try {
       logger.info({ runnerHttp }, 'dispatching to HTTP runner');
-      const resp = await axios.post(`${runnerHttp.replace(/\/$/, '')}/run`, { code, tests: testCases }, { timeout: timeoutMs });
+      const resp = await axios.post(`${runnerHttp.replace(/\/$/, '')}/run`, { code, tests: testCases, language }, { timeout: timeoutMs });
       await fs.rm(workdir, { recursive: true, force: true });
       if (resp && resp.data) {
         try {
@@ -78,44 +111,91 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
   }
 
   // If Docker image configured, run via docker
-  if (RUNNER_DOCKER_IMAGE) {
+  // determine docker image: explicit RUNNER_DOCKER_IMAGE takes precedence, otherwise choose per-language image
+  const languageKey = (language || 'python').toLowerCase();
+  const defaultImageMap: Record<string, string> = {
+    python: 'python:3.11-slim',
+    py: 'python:3.11-slim',
+    javascript: 'node:18-slim',
+    js: 'node:18-slim',
+    node: 'node:18-slim',
+    typescript: 'node:18-slim',
+    ts: 'node:18-slim',
+    java: 'openjdk:17-slim',
+    cpp: 'gcc:12',
+    'c++': 'gcc:12',
+    go: 'golang:1.20',
+    ruby: 'ruby:3.1-slim'
+  };
+
+  const selectedImage = RUNNER_DOCKER_IMAGE || defaultImageMap[languageKey] || '';
+  if (selectedImage) {
+    // check docker available
+    try {
+      await runProcess(['docker', '--version'], {}, undefined, 5000);
+    } catch (e: any) {
+      await fs.rm(workdir, { recursive: true, force: true });
+      throw new Error('Docker not available on host. Start Docker Desktop or install Docker to use containerized execution.');
+    }
+
     const dockerCmdBase = ['docker', 'run', '--rm', '-v', `${workdir}:/work:ro`, '--network', 'none', '-e', `TEST_TIMEOUT_S=${TEST_TIMEOUT_S}`, '--memory', DOCKER_MEMORY, '--cpus', DOCKER_CPUS];
     if (USE_RUNSC) {
       dockerCmdBase.push('--runtime', 'runsc');
     }
-    dockerCmdBase.push(RUNNER_DOCKER_IMAGE, 'python', '/entrypoint.py');
-
+    // We'll run each test by invoking the container with the appropriate command for the language,
+    // capture stdout/stderr and assemble a runner-style JSON result here.
+    const testsSummary: any[] = [];
+    let anyPassed = true;
     let lastErr: any = null;
-    for (let attempt = 0; attempt <= RETRIES; attempt++) {
-      try {
-        logger.info({ submissionAttempt: attempt, image: RUNNER_DOCKER_IMAGE }, 'dispatching to docker runner');
-        const out = await runProcess(dockerCmdBase, {}, undefined, timeoutMs);
+
+    for (let i = 0; i < testCases.length; i++) {
+      const t = testCases[i];
+      const testInput = (t as any).input || '';
+      const expected = (t as any).expected || (t as any).expected_output || '';
+      let cmd: string[] = [];
+
+      // Select command inside container depending on language
+      if (languageKey === 'python' || languageKey === 'py') {
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `python /work/main.py`];
+      } else if (['js','javascript','node','typescript','ts'].includes(languageKey)) {
+        // use node to run main.js (for TypeScript we expect ts-node via npx if available in image)
+        const runCmd = languageKey === 'typescript' || languageKey === 'ts' ? `npx ts-node /work/main.ts` : `node /work/main.js`;
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', runCmd];
+      } else if (languageKey === 'java') {
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `javac /work/Main.java && java -cp /work Main`];
+      } else if (languageKey === 'cpp' || languageKey === 'c++') {
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `g++ /work/main.cpp -O2 -std=c++17 -o /work/main && /work/main`];
+      } else if (languageKey === 'go') {
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `go run /work/main.go`];
+      } else if (languageKey === 'ruby') {
+        cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `ruby /work/main.rb`];
+      } else {
+        // unsupported
         await fs.rm(workdir, { recursive: true, force: true });
-        try {
-          const parsed = JSON.parse(out);
-          try {
-            RunnerResultSchema.parse(parsed);
-          } catch (ve) {
-            if (ve instanceof ZodError) {
-              logger.warn({ submissionAttempt: attempt, validationErrors: ve.issues }, 'runner response validation failed');
-            } else {
-              logger.warn({ submissionAttempt: attempt, err: String(ve) }, 'runner response validation exception');
-            }
-          }
-          return parsed;
-        } catch (e) {
-          logger.warn({ attempt, rawOutput: out }, 'failed to parse runner output as JSON');
-          throw e;
-        }
+        throw new Error(`No docker image/command for language ${language}`);
+      }
+
+      try {
+        logger.info({ test: i + 1, cmd: cmd.slice(0, 6) }, 'running docker for test');
+        // runProcess accepts cmd as array and spawns; we need to pass entire array
+        const out = await runProcess(cmd, {}, undefined, timeoutMs);
+        const outStr = out || '';
+        const outNorm = outStr.replace(/\r\n/g, '\n').trim();
+        const passed = expected ? outNorm === expected.trim() : outStr.length > 0;
+        if (!passed) anyPassed = false;
+        testsSummary.push({ id: i + 1, pass: passed, timeMs: 0, memKb: 0, stdout: outStr, output: outStr, stderr: '', expected_output: expected });
       } catch (e: any) {
         lastErr = e;
-        logger.warn({ attempt, err: String(e) }, 'runner docker attempt failed');
-        // small backoff
-        await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+        anyPassed = false;
+        logger.warn({ test: i + 1, err: String(e) }, 'docker run failed for test');
+        testsSummary.push({ id: i + 1, pass: false, timeMs: 0, memKb: 0, stdout: '', output: '', stderr: String(e), expected_output: expected });
       }
     }
+
     await fs.rm(workdir, { recursive: true, force: true });
-    throw lastErr || new Error('docker runner failed');
+    // assemble runner-like response
+    const score = Math.round((testsSummary.filter((t) => t.pass).length / Math.max(1, testsSummary.length)) * 100);
+    return { passed: testsSummary.every((t) => t.pass), score, runtimeMs: 0, memoryKb: 0, testsSummary };
   }
 
   // Else run local python entrypoint
@@ -130,13 +210,13 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
 
   let out: string | null = null;
   try {
-    out = await runProcess(['python', entrypoint], { WORK_DIR: workdir, TEST_TIMEOUT_S }, undefined, TIMEOUT_MS);
+    out = await tryRunPythonWithAlternatives(entrypoint, { WORK_DIR: workdir, TEST_TIMEOUT_S }, TIMEOUT_MS);
     await fs.rm(workdir, { recursive: true, force: true });
     return JSON.parse(out);
   } catch (e) {
     logger.warn({ err: String(e) }, 'local runner attempt failed, will retry once');
-    // try one retry
-    out = await runProcess(['python', entrypoint], { WORK_DIR: workdir, TEST_TIMEOUT_S }, undefined, TIMEOUT_MS);
+    // try one retry using alternatives again
+    out = await tryRunPythonWithAlternatives(entrypoint, { WORK_DIR: workdir, TEST_TIMEOUT_S }, TIMEOUT_MS);
     await fs.rm(workdir, { recursive: true, force: true });
     try {
       const parsed = JSON.parse(out as string);

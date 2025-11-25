@@ -124,3 +124,6 @@ if (require.main === module) {
     pollerMain().catch((e) => { console.error(e); process.exit(1); });
   }
 }
+
+// Export the in-memory poller so other dev scripts can reuse it (single-process dev mode)
+export { pollerMain };
