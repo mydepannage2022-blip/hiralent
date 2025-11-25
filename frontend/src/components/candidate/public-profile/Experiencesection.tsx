@@ -28,7 +28,7 @@ export default function ExperienceSection({ experience }: ExperienceSectionProps
         <div className="bg-white rounded-lg p-6">
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Work Experience</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Work Experience</h3>
                 <div className="text-right">
                     <div className="text-sm text-gray-600">Total Experience</div>
                     <div className="text-lg font-semibold text-blue-600">
