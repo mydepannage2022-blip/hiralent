@@ -39,7 +39,6 @@ import { useAuth } from "../../../../context/AuthContext";
 import JDParsingModal from "./JDParsingModal";
 import ChatbotAssessmentModal from "./ChatbotAssessmentModal";
 
-
 /* =============================
    Types
 ============================= */
@@ -171,6 +170,7 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      {/* Backdrop */}
       <motion.div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -179,107 +179,188 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
         onClick={onClose}
       />
 
+      {/* Modal Card */}
       <motion.div
         initial={{ scale: 0.9, y: 20, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
-        transition={{ type: "spring", damping: 25 }}
-        className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl"
+        transition={{ type: "spring", damping: 22, stiffness: 260 }}
+        className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] p-6 text-white rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="bg-gradient-to-r from-[#1B73E8] via-[#2064d6] to-[#1557B0] p-6 text-white relative">
+          <div className="absolute -right-10 -top-16 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-10 bottom-0 w-40 h-40 bg-black/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
               <motion.div
-                className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shadow-md"
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.6 }}
               >
                 <Plus className="w-5 h-5" />
               </motion.div>
               <div>
-                <h2 className="text-xl font-bold">Create Assessment</h2>
-                <p className="text-blue-100 text-sm">
-                  Choose how to create assessment for: {job.title}
+                <div className="inline-flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-white/15 border border-white/20 uppercase font-semibold tracking-wide">
+                    AI-powered
+                  </span>
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-emerald-500/80 text-white font-semibold">
+                    Recommended
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold leading-tight">
+                  Create Assessment
+                </h2>
+                <p className="text-blue-100 text-sm mt-1">
+                  Choose how you want to generate an assessment for{" "}
+                  <span className="font-semibold text-white">
+                    {job.title}
+                  </span>
+                  .
                 </p>
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </motion.button>
+
+            <div className="flex flex-col items-end gap-2">
+              <motion.button
+                whileHover={{ scale: 1.05, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onClose}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
           </div>
         </div>
 
-        {/* Methods - Horizontal Layout */}
+        {/* Content */}
         <div className="p-6">
-          <div className="grid grid-cols-2 gap-6">
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onMethodSelect("JOB_DESCRIPTION_PARSE")}
-              className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left group h-full"
-            >
-              <div className="flex flex-col items-center text-center gap-4">
-                <motion.div
-                  className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <Upload className="w-8 h-8 text-blue-600" />
-                </motion.div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-900 text-lg mb-2">
-                    From Job Description
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Upload or paste job description to automatically generate assessment
+          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.3fr] gap-6">
+            {/* Left column: job snapshot + helper text */}
+            <div className="hidden md:flex flex-col gap-4 border border-gray-100 rounded-2xl p-4 bg-gradient-to-b from-slate-50 to-slate-100/60">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600/10 flex items-center justify-center">
+                    <Building className="w-4 h-4 text-blue-700" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                    Job selected
                   </p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {job.title}
+                  </p>
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" />
+                    {job.location}
+                  </p>
+                  {job.department && (
+                    <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                      <Target className="w-3 h-3" />
+                      {job.department}
+                    </p>
+                  )}
                 </div>
               </div>
-            </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onMethodSelect("CHATBOT_GUIDED")}
-              className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all text-left group h-full"
-            >
-              <div className="flex flex-col items-center text-center gap-4">
-                <motion.div
-                  className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <Bot className="w-8 h-8 text-green-600" />
-                </motion.div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-900 text-lg mb-2">
-                    Chat with AI Assistant
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Interactive AI chat to design customized assessment step by step
-                  </p>
-                </div>
+              <div className="mt-auto text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2 flex items-start gap-2">
+                <MessageSquare className="w-3 h-3 mt-0.5 text-blue-500" />
+                <span>
+                  You can always edit the generated assessment later before
+                  sending it to candidates.
+                </span>
               </div>
-            </motion.button>
+            </div>
+
+            {/* Right column: methods */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* JD method */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onMethodSelect("JOB_DESCRIPTION_PARSE")}
+                className="w-full p-5 border-2 border-gray-200 rounded-2xl hover:border-blue-400 hover:bg-blue-50/60 transition-all text-left group relative overflow-hidden"
+              >
+                <div className="absolute -right-10 -top-10 w-24 h-24 bg-blue-100/70 rounded-full blur-2xl group-hover:bg-blue-200/80" />
+                <div className="relative flex flex-col items-center text-center gap-3 h-full">
+                  <motion.div
+                    className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-200"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <Upload className="w-7 h-7 text-blue-700" />
+                  </motion.div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <h3 className="font-bold text-gray-900 text-sm sm:text-[15px]">
+                      From Job Description
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Paste your job description and let the AI
+                      generate a complete assessment tailored to this role.
+                    </p>
+                  </div>
+                  <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Fast start</span>
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* Chatbot method */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onMethodSelect("CHATBOT_GUIDED")}
+                className="w-full p-5 border-2 border-gray-200 rounded-2xl hover:border-emerald-400 hover:bg-emerald-50/60 transition-all text-left group relative overflow-hidden"
+              >
+                <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-100/80 rounded-full blur-2xl group-hover:bg-emerald-200/90" />
+                <div className="relative flex flex-col items-center text-center gap-3 h-full">
+                  <motion.div
+                    className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center group-hover:bg-emerald-200"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <Bot className="w-7 h-7 text-emerald-700" />
+                  </motion.div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <h3 className="font-bold text-gray-900 text-sm sm:text-[15px]">
+                      Chat with AI Assistant
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Design a custom assessment step-by-step in a conversation
+                      with the AI hiring assistant.
+                    </p>
+                  </div>
+                  <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                    <MessageSquare className="w-3 h-3" />
+                    <span>Fully customizable</span>
+                  </div>
+                </div>
+              </motion.button>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 p-4 bg-gray-50 rounded-b-2xl">
-          <p className="text-xs text-gray-500 text-center">
-            Both methods will create assessments that appear in your assessment library
+          <p className="text-[11px] text-gray-500 text-center">
+            Both methods will create an AI-generated assessment that appears in
+            your{" "}
+            <span className="font-semibold text-gray-700">
+              assessment library
+            </span>{" "}
+            for reuse and editing.
           </p>
         </div>
       </motion.div>
     </motion.div>
   );
 };
+
 /* =============================
    ONE Modal for Create + Edit
 ============================= */
@@ -633,7 +714,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               </div>
             </div>
 
-            {/* Job Status (moved from details to form) */}
+            {/* Job Status */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 {isEdit ? "Job Status" : "Initial Job Status"}
@@ -1276,9 +1357,13 @@ const JobsManagement: React.FC = () => {
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [editingJob, setEditingJob] = useState<CompanyJob | null>(null);
   const [assessmentMethodModal, setAssessmentMethodModal] = useState(false);
-  // NEW: assessment creation flow modals
   const [showJDParsingModal, setShowJDParsingModal] = useState(false);
   const [showChatbotModal, setShowChatbotModal] = useState(false);
+
+  // Success toast after AI builds an assessment
+  const [assessmentSuccessMessage, setAssessmentSuccessMessage] = useState<
+    string | null
+  >(null);
 
   const { token } = useAuth();
 
@@ -1318,6 +1403,15 @@ const JobsManagement: React.FC = () => {
     }
   }, [token]);
 
+  // auto-hide success toast
+  useEffect(() => {
+    if (!assessmentSuccessMessage) return;
+    const timer = setTimeout(() => {
+      setAssessmentSuccessMessage(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [assessmentSuccessMessage]);
+
   const handleCreateJob = () => {
     setEditingJob(null);
     setModalMode("create");
@@ -1333,7 +1427,6 @@ const JobsManagement: React.FC = () => {
     setEditingJob(null);
   };
 
-  // Submit job: create or update depending on modalMode + editingJob
   const submitJob = async (payload: any) => {
     if (!token) return;
 
@@ -1411,7 +1504,6 @@ const JobsManagement: React.FC = () => {
       setShowChatbotModal(true);
     }
   };
-
 
   const filteredJobs = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -1529,7 +1621,12 @@ const JobsManagement: React.FC = () => {
         job={selectedJob}
         onClose={() => setShowJDParsingModal(false)}
         onAssessmentCreated={() => {
-          // later you can refresh the assessments list here
+          setShowJDParsingModal(false);
+          setAssessmentSuccessMessage(
+            selectedJob
+              ? `AI-generated assessment for "${selectedJob.title}" has been created. You can now review it in your assessment library.`
+              : "AI-generated assessment has been created. You can now review it in your assessment library."
+          );
         }}
       />
 
@@ -1539,10 +1636,14 @@ const JobsManagement: React.FC = () => {
         job={selectedJob}
         onClose={() => setShowChatbotModal(false)}
         onAssessmentCreated={() => {
-          // later you can refresh the assessments list here
+          setShowChatbotModal(false);
+          setAssessmentSuccessMessage(
+            selectedJob
+              ? `Your custom AI-designed assessment for "${selectedJob.title}" is ready. You can now review and assign it from your assessment library.`
+              : "Your custom AI-designed assessment is ready. You can now review and assign it from your assessment library."
+          );
         }}
       />
-
 
       {/* HEADER */}
       <div className="relative border-b border-gray-200/70 bg-white overflow-hidden">
@@ -1585,7 +1686,7 @@ const JobsManagement: React.FC = () => {
                 </p>
               </div>
               <motion.div
-                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm"
+                className="flex items-center gap-2 bg.white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm bg-white"
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
@@ -2123,8 +2224,6 @@ const JobsManagement: React.FC = () => {
                         Delete
                       </motion.button>
                     </div>
-
-                    {/* Status dropdown removed from details view */}
                   </motion.div>
                 </motion.div>
               ) : (
@@ -2139,7 +2238,11 @@ const JobsManagement: React.FC = () => {
                       rotate: [0, 10, -10, 0],
                       scale: [1, 1.1, 1],
                     }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
                   >
                     <Eye className="w-20 h-20 text-[#1B73E8] mx-auto" />
                   </motion.div>
@@ -2168,6 +2271,40 @@ const JobsManagement: React.FC = () => {
           <Plus className="w-6 h-6" />
         </motion.button>
       </div>
+
+      {/* Assessment success toast */}
+      <AnimatePresence>
+        {assessmentSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: 20, x: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 z-[11000]"
+          >
+            <div className="max-w-md rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-emerald-200/40 px-4 py-3 flex items-start gap-3">
+              <div className="mt-0.5">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-emerald-700" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-800">
+                  Assessment created successfully
+                </p>
+                <p className="text-xs text-gray-700 mt-0.5">
+                  {assessmentSuccessMessage}
+                </p>
+              </div>
+              <button
+                onClick={() => setAssessmentSuccessMessage(null)}
+                className="mt-0.5 p-1 rounded-md hover:bg-emerald-50 text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -40,7 +40,8 @@ import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
 import messageRoutes from './routes/message.routes'
-
+import skillRadarRoutes from "./routes/skillRadar.routes";
+import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -79,6 +80,8 @@ app.use('/api/v1', insightsRoutes);
 
 app.use('/api/v1', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
+app.use("/api/v1", skillRadarRoutes);
+app.use("/api/v1", mockAssessmentRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

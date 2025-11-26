@@ -1,281 +1,1026 @@
+"""
+JDExtractor - Gemini-First Multi-Domain Version
+======================================================
+Works for ALL industries: Tech, Finance, Healthcare, Marketing, HR, Legal, etc.
+
+Strategy:
+- Gemini is PRIMARY source for skill extraction (works for any domain)
+- Local extraction is FALLBACK only (when Gemini fails or is unavailable)
+- Local logic still handles: experience level, difficulty alignment, requirements structure
+
+Taxonomy:
+- Uses ONLY:
+    - skills.txt        (unified: languages, tools, platforms, concepts, methods)
+    - soft_skills.txt   (behavioral / human skills)
+    - domains.txt       (job families / domains)
+- tools.txt is NO LONGER USED
+"""
+
 import re
-import spacy
+import logging
 from typing import List, Dict, Tuple, Set, Any, Optional
 from pathlib import Path
+from datetime import datetime, timezone
 
-from app.core.config import settings
-from app.domain.schemas import SkillsAnalysis, QuestionRecommendation
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("JDExtractor")
+
+# Import schemas
+from app.domain.schemas import (
+    SkillsAnalysis,
+    StructuredRequirements,
+    AtomicRequirement,
+    QuestionRecommendation,
+)
+
+# Import Gemini client
 from app.services.llm.gemini_client import gemini_client
+from app.core.config import settings
+
+
+# =========================================================
+# SKILLS NORMALIZATION (Used for both Gemini and local)
+# =========================================================
+
+SKILLS_NORMALIZATION: Dict[str, str] = {
+    # ========== TECH - APIs ==========
+    "rest": "REST APIs",
+    "rest api": "REST APIs",
+    "rest apis": "REST APIs",
+    "restful": "REST APIs",
+    "restful api": "REST APIs",
+    "restful apis": "REST APIs",
+    "api": "APIs",
+    "graphql": "GraphQL",
+    "grpc": "gRPC",
+
+    # ========== TECH - Languages ==========
+    "javascript": "JavaScript",
+    "js": "JavaScript",
+    "typescript": "TypeScript",
+    "ts": "TypeScript",
+    "python": "Python",
+    "python3": "Python",
+    "java": "Java",
+    "golang": "Go",
+    "go": "Go",
+
+    # ========== TECH - Node.js Ecosystem ==========
+    "node": "Node.js",
+    "nodejs": "Node.js",
+    "node.js": "Node.js",
+    "node js": "Node.js",
+    "express": "Express.js",
+    "expressjs": "Express.js",
+    "express.js": "Express.js",
+    "nestjs": "NestJS",
+    "nest.js": "NestJS",
+    "nest": "NestJS",
+
+    # ========== TECH - Frontend ==========
+    "react": "React",
+    "reactjs": "React",
+    "react.js": "React",
+    "next": "Next.js",
+    "nextjs": "Next.js",
+    "next.js": "Next.js",
+    "vue": "Vue.js",
+    "vuejs": "Vue.js",
+    "angular": "Angular",
+
+    # ========== TECH - Patterns ==========
+    "microservices": "Microservices",
+    "microservice": "Microservices",
+    "event-driven": "Event-Driven Architecture",
+    "event driven": "Event-Driven Architecture",
+
+    # ========== TECH - Auth ==========
+    "oauth": "OAuth 2.0",
+    "oauth2": "OAuth 2.0",
+    "oauth 2": "OAuth 2.0",
+    "oauth 2.0": "OAuth 2.0",
+    "jwt": "JWT",
+    "json web token": "JWT",
+    "authentication": "Authentication",
+
+    # ========== TECH - Data ==========
+    "sql": "SQL",
+    "nosql": "NoSQL",
+    "no-sql": "NoSQL",
+
+    # ========== TECH - ML/AI ==========
+    "ml": "Machine Learning",
+    "machine learning": "Machine Learning",
+    "ai": "Artificial Intelligence",
+    "deep learning": "Deep Learning",
+    "nlp": "NLP",
+
+    # ========== TOOLS - Databases ==========
+    "postgres": "PostgreSQL",
+    "postgresql": "PostgreSQL",
+    "psql": "PostgreSQL",
+    "mongo": "MongoDB",
+    "mongodb": "MongoDB",
+    "mysql": "MySQL",
+    "redis": "Redis",
+    "elasticsearch": "Elasticsearch",
+
+    # ========== TOOLS - Cloud ==========
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "gcp": "GCP",
+    "google cloud": "GCP",
+    "google cloud platform": "GCP",
+    "azure": "Azure",
+    "microsoft azure": "Azure",
+
+    # ========== TOOLS - DevOps ==========
+    "docker": "Docker",
+    "containerization": "Docker",
+    "kubernetes": "Kubernetes",
+    "k8s": "Kubernetes",
+    "ci/cd": "CI/CD",
+    "ci cd": "CI/CD",
+    "cicd": "CI/CD",
+    "jenkins": "Jenkins",
+    "terraform": "Terraform",
+    "github actions": "GitHub Actions",
+    "gitlab ci": "GitLab CI",
+
+    # ========== TOOLS - Message Brokers ==========
+    "kafka": "Apache Kafka",
+    "apache kafka": "Apache Kafka",
+    "rabbitmq": "RabbitMQ",
+    "rabbit mq": "RabbitMQ",
+
+    # ========== TOOLS - Testing ==========
+    "jest": "Jest",
+    "cypress": "Cypress",
+    "supertest": "Supertest",
+    "selenium": "Selenium",
+
+    # ========== TOOLS - Version Control ==========
+    "git": "Git",
+    "github": "GitHub",
+    "gitlab": "GitLab",
+
+    # ========== Finance ==========
+    "gaap": "GAAP",
+    "ifrs": "IFRS",
+    "cpa": "CPA",
+    "excel": "Microsoft Excel",
+    "quickbooks": "QuickBooks",
+    "sap": "SAP",
+
+    # ========== Marketing ==========
+    "seo": "SEO",
+    "sem": "SEM",
+    "ppc": "PPC",
+    "google analytics": "Google Analytics",
+    "hubspot": "HubSpot",
+    "salesforce": "Salesforce",
+    "crm": "CRM",
+
+    # ========== Design ==========
+    "figma": "Figma",
+    "sketch": "Sketch",
+    "adobe xd": "Adobe XD",
+    "photoshop": "Adobe Photoshop",
+
+    # ========== Project Management ==========
+    "jira": "Jira",
+    "asana": "Asana",
+    "trello": "Trello",
+    "pmp": "PMP",
+}
+
+
+# =========================================================
+# HIGH-LEVEL DOMAIN MARKERS (fallback only)
+# =========================================================
+
+DOMAIN_MARKERS = {
+    "tech": {
+        "keywords": [
+            "software",
+            "developer",
+            "engineer",
+            "programming",
+            "code",
+            "api",
+            "database",
+            "cloud",
+        ],
+        "skills": ["python", "java", "javascript", "react", "node.js", "aws", "docker"],
+    },
+    "finance": {
+        "keywords": [
+            "accountant",
+            "financial",
+            "finance",
+            "banking",
+            "investment",
+            "audit",
+            "tax",
+        ],
+        "skills": ["excel", "gaap", "ifrs", "quickbooks", "sap", "financial modeling"],
+    },
+    "healthcare": {
+        "keywords": [
+            "nurse",
+            "doctor",
+            "medical",
+            "clinical",
+            "patient",
+            "hospital",
+            "healthcare",
+        ],
+        "skills": ["hipaa", "emr", "epic", "cerner", "patient care", "clinical"],
+    },
+    "marketing": {
+        "keywords": [
+            "marketing",
+            "seo",
+            "content",
+            "digital",
+            "campaign",
+            "brand",
+            "social media",
+        ],
+        "skills": [
+            "google analytics",
+            "hubspot",
+            "seo",
+            "sem",
+            "ppc",
+            "content strategy",
+        ],
+    },
+    "sales": {
+        "keywords": [
+            "sales",
+            "account manager",
+            "business development",
+            "revenue",
+            "quota",
+        ],
+        "skills": ["salesforce", "crm", "negotiation", "lead generation", "cold calling"],
+    },
+    "hr": {
+        "keywords": [
+            "hr",
+            "human resources",
+            "recruiter",
+            "talent",
+            "payroll",
+            "benefits",
+        ],
+        "skills": ["ats", "hris", "workday", "adp", "employee relations"],
+    },
+    "design": {
+        "keywords": ["designer", "ui", "ux", "graphic", "visual", "creative"],
+        "skills": ["figma", "sketch", "adobe", "photoshop", "illustrator"],
+    },
+    "legal": {
+        "keywords": [
+            "lawyer",
+            "attorney",
+            "legal",
+            "paralegal",
+            "compliance",
+            "contract",
+        ],
+        "skills": ["contract law", "litigation", "compliance", "legal research"],
+    },
+    "operations": {
+        "keywords": [
+            "operations",
+            "supply chain",
+            "logistics",
+            "procurement",
+            "inventory",
+        ],
+        "skills": ["supply chain", "logistics", "erp", "lean", "six sigma"],
+    },
+    "data": {
+        "keywords": [
+            "data analyst",
+            "data scientist",
+            "analytics",
+            "business intelligence",
+            "bi",
+        ],
+        "skills": ["sql", "python", "tableau", "power bi", "machine learning"],
+    },
+}
+
+
+# =========================================================
+# LOCAL FALLBACK MARKERS (Basic, used when Gemini fails)
+# =========================================================
+
+SOFT_SKILL_MARKERS = {
+    "communication",
+    "teamwork",
+    "leadership",
+    "problem solving",
+    "critical thinking",
+    "time management",
+    "adaptability",
+    "collaboration",
+    "mentoring",
+    "presentation",
+    "negotiation",
+    "conflict resolution",
+    "decision making",
+    "creativity",
+    "attention to detail",
+    "analytical thinking",
+    "project management",
+    "agile",
+    "scrum",
+    "stakeholder management",
+    "customer service",
+    "interpersonal skills",
+    "organizational skills",
+    "multitasking",
+}
 
 
 class JDExtractor:
     """
-    JDExtractor = JD → structured SkillsAnalysis + requirements.
+    JDExtractor v2.2.0 - Gemini-First Multi-Domain Version
 
-    Design:
-    - Primary extraction: Gemini (LLM) returns structured JSON.
-    - Local layer (spaCy + taxonomies + regex) is used for:
-        - fallback when Gemini is unavailable or broken
-        - sanity checks
-        - experience_level / complexity baseline
-        - job_type / education_level / remote_option / department
-    - Final SkillsAnalysis is a MERGE of Gemini + local signals,
-      with clear precedence rules.
+    Works for ALL industries by using Gemini as primary skill extractor.
+    Local extraction is fallback only.
+
+    Taxonomy:
+        - skills.txt        (unified hard skills: tools + tech)
+        - soft_skills.txt   (behavioral)
+        - domains.txt       (job families)
+        -> tools.txt is not used anymore.
     """
 
-    # Hard caps to keep outputs stable & safe
-    MAX_TECH_SKILLS = 40
-    MAX_TOOLS = 25
-    MAX_DOMAINS = 10
-    MAX_SOFT_SKILLS = 20
-    MAX_KEY_TECH = 8
-    MAX_REQ_ITEMS = 30
+    VERSION = "2.2.0"
+
+    MAX_TECH_SKILLS = 20
+    MAX_TOOLS = 15
+    MAX_SOFT_SKILLS = 10
+    MAX_KEY_TECH = 5
+    MAX_DOMAINS = 5
+    MAX_REQ_ITEMS = 20
+
+    # =========================================================
+    # TAXONOMY LOADING
+    # =========================================================
+
+    def _load_taxonomy_file(self, filename: str) -> Set[str]:
+        """
+        Load a taxonomy file from taxonomies/<filename>.
+        One term per line, '#' lines are comments.
+        Values are stored lowercased with single spaces.
+        """
+        path = self.taxonomies_path / filename
+        if not path.exists():
+            logger.warning(f"[JDExtractor] Taxonomy file not found: {path}")
+            return set()
+
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.error(f"[JDExtractor] Failed to read taxonomy file {path}: {e}")
+            return set()
+
+        values: Set[str] = set()
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            key = re.sub(r"\s+", " ", line).lower()
+            values.add(key)
+
+        logger.info(f"[JDExtractor] Loaded {len(values)} items from {filename}")
+        return values
 
     def __init__(self) -> None:
         self.taxonomies_path = Path(__file__).parent / "taxonomies"
 
-        # Optional: taxonomies are helpers, not mandatory
-        self.technical_skills_vocab = self._load_taxonomy("skills.txt")
-        self.tools_vocab = self._load_taxonomy("tools.txt")
-        self.domains_vocab = self._load_taxonomy("domains.txt")
-        self.soft_skills_vocab = self._load_taxonomy("soft_skills.txt")
+        # Load taxonomies (all lowercase)
+        # Unified hard skills: includes tools, platforms, languages, concepts…
+        self.taxonomy_skills = self._load_taxonomy_file("skills.txt")
+        self.taxonomy_soft_skills = self._load_taxonomy_file("soft_skills.txt")
+        self.taxonomy_domains = self._load_taxonomy_file("domains.txt")  # optional
 
-        # Try to load spaCy model (optional, graceful fallback)
-        try:
-            self.nlp = spacy.load(settings.SPACY_MODEL)
-            self.spacy_available = True
-        except Exception:
-            print(
-                f"[JDExtractor] SpaCy model '{settings.SPACY_MODEL}' not found. "
-                "Running with regex-only local heuristics."
-            )
-            self.nlp = None
-            self.spacy_available = False
+        # Check if Gemini is available
+        self.gemini_available = bool(settings.GOOGLE_API_KEY)
+        if not self.gemini_available:
+            logger.warning("Gemini API key not configured - using local extraction only")
 
-    # =========================
-    # Taxonomy loading
-    # =========================
+    # =========================================================
+    # SKILL NORMALIZATION
+    # =========================================================
 
-    def _load_taxonomy(self, filename: str) -> Set[str]:
-        path = self.taxonomies_path / filename
-        if not path.exists():
-            return set()
-        with open(path, "r", encoding="utf-8") as f:
-            return {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.strip().startswith("#")
-            }
+    def _normalize_skill(self, skill: str) -> str:
+        """Normalize skill name using dictionary (defensive)."""
+        if not isinstance(skill, str):
+            return ""
+        raw = skill.strip()
+        if not raw:
+            return ""
+        key = raw.lower()
+        key = re.sub(r"[\s\-_]+", " ", key)
+        return SKILLS_NORMALIZATION.get(key, raw)
 
-    # =========================
-    # Local NLP helpers
-    # =========================
+    def _normalize_and_dedupe(self, skills: List[str]) -> List[str]:
+        """Normalize all skills and remove duplicates."""
+        seen: Set[str] = set()
+        result: List[str] = []
 
-    def _token_set(self, text_lower: str) -> Set[str]:
+        for skill in skills:
+            if not isinstance(skill, str) or not skill.strip():
+                continue
+
+            # Skip very short skills that are usually noise (keep "C" as exception)
+            if len(skill.strip()) <= 2 and skill.strip().lower() not in {"c"}:
+                continue
+
+            # Skip generic terms (keep SQL / NoSQL now)
+            skip_terms = {"api", "apis", "rest", "restful", "authentication"}
+            if skill.lower().strip() in skip_terms:
+                continue
+
+            normalized = self._normalize_skill(skill)
+            if not normalized:
+                continue
+
+            key = normalized.lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(normalized)
+
+        return result
+
+    # =========================================================
+    # DOMAIN DETECTION (high-level)
+    # =========================================================
+
+    def _detect_high_level_domain(self, text: str) -> str:
         """
-        Return a set of normalized tokens (lemmas if spaCy is available).
+        Fallback high-level domain (tech, finance, ...), based on DOMAIN_MARKERS.
+        Used for department + coding vs non-coding, but not for fine-grained domains.
         """
-        if self.spacy_available and self.nlp:
-            try:
-                doc = self.nlp(text_lower)
-                return {
-                    token.lemma_.lower()
-                    for token in doc
-                    if not token.is_stop and not token.is_punct and token.text.strip()
-                }
-            except Exception:
-                pass
-
-        return {
-            t.lower()
-            for t in re.findall(r"[a-zA-Z0-9\+\#\.]+", text_lower)
-            if t.strip()
-        }
-
-    def _enhanced_token_matching(self, text: str, vocabulary: Set[str]) -> List[str]:
-        if not vocabulary:
-            return []
         text_lower = text.lower()
-        tokens = self._token_set(text_lower)
-        matches: Set[str] = set()
-        for term in vocabulary:
-            norm = term.lower().strip()
-            if not norm:
-                continue
-            norm_spaces = norm.replace("_", " ")
-            if " " in norm_spaces:
-                pattern = r"\b" + re.escape(norm_spaces).replace(r"\ ", r"\s+") + r"\b"
-                if re.search(pattern, text_lower):
-                    matches.add(term)
-                    continue
-            if norm in tokens or norm_spaces in tokens:
-                matches.add(term)
-                continue
-            norm_clean = re.sub(r"[^a-z0-9]+", "", norm_spaces)
-            if norm_clean and any(
-                norm_clean == re.sub(r"[^a-z0-9]+", "", tok) for tok in tokens
-            ):
-                matches.add(term)
-        return sorted(matches)
+        domain_scores: Dict[str, int] = {}
 
-    def _infer_experience_level(self, text: str) -> str:
-        text_lower = text.lower()
-        years_experience = 0
-        year_matches = re.findall(r"(\d+)\+?\s*(?:years|yrs|ans)", text_lower)
-        for y in year_matches:
-            try:
-                years_experience = max(years_experience, int(y))
-            except ValueError:
-                continue
+        for domain, markers in DOMAIN_MARKERS.items():
+            score = 0
 
-        # Executive titles win
-        if re.search(r"\b(principal|staff|executive|director|head of|vp)\b", text_lower):
-            return "executive"
+            # Check keywords
+            for keyword in markers["keywords"]:
+                if keyword in text_lower:
+                    score += 2
 
-        # Senior ≥5 years or explicit senior wording
-        if years_experience >= 5 or re.search(
-            r"\b(senior|sr\.?|lead|expert|5\+\s*years)\b", text_lower
-        ):
-            return "senior"
+            # Check skills
+            for skill in markers["skills"]:
+                if skill in text_lower:
+                    score += 1
 
-        # Entry: explicit junior OR <=1 year
-        if years_experience <= 1 or re.search(
-            r"\b(junior|entry|graduate|0-2\s*years)\b", text_lower
-        ):
-            return "entry"
+            domain_scores[domain] = score
 
-        # Otherwise → mid
-        return "mid"
+        if domain_scores:
+            best_domain = max(domain_scores, key=domain_scores.get)
+            if domain_scores[best_domain] > 0:
+                return best_domain
 
-    def _infer_complexity(self, skills_count: int, text: str) -> str:
-        text_lower = text.lower()
-        score = skills_count
-        if re.search(
-            r"\b(distributed|scalable|high\s*availability|low\s*latency|high\s*traffic)\b",
-            text_lower,
-        ):
-            score += 2
-        if re.search(
-            r"\b(architecture|system\s*design|microservices|event[-\s]*driven)\b",
-            text_lower,
-        ):
-            score += 2
-        if re.search(
-            r"\b(ml|machine\s*learning|ai|artificial\s*intelligence|deep\s*learning)\b",
-            text_lower,
-        ):
-            score += 1
-        if score >= 8:
-            return "high"
-        elif score >= 4:
-            return "medium"
-        return "low"
-
-    def _domain_fallback_from_text(self, text: str) -> str:
-        t = text.lower()
-        if "full stack" in t or "full-stack" in t or "fullstack" in t:
-            return "fullstack"
-        if any(k in t for k in ["frontend", "front-end", "front end", "react", "vue", "angular", "javascript"]):
-            if any(
-                k in t
-                for k in ["backend", "api", "microservices", "database", "sql", "python", "java"]
-            ):
-                return "fullstack"
-            return "frontend"
-        if any(
-            k in t
-            for k in [
-                "data engineer",
-                "data scientist",
-                "data science",
-                "ml engineer",
-                "machine learning",
-                "ai engineer",
-                "artificial intelligence",
-            ]
-        ):
-            return "data"
-        if any(k in t for k in ["devops", "sre", "site reliability", "platform engineer"]):
-            return "devops"
-        if any(k in t for k in ["mobile", "android", "ios", "react native", "flutter"]):
-            return "mobile"
-        if any(k in t for k in ["e-commerce", "ecommerce"]):
-            return "ecommerce"
         return "general"
 
-    # =========================
-    # ✅ CONFIDENCE FUNCTION
-    # =========================
-    def _calculate_confidence(
+    # =========================================================
+    # DOMAIN INFERENCE (taxonomy-first with scoring)
+    # =========================================================
+
+    def _infer_domains(
         self,
-        technical_skills: List[str],
-        tools: List[str],
         text: str,
-        gemini_conf: Optional[float] = None
-    ) -> float:
+        technical_skills: List[str],
+        tools_platforms: List[str],
+    ) -> List[str]:
         """
-        Confidence model:
-        - If Gemini provided a valid confidence_score → trust Gemini (primary signal).
-        - Otherwise fall back to a simple richness score based on local extraction.
+        Infer fine-grained domains, prioritising taxonomy domains with scoring.
+        Example: backend, frontend, data, devops, cloud, etc.
+        Fallback: high-level domains if taxonomy doesn't match.
         """
+        text_lower = text.lower()
+        first_line = text_lower.split("\n", 1)[0]
 
-        # 1) Use Gemini confidence when available
-        if gemini_conf is not None:
-            return round(min(0.98, max(0.50, gemini_conf)), 2)
+        all_skills_lower = [s.lower() for s in (technical_skills + tools_platforms)]
 
-        # 2) Local fallback
-        richness = len(technical_skills) + len(tools)
+        domain_scores: Dict[str, float] = {}
 
-        if richness >= 25:
-            return 0.85
-        elif richness >= 15:
-            return 0.75
-        elif richness >= 8:
-            return 0.65
-        elif richness >= 4:
-            return 0.55
+        # Heuristic markers for some common tech subdomains
+        subdomain_markers: Dict[str, Set[str]] = {
+            "backend": {
+                "node.js",
+                "nodejs",
+                "express.js",
+                "express",
+                "nestjs",
+                "django",
+                "spring boot",
+                "fastapi",
+                "microservices",
+                "rest api",
+                "rest apis",
+            },
+            "frontend": {
+                "react",
+                "react.js",
+                "vue.js",
+                "angular",
+                "next.js",
+                "html",
+                "css",
+            },
+            "devops": {
+                "docker",
+                "kubernetes",
+                "k8s",
+                "ci/cd",
+                "terraform",
+                "ansible",
+            },
+            "cloud": {
+                "aws",
+                "gcp",
+                "azure",
+                "lambda",
+                "s3",
+                "ec2",
+                "cloud",
+            },
+            "data": {
+                "pandas",
+                "numpy",
+                "machine learning",
+                "ml",
+                "nlp",
+                "spark",
+                "sql",
+            },
+        }
 
-        return 0.50
+        for dom in self.taxonomy_domains:
+            dom_norm = dom.strip()
+            if not dom_norm:
+                continue
+            dom_lower = dom_norm.lower()
 
-    # =========================
-    # Requirements extraction
-    # =========================
+            # Special handling: avoid "design" for system design in backend roles
+            if dom_lower == "design":
+                if not any(
+                    kw in text_lower
+                    for kw in [" ui ", " ux ", "user interface", "product designer", "figma"]
+                ):
+                    # Skip "design" domain unless it's clearly UI/UX/product design
+                    continue
 
-    def _extract_requirements(self, text: str) -> Dict[str, List[str]]:
-        must_have: List[str] = []
-        nice_to_have: List[str] = []
+            score = 0.0
+
+            # Strong bonus if domain appears in first line (title / header)
+            if re.search(r"\b" + re.escape(dom_lower) + r"\b", first_line):
+                score += 6.0
+
+            # Bonus if domain appears anywhere in description
+            if re.search(r"\b" + re.escape(dom_lower) + r"\b", text_lower):
+                score += 2.0
+
+            # Extra points if skills or markers indicate this subdomain
+            markers = subdomain_markers.get(dom_lower, set())
+            for marker in markers:
+                marker_lower = marker.lower()
+                if any(marker_lower in s for s in all_skills_lower) or marker_lower in text_lower:
+                    score += 1.0
+
+            if score > 0:
+                domain_scores[dom_norm] = score
+
+        # Sort domains by score descending
+        if domain_scores:
+            sorted_domains = sorted(
+                domain_scores.items(), key=lambda kv: kv[1], reverse=True
+            )
+            candidates = [d for d, _ in sorted_domains]
+        else:
+            candidates = []
+
+        # If we still have nothing, fall back to a single high-level domain
+        if not candidates:
+            high = self._detect_high_level_domain(text)
+            candidates = [high]
+
+        # Dedupe and cap
+        seen: Set[str] = set()
+        unique_domains: List[str] = []
+        for d in candidates:
+            d_norm = d.strip()
+            key = d_norm.lower()
+            if d_norm and key not in seen:
+                seen.add(key)
+                unique_domains.append(d_norm)
+
+        return unique_domains[: self.MAX_DOMAINS]
+
+    # =========================================================
+    # GEMINI EXTRACTION (PRIMARY)
+    # =========================================================
+
+    async def _extract_with_gemini(
+        self, job_description: str, job_title: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Use Gemini to extract skills from ANY domain.
+        Returns structured data or None if failed.
+        """
+        if not self.gemini_available:
+            logger.warning("[Gemini] API key not configured, skipping Gemini extraction")
+            return None
+
+        try:
+            logger.info(
+                f"[Gemini] Calling extract_skills_advanced for: {job_title or 'Unknown'}"
+            )
+
+            # Call Gemini for advanced skill extraction
+            result = await gemini_client.extract_skills_advanced(
+                job_description=job_description,
+                job_title=job_title,
+            )
+
+            if result:
+                tech_count = len(result.get("technical_skills", []))
+                tools_count = len(result.get("tools_platforms", []))
+                logger.info(
+                    f"[Gemini] SUCCESS - tech_skills={tech_count}, tools={tools_count}"
+                )
+                return result
+            else:
+                logger.warning("[Gemini] Returned empty result")
+
+        except Exception as e:
+            logger.error(f"[Gemini] Extraction failed with error: {type(e).__name__}: {e}")
+
+        return None
+
+    # =========================================================
+    # LOCAL FALLBACK EXTRACTION
+    # =========================================================
+
+    def _extract_local_fallback(self, text: str) -> Tuple[List[str], List[str], List[str]]:
+        """
+        Local fallback extraction when Gemini is unavailable or returns nothing.
+        Uses hard-coded markers + unified skills taxonomy.
+
+        Returns: (technical_skills, tools_platforms, soft_skills)
+        Even though taxonomy is unified, we still split into technical vs tools
+        using simple heuristics (cloud/devops/db -> tools, the rest -> technical).
+        """
+        text_lower = text.lower()
+
+        technical_skills: List[str] = []
+        tools_platforms: List[str] = []
+        soft_skills: List[str] = []
+
+        # ---------- 1) Base markers for technical concepts ----------
+        tech_markers: Set[str] = {
+            # Languages
+            "python",
+            "java",
+            "javascript",
+            "typescript",
+            "c#",
+            "c++",
+            "php",
+            "ruby",
+            "go",
+            "golang",
+            "rust",
+            "scala",
+            "kotlin",
+            "swift",
+            # Frontend
+            "react",
+            "angular",
+            "vue",
+            "svelte",
+            "next.js",
+            "nextjs",
+            "nuxt",
+            "html",
+            "css",
+            "sass",
+            "tailwind",
+            # Backend
+            "node.js",
+            "nodejs",
+            "express",
+            "express.js",
+            "nestjs",
+            "nest.js",
+            "django",
+            "flask",
+            "fastapi",
+            "spring",
+            "spring boot",
+            ".net",
+            "rails",
+            "laravel",
+            # APIs
+            "rest",
+            "rest api",
+            "rest apis",
+            "restful",
+            "graphql",
+            "grpc",
+            "api",
+            "microservices",
+            "event-driven",
+            # Data / ML
+            "sql",
+            "nosql",
+            "data modeling",
+            "etl",
+            "machine learning",
+            "deep learning",
+            "nlp",
+            "tensorflow",
+            "pytorch",
+            # Auth
+            "oauth",
+            "oauth2",
+            "jwt",
+            "authentication",
+        }
+
+        # Add unified taxonomy skills as additional markers
+        tech_markers.update(self.taxonomy_skills)
+
+        # ---------- 2) Heuristic markers for tools/platforms ----------
+        # (we no longer read tools.txt, this is all in-code)
+        tool_markers: Set[str] = {
+            # Databases
+            "postgresql",
+            "postgres",
+            "mysql",
+            "mongodb",
+            "mongo",
+            "redis",
+            "elasticsearch",
+            "dynamodb",
+            "cassandra",
+            "neo4j",
+            "sqlite",
+            # Cloud
+            "aws",
+            "gcp",
+            "azure",
+            "heroku",
+            "digitalocean",
+            "cloudflare",
+            "ec2",
+            "s3",
+            "lambda",
+            "eks",
+            "ecs",
+            # DevOps
+            "docker",
+            "kubernetes",
+            "k8s",
+            "jenkins",
+            "github actions",
+            "gitlab ci",
+            "terraform",
+            "ansible",
+            "helm",
+            "ci/cd",
+            "ci cd",
+            # Message brokers
+            "kafka",
+            "rabbitmq",
+            "sqs",
+            "sns",
+            # Monitoring
+            "prometheus",
+            "grafana",
+            "datadog",
+            "new relic",
+            "elk",
+            # Version control
+            "git",
+            "github",
+            "gitlab",
+            "bitbucket",
+            # Testing tools
+            "jest",
+            "cypress",
+            "selenium",
+            "postman",
+            "supertest",
+            # BI / office tools
+            "power bi",
+            "tableau",
+            "microsoft excel",
+            "excel",
+            "google sheets",
+        }
+
+        # ---------- 3) Soft skills ----------
+        soft_markers: Set[str] = {
+            "communication",
+            "teamwork",
+            "leadership",
+            "problem solving",
+            "critical thinking",
+            "time management",
+            "adaptability",
+            "collaboration",
+            "mentoring",
+            "presentation",
+            "negotiation",
+        }
+        soft_markers.update(self.taxonomy_soft_skills)
+
+        # Extract technical skills (from unified taxonomy)
+        for marker in tech_markers:
+            marker_l = marker.lower()
+            pattern = r"\b" + re.escape(marker_l) + r"\b"
+            if re.search(pattern, text_lower):
+                normalized = self._normalize_skill(marker)
+                if normalized:
+                    technical_skills.append(normalized)
+
+        # Extract tools/platforms
+        for marker in tool_markers:
+            marker_l = marker.lower()
+            pattern = r"\b" + re.escape(marker_l) + r"\b"
+            if re.search(pattern, text_lower):
+                normalized = self._normalize_skill(marker)
+                if normalized:
+                    tools_platforms.append(normalized)
+
+        # Extract soft skills
+        for marker in soft_markers:
+            marker_l = marker.lower()
+            if marker_l in text_lower:
+                normalized = self._normalize_skill(marker)
+                if normalized:
+                    soft_skills.append(normalized)
+
+        logger.info(
+            f"[Local Fallback] Extracted: tech={len(technical_skills)}, "
+            f"tools={len(tools_platforms)}, soft={len(soft_skills)}"
+        )
+
+        return technical_skills, tools_platforms, soft_skills
+
+    # =========================================================
+    # SKILL CATEGORIZATION (For Gemini output)
+    # =========================================================
+
+    def _categorize_gemini_skills(
+        self, skills: List[str], high_level_domain: str
+    ) -> Tuple[List[str], List[str], List[str]]:
+        """
+        Categorize skills from Gemini into technical, tools, soft.
+        Uses high-level domain context for better categorization.
+        """
+        technical: List[str] = []
+        tools: List[str] = []
+        soft: List[str] = []
+
+        for skill in skills:
+            skill_lower = skill.lower()
+
+            # Check soft skills first
+            is_soft = any(
+                marker in skill_lower or skill_lower in marker
+                for marker in SOFT_SKILL_MARKERS
+                if len(marker) > 3  # Avoid short matches
+            )
+
+            if is_soft:
+                soft.append(skill)
+                continue
+
+            # Domain-specific categorization
+            if high_level_domain in ["tech", "data"]:
+                # For tech/data: programming = technical, infra = tools
+                infra_markers = [
+                    "aws",
+                    "gcp",
+                    "azure",
+                    "docker",
+                    "kubernetes",
+                    "jenkins",
+                    "postgresql",
+                    "mongodb",
+                    "redis",
+                    "tableau",
+                    "power bi",
+                ]
+                if any(m in skill_lower for m in infra_markers):
+                    tools.append(skill)
+                else:
+                    technical.append(skill)
+            else:
+                # For non-tech: software = tools, domain skills = technical
+                software_markers = [
+                    "excel",
+                    "sap",
+                    "salesforce",
+                    "hubspot",
+                    "workday",
+                    "figma",
+                    "jira",
+                    "tableau",
+                    "power bi",
+                ]
+                if any(m in skill_lower for m in software_markers):
+                    tools.append(skill)
+                else:
+                    technical.append(skill)
+
+        return technical, tools, soft
+
+    # =========================================================
+    # REQUIREMENTS EXTRACTION
+    # =========================================================
+
+    def _extract_requirements(self, text: str, all_skills: List[str]) -> StructuredRequirements:
+        """Extract structured requirements from text."""
+        must_have_reqs: List[AtomicRequirement] = []
+        nice_to_have_reqs: List[AtomicRequirement] = []
+        must_have_skills: Set[str] = set()
+        nice_to_have_skills: Set[str] = set()
 
         lines = text.split("\n")
-
-        must_section_markers = [
-            "responsibilities", "what you'll do", "what you will do",
-            "key responsibilities", "duties", "requirements",
-            "required qualifications", "minimum qualifications",
-            "you have", "you bring", "about you", "must have",
-            "this role requires", "required", "require", "expected to",
-            "you must be able"
-        ]
-
-        nice_section_markers = [
-            "preferred qualifications", "preferred skills", "nice to have",
-            "nice-to-have", "bonus", "bonus points", "big plus",
-            "would be a plus", "good to have"
-        ]
-
-        must_inline_markers = [
-            "must ", "must-have", "required", "require ", "essential", "mandatory"
-        ]
-
-        nice_inline_markers = [
-            "preferred", "nice to have", "nice-to-have", "bonus", "plus",
-            "would be a plus", "good to have"
-        ]
-
         current_section: Optional[str] = None
 
-        def is_bullet(l: str) -> bool:
-            stripped = l.strip()
-            return stripped.startswith(("-", "•", "*"))
+        must_markers = [
+            "responsibilities",
+            "what you'll do",
+            "requirements",
+            "required qualifications",
+            "minimum qualifications",
+            "must have",
+            "required",
+            "you have",
+            "you bring",
+            "key responsibilities",
+            "duties",
+            "role overview",
+        ]
+
+        nice_markers = [
+            "preferred qualifications",
+            "preferred skills",
+            "nice to have",
+            "nice-to-have",
+            "bonus",
+            "plus",
+            "good to have",
+            "desired",
+        ]
+
+        # Create skill lookup for detection (case-insensitive)
+        skills_lower: Dict[str, str] = {s.lower(): s for s in all_skills}
+
+        # Also add common tech terms for detection in requirements
+        extra_terms = {
+            "typescript": "TypeScript",
+            "graphql": "GraphQL",
+            "rest api": "REST APIs",
+            "rest apis": "REST APIs",
+            "restful": "REST APIs",
+            "postgresql": "PostgreSQL",
+            "mongodb": "MongoDB",
+            "redis": "Redis",
+            "kafka": "Apache Kafka",
+            "rabbitmq": "RabbitMQ",
+            "kubernetes": "Kubernetes",
+            "docker": "Docker",
+            "aws": "AWS",
+            "gcp": "GCP",
+            "jest": "Jest",
+            "ci/cd": "CI/CD",
+            "microservices": "Microservices",
+            "node.js": "Node.js",
+            "nodejs": "Node.js",
+            "express": "Express.js",
+            "nestjs": "NestJS",
+            "jwt": "JWT",
+            "oauth": "OAuth 2.0",
+        }
+        skills_lower.update({k: v for k, v in extra_terms.items()})
 
         for raw_line in lines:
             line = raw_line.strip()
@@ -283,706 +1028,614 @@ class JDExtractor:
                 continue
 
             line_lower = line.lower()
-            is_heading_candidate = (
-                not is_bullet(line)
-                and (line.endswith(":") or len(line.split()) <= 5)
+
+            # Detect section headers
+            if any(m in line_lower for m in nice_markers):
+                current_section = "nice"
+                continue
+            if any(m in line_lower for m in must_markers):
+                current_section = "must"
+                continue
+
+            # Skip very short lines
+            if len(line) < 10:
+                continue
+
+            # Clean bullet points
+            clean_line = re.sub(r"^[-•*]\s*", "", line)
+
+            # Find skills in this line
+            line_skills: List[str] = []
+            for skill_lower, skill in skills_lower.items():
+                pattern = r"\b" + re.escape(skill_lower) + r"\b"
+                if re.search(pattern, line_lower):
+                    if skill not in line_skills:
+                        line_skills.append(skill)
+
+            # Classify requirement type
+            req_type = self._classify_requirement_type(clean_line)
+
+            req = AtomicRequirement(text=clean_line, skills=line_skills, type=req_type)
+
+            # Determine target list
+            is_nice = any(
+                m in line_lower for m in ["preferred", "nice", "bonus", "plus", "desired"]
             )
 
-            if is_heading_candidate:
-                heading_no_colon = (
-                    line_lower[:-1] if line_lower.endswith(":") else line_lower
-                )
-                if any(m in heading_no_colon for m in must_section_markers):
-                    current_section = "must"
-                    must_have.append(line)
-                    continue
-                if any(m in heading_no_colon for m in nice_section_markers):
-                    current_section = "nice"
-                    nice_to_have.append(line)
-                    continue
-
-            if current_section == "must":
-                must_have.append(line)
-                continue
-
-            if current_section == "nice":
-                nice_to_have.append(line)
-                continue
-
-            if any(marker in line_lower for marker in must_inline_markers):
-                must_have.append(line)
-                continue
-
-            if any(marker in line_lower for marker in nice_inline_markers):
-                nice_to_have.append(line)
-                continue
-
-            if len(must_have) <= len(nice_to_have):
-                must_have.append(line)
+            if is_nice or current_section == "nice":
+                nice_to_have_reqs.append(req)
+                nice_to_have_skills.update(line_skills)
             else:
-                nice_to_have.append(line)
+                must_have_reqs.append(req)
+                must_have_skills.update(line_skills)
 
-        return {
-            "must_have": must_have[: self.MAX_REQ_ITEMS],
-            "nice_to_have": nice_to_have[: self.MAX_REQ_ITEMS],
-        }
+        return StructuredRequirements(
+            must_have=must_have_reqs[: self.MAX_REQ_ITEMS],
+            nice_to_have=nice_to_have_reqs[: self.MAX_REQ_ITEMS],
+            must_have_skills=list(must_have_skills),
+            nice_to_have_skills=list(nice_to_have_skills),
+        )
 
-    # =========================
-    # Question recommendations
-    # =========================
+    def _classify_requirement_type(self, line: str) -> str:
+        """Classify requirement type."""
+        line_lower = line.lower()
 
-    def _is_it_profile(self, skills: List[str]) -> bool:
+        if re.search(r"\d+\+?\s*(years?|yrs?|ans)", line_lower):
+            return "experience"
+
+        if any(
+            word in line_lower
+            for word in [
+                "proficient",
+                "knowledge of",
+                "experience with",
+                "familiar with",
+            ]
+        ):
+            return "skill"
+
+        if any(
+            word in line_lower
+            for word in [
+                "design",
+                "develop",
+                "build",
+                "implement",
+                "maintain",
+                "manage",
+                "lead",
+                "coordinate",
+            ]
+        ):
+            return "responsibility"
+
+        return "qualification"
+
+    # =========================================================
+    # EXPERIENCE & DIFFICULTY
+    # =========================================================
+
+    def _infer_experience_level(self, text: str) -> str:
+        """Infer experience level from text."""
+        text_lower = text.lower()
+
+        years = 0
+        year_matches = re.findall(r"(\d+)\+?\s*(?:years?|yrs?|ans)", text_lower)
+        for y in year_matches:
+            try:
+                years = max(years, int(y))
+            except ValueError:
+                continue
+
+        if re.search(
+            r"\b(principal|staff|executive|director|head of|vp|cto|ceo|chief)\b",
+            text_lower,
+        ):
+            return "executive"
+
+        if years >= 5 or re.search(
+            r"\b(senior|sr\.?|lead|expert|manager)\b", text_lower
+        ):
+            return "senior"
+
+        if years <= 1 or re.search(
+            r"\b(junior|jr\.?|entry|graduate|intern|trainee)\b", text_lower
+        ):
+            return "entry"
+
+        return "mid"
+
+    def _get_aligned_difficulty(self, experience_level: str, primary_domain: str) -> str:
         """
-        Very lightweight heuristic to decide if this is an IT / tech profile.
+        Map experience level to DifficultyLevel, modulated by the primary domain.
 
-        We only activate CODING questions when we clearly see tech stack signals.
+        - Hardcore tech domains (backend/devops/cloud/security/ml/ai/platform):
+          EXECUTIVE -> EXPERT.
+        - BI / data / business analytics domains:
+          EXECUTIVE is capped at ADVANCED.
         """
-        if not skills:
-            return False
+        exp = (experience_level or "").lower()
+        dom = (primary_domain or "").lower()
 
-        it_markers = {
-            "python", "java", "javascript", "typescript", "c#",
-            "c++", "php", "ruby", "go", "golang", "node.js",
-            "nodejs", "react", "angular", "vue", "django",
-            "flask", "fastapi", "spring", "kotlin", "swift",
-            "sql", "postgresql", "mysql", "mongodb", "redis",
-            "machine learning", "ml", "deep learning", "data science",
-            "devops", "kubernetes", "docker", "aws", "gcp", "azure",
+        hardcore_domains = {"backend", "devops", "cloud", "security", "ml", "ai", "platform"}
+        soft_domains = {"data", "bi", "analytics", "marketing", "sales", "product"}
+
+        if dom in hardcore_domains:
+            mapping = {
+                "entry": "BEGINNER",
+                "mid": "INTERMEDIATE",
+                "senior": "ADVANCED",
+                "executive": "EXPERT",
+            }
+        elif dom in soft_domains:
+            mapping = {
+                "entry": "BEGINNER",
+                "mid": "INTERMEDIATE",
+                "senior": "ADVANCED",
+                "executive": "ADVANCED",  # capped
+            }
+        else:
+            mapping = {
+                "entry": "BEGINNER",
+                "mid": "INTERMEDIATE",
+                "senior": "ADVANCED",
+                "executive": "ADVANCED",
+            }
+
+        return mapping.get(exp, "INTERMEDIATE")
+
+    def _infer_complexity(self, text: str, experience_level: str) -> str:
+        """
+        Infer job complexity.
+
+        Logic:
+        - Start from experience level (entry/mid/senior/executive).
+        - Then adjust using architecture / ownership / scope markers in the text.
+        - Complexity is about SYSTEM / BUSINESS SCOPE, not just number of skills.
+        """
+        t = text.lower()
+
+        # Base score anchored on experience level (keep them related but not identical)
+        base_from_experience = {
+            "entry": 1,        # usually low complexity
+            "mid": 2,          # moderate scope
+            "senior": 3,       # often complex, but may still be "medium"
+            "executive": 3,    # complexity comes more from responsibilities than coding
         }
+        score = base_from_experience.get(experience_level, 2)
 
-        skills_lower = {s.lower() for s in skills if isinstance(s, str)}
-        for marker in it_markers:
-            for skill in skills_lower:
-                if marker in skill:
-                    return True
-        return False
+        # Strong signals of high architectural / strategic complexity
+        high_markers = [
+            r"\bsystem architecture\b",
+            r"\bsoftware architecture\b",
+            r"\bdata architecture\b",
+            r"\barchitect\b",
+            r"\bown(s)?\s+the\s+architecture\b",
+            r"\b(end[- ]to[- ]end|e2e)\b",
+            r"\bdistributed systems?\b",
+            r"\bhigh[- ]availability\b",
+            r"\bmission[- ]critical\b",
+            r"\benterprise[- ]scale\b",
+            r"\bscalable\b",
+            r"\bmicroservices\b",
+            r"\btechnical strategy\b",
+            r"\btechnical roadmap\b",
+        ]
+
+        # Medium signals: ownership of modules, leading design, cross-team work
+        medium_markers = [
+            r"\bdesign (and )?implement\b",
+            r"\bown(er(ship)?|s)?\s+(features?|modules?|services?)\b",
+            r"\bmake technical decisions?\b",
+            r"\blead(ing)?\s+projects?\b",
+            r"\bmentor\b",
+            r"\bstakeholders?\b",
+            r"\bcross[- ]functional\b",
+            r"\bcomplex (systems?|projects?)\b",
+        ]
+
+        # Low-complexity signals: mostly support / assisting / routine tasks
+        low_markers = [
+            r"\bassist\b",
+            r"\bsupport\b",
+            r"\broutine\b",
+            r"\bentry[- ]level\b",
+            r"\bjunior\b",
+            r"\bintern(ship)?\b",
+        ]
+
+        for pattern in high_markers:
+            if re.search(pattern, t):
+                score += 2
+
+        for pattern in medium_markers:
+            if re.search(pattern, t):
+                score += 1
+
+        for pattern in low_markers:
+            if re.search(pattern, t):
+                score -= 1
+
+        # Clamp score to a sane range
+        if score < 0:
+            score = 0
+
+        # Final thresholds:
+        # 0–2  -> low   (entry roles, support roles)
+        # 3–4  -> medium (most mid/senior individual contributor roles)
+        # 5+   -> high  (architect / principal / large scope)
+        if score >= 5:
+            return "high"
+        elif score >= 3:
+            return "medium"
+        else:
+            return "low"
+
+    # =========================================================
+    # QUESTION RECOMMENDATIONS
+    # =========================================================
 
     def _get_question_recommendations(
-        self, experience_level: str, skills: List[str]
+        self,
+        experience_level: str,
+        high_level_domain: str,
+        primary_domain: str,
+        technical_skills: List[str],
     ) -> List[QuestionRecommendation]:
-        """
-        NEW LOGIC:
+        """Generate question recommendations based on domain and experience."""
+        difficulty = self._get_aligned_difficulty(experience_level, primary_domain)
 
-        - Only TWO categories are allowed globally:
-            * "mcq"    → always present for all domains
-            * "coding" → ONLY for IT profiles (software / data / devops ...)
-        """
-
-        is_it = self._is_it_profile(skills)
         recommendations: List[QuestionRecommendation] = []
 
-        # 1) MCQ for everyone (always)
-        if experience_level == "entry":
-            recommendations.append(
-                QuestionRecommendation(category="mcq", count=10, difficulty="BEGINNER")
+        # MCQ counts
+        mcq_counts = {"entry": 10, "mid": 8, "senior": 8, "executive": 6}
+
+        # MCQ for everyone
+        recommendations.append(
+            QuestionRecommendation(
+                category="mcq",
+                count=mcq_counts.get(experience_level, 8),
+                difficulty=difficulty,
             )
-        elif experience_level == "mid":
+        )
+
+        # Coding only for tech/data domains
+        if high_level_domain in ["tech", "data"]:
+            coding_counts = {"entry": 5, "mid": 6, "senior": 6, "executive": 4}
             recommendations.append(
-                QuestionRecommendation(category="mcq", count=8, difficulty="INTERMEDIATE")
-            )
-        elif experience_level == "senior":
-            recommendations.append(
-                QuestionRecommendation(category="mcq", count=8, difficulty="ADVANCED")
-            )
-        elif experience_level == "executive":
-            recommendations.append(
-                QuestionRecommendation(category="mcq", count=6, difficulty="ADVANCED")
-            )
-        else:
-            # Fallback
-            recommendations.append(
-                QuestionRecommendation(category="mcq", count=8, difficulty="INTERMEDIATE")
+                QuestionRecommendation(
+                    category="coding",
+                    count=coding_counts.get(experience_level, 5),
+                    difficulty=difficulty,
+                )
             )
 
-        # 2) CODING only for IT profiles
-        if is_it:
-            if experience_level == "entry":
-                recommendations.append(
-                    QuestionRecommendation(
-                        category="coding", count=5, difficulty="BEGINNER"
-                    )
-                )
-            elif experience_level == "mid":
-                recommendations.append(
-                    QuestionRecommendation(
-                        category="coding", count=6, difficulty="INTERMEDIATE"
-                    )
-                )
-            elif experience_level == "senior":
-                recommendations.append(
-                    QuestionRecommendation(
-                        category="coding", count=6, difficulty="ADVANCED"
-                    )
-                )
-            elif experience_level == "executive":
-                recommendations.append(
-                    QuestionRecommendation(
-                        category="coding", count=4, difficulty="ADVANCED"
-                    )
-                )
-            else:
-                recommendations.append(
-                    QuestionRecommendation(
-                        category="coding", count=5, difficulty="INTERMEDIATE"
-                    )
-                )
+        return recommendations
 
-        # Safety: keep at most 10 items
-        return recommendations[:10]
-
-    def _normalize_list(self, items: List[str]) -> List[str]:
-        """
-        Normalize list of strings:
-        - strip whitespace
-        - lowercase + normalize spaces/dashes/underscores for dedup key
-        - preserve original casing of first occurrence
-        """
-        seen = set()
-        result: List[str] = []
-        for item in items:
-            if not isinstance(item, str):
-                continue
-            val = item.strip()
-            if not val:
-                continue
-            key = val.lower()
-            key = key.replace("_", " ")
-            key = re.sub(r"[\s\-]+", " ", key).strip()
-            if key in seen:
-                continue
-            seen.add(key)
-            result.append(val)
-        return result
-
-    # -----------------------
-    # Extra inferred context
-    # -----------------------
+    # =========================================================
+    # CONTEXT INFERENCE
+    # =========================================================
 
     def _infer_job_type(self, text: str) -> Optional[str]:
         t = text.lower()
-        # 1) Explicit full-time / CDI first
-        if "cdi" in t or "permanent" in t or "full-time" in t or "full time" in t:
+        if any(k in t for k in ["cdi", "permanent", "full-time", "full time"]):
             return "full_time"
-        # 2) Internships
-        if "intern" in t or "internship" in t:
+        if "intern" in t:
             return "internship"
-        # 3) Part-time
-        if "part-time" in t or "part time" in t:
+        if any(k in t for k in ["part-time", "part time"]):
             return "part_time"
-        # 4) Contract / freelance
-        if "contract" in t or "freelance" in t:
+        if any(k in t for k in ["contract", "freelance", "consultant"]):
             return "contract"
         return None
 
     def _infer_education_level(self, text: str) -> Optional[str]:
         t = text.lower()
-        if "phd" in t or "doctorat" in t:
+        if any(k in t for k in ["phd", "doctorate", "doctorat"]):
             return "phd"
-        if "master" in t or "msc" in t or "bac+5" in t:
+        if any(k in t for k in ["master", "mba", "msc", "bac+5"]):
             return "master"
-        if "bachelor" in t or "licence" in t or "bac+3" in t:
+        if any(k in t for k in ["bachelor", "degree", "licence", "bac+3", "bs", "ba"]):
             return "bachelor"
-        if "high school" in t or "baccalauréat" in t:
-            return "high_school"
         return None
 
     def _infer_remote_option(self, text: str) -> Optional[str]:
         t = text.lower()
-        # Remote-friendly special case
-        if "remote-friendly" in t:
-            return "hybrid"
-        if "remote" in t:
+        if any(k in t for k in ["fully remote", "100% remote", "remote only"]):
             return "fully_remote"
-        if "hybrid" in t:
+        if "hybrid" in t or "remote-friendly" in t:
             return "hybrid"
-        if "on-site" in t or "on site" in t or "office-based" in t:
+        if any(k in t for k in ["on-site", "on site", "office", "in-person"]):
             return "office_only"
         return None
 
-    def _infer_department(self, text: str) -> Optional[str]:
-        t = text.lower()
+    def _infer_department(self, text: str, high_level_domain: str) -> Optional[str]:
+        """Infer department based on high-level domain."""
+        department_mapping = {
+            "tech": "Engineering",
+            "data": "Data / Analytics",
+            "finance": "Finance",
+            "healthcare": "Healthcare",
+            "marketing": "Marketing",
+            "sales": "Sales",
+            "hr": "Human Resources",
+            "design": "Design",
+            "legal": "Legal",
+            "operations": "Operations",
+        }
+        return department_mapping.get(high_level_domain)
 
-        # AI / Data
-        if any(k in t for k in ["data scientist", "data science", "ml engineer", "ai engineer"]):
-            return "AI / Data"
-
-        # Frontend / UI Engineering
-        if any(k in t for k in ["frontend", "front-end", "front end", "ui engineer", "frontend developer"]):
-            return "Frontend / Engineering"
-
-        # Backend / Full-Stack / General Software Engineering
-        if any(k in t for k in ["backend", "software engineer", "full stack", "full-stack"]):
-            return "Engineering"
-
-        # DevOps / Platform
-        if "devops" in t or "sre" in t or "platform engineer" in t:
-            return "DevOps / Platform"
-
-        # Product org (non-engineering)
-        if "product manager" in t or "product management" in t:
-            return "Product"
-
-        # Product Engineering (mix of product + eng)
-        if "product engineering" in t:
-            return "Product Engineering"
-
-        return None
-
-    # -----------------------
-    # Tools filtering
-    # -----------------------
-
-    def _filter_tools_by_text(self, text: str, tools: List[str]) -> List[str]:
-        """
-        Keep only tools that actually appear (roughly) in the JD text,
-        to avoid hallucinated tools like 'AWS S3' on a pure frontend role.
-        """
-        t = text.lower().replace(" ", "")
-        filtered: List[str] = []
-        for tool in tools:
-            if not isinstance(tool, str):
-                continue
-            tool_norm = tool.lower().replace(" ", "")
-            if tool_norm and tool_norm in t:
-                filtered.append(tool)
-        return filtered
-
-    # -----------------------
-    # Stack booster
-    # -----------------------
-
-    def _boost_explicit_stack_signals(
-        self,
-        text: str,
-        technical_skills: List[str],
-        tools_platforms: List[str],
-    ) -> Tuple[List[str], List[str]]:
-        t = text.lower()
-        tech_add: List[str] = []
-        tools_add: List[str] = []
-
-        def add_tech(name: str) -> None:
-            if name not in technical_skills and name not in tech_add:
-                tech_add.append(name)
-
-        def add_tool(name: str) -> None:
-            if name not in tools_platforms and name not in tools_add:
-                tools_add.append(name)
-
-        # Languages / frameworks → technical_skills
-        if "python" in t:
-            add_tech("Python")
-        if "fastapi" in t:
-            add_tech("FastAPI")
-        if "node.js" in t or "nodejs" in t or "node js" in t:
-            add_tech("Node.js")
-        if "typescript" in t:
-            add_tech("TypeScript")
-        if "react" in t:
-            add_tech("React")
-        if "graphql" in t:
-            add_tech("GraphQL")
-        if "rest" in t:
-            add_tech("REST APIs")
-
-        # ML / data libs
-        if "tensorflow" in t:
-            add_tech("TensorFlow")
-        if "pytorch" in t:
-            add_tech("PyTorch")
-        if "scikit-learn" in t or "scikit learn" in t:
-            add_tech("Scikit-learn")
-
-        # Datastores / infra → tools_platforms
-        if "postgresql" in t:
-            add_tool("PostgreSQL")
-        if "mongodb" in t:
-            add_tool("MongoDB")
-        if "redis" in t:
-            add_tool("Redis")
-        if "kafka" in t:
-            add_tool("Kafka")
-        if "rabbitmq" in t:
-            add_tool("RabbitMQ")
-
-        # Cloud & services
-        if "aws" in t:
-            add_tool("AWS")
-        if "ec2" in t:
-            add_tool("AWS EC2")
-        if "s3" in t:
-            add_tool("AWS S3")
-        if "lambda" in t:
-            add_tool("AWS Lambda")
-        if "eks" in t:
-            add_tool("AWS EKS")
-
-        # DevOps / MLOps
-        if "docker" in t:
-            add_tool("Docker")
-        if "kubernetes" in t:
-            add_tool("Kubernetes")
-        if "jenkins" in t:
-            add_tool("Jenkins")
-        if "github actions" in t:
-            add_tool("GitHub Actions")
-        if "terraform" in t:
-            add_tool("Terraform")
-        if "mlflow" in t:
-            add_tool("MLflow")
-        if "spark" in t:
-            add_tool("Spark")
-        if "prometheus" in t:
-            add_tool("Prometheus")
-        if "grafana" in t:
-            add_tool("Grafana")
-        if " elk" in t or "elk " in t:
-            add_tool("ELK")
-
-        # Frontend-specific as technical_skills
-        if "next.js" in t or "nextjs" in t or "next js" in t:
-            add_tech("Next.js")
-        if "tailwindcss" in t or "tailwind css" in t or "tailwind" in t:
-            add_tech("Tailwind CSS")
-        if "redux" in t:
-            add_tech("Redux")
-        if "zustand" in t:
-            add_tech("Zustand")
-        if "recoil" in t:
-            add_tech("Recoil")
-        if "jest" in t:
-            add_tech("Jest")
-        if "cypress" in t:
-            add_tech("Cypress")
-        if "testing library" in t:
-            add_tech("Testing Library")
-        if "storybook" in t:
-            add_tech("Storybook")
-        if "material ui" in t or "mui" in t:
-            add_tech("Material UI")
-        if "chakra ui" in t:
-            add_tech("Chakra UI")
-
-        # Frontend dev tooling as tools_platforms
-        if "git" in t:
-            add_tool("Git")
-        if "github" in t:
-            add_tool("GitHub")
-        if "gitlab" in t:
-            add_tool("GitLab")
-        if "ci/cd" in t or "ci cd" in t or "ci/cd pipelines" in t or "ci/cd pipeline" in t:
-            add_tool("CI/CD pipelines")
-        if "storybook" in t:
-            add_tool("Storybook")
-        if "material ui" in t or "mui" in t:
-            add_tool("Material UI")
-        if "chakra ui" in t:
-            add_tool("Chakra UI")
-        if "jest" in t:
-            add_tool("Jest")
-        if "cypress" in t:
-            add_tool("Cypress")
-        if "testing library" in t:
-            add_tool("Testing Library")
-        
-        if "express" in t:
-            add_tech("Express.js")
-        if "nestjs" in t:
-            add_tech("NestJS")
-        if "microservices" in t:
-            add_tech("Microservices")
-        if "event-driven" in t or "event driven" in t:
-            add_tech("Event-driven architecture")
-        if "oauth2" in t:
-            add_tech("OAuth2")
-        if "jwt" in t:
-            add_tech("JWT")
-
-
-        if tech_add:
-            technical_skills = list(dict.fromkeys(technical_skills + tech_add))
-        if tools_add:
-            tools_platforms = list(dict.fromkeys(tools_platforms + tools_add))
-
-        return technical_skills, tools_platforms
-
-    # -----------------------
-    # Key technologies selector
-    # -----------------------
+    # =========================================================
+    # KEY TECHNOLOGIES SELECTION
+    # =========================================================
 
     def _select_key_technologies(
+        self, technical_skills: List[str], tools_platforms: List[str], domain: str
+    ) -> List[str]:
+        """Select top 5 most important skills for display/search."""
+
+        # Priority order for tech domain
+        priority_order = [
+            # Languages (highest priority)
+            "TypeScript",
+            "JavaScript",
+            "Python",
+            "Java",
+            "Go",
+            "Rust",
+            "C#",
+            "C++",
+            # Backend frameworks
+            "Node.js",
+            "Express.js",
+            "NestJS",
+            "Django",
+            "FastAPI",
+            "Spring Boot",
+            # Frontend frameworks
+            "React",
+            "Angular",
+            "Vue.js",
+            "Next.js",
+            # Databases
+            "PostgreSQL",
+            "MongoDB",
+            "MySQL",
+            "Redis",
+            # Cloud
+            "AWS",
+            "GCP",
+            "Azure",
+            # DevOps
+            "Docker",
+            "Kubernetes",
+            # APIs
+            "GraphQL",
+            "REST APIs",
+        ]
+
+        all_skills = technical_skills + tools_platforms
+        if not all_skills:
+            return []
+
+        skills_lower_map = {s.lower(): s for s in all_skills}
+
+        key_tech: List[str] = []
+        seen: Set[str] = set()
+
+        # First: Pick from priority order
+        for priority in priority_order:
+            priority_lower = priority.lower()
+            if priority_lower in skills_lower_map and priority_lower not in seen:
+                key_tech.append(skills_lower_map[priority_lower])
+                seen.add(priority_lower)
+                if len(key_tech) >= self.MAX_KEY_TECH:
+                    break
+
+        # Second: Fill with remaining skills (skip generic ones)
+        skip_generic = {
+            "sql",
+            "nosql",
+            "api",
+            "apis",
+            "rest",
+            "restful",
+            "authentication",
+            "microservices",
+        }
+
+        if len(key_tech) < self.MAX_KEY_TECH:
+            for skill in all_skills:
+                skill_lower = skill.lower()
+                if skill_lower not in seen and skill_lower not in skip_generic:
+                    key_tech.append(skill)
+                    seen.add(skill_lower)
+                    if len(key_tech) >= self.MAX_KEY_TECH:
+                        break
+
+        return key_tech[: self.MAX_KEY_TECH]
+
+    # =========================================================
+    # CONFIDENCE CALCULATION
+    # =========================================================
+
+    def _compute_confidence(
         self,
         technical_skills: List[str],
-        candidate_keys: Optional[List[str]] = None,
-    ) -> List[str]:
+        tools_platforms: List[str],
+        gemini_data: Optional[Dict[str, Any]],
+    ) -> float:
         """
-        Clean and prioritize key_technologies from candidate list + technical_skills.
+        Confidence is calculated from the richness of extracted skills,
+        and optionally Gemini's own confidence if available.
+        Gemini can increase confidence, but not push it below a floor.
         """
-        # Things we NEVER want as "key"
-        ban = {"agile", "testing", "seo", "git", "github", "gitlab", "rest"}
+        richness = len(set(technical_skills + tools_platforms))
 
-        def clean_list(lst: List[str]) -> List[str]:
-            seen = set()
-            out: List[str] = []
-            for x in lst:
-                if not isinstance(x, str):
-                    continue
-                v = x.strip()
-                if not v:
-                    continue
-                low = v.lower()
-                if low in ban or low in seen:
-                    continue
-                seen.add(low)
-                out.append(v)
-            return out
-
-        # Prefer Gemini keys if they exist, but clean them
-        if candidate_keys:
-            base = clean_list(candidate_keys)
+        if richness >= 20:
+            base_conf = 0.9
+        elif richness >= 15:
+            base_conf = 0.85
+        elif richness >= 10:
+            base_conf = 0.8
+        elif richness >= 5:
+            base_conf = 0.7
+        elif richness >= 1:
+            base_conf = 0.6
         else:
-            base = []
+            base_conf = 0.5
 
-        # If not enough, complete from technical_skills, prioritizing languages/frameworks
-        priority_order = [
-            "React", "Next.js", "TypeScript", "JavaScript",
-            "HTML5", "CSS3", "Tailwind CSS",
-            "REST APIs", "GraphQL",
-            "Python", "Node.js", "Django", "FastAPI",
-        ]
-        tech_set = {t for t in technical_skills if isinstance(t, str)}
+        if gemini_data and gemini_data.get("confidence_score") is not None:
+            try:
+                g_conf = float(gemini_data["confidence_score"])
+            except (ValueError, TypeError):
+                g_conf = base_conf
+            g_conf_clamped = max(0.6, min(0.95, g_conf))
+            confidence = max(base_conf, g_conf_clamped)
+        else:
+            confidence = base_conf
 
-        for p in priority_order:
-            if p in tech_set and p not in base:
-                base.append(p)
+        return confidence
 
-        return base[: self.MAX_KEY_TECH]
-
-    # =========================
-    # Main entry
-    # =========================
+    # =========================================================
+    # MAIN EXTRACTION METHOD
+    # =========================================================
 
     async def analyze_job_description(
         self,
         job_description: str,
-        job_title: str = None,
+        job_title: Optional[str] = None,
         use_gemini: bool = True,
-    ) -> Tuple[SkillsAnalysis, Dict[str, List[str]]]:
+    ) -> Tuple[SkillsAnalysis, StructuredRequirements]:
+        """
+        Main entry point - analyze a job description.
+
+        Strategy:
+        1. Try Gemini first (works for ALL domains)
+        2. Fall back to local extraction if Gemini fails or returns no skills
+        3. Always use local logic for: experience, difficulty, requirements structure
+        """
+        import time
+
+        start_time = time.time()
 
         full_text = f"{job_title or ''}\n{job_description}".strip()
 
-        # -----------------------------------
-        # 1) Local baseline
-        # -----------------------------------
-        local_tech = self._enhanced_token_matching(full_text, self.technical_skills_vocab)
-        local_tools = self._enhanced_token_matching(full_text, self.tools_vocab)
-        local_domains = self._enhanced_token_matching(full_text, self.domains_vocab)
-        local_soft = self._enhanced_token_matching(full_text, self.soft_skills_vocab)
+        logger.info(f"[JDExtractor v{self.VERSION}] Processing: {job_title or 'Unknown'}")
 
-        base_experience_level = self._infer_experience_level(full_text)
-        base_complexity_level = self._infer_complexity(
-            len(local_tech) + len(local_tools), full_text
-        )
+        # High-level domain (tech / finance / ...)
+        high_level_domain = self._detect_high_level_domain(full_text)
+        logger.info(f"[JDExtractor] High-level domain: {high_level_domain}")
 
-        inferred_job_type = self._infer_job_type(full_text)
-        inferred_education = self._infer_education_level(full_text)
-        inferred_remote = self._infer_remote_option(full_text)
-        inferred_department = self._infer_department(full_text)
+        # Initialize skill lists
+        technical_skills: List[str] = []
+        tools_platforms: List[str] = []
+        soft_skills: List[str] = []
+        gemini_data: Optional[Dict[str, Any]] = None
 
-        requirements = self._extract_requirements(job_description)
+        # ========== STEP 1: Try Gemini (PRIMARY) ==========
+        if use_gemini and self.gemini_available:
+            gemini_data = await self._extract_with_gemini(job_description, job_title)
 
-        baseline_questions = self._get_question_recommendations(
-            base_experience_level, local_tech
-        )
+            if gemini_data:
+                # Gemini MAY return technical_skills + tools_platforms separately,
+                # but we treat them as a unified hard-skill pool then recategorize.
+                all_gemini_skills: List[str] = []
+                all_gemini_skills += gemini_data.get("technical_skills", []) or []
+                all_gemini_skills += gemini_data.get("tools_platforms", []) or []
 
-        primary_domain_local: Optional[str] = (
-            local_domains[0] if local_domains else self._domain_fallback_from_text(full_text)
-        )
+                # Normalize & dedupe
+                all_gemini_skills = self._normalize_and_dedupe(all_gemini_skills)
 
-        technical_skills: List[str] = list(local_tech)
-        tools_platforms: List[str] = list(local_tools)
-        domains: List[str] = list(local_domains) if local_domains else []
-        key_technologies: List[str] = []
-        experience_level = base_experience_level
-        complexity_level = base_complexity_level
-        question_recommendations = baseline_questions
-        primary_domain: Optional[str] = primary_domain_local
-        gemini_conf: Optional[float] = None
+                # Categorize based on high-level domain
+                (
+                    technical_skills,
+                    tools_platforms,
+                    soft_skills,
+                ) = self._categorize_gemini_skills(all_gemini_skills, high_level_domain)
 
-        # -----------------------------------
-        # 2) Gemini enrichment
-        # -----------------------------------
-        if use_gemini and settings.GOOGLE_API_KEY:
-            try:
-                gemini_insights: Dict[str, Any] = await gemini_client.extract_skills_advanced(
-                    job_description=job_description,
-                    job_title=job_title,
+                # Get soft skills from Gemini if available
+                gemini_soft = gemini_data.get("soft_skills") or []
+                if gemini_soft:
+                    soft_skills = self._normalize_and_dedupe(gemini_soft + soft_skills)
+
+                logger.info(
+                    f"[Gemini] Extracted: tech={len(technical_skills)}, "
+                    f"tools={len(tools_platforms)}, soft={len(soft_skills)}"
                 )
-                g_tech = gemini_insights.get("technical_skills") or []
-                if isinstance(g_tech, list):
-                    technical_skills = list(dict.fromkeys(g_tech + technical_skills))
 
-                g_tools = gemini_insights.get("tools_platforms") or []
-                if isinstance(g_tools, list):
-                    tools_platforms = list(dict.fromkeys(g_tools + tools_platforms))
+        # ========== STEP 2: Local Fallback ==========
+        if not technical_skills and not tools_platforms:
+            logger.info("[JDExtractor] Using local fallback extraction")
+            technical_skills, tools_platforms, soft_skills = self._extract_local_fallback(
+                full_text
+            )
 
-                g_domains = gemini_insights.get("domains") or []
-                if isinstance(g_domains, list):
-                    domains = list(dict.fromkeys(g_domains + domains))
+        # Normalize again to be safe
+        technical_skills = self._normalize_and_dedupe(technical_skills)
+        tools_platforms = self._normalize_and_dedupe(tools_platforms)
+        soft_skills = self._normalize_and_dedupe(soft_skills)
 
-                g_exp = gemini_insights.get("experience_level")
-                if g_exp in {"entry", "mid", "senior", "executive"}:
-                    priority = {"entry": 0, "mid": 1, "senior": 2, "executive": 3}
-                    if priority[g_exp] >= priority[base_experience_level]:
-                        experience_level = g_exp
+        # ========== STEP 3: Local Logic (Always) ==========
 
-                g_complexity = gemini_insights.get("job_complexity")
-                if g_complexity in {"low", "medium", "high"}:
-                    cpriority = {"low": 0, "medium": 1, "high": 2}
-                    if cpriority[g_complexity] >= cpriority[base_complexity_level]:
-                        complexity_level = g_complexity
+        # Extract requirements
+        all_skills = technical_skills + tools_platforms
+        requirements = self._extract_requirements(job_description, all_skills)
 
-                g_primary_domain = gemini_insights.get("primary_domain")
-                if isinstance(g_primary_domain, str) and g_primary_domain.strip():
-                    primary_domain = g_primary_domain.strip()
-                    domains = list(dict.fromkeys([primary_domain] + domains))
+        # Infer metadata
+        experience_level = self._infer_experience_level(full_text)
+        # Job complexity is now derived from responsibilities / architecture + experience
+        job_complexity = self._infer_complexity(full_text, experience_level)
 
-                g_key = gemini_insights.get("key_technologies")
-                if isinstance(g_key, list) and g_key:
-                    key_technologies = [s for s in g_key if isinstance(s, str) and s.strip()]
-                else:
-                    key_technologies = technical_skills
+        # Infer domains (taxonomy-first + scoring)
+        domains = self._infer_domains(full_text, technical_skills, tools_platforms)
+        primary_domain = domains[0] if domains else high_level_domain or "general"
 
-                # We IGNORE Gemini's question_recommendations on purpose
-                # and always use our local logic to force only [mcq, coding].
-
-                g_conf = gemini_insights.get("confidence_score")
-                try:
-                    if g_conf is not None:
-                        gemini_conf = float(g_conf)
-                except Exception:
-                    gemini_conf = None
-
-            except Exception as e:
-                print(f"[JDExtractor] Gemini enrichment failed: {e}")
-                gemini_conf = None
-
-        # -----------------------------------
-        # 2.5) Stack booster
-        # -----------------------------------
-        technical_skills, tools_platforms = self._boost_explicit_stack_signals(
-            full_text, technical_skills, tools_platforms
+        # Select key technologies
+        key_technologies = self._select_key_technologies(
+            technical_skills, tools_platforms, primary_domain
         )
 
-        # -----------------------------------
-        # 2.6) Domain reconciliation (fix bad primary domains)
-        # -----------------------------------
-        local_domain_guess = primary_domain_local or self._domain_fallback_from_text(full_text)
-
-        # If Gemini gave something too generic (like 'design', 'architecture', 'general'), prefer the local guess
-        too_generic_primary_tokens = {
-            "general", "design", "product", "testing", "ui", "ux",
-            "architecture", "architect"
-        }
-        if primary_domain and any(tok in primary_domain.lower() for tok in too_generic_primary_tokens):
-            primary_domain = local_domain_guess
-
-        # Ensure primary_domain is first in domains
-        if primary_domain:
-            domains = list(dict.fromkeys([primary_domain] + domains))
-
-        # -----------------------------------
-        # 3) Final cleanup & confidence
-        # -----------------------------------
-
-        if not domains:
-            domains = [primary_domain_local or self._domain_fallback_from_text(full_text)]
-
-        if not primary_domain:
-            primary_domain = domains[0] if domains else self._domain_fallback_from_text(full_text)
-
-        if not key_technologies:
-            key_technologies = technical_skills
-
-        # Final key_technologies selection (clean + prioritize core stack)
-        key_technologies = self._select_key_technologies(technical_skills, key_technologies)
-
-        # Filter hallucinated tools using JD text
-        tools_platforms = self._filter_tools_by_text(full_text, tools_platforms)
-
-        confidence = self._calculate_confidence(
-            technical_skills, tools_platforms, full_text, gemini_conf=gemini_conf
+        # Get question recommendations (difficulty now domain-aware)
+        question_recommendations = self._get_question_recommendations(
+            experience_level, high_level_domain, primary_domain, technical_skills
         )
 
-        # Normalize
-        technical_skills = self._normalize_list(technical_skills)[: self.MAX_TECH_SKILLS]
+        # Infer context
+        job_type = self._infer_job_type(full_text)
+        education_level = self._infer_education_level(full_text)
+        remote_option = self._infer_remote_option(full_text)
+        department = self._infer_department(full_text, high_level_domain)
 
-        # Remove ultra-generic technical skills
-        GENERIC_SKILLS = {"rest", "seo", "testing", "agile"}
-        technical_skills = [
-            s for s in technical_skills
-            if s.lower().strip() not in GENERIC_SKILLS
-        ]
+        # Calculate confidence based on richness + Gemini (if present)
+        confidence = self._compute_confidence(technical_skills, tools_platforms, gemini_data)
 
-        tools_platforms = self._normalize_list(tools_platforms)[: self.MAX_TOOLS]
-        domains = self._normalize_list(domains)[: self.MAX_DOMAINS]
-        local_soft = self._normalize_list(local_soft)[: self.MAX_SOFT_SKILLS]
-        key_technologies = self._normalize_list(key_technologies)[: self.MAX_KEY_TECH]
+        processing_time = int((time.time() - start_time) * 1000)
 
-        # Remove noisy / generic domains (now with substring check, includes architecture)
-        generic_domains_tokens = {
-            "design", "environment", "team", "company",
-            "testing", "ui", "ux", "product", "mobile",
-            "architecture", "architect", "system design"
-        }
-        filtered_domains = [
-            d for d in domains
-            if not any(tok in d.lower() for tok in generic_domains_tokens)
-        ]
-        if filtered_domains:
-            domains = filtered_domains
-        else:
-            # If everything got filtered out, fall back again to something useful
-            domains = [local_domain_guess or primary_domain or self._domain_fallback_from_text(full_text)]
-
-        # If primary_domain is frontend, compress domains to frontend-only
-        if primary_domain and primary_domain.lower() == "frontend":
-            frontend_like = [
-                d for d in domains
-                if "front" in d.lower() or d.lower() == "frontend"
-            ]
-            if frontend_like:
-                domains = frontend_like
-
-        # Keep languages/frameworks out of tools_platforms
-        lang_like = {
-            "python", "fastapi", "java", "javascript", "typescript",
-            "node.js", "nodejs", "go", "golang", "c#", "c++",
-            "php", "ruby", "react", "graphql",
-        }
-        tools_platforms = [
-            t for t in tools_platforms
-            if t.lower().replace("_", " ") not in lang_like
-        ]
-
-        # -----------------------------------
-        # 4) Build final SkillsAnalysis
-        # -----------------------------------
+        # Build final analysis
         analysis = SkillsAnalysis(
-            technical_skills=technical_skills,
-            experience_level=experience_level,
-            domains=domains or ["general"],
-            tools_platforms=tools_platforms,
-            confidence_score=confidence,
-            job_complexity=complexity_level,
-            primary_domain=primary_domain,
+            technical_skills=technical_skills[: self.MAX_TECH_SKILLS],
+            tools_platforms=tools_platforms[: self.MAX_TOOLS],
+            soft_skills=soft_skills[: self.MAX_SOFT_SKILLS],
             key_technologies=key_technologies,
+            domains=domains[: self.MAX_DOMAINS],
+            primary_domain=primary_domain,
+            experience_level=experience_level,
+            job_complexity=job_complexity,
+            confidence_score=confidence,
             question_recommendations=question_recommendations,
-            job_type=inferred_job_type,
-            education_level=inferred_education,
-            remote_option=inferred_remote,
-            department=inferred_department,
-            suggested_department=inferred_department,
+            job_type=job_type,
+            education_level=education_level,
+            remote_option=remote_option,
+            department=department,
+            suggested_department=department,
+            extractor_version=self.VERSION,
+            extraction_timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        logger.info(
+            f"[JDExtractor v{self.VERSION}] Done in {processing_time}ms - "
+            f"domains={domains}, tech={len(technical_skills)}, tools={len(tools_platforms)}, "
+            f"confidence={confidence}"
         )
 
         return analysis, requirements
