@@ -7,12 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AgencyType {
+  VISA
+  RELOCATION
+  INTEGRATION
+}
+
+enum AgencyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
 model Agency {
   agency_id             String                    @id @default(uuid())
   name                  String
-  billing_contact_email String
-  owner_user_id         String
-  status                String
+  email          String?   @unique
+  phone          String?
+  type                  AgencyType?
+  billing_contact_email String?
+  owner_user_id         String?
+  status                AgencyStatus              @default(PENDING)
   created_at            DateTime                  @default(now())
   updated_at            DateTime                  @updatedAt
   approval_notes        String?
@@ -31,6 +47,8 @@ model Agency {
   service_description   String?
   success_rate          Float?
   total_cases_handled   Int?
+  business_license_url  String?
+  rejection_reason      String?
   subscription          AgencySubscription?
   jobs                  CompanyJob[]
   users                 User[]
@@ -174,6 +192,11 @@ model Question {
   type        String   // coding, mcq, debugging
   canonicalSolution String
   testCases   Json     // { inputs: [], outputs: [] }
+  //ADD THESE MCQ FIELDS
+  options           Json?
+  correctAnswer     String?
+  explanation       String?
+
   status      String   // draft, pending_review, approved, rejected
   createdBy   String?  // user ID who created/generated
   aiGenerated Boolean  @default(false)

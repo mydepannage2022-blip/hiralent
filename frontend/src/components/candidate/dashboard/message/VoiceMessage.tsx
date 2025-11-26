@@ -1,210 +1,315 @@
+// src/components/candidate/dashboard/message/VoiceMessage.tsx
 "use client";
-import React, { useRef, useState, useEffect } from "react";
-import { Play, Pause } from "lucide-react";
-import { Message } from "./mockData";
-import MessageActions from "./MessageActions";
+import React, { useState, useRef, useEffect } from "react";
+import { 
+  Play, 
+  Pause, 
+  Download,
+  Reply,
+  Trash2,
+  Copy,
+  Heart,
+} from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
+// Use LegacyMessage type
+interface LegacyMessage {
+  id: string | number;
+  sender: "me" | "them";
+  text: string;
+  type: "text" | "voice" | "image" | "video" | "file" | "location";
+  fileName?: string;
+  timestamp: string;
+  replyTo?: {
+    sender: "me" | "them";
+    text: string;
+    type: "text" | "voice" | "image" | "video" | "file" | "location";
+    fileName?: string;
+  };
+}
+
 interface VoiceMessageProps {
-    msg: Message;
-    reaction?: string;
-    onReply?: () => void;
-    onDelete?: () => void;
-    onReact?: (emoji: string) => void;
-    onCopy?: () => void;
+  msg: LegacyMessage;
+  reaction?: string;
+  onReply?: () => void;
+  onDelete?: () => void;
+  onReact?: (emoji: string) => void;
+  onCopy?: () => void;
 }
 
 export default function VoiceMessage({
-    msg,
-    reaction,
-    onReply,
-    onDelete,
-    onReact,
-    onCopy,
+  msg,
+  reaction,
+  onReply,
+  onDelete,
+  onReact,
+  onCopy,
 }: VoiceMessageProps) {
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [duration, setDuration] = useState(0);
+  const isMine = msg.sender === "me";
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showReactBar, setShowReactBar] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "➕"];
 
-    const [showReactBar, setShowReactBar] = useState(false);
-    const [showPicker, setShowPicker] = useState(false);
-    const pickerRef = useRef<HTMLDivElement | null>(null);
-    const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "➕"];
-
-    const isMine = msg.sender === "me";
-
-    // Close picker on outside click
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-                setShowPicker(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    // Handle progress + metadata
-    useEffect(() => {
-        const audio = audioRef.current;
-        if (!audio) return;
-
-        const updateProgress = () => setProgress(audio.currentTime);
-        const setMeta = () => setDuration(audio.duration);
-
-        audio.addEventListener("timeupdate", updateProgress);
-        audio.addEventListener("loadedmetadata", setMeta);
-
-        return () => {
-            audio.removeEventListener("timeupdate", updateProgress);
-            audio.removeEventListener("loadedmetadata", setMeta);
-        };
-    }, []);
-
-    const togglePlay = () => {
-        const audio = audioRef.current;
-        if (!audio) return;
-        if (isPlaying) audio.pause();
-        else audio.play();
-        setIsPlaying(!isPlaying);
+  // Close picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const formatTime = (time: number) => {
-        if (!time || isNaN(time)) return "0:00";
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60).toString().padStart(2, "0");
-        return `${minutes}:${seconds}`;
+  // Initialize audio
+  useEffect(() => {
+    const audio = new Audio(msg.text);
+    audioRef.current = audio;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener("timeupdate", updateTime);
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", updateTime);
+      audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("ended", handleEnded);
+      audio.pause();
     };
+  }, [msg.text]);
 
-    const renderWaveform = (count: number) =>
-        Array.from({ length: count }, (_, i) => {
-            const height = Math.random() * 14 + 4;
-            return (
-                <div
-                    key={i}
-                    className={`w-[2px] mx-[1px] rounded-full ${isMine ? "bg-blue-600" : "bg-gray-500"
-                        }`}
-                    style={{ height }}
-                ></div>
-            );
-        });
+  const togglePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    return (
-        <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
-            <div
-                className={`max-w-[70%] flex flex-col ${isMine ? "items-end" : "items-start"
-                    }`}
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const newTime = (clickX / rect.width) * duration;
+    
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const formatTime = (time: number): string => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const downloadAudio = () => {
+    const link = document.createElement("a");
+    link.href = msg.text;
+    link.download = msg.fileName || `voice-message-${Date.now()}.wav`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Reply bubble
+  const ReplyBubble = () =>
+    msg.replyTo ? (
+      <div
+        className={`mb-1 p-2 rounded-lg ${
+          isMine ? "bg-blue-50" : "bg-gray-100"
+        } border-l-4 ${isMine ? "border-blue-600" : "border-gray-400"}`}
+      >
+        <p className="font-medium text-gray-700 text-xs truncate">
+          {msg.replyTo.sender === "me" ? "You" : "Them"}
+        </p>
+        <p className="text-gray-500 text-xs line-clamp-2">
+          {msg.replyTo.text ||
+            (msg.replyTo.type === "image"
+              ? "📷 Photo"
+              : msg.replyTo.type === "video"
+                ? "🎥 Video"
+                : msg.replyTo.type === "file"
+                  ? "📎 File"
+                  : msg.replyTo.type === "voice"
+                    ? "🎤 Voice message"
+                    : "Message")}
+        </p>
+      </div>
+    ) : null;
+
+  const progress = duration ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+      <div
+        className={`group px-4 py-3 rounded-xl max-w-[70%] relative ${
+          isMine
+            ? "bg-[#EFF5FF] text-black rounded-br-none"
+            : "bg-[#F9F9F9] text-black rounded-bl-none"
+        }`}
+      >
+        {/* Action buttons */}
+        <div
+          className={`absolute top-1 ${
+            isMine ? "-left-16" : "-right-16"
+          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+        >
+          <div className="flex gap-1">
+            {onReply && (
+              <button
+                onClick={onReply}
+                className="p-1 rounded-full text-gray-600 hover:text-blue-600 hover:bg-gray-100 transition-all"
+                title="Reply"
+              >
+                <Reply size={12} />
+              </button>
+            )}
+            
+            <button
+              onClick={() => setShowReactBar(!showReactBar)}
+              className="p-1 rounded-full text-gray-600 hover:text-red-500 hover:bg-gray-100 transition-all"
+              title="React"
             >
-                <div
-                    className={`group flex items-center gap-3 px-3 py-2 rounded-xl relative ${isMine
-                            ? "bg-[#EFF5FF] text-black rounded-br-none"
-                            : "bg-[#F9F9F9] text-black rounded-bl-none"
-                        }`}
-                >
-                    {/* Actions */}
-                    <div
-                        className={`absolute top-1 ${isMine ? "left-1" : "right-1"
-                            } opacity-0 group-hover:opacity-100 transition`}
-                    >
-                        <MessageActions
-                            onReply={onReply}
-                            onDelete={onDelete}
-                            onCopy={onCopy}
-                            onOpenReactBar={() => {
-                                setShowReactBar((s) => !s);
-                                setShowPicker(false);
-                            }}
-                        />
-                    </div>
+              <Heart size={12} />
+            </button>
 
-                    {/* Reaction Bar */}
-                    {showReactBar && (
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-gray-200 shadow-lg rounded-full px-2 py-1 z-40 flex items-center gap-2">
-                            {emojis.map((e) =>
-                                e === "➕" ? (
-                                    <div key="plus" className="relative">
-                                        <button
-                                            className="text-lg px-2 rounded-full hover:bg-gray-100"
-                                            onClick={(ev) => {
-                                                ev.stopPropagation();
-                                                setShowPicker((p) => !p);
-                                            }}
-                                        >
-                                            ➕
-                                        </button>
-                                        {showPicker && (
-                                            <div
-                                                ref={pickerRef}
-                                                className={`absolute top-8 z-50 shadow-xl rounded-md ${isMine
-                                                        ? "right-0 translate-x-[10%]"
-                                                        : "left-0 -translate-x-[10%]"
-                                                    }`}
-                                                style={{ maxWidth: "min(90vw, 320px)" }}
-                                            >
-                                                <EmojiPicker
-                                                    onEmojiClick={(emojiData) => {
-                                                        onReact?.(emojiData.emoji);
-                                                        setShowPicker(false);
-                                                        setShowReactBar(false);
-                                                    }}
-                                                    height={320}
-                                                    width={280}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <button
-                                        key={e}
-                                        className="text-lg px-1 rounded-full hover:bg-gray-100"
-                                        onClick={() => {
-                                            onReact?.(e);
-                                            setShowReactBar(false);
-                                            setShowPicker(false);
-                                        }}
-                                    >
-                                        {e}
-                                    </button>
-                                )
-                            )}
-                        </div>
-                    )}
+            {onCopy && (
+              <button
+                onClick={onCopy}
+                className="p-1 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all"
+                title="Copy"
+              >
+                <Copy size={12} />
+              </button>
+            )}
 
-                    {/* Play / Pause Button */}
-                    <button
-                        onClick={togglePlay}
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white"
-                    >
-                        {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                    </button>
-
-                    {/* Waveform */}
-                    <div className="flex items-center justify-center h-8 w-[100px]">
-                        {renderWaveform(24)}
-                    </div>
-
-                    {/* Remaining Time */}
-                    <div className="text-xs text-gray-600 w-[40px] text-right">
-                        {formatTime(duration - progress)}
-                    </div>
-
-                    <audio
-                        ref={audioRef}
-                        src={msg.text}
-                        onEnded={() => setIsPlaying(false)}
-                        preload="metadata"
-                    />
-                </div>
-
-                {/* Reaction under bubble */}
-                {reaction && <div className="text-lg mt-1">{reaction}</div>}
-
-                {/* Timestamp */}
-                <div className="text-[10px] text-gray-500 mt-1 text-right">
-                    {msg.timestamp}
-                </div>
-            </div>
+            {isMine && onDelete && (
+              <button
+                onClick={onDelete}
+                className="p-1 rounded-full text-gray-600 hover:text-red-600 hover:bg-gray-100 transition-all"
+                title="Delete"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
         </div>
-    );
+
+        {/* Reaction picker */}
+        {showReactBar && (
+          <div
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+          >
+            {emojis.map((emoji, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (emoji === "➕") {
+                    setShowPicker(!showPicker);
+                  } else {
+                    onReact?.(emoji);
+                    setShowReactBar(false);
+                  }
+                }}
+                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Emoji picker */}
+        {showPicker && (
+          <div
+            ref={pickerRef}
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-80 z-20`}
+          >
+            <EmojiPicker
+              onEmojiClick={(emojiObj) => {
+                onReact?.(emojiObj.emoji);
+                setShowPicker(false);
+                setShowReactBar(false);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Reply bubble */}
+        <ReplyBubble />
+
+        {/* Voice message content */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={togglePlayPause}
+            className={`p-2 rounded-full ${
+              isMine ? "bg-blue-600 text-white" : "bg-gray-600 text-white"
+            } hover:opacity-80 transition-opacity`}
+          >
+            {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            {/* Waveform/Progress bar */}
+            <div
+              className="h-2 bg-gray-300 rounded-full cursor-pointer mb-1"
+              onClick={handleSeek}
+            >
+              <div
+                className={`h-full ${
+                  isMine ? "bg-blue-600" : "bg-gray-600"
+                } rounded-full transition-all duration-100`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            {/* Time display */}
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={downloadAudio}
+            className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+            title="Download audio"
+          >
+            <Download size={16} />
+          </button>
+        </div>
+
+        {/* Reaction display */}
+        {reaction && (
+          <div className="absolute -bottom-2 -right-2 bg-white border border-gray-200 rounded-full px-1 text-sm">
+            {reaction}
+          </div>
+        )}
+
+        {/* Timestamp */}
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-xs text-gray-500">{msg.timestamp}</span>
+        </div>
+      </div>
+    </div>
+  );
 }

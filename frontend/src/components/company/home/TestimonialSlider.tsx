@@ -36,7 +36,7 @@ const TestimonialsSlider: React.FC<TestimonialsSliderProps> = ({ testimonials })
     }
 
     return (
-        <div className="w-full sm:mx-6 sm:max-w-[688px] md:mx-9 md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl lg:mx-auto py-12">
+        <div className="w-full sm:mx-6 sm:max-w-[688px] md:mx-9 md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl lg:mx-auto py-4 sm:py-12">
             <Swiper
                 modules={[Pagination]}
                 spaceBetween={24}

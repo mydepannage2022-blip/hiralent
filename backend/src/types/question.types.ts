@@ -1,5 +1,12 @@
 import { Prisma } from '@prisma/client';
 
+//NEW: MCQ Options Interface
+export interface MCQOptions {
+  A: string;
+  B: string;
+  C: string;
+  D: string;
+}
 export interface QuestionData {
   title: string;
   description: string;
@@ -9,10 +16,15 @@ export interface QuestionData {
   type: string;
   canonicalSolution: string;
   testCases: TestCase[];
+  //  NEW: For MCQ Questions
+  options?: MCQOptions;
+  correctAnswer?: string; // "A" or "B,C" for multiple correct
+  explanation?: string;
+
   status?: 'draft' | 'pending_review' | 'approved' | 'rejected';
   aiGenerated?: boolean;
   source?: string;
-  createdBy?: string;  // ✅ AJOUTÉ!
+  createdBy?: string;  //  AJOUTÉ!
 
 }
 
@@ -27,6 +39,8 @@ export interface QuestionFilters {
   difficulty?: string;
   status?: string;
   search?: string;
+  type?: string; // NEW: Filter by type
+
 }
 
 export interface PaginationResult<T> {
@@ -49,6 +63,10 @@ export interface ScrapedQuestionData {
   type?: string;
   canonicalSolution?: string;
   testCases?: any;
+   //  NEW: MCQ support in scraping
+  options?: MCQOptions;
+  correctAnswer?: string;
+  explanation?: string;
   sourceUrl?: string;
   platform?: string;
 }
@@ -115,6 +133,12 @@ export interface ScrapedProblem {
   canonicalSolution?: string;
   testCases?: any;
   test_cases?: any;
+
+  //  NEW: MCQ support
+  options?: MCQOptions;
+  correctAnswer?: string;
+  explanation?: string;
+
   status?: string;
   aiGenerated?: boolean;
   description?: string;
@@ -137,8 +161,135 @@ export interface ScrapedProblemsResponse {
 // Helper type pour convertir les données en format Prisma
 export type QuestionCreateInput = Omit<QuestionData, 'testCases'> & {
   testCases: Prisma.InputJsonValue;
+  options?: Prisma.InputJsonValue; //  NEW
+
 };
 
 export type QuestionUpdateInput = Partial<Omit<QuestionData, 'testCases'>> & {
   testCases?: Prisma.InputJsonValue;
+  options?: Prisma.InputJsonValue; //  NEW
+
 };
+// Add these to your existing types file
+
+export interface MCQGenerationRequest {
+  topic: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
+export interface MCQBatchGenerationRequest {
+  topics: string[];
+  difficulty?: 'easy' | 'medium' | 'hard';
+  count_per_topic?: number;
+}
+
+export interface MCQQuestionData {
+  title: string;
+  description: string;
+  difficulty: string;
+  skillTags: string[];
+  type: 'mcq';
+  options: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface MCQGenerationResponse {
+  success: boolean;
+  question?: MCQQuestionData;
+  metadata?: {
+    topic: string;
+    difficulty: string;
+    type: string;
+    source: string;
+  };
+  error?: string;
+}
+
+export interface MCQBatchGenerationResponse {
+  success: boolean;
+  generated_count?: number;
+  failed_count?: number;
+  questions?: MCQQuestionData[];
+  metadata?: {
+    topics: string[];
+    difficulty: string;
+    type: string;
+    count_per_topic: number;
+  };
+  error?: string;
+}
+
+export interface LeetCodeTestResponse {
+  success: boolean;
+  message: string;
+  version?: string;
+  data?: {
+    question_id: string;
+    title: string;
+    title_slug: string;
+    difficulty: string;
+    topics: string[];
+    description: string;
+    description_preview: string;
+    description_length: number;
+    has_content: boolean;
+    test_cases: string;
+    sample_test_case: string;
+    code_snippets: string[];
+    url: string;
+  };
+  error?: string;
+}
+
+export interface LeetCodeScrapeResponse {
+  success: boolean;
+  message: string;
+  problem?: {
+    title: string;
+    description: string;
+    problemStatement: string;
+    difficulty: string;
+    skillTags: string[];
+    type: string;
+    canonicalSolution: string;
+    testCases: any;
+    metadata: {
+      sourceUrl: string;
+      platform: string;
+      leetcodeId: string;
+      titleSlug: string;
+    };
+  };
+  metadata?: {
+    url: string;
+    title_slug: string;
+    scraped_at: string;
+  };
+  error?: string;
+}
+
+export interface LeetCodeBatchScrapeRequest {
+  urls: string[];
+}
+
+export interface LeetCodeBatchScrapeResponse {
+  success: boolean;
+  message: string;
+  results: {
+    total: number;
+    successful: number;
+    failed: number;
+    saved: number;
+  };
+  questions?: any[];
+  errors?: Array<{
+    url: string;
+    error: string;
+  }>;
+}

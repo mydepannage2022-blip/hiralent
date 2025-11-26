@@ -1,6 +1,6 @@
+// src/components/candidate/dashboard/message/FileMessage.tsx
 "use client";
 import React, { useEffect, useState, useRef } from "react";
-import { Message } from "./mockData";
 import {
   FileText,
   Image as ImageIcon,
@@ -8,12 +8,31 @@ import {
   FileArchive,
   FileSpreadsheet,
   Paperclip,
+  Reply,
+  Trash2,
+  Copy,
+  Heart,
 } from "lucide-react";
-import MessageActions from "./MessageActions";
 import EmojiPicker from "emoji-picker-react";
 
+// Use LegacyMessage type
+interface LegacyMessage {
+  id: string | number;
+  sender: "me" | "them";
+  text: string;
+  type: "text" | "voice" | "image" | "video" | "file" | "location";
+  fileName?: string;
+  timestamp: string;
+  replyTo?: {
+    sender: "me" | "them";
+    text: string;
+    type: "text" | "voice" | "image" | "video" | "file" | "location";
+    fileName?: string;
+  };
+}
+
 interface FileMessageProps {
-  msg: Message;
+  msg: LegacyMessage;
   reaction?: string;
   onReply?: () => void;
   onDelete?: () => void;
@@ -84,8 +103,9 @@ export default function FileMessage({
   const ReplyBubble = () =>
     msg.replyTo ? (
       <div
-        className={`mb-1 p-2 rounded-lg ${isMine ? "bg-blue-50" : "bg-gray-100"
-          } border-l-4 ${isMine ? "border-blue-600" : "border-gray-400"}`}
+        className={`mb-1 p-2 rounded-lg ${
+          isMine ? "bg-blue-50" : "bg-gray-100"
+        } border-l-4 ${isMine ? "border-blue-600" : "border-gray-400"}`}
       >
         <p className="font-medium text-gray-700 text-xs truncate">
           {msg.replyTo.sender === "me" ? "You" : "Them"}
@@ -108,110 +128,145 @@ export default function FileMessage({
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
       <div
-        className={`max-w-[70%] flex flex-col ${isMine ? "items-end" : "items-start"
-          }`}
+        className={`group px-4 py-2 rounded-xl text-sm max-w-[70%] relative ${
+          isMine
+            ? "bg-[#EFF5FF] text-black rounded-br-none"
+            : "bg-[#F9F9F9] text-black rounded-bl-none"
+        }`}
       >
+        {/* Action buttons */}
         <div
-          className={`group flex items-center gap-3 px-3 py-2 rounded-xl relative ${isMine
-              ? "bg-[#EFF5FF] text-black rounded-br-none"
-              : "bg-[#F9F9F9] text-black rounded-bl-none"
-            }`}
+          className={`absolute top-1 ${
+            isMine ? "-left-16" : "-right-16"
+          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
         >
-          {/* Actions */}
-          <div
-            className={`absolute top-1 ${isMine ? "left-1" : "right-1"
-              } opacity-0 group-hover:opacity-100 transition`}
-          >
-            <MessageActions
-              onReply={onReply}
-              onDelete={onDelete}
-              onCopy={onCopy}
-              onOpenReactBar={() => {
-                setShowReactBar((s) => !s);
-                setShowPicker(false);
-              }}
-            />
-          </div>
-
-          {/* Reaction Bar */}
-          {showReactBar && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-gray-200 shadow-lg rounded-full px-2 py-1 z-40 flex items-center gap-2">
-              {emojis.map((e) =>
-                e === "➕" ? (
-                  <div key="plus" className="relative">
-                    <button
-                      className="text-lg px-2 rounded-full hover:bg-gray-100"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        setShowPicker((p) => !p);
-                      }}
-                    >
-                      ➕
-                    </button>
-                    {showPicker && (
-                      <div
-                        ref={pickerRef}
-                        className={`absolute top-8 z-50 shadow-xl rounded-md ${isMine
-                            ? "right-0 translate-x-[10%]"
-                            : "left-0 -translate-x-[10%]"
-                          }`}
-                        style={{ maxWidth: "min(90vw, 320px)" }}
-                      >
-                        <EmojiPicker
-                          onEmojiClick={(emojiData) => {
-                            onReact?.(emojiData.emoji);
-                            setShowPicker(false);
-                            setShowReactBar(false);
-                          }}
-                          height={320}
-                          width={280}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    key={e}
-                    className="text-lg px-1 rounded-full hover:bg-gray-100"
-                    onClick={() => {
-                      onReact?.(e);
-                      setShowReactBar(false);
-                      setShowPicker(false);
-                    }}
-                  >
-                    {e}
-                  </button>
-                )
-              )}
-            </div>
-          )}
-
-          <div
-            className={`flex items-center justify-center w-10 h-10 rounded-lg ${isMine ? "bg-[#DCEBFF]" : "bg-gray-200"
-              }`}
-          >
-            <Icon size={20} />
-          </div>
-
-          <div className="flex flex-col text-sm">
-            <ReplyBubble />
-            <p className="font-medium truncate max-w-[180px]">
-              {msg.fileName ?? "Untitled file"}
-            </p>
-            <p className="text-xs text-gray-500">{fileSize || "Loading..."}</p>
-            <a
-              href={downloadHref}
-              download={msg.fileName}
-              className="text-xs text-blue-600 font-semibold mt-1 underline"
+          <div className="flex gap-1">
+            {onReply && (
+              <button
+                onClick={onReply}
+                className="p-1 rounded-full text-gray-600 hover:text-blue-600 hover:bg-gray-100 transition-all"
+                title="Reply"
+              >
+                <Reply size={12} />
+              </button>
+            )}
+            
+            <button
+              onClick={() => setShowReactBar(!showReactBar)}
+              className="p-1 rounded-full text-gray-600 hover:text-red-500 hover:bg-gray-100 transition-all"
+              title="React"
             >
-              OPEN WITH
-            </a>
+              <Heart size={12} />
+            </button>
+
+            {onCopy && (
+              <button
+                onClick={onCopy}
+                className="p-1 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all"
+                title="Copy"
+              >
+                <Copy size={12} />
+              </button>
+            )}
+
+            {isMine && onDelete && (
+              <button
+                onClick={onDelete}
+                className="p-1 rounded-full text-gray-600 hover:text-red-600 hover:bg-gray-100 transition-all"
+                title="Delete"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         </div>
 
-        {reaction && <div className="text-lg mt-1">{reaction}</div>}
-        <div className="text-[10px] text-gray-500 mt-1 text-right">
-          {msg.timestamp}
+        {/* Reaction picker */}
+        {showReactBar && (
+          <div
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+          >
+            {emojis.map((emoji, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (emoji === "➕") {
+                    setShowPicker(!showPicker);
+                  } else {
+                    onReact?.(emoji);
+                    setShowReactBar(false);
+                  }
+                }}
+                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Emoji picker */}
+        {showPicker && (
+          <div
+            ref={pickerRef}
+            className={`absolute ${
+              isMine ? "left-0" : "right-0"
+            } -top-80 z-20`}
+          >
+            <EmojiPicker
+              onEmojiClick={(emojiObj) => {
+                onReact?.(emojiObj.emoji);
+                setShowPicker(false);
+                setShowReactBar(false);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Reply bubble */}
+        <ReplyBubble />
+
+        {/* File content */}
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${isMine ? "bg-blue-100" : "bg-gray-200"}`}>
+            {/* Fixed: Removed className prop from Icon */}
+            <div className={isMine ? "text-blue-600" : "text-gray-600"}>
+              <Icon size={24} />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate text-sm">
+              {msg.fileName || "Unknown file"}
+            </p>
+            <p className="text-xs text-gray-500">{fileSize}</p>
+          </div>
+
+          <a
+            href={downloadHref}
+            download={msg.fileName}
+            className={`px-3 py-1 rounded text-xs font-medium ${
+              isMine
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-600 text-white hover:bg-gray-700"
+            } transition-colors`}
+          >
+            Download
+          </a>
+        </div>
+
+        {/* Reaction display */}
+        {reaction && (
+          <div className="absolute -bottom-2 -right-2 bg-white border border-gray-200 rounded-full px-1 text-sm">
+            {reaction}
+          </div>
+        )}
+
+        {/* Timestamp */}
+        <div className="flex justify-end mt-2">
+          <span className="text-xs text-gray-500">{msg.timestamp}</span>
         </div>
       </div>
     </div>

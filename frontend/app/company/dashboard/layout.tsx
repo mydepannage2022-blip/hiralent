@@ -13,8 +13,8 @@ import {
   MessageSquareText,
   Briefcase,
   CheckSquare,
-  BookOpen,    // 👈 add for Question Bank
-  Clock,       // 👈 add for Review Queue
+  BookOpen,    // add for Question Bank
+  Clock,       //  add for Review Queue
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";

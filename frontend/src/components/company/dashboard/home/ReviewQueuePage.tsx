@@ -23,6 +23,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   TrendingUp,
+  List,
+  CheckSquare,
+  Lightbulb,
+  Brain,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 
@@ -39,13 +44,22 @@ interface Question {
   skillTags: string[];
   type: "coding" | "mcq" | string;
   canonicalSolution: string;
-  testCases: any; // Changed from TestCase[] to any to handle different formats
+  testCases: any;
   status: "draft" | "pending_review" | "approved" | string;
   aiGenerated?: boolean;
   createdBy?: string;
   source?: string;
   createdAt: string;
   updatedAt: string;
+  // MCQ specific fields
+  options?: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 /* =============================
@@ -63,6 +77,65 @@ const ScrollShadow: React.FC<{ className?: string; children: React.ReactNode }> 
     {children}
   </div>
 );
+
+/* =============================
+   MCQ Option Component
+============================= */
+const McqOption: React.FC<{
+  letter: string;
+  text: string;
+  isCorrect: boolean;
+  index: number;
+}> = ({ letter, text, isCorrect, index }) => {
+  const colors = [
+    "from-purple-500 to-pink-500",
+    "from-blue-500 to-cyan-500",
+    "from-green-500 to-emerald-500",
+    "from-orange-500 to-red-500"
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.1 }}
+      whileHover={{ scale: 1.02, y: -2 }}
+      className={`p-4 rounded-xl border-2 ${
+        isCorrect 
+          ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg shadow-green-100" 
+          : "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <motion.div
+          className={`w-10 h-10 rounded-xl bg-gradient-to-r ${colors[index]} text-white flex items-center justify-center font-bold text-sm shadow-lg ${
+            isCorrect ? "ring-2 ring-green-300 ring-offset-2" : ""
+          }`}
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          animate={isCorrect ? {
+            scale: [1, 1.1, 1],
+            rotate: [0, 5, -5, 0]
+          } : {}}
+          transition={{ duration: 2, repeat: isCorrect ? Infinity : 0 }}
+        >
+          {letter}
+          {isCorrect && (
+            <motion.div
+              className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+            >
+              <CheckSquare className="w-2.5 h-2.5 text-white" />
+            </motion.div>
+          )}
+        </motion.div>
+        <div className="flex-1">
+          <p className="text-sm text-gray-700 leading-relaxed">{text}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 /* =============================
    Pagination Component
@@ -325,6 +398,8 @@ const ReviewQueuePage: React.FC = () => {
       total: minePending.length,
       ai: minePending.filter((q) => q.aiGenerated || (q.source && q.source.startsWith("ai"))).length,
       manual: minePending.filter((q) => !q.aiGenerated && !(q.source && q.source.startsWith("ai"))).length,
+      coding: minePending.filter((q) => q.type === "coding").length,
+      mcq: minePending.filter((q) => q.type === "mcq").length,
     }),
     [minePending]
   );
@@ -386,6 +461,12 @@ const ReviewQueuePage: React.FC = () => {
     if (!selected) return [];
     return normalizeTestCases(selected.testCases);
   }, [selected]);
+
+  // Helper to check if an option is correct
+  const isOptionCorrect = (optionKey: string) => {
+    if (!selected?.correctAnswer) return false;
+    return selected.correctAnswer.split(',').includes(optionKey);
+  };
 
   if (!token || !currentUserId) {
     return (
@@ -467,7 +548,6 @@ const ReviewQueuePage: React.FC = () => {
             <div className="flex items-start gap-3">
               <motion.div
                 className="w-12 h-12 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-lg"
-        
               >
                 <Clock className="w-6 h-6 text-white" />
               </motion.div>
@@ -495,8 +575,8 @@ const ReviewQueuePage: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+          {/* Enhanced Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
             {[
               {
                 key: "pending",
@@ -515,12 +595,20 @@ const ReviewQueuePage: React.FC = () => {
                 badge: "bg-emerald-600",
               },
               {
-                key: "manual",
-                label: "Manual in Queue",
-                value: stats.manual,
-                icon: FileText,
-                card: "bg-gradient-to-br from-slate-500/20 to-slate-600/20 border-slate-300/40",
-                badge: "bg-slate-700",
+                key: "coding",
+                label: "Coding Questions",
+                value: stats.coding,
+                icon: Code,
+                card: "bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border-blue-300/40",
+                badge: "bg-blue-600",
+              },
+              {
+                key: "mcq",
+                label: "MCQ Questions",
+                value: stats.mcq,
+                icon: Brain,
+                card: "bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-300/40",
+                badge: "bg-purple-600",
               },
             ].map((s, i) => (
               <motion.div
@@ -616,7 +704,6 @@ const ReviewQueuePage: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
               >
                 <h2 className="text-xl font-black text-[#0D2A5B] flex items-center gap-2">
-                  {/* Enhanced Eye animation */}
                   <motion.div
                     className="relative w-6 h-6"
                     animate={{
@@ -626,7 +713,6 @@ const ReviewQueuePage: React.FC = () => {
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <Eye className="w-6 h-6 text-[#1B73E8] absolute" />
-                    {/* Blinking effect */}
                     <motion.div
                       className="absolute inset-0"
                       animate={{ opacity: [0, 0.6, 0] }}
@@ -634,7 +720,6 @@ const ReviewQueuePage: React.FC = () => {
                     >
                       <Eye className="w-6 h-6 text-[#1B73E8]" />
                     </motion.div>
-                    {/* Ripple effect */}
                     <motion.div
                       className="absolute inset-0"
                       animate={{
@@ -661,6 +746,8 @@ const ReviewQueuePage: React.FC = () => {
               <div className="space-y-4">
                 {paginatedQuestions.map((q, idx) => {
                   const isAI = !!q.aiGenerated || (q.source && q.source.startsWith("ai"));
+                  const isMCQ = q.type === "mcq";
+                  
                   return (
                     <motion.div
                       key={q.id}
@@ -713,6 +800,24 @@ const ReviewQueuePage: React.FC = () => {
                             ) : (
                               <>
                                 <FileText className="w-3 h-3" /> MANUAL
+                              </>
+                            )}
+                          </motion.span>
+                          <motion.span
+                            whileHover={{ scale: 1.1 }}
+                            className={`${pill} ${
+                              isMCQ 
+                                ? "bg-purple-50 text-purple-700 border-purple-200" 
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}
+                          >
+                            {isMCQ ? (
+                              <>
+                                <Brain className="w-3 h-3" /> MCQ
+                              </>
+                            ) : (
+                              <>
+                                <Code className="w-3 h-3" /> CODING
                               </>
                             )}
                           </motion.span>
@@ -813,9 +918,7 @@ const ReviewQueuePage: React.FC = () => {
 
                     <div className="relative">
                       <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                        <motion.div
-                        
-                        >
+                        <motion.div>
                           <Shield className="w-6 h-6" />
                         </motion.div>
                         Quality Review
@@ -850,164 +953,227 @@ const ReviewQueuePage: React.FC = () => {
                     </div>
                   </motion.div>
 
-                  {/* Canonical Solution */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                  {/* MCQ Options Section */}
+                  {selected.type === "mcq" && selected.options && (
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
                         <motion.div
-                          className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"
+                          className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"
                           whileHover={{ rotate: 360, scale: 1.1 }}
                           transition={{ duration: 0.5 }}
                         >
-                          <Code className="w-5 h-5 text-green-600" />
+                          <Brain className="w-5 h-5 text-purple-600" />
                         </motion.div>
-                        <h3 className="font-bold text-gray-900">Canonical Solution</h3>
+                        <h3 className="font-bold text-gray-900">Multiple Choice Options</h3>
+                        {selected.correctAnswer && (
+                          <motion.span
+                            className="ml-auto px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            Correct: {selected.correctAnswer}
+                          </motion.span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCopy(selected.canonicalSolution || "", "solution");
-                          }}
-                          className="inline-flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
-                          title="Copy solution"
-                        >
-                          {copied === "solution" ? (
-                            <>
-                              <ClipboardCheck className="w-4 h-4" /> Copied
-                            </>
-                          ) : (
-                            <>
-                              <Clipboard className="w-4 h-4" /> Copy
-                            </>
-                          )}
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setShowFullSolution(true)}
-                          className="inline-flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
-                          title="Show full"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                          Show Full
-                        </motion.button>
-                      </div>
-                    </div>
 
-                    <div className="relative rounded-xl border border-gray-200 bg-[#0b1220]">
-                      <ScrollShadow className="max-h-80 overflow-auto custom-scrollbar">
-                        <pre className="text-[12px] leading-relaxed text-[#b5ffcb] whitespace-pre break-words px-4 py-4">
-                          <code>{selected.canonicalSolution}</code>
-                        </pre>
-                      </ScrollShadow>
-                    </div>
-                  </motion.div>
-
-                  {/* Test Cases - ✅ FIXED */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <motion.div
-                        className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"
-                        whileHover={{ rotate: 360, scale: 1.1 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Target className="w-5 h-5 text-purple-600" />
-                      </motion.div>
-                      <h3 className="font-bold text-gray-900">Test Cases</h3>
-                      <motion.span
-                        className="ml-auto px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        {normalizedTestCases.length}
-                      </motion.span>
-                    </div>
-
-                    {normalizedTestCases.length === 0 ? (
-                      <div className="rounded-xl p-4 border border-gray-200 bg-gray-50 text-center">
-                        <p className="text-sm text-gray-600">No test cases available</p>
-                      </div>
-                    ) : (
                       <div className="space-y-3">
-                        {normalizedTestCases
-                          .slice(0, showAllTC ? normalizedTestCases.length : 2)
-                          .map((tc, i) => {
-                            const key: `tc-${number}` = `tc-${i}`;
-                            return (
-                              <motion.div
-                                key={i}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                                whileHover={{ scale: 1.02, x: 5 }}
-                                className="rounded-xl p-4 border border-gray-200 bg-white"
-                              >
-                                <div className="flex items-center gap-2 mb-2">
-                                  <motion.div
-                                    className="w-6 h-6 bg-[#1B73E8] text-white rounded text-xs flex items-center justify-center font-bold"
-                                    whileHover={{ rotate: 360 }}
-                                    transition={{ duration: 0.5 }}
-                                  >
-                                    {i + 1}
-                                  </motion.div>
-                                  <span className="text-xs text-gray-600 font-bold">TEST CASE #{i + 1}</span>
-                                  <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => onCopy(`INPUT:\n${tc.input}\n\nOUTPUT:\n${tc.output}`, key)}
-                                    className="ml-auto inline-flex items-center gap-2 text-xs px-2 py-1 rounded-md bg-white border border-gray-200 hover:bg-gray-50"
-                                  >
-                                    {copied === key ? <ClipboardCheck className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
-                                    {copied === key ? "Copied" : "Copy"}
-                                  </motion.button>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  <div className="bg-white rounded p-2 border border-gray-200">
-                                    <span className="text-gray-500 font-bold block mb-1">INPUT:</span>
-                                    <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
-                                      <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.input}</pre>
-                                    </ScrollShadow>
-                                  </div>
-                                  <div className="bg-white rounded p-2 border border-gray-200">
-                                    <span className="text-green-600 font-bold block mb-1">OUTPUT:</span>
-                                    <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
-                                      <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.output}</pre>
-                                    </ScrollShadow>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            );
-                          })}
+                        {Object.entries(selected.options).map(([key, value], index) => (
+                          <McqOption
+                            key={key}
+                            letter={key}
+                            text={value as string}
+                            isCorrect={isOptionCorrect(key)}
+                            index={index}
+                          />
+                        ))}
                       </div>
-                    )}
 
-                    {normalizedTestCases.length > 2 && (
-                      <div className="mt-3">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setShowAllTC((v) => !v)}
-                          className="text-xs font-semibold text-[#1B73E8] hover:underline"
+                      {/* Explanation */}
+                      {selected.explanation && (
+                        <motion.div
+                          className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
                         >
-                          {showAllTC ? "Show less" : `Show all (${normalizedTestCases.length})`}
-                        </motion.button>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Lightbulb className="w-4 h-4 text-amber-600" />
+                            <span className="text-sm font-bold text-amber-800">Explanation</span>
+                          </div>
+                          <p className="text-sm text-amber-700 leading-relaxed">
+                            {selected.explanation}
+                          </p>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* Canonical Solution (for coding questions) */}
+                  {selected.type === "coding" && (
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <motion.div
+                            className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"
+                            whileHover={{ rotate: 360, scale: 1.1 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Code className="w-5 h-5 text-green-600" />
+                          </motion.div>
+                          <h3 className="font-bold text-gray-900">Canonical Solution</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCopy(selected.canonicalSolution || "", "solution");
+                            }}
+                            className="inline-flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
+                            title="Copy solution"
+                          >
+                            {copied === "solution" ? (
+                              <>
+                                <ClipboardCheck className="w-4 h-4" /> Copied
+                              </>
+                            ) : (
+                              <>
+                                <Clipboard className="w-4 h-4" /> Copy
+                              </>
+                            )}
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowFullSolution(true)}
+                            className="inline-flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
+                            title="Show full"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                            Show Full
+                          </motion.button>
+                        </div>
                       </div>
-                    )}
-                  </motion.div>
+
+                      <div className="relative rounded-xl border border-gray-200 bg-[#0b1220]">
+                        <ScrollShadow className="max-h-80 overflow-auto custom-scrollbar">
+                          <pre className="text-[12px] leading-relaxed text-[#b5ffcb] whitespace-pre break-words px-4 py-4">
+                            <code>{selected.canonicalSolution}</code>
+                          </pre>
+                        </ScrollShadow>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Test Cases (for coding questions) */}
+                  {selected.type === "coding" && (
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <motion.div
+                          className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"
+                          whileHover={{ rotate: 360, scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <Target className="w-5 h-5 text-purple-600" />
+                        </motion.div>
+                        <h3 className="font-bold text-gray-900">Test Cases</h3>
+                        <motion.span
+                          className="ml-auto px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          {normalizedTestCases.length}
+                        </motion.span>
+                      </div>
+
+                      {normalizedTestCases.length === 0 ? (
+                        <div className="rounded-xl p-4 border border-gray-200 bg-gray-50 text-center">
+                          <p className="text-sm text-gray-600">No test cases available</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {normalizedTestCases
+                            .slice(0, showAllTC ? normalizedTestCases.length : 2)
+                            .map((tc, i) => {
+                              const key: `tc-${number}` = `tc-${i}`;
+                              return (
+                                <motion.div
+                                  key={i}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: i * 0.1 }}
+                                  whileHover={{ scale: 1.02, x: 5 }}
+                                  className="rounded-xl p-4 border border-gray-200 bg-white"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <motion.div
+                                      className="w-6 h-6 bg-[#1B73E8] text-white rounded text-xs flex items-center justify-center font-bold"
+                                      whileHover={{ rotate: 360 }}
+                                      transition={{ duration: 0.5 }}
+                                    >
+                                      {i + 1}
+                                    </motion.div>
+                                    <span className="text-xs text-gray-600 font-bold">TEST CASE #{i + 1}</span>
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => onCopy(`INPUT:\n${tc.input}\n\nOUTPUT:\n${tc.output}`, key)}
+                                      className="ml-auto inline-flex items-center gap-2 text-xs px-2 py-1 rounded-md bg-white border border-gray-200 hover:bg-gray-50"
+                                    >
+                                      {copied === key ? <ClipboardCheck className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
+                                      {copied === key ? "Copied" : "Copy"}
+                                    </motion.button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                    <div className="bg-white rounded p-2 border border-gray-200">
+                                      <span className="text-gray-500 font-bold block mb-1">INPUT:</span>
+                                      <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
+                                        <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.input}</pre>
+                                      </ScrollShadow>
+                                    </div>
+                                    <div className="bg-white rounded p-2 border border-gray-200">
+                                      <span className="text-green-600 font-bold block mb-1">OUTPUT:</span>
+                                      <ScrollShadow className="max-h-40 overflow-auto custom-scrollbar">
+                                        <pre className="text-gray-800 font-mono whitespace-pre-wrap break-words">{tc.output}</pre>
+                                      </ScrollShadow>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {normalizedTestCases.length > 2 && (
+                        <div className="mt-3">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowAllTC((v) => !v)}
+                            className="text-xs font-semibold text-[#1B73E8] hover:underline"
+                          >
+                            {showAllTC ? "Show less" : `Show all (${normalizedTestCases.length})`}
+                          </motion.button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
 
                   {/* Actions */}
                   <motion.div

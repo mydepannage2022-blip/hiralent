@@ -1,9 +1,11 @@
+// backend/src/routes/admin.routes.ts
 import express from 'express';
 import { adminSecurityStack } from '../middlewares/adminAuth.middleware';
 import {
   getPendingVerificationsController,
   getVerificationStatsController,
   getCompanyVerificationDetailsController,
+  getPresignedDocumentUrlController, // ✅ NEW
   approveVerificationController,
   rejectVerificationController
 } from '../controller/superadmin/admin.verification.controller';
@@ -21,6 +23,9 @@ router.get('/verifications/pending', getPendingVerificationsController);
 
 // Get detailed info for specific company
 router.get('/verifications/:company_id', getCompanyVerificationDetailsController);
+
+// ✅ NEW: Get presigned URL for a document
+router.get('/verifications/:company_id/documents/:document_id/url', getPresignedDocumentUrlController);
 
 // Approve company verification
 router.post('/verifications/approve/:company_id', approveVerificationController);

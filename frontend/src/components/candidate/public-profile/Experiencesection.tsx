@@ -28,7 +28,7 @@ export default function ExperienceSection({ experience }: ExperienceSectionProps
         <div className="bg-white rounded-lg p-6">
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Work Experience</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Work Experience</h3>
                 <div className="text-right">
                     <div className="text-sm text-gray-600">Total Experience</div>
                     <div className="text-lg font-semibold text-blue-600">
@@ -48,9 +48,9 @@ export default function ExperienceSection({ experience }: ExperienceSectionProps
                         
                         <div className="flex gap-4">
                             {/* Timeline dot */}
-                            <div className="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                            {/* <div className="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                 <Building2 className="w-4 h-4 text-white" />
-                            </div>
+                            </div> */}
                             
                             {/* Experience Content */}
                             <div className="flex-1 bg-gray-50 rounded-lg p-6">
@@ -144,9 +144,9 @@ export default function ExperienceSection({ experience }: ExperienceSectionProps
             {/* Summary */}
             <div className="mt-8 bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    {/* <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-white" />
-                    </div>
+                    </div> */}
                     <div>
                         <h4 className="font-semibold text-gray-900">Professional Summary</h4>
                         <p className="text-sm text-gray-600">

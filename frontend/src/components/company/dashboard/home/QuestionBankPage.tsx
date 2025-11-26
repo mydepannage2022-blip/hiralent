@@ -37,9 +37,6 @@ import {
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "./QuestionEditor";
 
-/* =============================
-   Types
-============================= */
 interface Question {
   id: string;
   title: string;
@@ -54,24 +51,18 @@ interface Question {
   type?: "coding" | "mcq" | string;
   canonicalSolution?: string;
   testCases?: Array<{ input: string; output: string }>;
+  options?: { A: string; B: string; C: string; D: string };
+  correctAnswer?: string;
+  explanation?: string;
   views?: number;
   submissions?: number;
   successRate?: number;
 }
 
-/* =============================
-   Little UI helpers
-============================= */
-const pill =
-  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border";
-const glassCard =
-  "relative rounded-2xl border border-white/10 bg-white/60 backdrop-blur-md shadow-[0_10px_30px_rgba(13,31,77,0.10)]";
-const panel =
-  "rounded-2xl border border-gray-200/70 bg-white shadow-[0_10px_40px_rgba(16,24,40,0.06)]";
+const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border";
+const glassCard = "relative rounded-xl border border-white/10 bg-white/60 backdrop-blur-md shadow-[0_8px_24px_rgba(13,31,77,0.08)]";
+const panel = "rounded-xl border border-gray-200/70 bg-white shadow-[0_8px_32px_rgba(16,24,40,0.05)]";
 
-/* =============================
-   Status control (single selector)
-============================= */
 const StatusSelect: React.FC<{
   value: "pending_review" | "approved" | "rejected";
   onChange: (next: "pending_review" | "approved" | "rejected") => void;
@@ -82,7 +73,7 @@ const StatusSelect: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value as any)}
       className={`${
-        compact ? "px-2 py-1 text-xs rounded-md" : "px-3 py-2 rounded-lg text-sm"
+        compact ? "px-1.5 py-0.5 text-[10px] rounded-md" : "px-2.5 py-1.5 rounded-lg text-[11px]"
       } border border-gray-200 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all`}
       title="Change status"
     >
@@ -93,9 +84,6 @@ const StatusSelect: React.FC<{
   );
 };
 
-/* =============================
-   AI Generate Modal (single)
-============================= */
 const AiGenerateModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -130,97 +118,117 @@ const AiGenerateModal: React.FC<{
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
         className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         onClick={onClose}
       />
-      {/* Card */}
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-xl overflow-hidden`}
+        className={`${panel} relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col`}
       >
-        {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white">
+        <div className={`px-4 py-3 ${
+          type === "mcq" 
+            ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600" 
+            : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"
+        } text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-                <Zap className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                {type === "mcq" ? (
+                  <FileText className="w-3.5 h-3.5 text-white" />
+                ) : (
+                  <Zap className="w-3.5 h-3.5 text-white" />
+                )}
               </div>
               <div>
-                <h3 className="text-lg font-bold">Generate AI Question</h3>
-                <p className="text-xs text-blue-100">Guide the AI for better results.</p>
+                <h3 className="text-sm font-bold">
+                  Generate AI {type === "mcq" ? "MCQ" : "Coding"}
+                </h3>
+                <p className="text-[9px] text-blue-100">
+                  {type === "mcq" ? "Multiple-choice question" : "Coding challenge"}
+                </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5 text-white" />
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close">
+              <X className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
           <div>
-            <label className="text-xs font-semibold text-gray-800">Topic *</label>
+            <label className="text-[10px] font-semibold text-gray-800">Topic *</label>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Java loops, React hooks, SQL joins…"
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={type === "mcq" ? "e.g., accounting, marketing..." : "e.g., Java loops, React hooks..."}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-800">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+          <div>
+            <label className="text-[10px] font-semibold text-gray-800 mb-1 block">Question Type *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setType("coding")}
+                className={`px-3 py-2 rounded-lg border-2 font-semibold text-[11px] transition-all ${
+                  type === "coding"
+                    ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8] shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-800">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                <div className="flex flex-col items-center gap-0.5">
+                  <Code2 className="w-4 h-4" />
+                  <span>Coding</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setType("mcq")}
+                className={`px-3 py-2 rounded-lg border-2 font-semibold text-[11px] transition-all ${
+                  type === "mcq"
+                    ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
               >
-                <option value="coding">Coding</option>
-                <option value="mcq">Multiple Choice</option>
-              </select>
+                <div className="flex flex-col items-center gap-0.5">
+                  <FileText className="w-4 h-4" />
+                  <span>MCQ</span>
+                </div>
+              </button>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-800">Tags (comma separated)</label>
+            <label className="text-[10px] font-semibold text-gray-800">Difficulty</label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as any)}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold text-gray-800">
+              Tags {type === "mcq" && <span className="text-gray-500 font-normal">(optional)</span>}
+            </label>
             <input
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="e.g., java, arrays, loops"
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={type === "mcq" ? "e.g., finance, business" : "e.g., java, arrays"}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1 flex flex-wrap gap-1">
                 {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100"
-                  >
-                    #{t}
-                  </span>
+                  <span key={t} className="px-2 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100">#{t}</span>
                 ))}
               </div>
             )}
@@ -228,58 +236,50 @@ const AiGenerateModal: React.FC<{
 
           {type === "coding" && (
             <div>
-              <label className="text-xs font-semibold text-gray-800">
-                Number of sample test cases
-              </label>
+              <label className="text-[10px] font-semibold text-gray-800">Test cases</label>
               <input
                 type="number"
                 min={2}
                 max={8}
                 value={testCaseCount}
-                onChange={(e) => {
-                  const n = Math.max(2, Math.min(8, +e.target.value || 2));
-                  setTestCaseCount(n);
-                }}
-                className="mt-2 w-28 rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                onChange={(e) => setTestCaseCount(Math.max(2, Math.min(8, +e.target.value || 2)))}
+                className="mt-1 w-20 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
               />
-              <p className="text-[11px] text-gray-500 mt-1">
-                AI will try to include at least this many examples.
-              </p>
+              <p className="text-[9px] text-gray-500 mt-0.5">Number of sample test cases</p>
             </div>
           )}
+
+          <div className={`p-2 rounded-lg border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
+            <div className="flex items-start gap-1.5">
+              <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
+              <div className={`text-[9px] leading-relaxed ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}>
+                <span className="font-bold">AI-Powered:</span> {type === "mcq" ? "MCQ with 4 options & correct answer" : "Complete challenge with test cases"}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || generating}
             onClick={() => onGenerate({ topic, difficulty, type, tags, testCaseCount })}
-            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
+            className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] text-white transition-all ${
               generating || !canSubmit
-                ? "bg-[#1B73E8]/60 cursor-not-allowed"
+                ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
+                : type === "mcq"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
                 : "bg-[#1B73E8] hover:bg-[#1557B0] shadow"
             }`}
           >
-            {generating ? "Generating…" : "Generate"}
+            {generating ? "Generating…" : `Generate`}
           </button>
         </div>
 
-        {/* Inline generating overlay */}
         <AnimatePresence>
           {generating && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
-            >
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+              <div className={`w-8 h-8 border-3 ${type === "mcq" ? "border-purple-200 border-t-purple-600" : "border-blue-200 border-t-[#1B73E8]"} rounded-full animate-spin`} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -295,18 +295,16 @@ const AiBatchModal: React.FC<{
     topics: string[];
     difficulty: "easy" | "medium" | "hard";
     countPerTopic: number;
+    type: "coding" | "mcq";
   }) => Promise<void>;
   generating: boolean;
 }> = ({ open, onClose, onGenerate, generating }) => {
   const [topicsInput, setTopicsInput] = useState<string>("");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [countPerTopic, setCountPerTopic] = useState<number>(2);
+  const [type, setType] = useState<"coding" | "mcq">("coding");
 
-  const topics = topicsInput
-    .split(/[\n,]/g)
-    .map(t => t.trim())
-    .filter(Boolean);
-
+  const topics = topicsInput.split(/[\n,]/g).map(t => t.trim()).filter(Boolean);
   const canSubmit = topics.length > 0 && countPerTopic >= 1;
 
   useEffect(() => {
@@ -314,121 +312,101 @@ const AiBatchModal: React.FC<{
       setTopicsInput("");
       setDifficulty("medium");
       setCountPerTopic(2);
+      setType("coding");
     }
   }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <motion.div
-        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-xl overflow-hidden`}
-      >
-        <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} />
+      <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`${panel} relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col`}>
+        <div className={`px-4 py-3 ${type === "mcq" ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600" : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"} text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Generate Batch (AI)</h3>
-                <p className="text-xs text-blue-100">Matches API: topics[], difficulty, countPerTopic</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center"><Sparkles className="w-3.5 h-3.5 text-white" /></div>
+              <div><h3 className="text-sm font-bold">Generate Batch {type === "mcq" ? "MCQs" : "Coding"}</h3><p className="text-[9px] text-blue-100">Multiple topics, bulk generation</p></div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" aria-label="Close">
-              <X className="w-5 h-5 text-white" />
-            </button>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
           </div>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
           <div>
-            <label className="text-xs font-semibold text-gray-800">
-              Topics * <span className="font-normal text-gray-500">(comma or newline separated)</span>
-            </label>
+            <label className="text-[10px] font-semibold text-gray-800 mb-1 block">Question Type *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setType("coding")} className={`px-3 py-1.5 rounded-lg border-2 font-semibold text-[11px] transition-all ${type === "coding" ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <div className="flex items-center justify-center gap-1"><Code2 className="w-4 h-4" />Coding</div>
+              </button>
+              <button onClick={() => setType("mcq")} className={`px-3 py-1.5 rounded-lg border-2 font-semibold text-[11px] transition-all ${type === "mcq" ? "border-purple-600 bg-purple-50 text-purple-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <div className="flex items-center justify-center gap-1"><FileText className="w-4 h-4" />MCQ</div>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold text-gray-800">Topics * <span className="font-normal text-gray-500">(comma or newline)</span></label>
             <textarea
               value={topicsInput}
               onChange={(e) => setTopicsInput(e.target.value)}
-              placeholder={`python, javascript, java\n(or one per line)`}
-              rows={4}
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              placeholder={type === "mcq" ? `accounting, marketing, nursing` : `python, javascript, java`}
+              rows={3}
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {topics.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1 flex flex-wrap gap-1">
                 {topics.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100">
-                    #{t}
-                  </span>
+                  <span key={t} className={`px-2 py-0.5 rounded text-[9px] font-medium border ${type === "mcq" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-[#1B73E8] border-blue-100"}`}>#{t}</span>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-gray-800">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as any)}
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8]"
-              >
+              <label className="text-[10px] font-semibold text-gray-800">Difficulty</label>
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]">
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
             </div>
-
             <div>
-              <label className="text-xs font-semibold text-gray-800">Count per topic</label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={countPerTopic}
-                onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))}
-                className="mt-2 w-28 rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#1B73E8]"
-              />
+              <label className="text-[10px] font-semibold text-gray-800">Per topic</label>
+              <input type="number" min={1} max={20} value={countPerTopic} onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]" />
+            </div>
+          </div>
+
+          <div className={`p-2 rounded-lg border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
+            <div className="flex items-start gap-1.5">
+              <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
+              <div className={`text-[9px] leading-relaxed ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}><span className="font-bold">Total:</span> {countPerTopic} × {topics.length} = {topics.length * countPerTopic} questions</div>
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || generating}
-            onClick={() => onGenerate({ topics, difficulty, countPerTopic })}
-            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
+            onClick={() => onGenerate({ topics, difficulty, countPerTopic, type })}
+            className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] text-white transition-all ${
               generating || !canSubmit
-                ? "bg-[#1B73E8]/60 cursor-not-allowed"
+                ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
+                : type === "mcq"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
                 : "bg-[#1B73E8] hover:bg-[#1557B0] shadow"
             }`}
           >
-            {generating ? "Generating…" : "Generate Batch"}
+            {generating ? "Generating…" : `Generate ${topics.length * countPerTopic}`}
           </button>
         </div>
 
         <AnimatePresence>
           {generating && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
-            >
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+              <div className={`w-8 h-8 border-3 ${type === "mcq" ? "border-purple-200 border-t-purple-600" : "border-blue-200 border-t-[#1B73E8]"} rounded-full animate-spin`} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -437,9 +415,6 @@ const AiBatchModal: React.FC<{
   );
 };
 
-/* =============================
-   Pagination Component
-============================= */
 const Pagination: React.FC<{
   currentPage: number;
   totalPages: number;
@@ -452,310 +427,280 @@ const Pagination: React.FC<{
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
     } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i);
-        pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-      } else {
-        pages.push(1);
-        pages.push("...");
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push("...");
-        pages.push(totalPages);
-      }
+      pages.push(1);
+      pages.push("...");
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
     }
-
     return pages;
   };
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50/30">
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{startItem}</span> to{" "}
-        <span className="font-semibold text-gray-900">{endItem}</span> of{" "}
-        <span className="font-semibold text-gray-900">{totalItems}</span> questions
+    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50/30">
+      <div className="text-[11px] text-gray-600">
+        Showing <span className="font-semibold text-gray-900">{startItem}</span> to <span className="font-semibold text-gray-900">{endItem}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> questions
       </div>
-
-      <div className="flex items-center gap-2">
-        {/* First page */}
-        <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          title="First page"
-        >
-          <ChevronsLeft className="w-4 h-4 text-gray-600" />
-        </button>
-
-        {/* Previous */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          title="Previous page"
-        >
-          <ChevronLeft className="w-4 h-4 text-gray-600" />
-        </button>
-
-        {/* Page numbers */}
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="First page"><ChevronsLeft className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Previous page"><ChevronLeft className="w-3.5 h-3.5 text-gray-600" /></button>
         {getPageNumbers().map((page, idx) => (
           <React.Fragment key={idx}>
             {page === "..." ? (
-              <span className="px-3 py-2 text-gray-400">...</span>
+              <span className="px-2 py-1.5 text-gray-400 text-[11px]">...</span>
             ) : (
-              <button
-                onClick={() => onPageChange(page as number)}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  currentPage === page
-                    ? "bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white shadow-md shadow-blue-200"
-                    : "border border-gray-200 bg-white hover:bg-blue-50 text-gray-700"
-                }`}
-              >
-                {page}
-              </button>
+              <button onClick={() => onPageChange(page as number)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${currentPage === page ? "bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white shadow-md shadow-blue-200" : "border border-gray-200 bg-white hover:bg-blue-50 text-gray-700"}`}>{page}</button>
             )}
           </React.Fragment>
         ))}
-
-        {/* Next */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          title="Next page"
-        >
-          <ChevronRight className="w-4 h-4 text-gray-600" />
-        </button>
-
-        {/* Last page */}
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          title="Last page"
-        >
-          <ChevronsRight className="w-4 h-4 text-gray-600" />
-        </button>
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Next page"><ChevronRight className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Last page"><ChevronsRight className="w-3.5 h-3.5 text-gray-600" /></button>
       </div>
     </div>
   );
 };
-/* =============================
-   URL Scraper Modal
-============================= */
+
 const UrlScraperModal: React.FC<{
   open: boolean;
   onClose: () => void;
-  onScrape: (urls: string[], platform: 'stackoverflow' | 'leetcode') => Promise<void>;
+  onScrape: (urls: string[], platform: "stackoverflow" | "leetcode" | "hackerrank") => Promise<void>;
   scraping: boolean;
-}> = ({ open, onClose, onScrape, scraping }) => {
+  token?: string | null;
+}> = ({ open, onClose, onScrape, scraping, token }) => {
   const [urlsInput, setUrlsInput] = useState("");
-  const [platform, setPlatform] = useState<'stackoverflow' | 'leetcode'>('stackoverflow');
+  const [platform, setPlatform] = useState<"stackoverflow" | "leetcode" | "hackerrank">("leetcode");
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
 
-  const urls = urlsInput
-    .split('\n')
-    .map(u => u.trim())
-    .filter(u => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://')));
-
+  const urls = urlsInput.split("\n").map((u) => u.trim()).filter((u) => u.length > 0 && (u.startsWith("http://") || u.startsWith("https://")));
   const canSubmit = urls.length > 0;
 
   useEffect(() => {
     if (!open) {
       setUrlsInput("");
-      setPlatform('stackoverflow');
+      setPlatform("leetcode");
+      setTestResult(null);
+      setTesting(false);
     }
   }, [open]);
 
   const handleAddSampleUrls = () => {
-    const samples = platform === 'stackoverflow' 
+    const samples = platform === "stackoverflow"
       ? `https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
 https://stackoverflow.com/questions/419163/what-does-if-name-main-do
 https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator`
-      : `https://leetcode.com/problems/two-sum/
+      : platform === "leetcode"
+      ? `https://leetcode.com/problems/two-sum/
 https://leetcode.com/problems/add-two-numbers/
-https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
-    
+https://leetcode.com/problems/longest-substring-without-repeating-characters/
+https://leetcode.com/problems/reverse-integer/
+https://leetcode.com/problems/palindrome-number/`
+      : `https://www.hackerrank.com/challenges/simple-array-sum/problem
+https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
     setUrlsInput(samples);
+  };
+
+  const handleTestFirstUrl = async () => {
+    if (urls.length === 0 || platform !== "leetcode") return;
+    
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ url: urls[0] }),
+      });
+      
+      const data = await response.json();
+      setTestResult(data);
+    } catch (error: any) {
+      setTestResult({ success: false, error: error.message });
+    } finally {
+      setTesting(false);
+    }
   };
 
   if (!open) return null;
 
+  const platformLabel = platform === "stackoverflow" ? "StackOverflow" : platform === "leetcode" ? "LeetCode" : "HackerRank";
+  const exampleDomain = platform === "stackoverflow" ? "stackoverflow.com/questions/..." : platform === "leetcode" ? "leetcode.com/problems/..." : "hackerrank.com/challenges/...";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <motion.div
-        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-2xl overflow-hidden`}
-      >
-        {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white">
+      <motion.div className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} />
+      <motion.div initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`${panel} relative w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col`}>
+        <div className="px-5 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-                <Link className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Import from Custom URLs</h3>
-                <p className="text-xs text-pink-100">Paste specific question URLs to scrape</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner"><Link className="w-4 h-4 text-white" /></div>
+              <div><h3 className="text-base font-bold">Import from Custom URLs</h3><p className="text-[10px] text-pink-100">Paste specific question URLs to scrape</p></div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          {/* Platform selector */}
+        <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
           <div>
-            <label className="text-xs font-semibold text-gray-800 mb-2 block">
-              Select Platform
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPlatform('stackoverflow')}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
-                  platform === 'stackoverflow'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Code2 className="w-4 h-4" />
-                  StackOverflow
-                </div>
+            <label className="text-[11px] font-semibold text-gray-800 mb-1.5 block">Select Platform</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button onClick={() => { setPlatform("leetcode"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "leetcode" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />LeetCode</div>
               </button>
-              <button
-                onClick={() => setPlatform('leetcode')}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
-                  platform === 'leetcode'
-                    ? 'border-amber-500 bg-amber-50 text-amber-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Code2 className="w-4 h-4" />
-                  LeetCode
-                </div>
+              <button onClick={() => { setPlatform("stackoverflow"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "stackoverflow" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />StackOverflow</div>
+              </button>
+              <button onClick={() => { setPlatform("hackerrank"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "hackerrank" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />HackerRank</div>
               </button>
             </div>
           </div>
 
-          {/* URL Input */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-gray-800">
-                Question URLs <span className="text-gray-500 font-normal">(one per line)</span>
-              </label>
-              <button
-                onClick={handleAddSampleUrls}
-                className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"
-              >
-                <Copy className="w-3 h-3" />
-                Add Sample URLs
-              </button>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-semibold text-gray-800">Question URLs <span className="text-gray-500 font-normal">(one per line)</span></label>
+              <div className="flex items-center gap-2">
+                {platform === "leetcode" && urls.length > 0 && (
+                  <button
+                    onClick={handleTestFirstUrl}
+                    disabled={testing}
+                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-all disabled:opacity-50"
+                  >
+                    {testing ? (
+                      <><span className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />Testing...</>
+                    ) : (
+                      <><Eye className="w-3 h-3" />Test First URL</>
+                    )}
+                  </button>
+                )}
+                <button onClick={handleAddSampleUrls} className="text-[10px] font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"><Copy className="w-3 h-3" />Add Sample URLs</button>
+              </div>
             </div>
             <textarea
               value={urlsInput}
               onChange={(e) => setUrlsInput(e.target.value)}
-              placeholder={`Paste ${platform === 'stackoverflow' ? 'StackOverflow' : 'LeetCode'} question URLs here...\n\nExample:\nhttps://${platform === 'stackoverflow' ? 'stackoverflow.com/questions/...' : 'leetcode.com/problems/...'}`}
-              rows={8}
-              className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              placeholder={`Paste ${platformLabel} question URLs here...\n\nExample:\nhttps://${exampleDomain}`}
+              rows={6}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2.5 text-[11px] font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
             />
-            
             {urls.length > 0 && (
-              <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span className="font-semibold text-green-900">
-                    {urls.length} valid URL{urls.length > 1 ? 's' : ''} detected
-                  </span>
-                </div>
-                <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+              <div className="mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-1.5 text-[11px]"><CheckCircle2 className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-900">{urls.length} valid URL{urls.length > 1 ? "s" : ""} detected</span></div>
+                <div className="mt-1.5 max-h-24 overflow-y-auto space-y-0.5">
                   {urls.map((url, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-green-700">
-                      <div className="w-1 h-1 bg-green-500 rounded-full" />
-                      <span className="truncate">{url}</span>
-                    </div>
+                    <div key={idx} className="flex items-center gap-1.5 text-[10px] text-green-700"><div className="w-1 h-1 bg-green-500 rounded-full" /><span className="truncate">{url}</span></div>
                   ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Info Banner */}
-          <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-            <div className="flex items-start gap-2">
-              <ExternalLink className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-[11px] text-blue-900 leading-relaxed">
-                <span className="font-bold">How it works:</span> The system will visit each URL, 
-                extract the question content, and save it to your database. Make sure the URLs 
-                are publicly accessible.
+          {/* Test Result Preview (LeetCode only) */}
+          {platform === "leetcode" && testResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`p-3 rounded-xl border-2 ${testResult.success ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}
+            >
+              {testResult.success ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="font-bold text-green-800 text-[11px]">Test Successful!</span>
+                  </div>
+                  <div className="space-y-1.5 text-[10px]">
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold text-gray-700 w-16">Title:</span>
+                      <span className="text-gray-900 font-medium">{testResult.data?.title}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold text-gray-700 w-16">Difficulty:</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        testResult.data?.difficulty === "Easy" ? "bg-green-100 text-green-700" :
+                        testResult.data?.difficulty === "Medium" ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>{testResult.data?.difficulty}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold text-gray-700 w-16">Topics:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {testResult.data?.topics?.slice(0, 5).map((topic: string) => (
+                          <span key={topic} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-medium">{topic}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[9px] text-green-600 mt-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{testResult.data?.description_length} characters ready to import</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-red-700">
+                  <XCircle className="w-4 h-4" />
+                  <span className="font-bold text-[11px]">Test Failed: {testResult.error || "Unknown error"}</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          <div className="p-2 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="flex items-start gap-1.5">
+              <ExternalLink className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-[10px] text-blue-900 leading-relaxed">
+                <span className="font-bold">How it works:</span> {platform === "leetcode" 
+                  ? "The system will fetch each LeetCode problem via GraphQL API, extract title, description, difficulty, topics, and test cases."
+                  : "The system will visit each URL, extract the question content, and save it to your database."}
               </div>
             </div>
           </div>
+
+          {platform === "leetcode" && (
+            <div className="p-2 bg-amber-50 rounded-xl border border-amber-200">
+              <div className="flex items-start gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-[10px] text-amber-900 leading-relaxed">
+                  <span className="font-bold">Note:</span> Only free problems can be scraped. Premium problems will be skipped. Rate limiting (1.5s/request) is applied automatically.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2">
+          <button onClick={onClose} className="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || scraping}
             onClick={() => onScrape(urls, platform)}
-            className={`px-5 py-2 rounded-xl font-semibold text-white transition-all ${
-              scraping || !canSubmit
-                ? "bg-purple-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"
-            }`}
+            className={`px-4 py-1.5 rounded-xl font-semibold text-[11px] text-white transition-all ${scraping || !canSubmit ? "bg-purple-400 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"}`}
           >
             {scraping ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                Scraping...
-              </span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Scraping...</span>
             ) : (
-              `Scrape ${urls.length} URL${urls.length > 1 ? 's' : ''}`
+              `Scrape ${urls.length} URL${urls.length > 1 ? "s" : ""}`
             )}
           </button>
         </div>
 
-        {/* Loading overlay */}
         <AnimatePresence>
           {scraping && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
-            >
-              <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+              <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -764,47 +709,26 @@ https://leetcode.com/problems/longest-substring-without-repeating-characters/`;
   );
 };
 
-/* =============================
-   Main Page
-============================= */
 const QuestionBankPage: React.FC = () => {
   const { user, token } = useAuth();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchGenerating, setBatchGenerating] = useState(false);
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Filters
-  const [filters, setFilters] = useState<{
-    difficulty: string;
-    status: string;
-    search: string;
-    source: "all" | "ai" | "manual";
-  }>({
-    difficulty: "",
-    status: "",
-    search: "",
-    source: "all",
-  });
-
+  const [filters, setFilters] = useState<{ difficulty: string; status: string; search: string; source: "all" | "ai" | "manual"; type: string }>({ difficulty: "", status: "", search: "", source: "all", type: "" });
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [showSourceSelector, setShowSourceSelector] = useState(false);
-  const [showUrlScraper, setShowUrlScraper] = useState(false); // NOUVEAU
-  const [urlScraperPlatform, setUrlScraperPlatform] = useState<'stackoverflow' | 'leetcode'>('stackoverflow'); // NOUVEAU
+  const [showUrlScraper, setShowUrlScraper] = useState(false);
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",
@@ -824,46 +748,27 @@ const QuestionBankPage: React.FC = () => {
     setCurrentUserId(user?.user_id ?? null);
   }, [user]);
 
-const loadQuestions = async () => {
-  setLoading(true);
-  try {
-    // ✅ Demander jusqu'à 1000 questions
-    const response = await fetch("http://localhost:5000/api/questions?limit=1000&page=1", { 
-      headers: authHeaders() 
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  const loadQuestions = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/questions?limit=1000&page=1", { headers: authHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      let loadedQuestions = [];
+      if (data?.success && data.questions) loadedQuestions = data.questions;
+      else if (Array.isArray(data)) loadedQuestions = data;
+      else if (data?.data && Array.isArray(data.data)) loadedQuestions = data.data;
+      setQuestions(loadedQuestions);
+    } catch (error) {
+      console.error("Failed to load questions:", error);
+      setQuestions([]);
     }
-    
-    const data = await response.json();
-    
-    let loadedQuestions = [];
-    
-    if (data?.success && data.questions) {
-      loadedQuestions = data.questions;
-    } else if (Array.isArray(data)) {
-      loadedQuestions = data;
-    } else if (data?.data && Array.isArray(data.data)) {
-      loadedQuestions = data.data;
-    }
-    
-    console.log('📥 Loaded questions:', loadedQuestions.length);
-    setQuestions(loadedQuestions);
-  } catch (error) {
-    console.error("❌ Failed to load questions:", error);
-    setQuestions([]);
-  }
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
-  useEffect(() => {
-    loadQuestions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  useEffect(() => { loadQuestions(); }, [token]);
 
   const mine = currentUserId ? questions.filter((q) => q.createdBy === currentUserId) : [];
-
   const myStats = {
     total: mine.length,
     approved: mine.filter((q) => q.status === "approved").length,
@@ -872,322 +777,278 @@ const loadQuestions = async () => {
     rejected: mine.filter((q) => q.status === "rejected").length,
   };
 
-  // Filter questions
   const filteredQuestions = mine.filter((q) => {
     const s = filters.search.trim().toLowerCase();
-    const matchSearch =
-      !s || q.title.toLowerCase().includes(s) || (q.skillTags && q.skillTags.some((tag) => tag.toLowerCase().includes(s)));
+    const matchSearch = !s || q.title.toLowerCase().includes(s) || (q.skillTags && q.skillTags.some((tag) => tag.toLowerCase().includes(s)));
     const matchDifficulty = !filters.difficulty || q.difficulty === filters.difficulty;
     const matchStatus = !filters.status || q.status === filters.status;
+    const matchType = !filters.type || q.type === filters.type;
     const isAI = !!q.aiGenerated || (q.source && q.source.startsWith("ai"));
     const matchSource = filters.source === "all" ? true : filters.source === "ai" ? isAI : !isAI;
-    return matchSearch && matchDifficulty && matchStatus && matchSource;
+    return matchSearch && matchDifficulty && matchStatus && matchType && matchSource;
   });
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
-  const paginatedQuestions = filteredQuestions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, itemsPerPage]);
+  useEffect(() => { setCurrentPage(1); }, [filters, itemsPerPage]);
 
-  const changeStatus = async (
-    q: Question,
-    next: "pending_review" | "approved" | "rejected"
-  ) => {
+  const changeStatus = async (q: Question, next: "pending_review" | "approved" | "rejected") => {
     if (!requireAuth()) return;
     try {
       let ok = false;
       if (next === "approved") {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/approve`, {
-          method: "PATCH",
-          headers: authHeaders(),
-        });
-        const data = await r.json();
-        ok = !!data.success;
+        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/approve`, { method: "PATCH", headers: authHeaders() });
+        ok = !!(await r.json()).success;
       } else if (next === "rejected") {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/reject`, {
-          method: "PATCH",
-          headers: authHeaders(),
-        });
-        const data = await r.json();
-        ok = !!data.success;
+        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/reject`, { method: "PATCH", headers: authHeaders() });
+        ok = !!(await r.json()).success;
       } else {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}`, {
-          method: "PUT",
-          headers: authHeaders(),
-          body: JSON.stringify({ status: "pending_review" }),
-        });
-        const data = await r.json();
-        ok = !!data.success;
+        const r = await fetch(`http://localhost:5000/api/questions/${q.id}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ status: "pending_review" }) });
+        ok = !!(await r.json()).success;
       }
-
-      if (ok) {
-        setQuestions((prev) =>
-          prev.map((it) => (it.id === q.id ? { ...it, status: next } : it))
-        );
-      } else {
-        alert("Failed to update status");
-      }
+      if (ok) setQuestions((prev) => prev.map((it) => (it.id === q.id ? { ...it, status: next } : it)));
+      else alert("Failed to update status");
     } catch (e) {
       console.error(e);
       alert("Network error while updating status");
     }
   };
 
-  const approveQuestion = async (questionId: string) => {
+  const handleDeleteQuestion = async (questionId: string) => {
     if (!requireAuth()) return;
+    if (!window.confirm("Are you sure you want to delete this question?\n\nThis action cannot be undone.")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/questions/${questionId}/approve`, {
-        method: "PATCH",
-        headers: authHeaders(),
-      });
+      const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, { method: "DELETE", headers: authHeaders() });
       const data = await response.json();
       if (data.success) {
-        setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, status: "approved" } : q)));
-      } else {
-        alert("Failed to approve question: " + (data.error || data.details || "Unknown error"));
-      }
+        setQuestions(prev => prev.filter(q => q.id !== questionId));
+        alert("Question deleted successfully!");
+      } else alert("Failed to delete question: " + (data.error || "Unknown error"));
     } catch (error) {
-      console.error("Failed to approve question:", error);
-      alert("Network error during approval.");
+      console.error("Failed to delete question:", error);
+      alert("Network error while deleting question.");
     }
   };
 
-  const handleCreateQuestion = () => {
+  const handleCreateQuestion = () => { if (!requireAuth()) return; setEditorMode("create"); setEditingQuestion(null); setShowEditor(true); };
+  const handleEditQuestion = (question: Question) => { if (!requireAuth()) return; setEditorMode("edit"); setEditingQuestion(question); setShowEditor(true); };
+
+  const handleSaveQuestion = async (questionData: Partial<Question>) => {
     if (!requireAuth()) return;
-    setEditorMode("create");
-    setEditingQuestion(null);
-    setShowEditor(true);
+    try {
+      const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
+      const method = editorMode === "create" ? "POST" : "PUT";
+      const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
+      const data = await response.json();
+      if (data.success) {
+        setShowEditor(false);
+        if (editorMode === "create" && data.question) {
+          setQuestions(prev => [{ ...data.question, createdBy: currentUserId }, ...prev]);
+        } else await loadQuestions();
+      } else alert("Failed to save question: " + (data.error || "Unknown error"));
+    } catch (error) {
+      console.error("Failed to save question:", error);
+      alert("Network error while saving question.");
+    }
   };
 
-  const handleEditQuestion = (question: Question) => {
-    if (!requireAuth()) return;
-    setEditorMode("edit");
-    setEditingQuestion(question);
-    setShowEditor(true);
-  };
-
-const handleSaveQuestion = async (questionData: Partial<Question>) => {
+const handleAiGenerate = async (payload: {
+  topic: string;
+  difficulty: "easy" | "medium" | "hard";
+  type: "coding" | "mcq";
+  tags: string[];
+  testCaseCount: number;
+}) => {
   if (!requireAuth()) return;
+  setGenerating(true);
   try {
-    const url = editorMode === "create" 
-      ? "http://localhost:5000/api/questions" 
-      : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
-    const method = editorMode === "create" ? "POST" : "PUT";
+    // ✅ Choose endpoint based on type
+    const endpoint = payload.type === "mcq" 
+      ? "http://localhost:5000/api/questions/generate-mcq"
+      : "http://localhost:5000/api/questions/generate";
 
-    const response = await fetch(url, {
-      method,
+    const response = await fetch(endpoint, {
+      method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify(questionData),
+      body: JSON.stringify({
+        topic: payload.topic,
+        difficulty: payload.difficulty,
+        type: payload.type,
+        skillTags: payload.tags,
+        testCaseCount: payload.testCaseCount,
+      }),
     });
-    
+
     const data = await response.json();
-    
-    if (data.success) {
-      setShowEditor(false);
-      
-      // Instead of reloading all questions, add the new one to state
-      if (editorMode === "create" && data.question) {
-        const newQuestion: Question = {
-          ...data.question,
-          createdBy: currentUserId, // Ensure createdBy is set
-        };
-        
-        setQuestions(prev => [newQuestion, ...prev]);
-      } else {
-        // For edits, reload to ensure data consistency
-        await loadQuestions();
-      }
+    if (data.success && data.question) {
+      const q: Question = {
+        ...data.question,
+        aiGenerated: true,
+        source: data.question.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
+        type: payload.type || data.question.type,
+        skillTags: payload.tags?.length
+          ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
+          : data.question.skillTags || [],
+      };
+      setQuestions((prev) => [q, ...prev]);
+      setAiModalOpen(false);
     } else {
-      alert("Failed to save question: " + (data.error || "Unknown error"));
+      alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
     }
-  } catch (error) {
-    console.error("Failed to save question:", error);
-    alert("Network error while saving question.");
+  } catch (e) {
+    console.error(e);
+    alert("Network error during AI generation.");
   }
+  setGenerating(false);
 };
 
-  const handleAiGenerate = async (payload: {
-    topic: string;
-    difficulty: "easy" | "medium" | "hard";
-    type: "coding" | "mcq";
-    tags: string[];
-    testCaseCount: number;
-  }) => {
-    if (!requireAuth()) return;
-    setGenerating(true);
-    try {
-      const response = await fetch("http://localhost:5000/api/questions/generate", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          topic: payload.topic,
+const handleAiBatchGenerate = async (payload: {
+  topics: string[];
+  difficulty: "easy" | "medium" | "hard";
+  countPerTopic: number;
+  type: "coding" | "mcq";
+}) => {
+  if (!requireAuth()) return;
+  setBatchGenerating(true);
+  try {
+    // ✅ Choose endpoint based on type
+    const endpoint = payload.type === "mcq"
+      ? "http://localhost:5000/api/questions/generate-mcq-batch"
+      : "http://localhost:5000/api/questions/generate-batch";
+
+    // ✅ Different payload structure for MCQ batch
+    const requestBody = payload.type === "mcq"
+      ? {
+          topics: payload.topics,
           difficulty: payload.difficulty,
-          type: payload.type,
-          skillTags: payload.tags,
-          testCaseCount: payload.testCaseCount,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success && data.question) {
-        const q: Question = {
-          ...data.question,
-          aiGenerated: true,
-          source: data.question.source || "ai_gemini",
-          type: payload.type || data.question.type,
-          skillTags: payload.tags?.length
-            ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
-            : data.question.skillTags || [],
-        };
-        setQuestions((prev) => [q, ...prev]);
-        setAiModalOpen(false);
-      } else {
-        alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Network error during AI generation.");
-    }
-    setGenerating(false);
-  };
-
-  const handleAiBatchGenerate = async (payload: {
-    topics: string[];
-    difficulty: "easy" | "medium" | "hard";
-    countPerTopic: number;
-  }) => {
-    if (!requireAuth()) return;
-    setBatchGenerating(true);
-    try {
-      const res = await fetch("http://localhost:5000/api/questions/generate-batch", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
+          count_per_topic: payload.countPerTopic, // Note: snake_case for MCQ endpoint
+        }
+      : {
           topics: payload.topics,
           difficulty: payload.difficulty,
           countPerTopic: payload.countPerTopic,
-        }),
-      });
+        };
 
-      const data = await res.json();
-
-      if (data.success && Array.isArray(data.questions)) {
-        const normalized = data.questions.map((q: any) => ({
-          ...q,
-          aiGenerated: true,
-          source: q.source || "ai_gemini",
-        })) as Question[];
-
-        setQuestions((prev) => [...normalized, ...prev]);
-        setBatchOpen(false);
-      } else {
-        throw new Error(data.error || data.details || "Invalid batch response");
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
-    }
-    setBatchGenerating(false);
-  };
-  const handleImportScraped = async (source: string = 'stackoverflow', maxPages: number = 3) => {
-  if (!requireAuth()) return;
-  
-  const confirm = window.confirm(
-    `🌐 Import Real Programming Questions\n\n` +
-    `This will scrape ${maxPages} page(s) from ${source.toUpperCase()}\n` +
-    `Source: Real questions from professional developers\n\n` +
-    `Continue?`
-  );
-
-  
-  if (!confirm) return;
-  
-  setImporting(true);
-  setShowSourceSelector(false);
-  
-  try {
-    console.log(`🕷️ Starting import from ${source}...`);
-    
-    const response = await fetch('http://localhost:5000/api/questions/import-scraped', {
-      method: 'POST',
+    const res = await fetch(endpoint, {
+      method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({
-        source: source,
-        max_pages: maxPages
-      })
+      body: JSON.stringify(requestBody),
     });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      alert(
-        `✅ Successfully imported ${data.imported_count} real questions from ${source.toUpperCase()}!\n\n` +
-        `📊 Import Statistics:\n` +
-        `• Total scraped: ${data.total_scraped}\n` +
-        `• Imported: ${data.imported_count}\n` +
-        `• Skipped (duplicates): ${data.skipped_count}\n` +
-        `• Errors: ${data.error_count}\n\n` +
-        `All questions are now in "Pending Review" status.`
-      );
-      
-      // Reload questions to show new imports
-      await loadQuestions();
+
+    const data = await res.json();
+
+    if (data.success && Array.isArray(data.questions)) {
+      const normalized = data.questions.map((q: any) => ({
+        ...q,
+        aiGenerated: true,
+        source: q.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
+        type: payload.type,
+      })) as Question[];
+
+      setQuestions((prev) => [...normalized, ...prev]);
+      setBatchOpen(false);
     } else {
-      alert(`❌ Failed to import: ${data.error}\n\n${data.details || ''}`);
+      throw new Error(data.error || data.details || "Invalid batch response");
     }
-  } catch (error) {
-    console.error('Failed to import scraped questions:', error);
-    alert('❌ Network error during import.\n\nMake sure:\n• Backend is running on port 5000\n• Python AI service is running on port 8000');
-  } finally {
-    setImporting(false);
+  } catch (e: any) {
+    console.error(e);
+    alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
   }
+  setBatchGenerating(false);
 };
-const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'leetcode') => {
+  const handleImportScraped = async (source: string = 'stackoverflow', maxPages: number = 3) => {
+    if (!requireAuth()) return;
+    if (!window.confirm(`🌐 Import Real Programming Questions\n\nThis will scrape ${maxPages} page(s) from ${source.toUpperCase()}\nSource: Real questions from professional developers\n\nContinue?`)) return;
+    setImporting(true);
+    setShowSourceSelector(false);
+    try {
+      const response = await fetch('http://localhost:5000/api/questions/import-scraped', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ source: source, max_pages: maxPages })
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert(`✅ Successfully imported ${data.imported_count} real questions from ${source.toUpperCase()}!\n\n📊 Import Statistics:\n• Total scraped: ${data.total_scraped}\n• Imported: ${data.imported_count}\n• Skipped (duplicates): ${data.skipped_count}\n• Errors: ${data.error_count}\n\nAll questions are now in "Pending Review" status.`);
+        await loadQuestions();
+      } else alert(`❌ Failed to import: ${data.error}\n\n${data.details || ''}`);
+    } catch (error) {
+      console.error('Failed to import scraped questions:', error);
+      alert('❌ Network error during import.\n\nMake sure:\n• Backend is running on port 5000\n• Python AI service is running on port 8000');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "leetcode" | "hackerrank") => {
   if (!requireAuth()) return;
-  
   setImporting(true);
   setShowUrlScraper(false);
   
   try {
-    console.log(`🔗 Scraping ${urls.length} URLs from ${platform}...`);
-    
-    const response = await fetch('http://localhost:5000/api/questions/scrape', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        urls: urls,
-        platform: platform
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      alert(
-        `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
-        `📊 Scraping Statistics:\n` +
-        `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
-        `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
-        `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
-        `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
-        `All questions are now in "Pending Review" status.`
-      );
-      
-      // Reload questions
-      await loadQuestions();
+    let response;
+    let data;
+
+    if (platform === "leetcode") {
+      // Use the LeetCode batch endpoint
+      response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/batch", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ urls }),
+      });
+      data = await response.json();
+
+      if (data.success) {
+        const results = data.results;
+        alert(
+          `✅ LeetCode Scraping Complete!\n\n` +
+          `📊 Results:\n` +
+          `• Total URLs: ${results.total}\n` +
+          `• Successfully scraped: ${results.successful}\n` +
+          `• Saved to database: ${results.saved}\n` +
+          `• Skipped (duplicates): ${results.skipped}\n` +
+          `• Failed: ${results.failed}\n\n` +
+          `All questions are now in "Pending Review" status.`
+        );
+        await loadQuestions();
+      } else {
+        throw new Error(data.error || data.details || "LeetCode scraping failed");
+      }
     } else {
-      alert(`❌ Failed to scrape: ${data.error}\n\n${data.details || ''}`);
+      // Use existing generic scrape endpoint for other platforms
+      response = await fetch("http://localhost:5000/api/questions/scrape", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ urls, platform }),
+      });
+      data = await response.json();
+
+      if (data.success) {
+        alert(
+          `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
+          `📊 Scraping Statistics:\n` +
+          `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
+          `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
+          `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
+          `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
+          `All questions are now in "Pending Review" status.`
+        );
+        await loadQuestions();
+      } else {
+        throw new Error(data.error || data.details || "Scraping failed");
+      }
     }
-  } catch (error) {
-    console.error('Failed to scrape URLs:', error);
-    alert('❌ Network error during scraping.');
+  } catch (error: any) {
+    console.error("Failed to scrape URLs:", error);
+    alert(
+      `❌ Scraping Failed\n\n` +
+      `Error: ${error.message || "Unknown error"}\n\n` +
+      `Make sure:\n` +
+      `• Backend is running on port 5000\n` +
+      `• Python AI service is running on port 8000\n` +
+      `• URLs are valid and accessible`
+    );
   } finally {
     setImporting(false);
   }
@@ -1198,57 +1059,43 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-20 -right-10 h-64 w-64 rounded-full bg-[#1B73E8]/20 blur-3xl" />
-          <div className="absolute -bottom-16 -left-10 h-72 w-72 rounded-full bg-[#0D47A1]/10 blur-3xl" />
+          <div className="absolute -top-16 -right-8 h-52 w-52 rounded-full bg-[#1B73E8]/20 blur-3xl" />
+          <div className="absolute -bottom-12 -left-8 h-56 w-56 rounded-full bg-[#0D47A1]/10 blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 pt-10 pb-6">
+        <div className="relative max-w-7xl mx-auto px-5 pt-6 pb-4">
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className={`${glassCard} px-6 py-5`}>
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-inner">
-                  <Sparkles className="w-6 h-6 text-white" />
+            <div className={`${glassCard} px-5 py-4`}>
+              <div className="flex items-start gap-2.5">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-inner">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[#0D2A5B]">
-                    Question Bank
-                  </h1>
-                  <p className="text-sm md:text-[15px] text-[#2c477b]/80 mt-1">
+                  <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[#0D2A5B]">Question Bank</h1>
+                  <p className="text-[11px] md:text-xs text-[#2c477b]/80 mt-0.5">
                     Build & curate assessments — manually or with AI assistance.
-                    {user?.full_name ? (
-                      <span className="ml-1 text-[#1B73E8] font-semibold">
-                        Welcome, {user.full_name.split(" ")[0]}!
-                      </span>
-                    ) : null}
+                    {user?.full_name ? (<span className="ml-1 text-[#1B73E8] font-semibold">Welcome, {user.full_name.split(" ")[0]}!</span>) : null}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mt-4">
               {[
                 { label: "My Total", value: myStats.total, icon: FileText, accent: "from-[#1B73E8] to-[#1557B0]" },
                 { label: "My Approved", value: myStats.approved, icon: CheckCircle2, accent: "from-green-500 to-emerald-600" },
-                { label: "My Pending", value: myStats.pending, icon: Clock, accent: "from-yellow-400 to-amber-500" },
+                { label: "My Pending", value: myStats.pending, icon: Clock, accent: "from-yellow-300 to-amber-500" },
                 { label: "My Draft", value: myStats.draft, icon: Edit, accent: "from-slate-400 to-slate-500" },
                 { label: "My Rejected", value: myStats.rejected, icon: XCircle, accent: "from-rose-500 to-rose-600" },
               ].map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  className={`${glassCard} p-5`}
-                >
+                <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }} className={`${glassCard} p-4`}>
                   <div className="flex items-center justify-between">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.accent} text-white flex items-center justify-center shadow-inner`}>
-                      <s.icon className="w-5 h-5" />
-                    </div>
-                    <TrendingUp className="w-4 h-4 text-[#0D2A5B]/50" />
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${s.accent} text-white flex items-center justify-center shadow-inner`}><s.icon className="w-4 h-4" /></div>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#0D2A5B]/50" />
                   </div>
-                  <div className="mt-3 text-3xl font-black text-[#0D2A5B]">{s.value}</div>
-                  <div className="text-xs text-[#0D2A5B]/70 mt-1">{s.label}</div>
+                  <div className="mt-2 text-2xl font-black text-[#0D2A5B]">{s.value}</div>
+                  <div className="text-[10px] text-[#0D2A5B]/70 mt-0.5">{s.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -1257,53 +1104,32 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
       </div>
 
       {/* Main */}
-      <div className="max-w-7xl mx-auto px-6 pb-12">
+      <div className="max-w-7xl mx-auto px-5 pb-8">
         {/* Controls */}
-        <div className={`${panel} p-5 mb-6 sticky top-4 z-10`}>
-          <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
+        <div className={`${panel} p-4 mb-4 sticky top-3 z-10`}>
+          <div className="flex flex-col xl:flex-row gap-2.5 xl:items-center xl:justify-between">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search my questions by title or skills…"
                 value={filters.search}
                 onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
               />
             </div>
 
             {/* Right controls */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {/* View Toggle */}
-              <div className="flex items-center bg-gray-100 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
-                    viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  <Grid3x3 className="w-4 h-4" />
-                  Grid
-                </button>
-                <button
-                  onClick={() => setViewMode("table")}
-                  className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
-                    viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                  Table
-                </button>
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                <button onClick={() => setViewMode("grid")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><Grid3x3 className="w-3.5 h-3.5" />Grid</button>
+                <button onClick={() => setViewMode("table")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><List className="w-3.5 h-3.5" />Table</button>
               </div>
 
-              {/* Items per page (for table view) */}
               {viewMode === "table" && (
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all"
-                >
+                <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
                   <option value={5}>5 per page</option>
                   <option value={10}>10 per page</option>
                   <option value={25}>25 per page</option>
@@ -1311,24 +1137,14 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
                 </select>
               )}
 
-              {/* Difficulty */}
-              <select
-                value={filters.difficulty}
-                onChange={(e) => setFilters((f) => ({ ...f, difficulty: e.target.value }))}
-                className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all"
-              >
+              <select value={filters.difficulty} onChange={(e) => setFilters((f) => ({ ...f, difficulty: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
                 <option value="">All Difficulty</option>
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
 
-              {/* Status */}
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-                className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all"
-              >
+              <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
                 <option value="">All Status</option>
                 <option value="draft">Draft</option>
                 <option value="pending_review">Pending Review</option>
@@ -1336,235 +1152,81 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
                 <option value="rejected">Rejected</option>
               </select>
 
-              {/* Source segmented */}
-              <div className="flex items-center bg-gray-100 rounded-xl p-1">
+              <select value={filters.type || ""} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
+                <option value="">All Types</option>
+                <option value="coding">Coding</option>
+                <option value="mcq">Multiple Choice</option>
+              </select>
+
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
                 {(["all", "ai", "manual"] as const).map((src) => (
-                  <button
-                    key={src}
-                    onClick={() => setFilters((f) => ({ ...f, source: src }))}
-                    className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                      filters.source === src ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"
-                    }`}
-                    title={src === "all" ? "Show all" : src === "ai" ? "AI generated only" : "Manual only"}
-                  >
+                  <button key={src} onClick={() => setFilters((f) => ({ ...f, source: src }))} className={`px-3 py-1.5 rounded-md text-[10px] font-medium transition-all ${filters.source === src ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`} title={src === "all" ? "Show all" : src === "ai" ? "AI generated only" : "Manual only"}>
                     {src === "ai" ? "AI" : src === "manual" ? "Manual" : "All"}
                   </button>
                 ))}
               </div>
 
-              {/* Divider */}
-              <span className="hidden xl:block h-6 w-px bg-gray-200" />
+              <span className="hidden xl:block h-5 w-px bg-gray-200" />
 
-              {/* Buttons */}
-              <motion.button
-                onClick={handleCreateQuestion}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-[#1B73E8] hover:bg-[#1557B0] text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow"
-              >
-                Create
+              <motion.button onClick={handleCreateQuestion} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-[#1B73E8] hover:bg-[#1557B0] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow">Create</motion.button>
+              <motion.button onClick={() => setAiModalOpen(true)} disabled={generating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
+                {generating ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Generating…</span>) : (<span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" />AI Generate</span>)}
+              </motion.button>
+              <motion.button onClick={() => setBatchOpen(true)} disabled={batchGenerating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:to-[#0D47A1] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
+                {batchGenerating ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />AI Batch</span>) : (<span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />AI Batch</span>)}
               </motion.button>
 
-              <motion.button
-                onClick={() => setAiModalOpen(true)}
-                disabled={generating}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {generating ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                    Generating…
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
-                    AI Generate
-                  </span>
-                )}
-              </motion.button>
-
-              <motion.button
-                onClick={() => setBatchOpen(true)}
-                disabled={batchGenerating}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:to-[#0D47A1] text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {batchGenerating ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                    AI Batch
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    AI Batch
-                  </span>
-                )}
-              </motion.button>
-
-              {/*  NOUVEAU: Import from Web Button */}
               <div className="relative">
-                <motion.button
-                  onClick={() => setShowSourceSelector(!showSourceSelector)}
-                  disabled={importing}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                >
-                  {importing ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                      Importing...
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2">
-                      <Network className="w-4 h-4" />
-                      Import from Web
-                    </span>
-                  )}
+                <motion.button onClick={() => setShowSourceSelector(!showSourceSelector)} disabled={importing} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+                  {importing ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Importing...</span>) : (<span className="inline-flex items-center gap-1.5"><Network className="w-3.5 h-3.5" />Import from Web</span>)}
                 </motion.button>
- 
 
-              {/* NOUVEAU: Import from URL Button */}
-              <motion.button
-                onClick={() => setShowUrlScraper(true)}
-                disabled={importing}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-gradient-to-r mx-2 from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              >
-                {importing ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                    Scraping...
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <Link className="w-4 h-4" />
-                    Import from URL
-                  </span>
-                )}
-              </motion.button>
+                <motion.button onClick={() => setShowUrlScraper(true)} disabled={importing} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r mx-1.5 from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+                  {importing ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Scraping...</span>) : (<span className="inline-flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />Import from URL</span>)}
+                </motion.button>
 
-                {/* Source Selector Dropdown */}
                 <AnimatePresence>
                   {showSourceSelector && !importing && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ type: "spring", duration: 0.3 }}
-                      className="absolute top-full mt-3 right-0 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-5 z-50 min-w-[420px]"
-                    >
-                      {/* Header */}
-                      <div className="mb-4 pb-4 border-b-2 border-gray-100">
-                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                          <Globe className="w-5 h-5 text-orange-600" />
-                          Select Platform
-                        </h3>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Import real programming questions from professional platforms
-                        </p>
+                    <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ type: "spring", duration: 0.3 }} className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-2xl border-2 border-gray-200 p-4 z-50 min-w-[360px]">
+                      <div className="mb-3 pb-3 border-b-2 border-gray-100">
+                        <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5"><Globe className="w-4 h-4 text-orange-600" />Select Platform</h3>
+                        <p className="text-[10px] text-gray-600 mt-0.5">Import real programming questions from professional platforms</p>
                       </div>
 
-                      {/* StackOverflow Option */}
-                      <motion.button
-                        onClick={() => handleImportScraped('stackoverflow', 2)}
-                        whileHover={{ scale: 1.02, x: 5 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl mb-3 border-2 border-orange-300 transition-all group shadow-sm hover:shadow-md"
-                      >
-                        {/* Icon */}
-                        <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                          <Code2 className="w-7 h-7 text-white" />
-                        </div>
-                        
-                        {/* Content */}
+                      <motion.button onClick={() => handleImportScraped('stackoverflow', 2)} whileHover={{ scale: 1.02, x: 5 }} whileTap={{ scale: 0.98 }} className="w-full flex items-center gap-2.5 p-3 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-lg mb-2 border-2 border-orange-300 transition-all group shadow-sm hover:shadow-md">
+                        <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"><Code2 className="w-5 h-5 text-white" /></div>
                         <div className="text-left flex-1">
-                          <div className="font-black text-gray-900 text-base flex items-center gap-2">
-                            StackOverflow
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold border border-green-200">
-                              REAL DATA
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-600 mt-0.5 font-medium">
-                            Real questions from 20M+ developers
-                          </div>
-                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Database className="w-3 h-3" />
-                              ~15 questions
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />
-                              High quality
-                            </span>
+                          <div className="font-black text-gray-900 text-sm flex items-center gap-1.5">StackOverflow<span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full text-[8px] font-bold border border-green-200">REAL DATA</span></div>
+                          <div className="text-[10px] text-gray-600 mt-0.5 font-medium">Real questions from 20M+ developers</div>
+                          <div className="flex items-center gap-2 mt-1.5 text-[9px] text-gray-500">
+                            <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />~15 questions</span>
+                            <span className="flex items-center gap-0.5"><TrendingUp className="w-2.5 h-2.5" />High quality</span>
                           </div>
                         </div>
-                        
-                        {/* Arrow */}
-                        <ArrowRight className="w-5 h-5 text-orange-600 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-4 h-4 text-orange-600 group-hover:translate-x-1 transition-transform" />
                       </motion.button>
 
-                      {/* LeetCode Option (Coming Soon) */}
-                      <motion.button
-                        onClick={() => handleImportScraped('leetcode', 2)}
-                        whileHover={{ scale: 1.02, x: 5 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-100 hover:from-yellow-100 hover:to-amber-200 rounded-xl mb-3 border-2 border-amber-300 transition-all group shadow-sm hover:shadow-md"
-                      >
-                        {/* Icon */}
-                        <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                          <Code2 className="w-7 h-7 text-white" />
-                        </div>
-                        
-                        {/* Content */}
+                      <motion.button onClick={() => handleImportScraped('leetcode', 2)} whileHover={{ scale: 1.02, x: 5 }} whileTap={{ scale: 0.98 }} className="w-full flex items-center gap-2.5 p-3 bg-gradient-to-r from-yellow-50 to-amber-100 hover:from-yellow-100 hover:to-amber-200 rounded-lg mb-2 border-2 border-amber-300 transition-all group shadow-sm hover:shadow-md">
+                        <div className="w-11 h-11 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"><Code2 className="w-5 h-5 text-white" /></div>
                         <div className="text-left flex-1">
-                          <div className="font-black text-gray-900 text-base flex items-center gap-2">
-                            LeetCode
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold border border-green-200">
-                              REAL DATA
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-600 mt-0.5 font-medium">
-                            Algorithm challenges from LeetCode
-                          </div>
-                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Database className="w-3 h-3" />
-                              ~20 questions
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />
-                              Algorithm focus
-                            </span>
+                          <div className="font-black text-gray-900 text-sm flex items-center gap-1.5">LeetCode<span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full text-[8px] font-bold border border-green-200">REAL DATA</span></div>
+                          <div className="text-[10px] text-gray-600 mt-0.5 font-medium">Algorithm challenges from LeetCode</div>
+                          <div className="flex items-center gap-2 mt-1.5 text-[9px] text-gray-500">
+                            <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />~20 questions</span>
+                            <span className="flex items-center gap-0.5"><TrendingUp className="w-2.5 h-2.5" />Algorithm focus</span>
                           </div>
                         </div>
-                        
-                        {/* Arrow */}
-                        <ArrowRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-4 h-4 text-amber-600 group-hover:translate-x-1 transition-transform" />
                       </motion.button>
 
-                      {/* Info Banner */}
-                      <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                        <div className="flex items-start gap-2">
-                          <ExternalLink className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div className="text-[11px] text-blue-900 leading-relaxed">
-                            <span className="font-bold">Real Questions:</span> All scraped questions come from actual programming problems posted by real developers on these platforms. They will be imported with "Pending Review" status.
-                          </div>
+                      <div className="mt-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-start gap-1.5">
+                          <ExternalLink className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="text-[9px] text-blue-900 leading-relaxed"><span className="font-bold">Real Questions:</span> All scraped questions come from actual programming problems posted by real developers on these platforms. They will be imported with "Pending Review" status.</div>
                         </div>
                       </div>
 
-                      {/* Cancel Button */}
-                      <button
-                        onClick={() => setShowSourceSelector(false)}
-                        className="w-full mt-4 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                      >
-                        Cancel
-                      </button>
+                      <button onClick={() => setShowSourceSelector(false)} className="w-full mt-3 px-3 py-2 text-[10px] text-gray-600 hover:text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1575,172 +1237,87 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
 
         {/* List */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`${panel} p-6 animate-pulse`}>
-                <div className="h-2 w-24 rounded bg-gradient-to-r from-[#1B73E8] to-[#1557B0]" />
-                <div className="mt-5 h-6 w-3/4 rounded bg-gray-200" />
-                <div className="mt-3 h-3 w-5/6 rounded bg-gray-200" />
-                <div className="mt-2 h-3 w-2/3 rounded bg-gray-200" />
-                <div className="mt-4 h-8 w-full rounded-xl bg-gray-100" />
+              <div key={i} className={`${panel} p-5 animate-pulse`}>
+                <div className="h-1.5 w-20 rounded bg-gradient-to-r from-[#1B73E8] to-[#1557B0]" />
+                <div className="mt-4 h-5 w-3/4 rounded bg-gray-200" />
+                <div className="mt-2.5 h-2.5 w-5/6 rounded bg-gray-200" />
+                <div className="mt-2 h-2.5 w-2/3 rounded bg-gray-200" />
+                <div className="mt-3 h-7 w-full rounded-lg bg-gray-100" />
               </div>
             ))}
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {paginatedQuestions.map((question, idx) => {
                 const isAI = !!question.aiGenerated || (question.source && question.source.startsWith("ai"));
-                const statusPill =
-                  question.status === "approved"
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : question.status === "pending_review"
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : question.status === "rejected"
-                    ? "bg-rose-50 text-rose-700 border-rose-200"
-                    : "bg-slate-50 text-slate-700 border-slate-200";
+                const isMCQ = question.type === "mcq";
+                const statusPill = question.status === "approved" ? "bg-green-50 text-green-700 border-green-200" : question.status === "pending_review" ? "bg-amber-50 text-amber-700 border-amber-200" : question.status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-50 text-slate-700 border-slate-200";
 
                 return (
-                  <motion.div
-                    key={question.id}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ delay: idx * 0.03 }}
-                    whileHover={{ y: -4 }}
-                    className={`${panel} overflow-hidden group`}
-                  >
-                    <div
-                      className={`h-1.5 ${
-                        question.difficulty === "easy"
-                          ? "bg-gradient-to-r from-emerald-400 to-emerald-600"
-                          : question.difficulty === "medium"
-                          ? "bg-gradient-to-r from-amber-400 to-amber-600"
-                          : "bg-gradient-to-r from-rose-400 to-rose-600"
-                      }`}
-                    />
-
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
+                  <motion.div key={question.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ delay: idx * 0.03 }} whileHover={{ y: -4 }} className={`${panel} overflow-hidden group`}>
+                    <div className={`h-1 ${question.difficulty === "easy" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : question.difficulty === "medium" ? "bg-gradient-to-r from-amber-400 to-amber-600" : "bg-gradient-to-r from-rose-400 to-rose-600"}`} />
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
                         <span className={`${pill} ${statusPill}`}>
                           {question.status === "approved" && <CheckCircle2 className="w-3 h-3" />}
                           {question.status === "pending_review" && <Clock className="w-3 h-3" />}
                           {question.status === "rejected" && <XCircle className="w-3 h-3" />}
                           {question.status.replace("_", " ").toUpperCase()}
                         </span>
-
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`${pill} ${
-                              question.difficulty === "easy"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : question.difficulty === "medium"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-rose-50 text-rose-700 border-rose-200"
-                            }`}
-                          >
-                            {question.difficulty.toUpperCase()}
-                          </span>
-                          <span
-                            className={`${pill} ${
-                              isAI
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-gray-50 text-gray-700 border-gray-200"
-                            }`}
-                          >
-                            {isAI ? (
-                              <>
-                                <Zap className="w-3 h-3" /> AI
-                              </>
-                            ) : (
-                              <>
-                                <FileText className="w-3 h-3" /> MANUAL
-                              </>
-                            )}
+                        <div className="flex items-center gap-1.5">
+                          <span className={`${pill} ${question.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : question.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>{question.difficulty.toUpperCase()}</span>
+                          <span className={`${pill} ${isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                            {isAI ? (<><Zap className="w-3 h-3" /> AI</>) : (<><FileText className="w-3 h-3" /> MANUAL</>)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-2 mb-2">
-                        {isAI ? (
-                          <Zap className="mt-0.5 w-4 h-4 text-emerald-600 shrink-0" />
-                        ) : (
-                          <FileText className="mt-0.5 w-4 h-4 text-gray-600 shrink-0" />
-                        )}
-                        <h3 className="text-[15.5px] font-extrabold text-[#142c52] leading-snug line-clamp-2 group-hover:text-[#1B73E8] transition-colors">
-                          {question.title}
-                        </h3>
+                      <div className="flex items-start gap-1.5 mb-1.5">
+                        {isAI ? (<Zap className="mt-0.5 w-4 h-4 text-emerald-600 shrink-0" />) : (<FileText className="mt-0.5 w-4 h-4 text-gray-600 shrink-0" />)}
+                        <h3 className="text-[13px] font-extrabold text-[#142c52] leading-snug line-clamp-2 group-hover:text-[#1B73E8] transition-colors">{question.title}</h3>
                       </div>
 
                       {question.type && (
-                        <div className="mb-3">
-                          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
-                            {question.type.toUpperCase()}
-                          </span>
+                        <div className="mb-2.5">
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-semibold border ${isMCQ ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}>{isMCQ ? "MULTIPLE CHOICE" : "CODING"}</span>
                         </div>
                       )}
 
-                      <p className="text-sm text-[#2b3952]/80 mb-4 line-clamp-2">{question.description}</p>
+                      <p className="text-[11px] text-[#2b3952]/80 mb-3 line-clamp-2">{question.description}</p>
 
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {question.skillTags &&
-                          question.skillTags.slice(0, 4).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2.5 py-1 bg-blue-50 text-[#1B73E8] rounded-lg text-[11px] font-medium border border-blue-100"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        {question.skillTags && question.skillTags.length > 4 && (
-                          <span className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-[11px] font-medium border border-gray-200">
-                            +{question.skillTags.length - 4}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 text-[13px] text-gray-600 border-t border-gray-100 pt-4">
-                        <div className="flex items-center gap-1.5">
-                          <Eye className="w-4 h-4" />
-                          <span>{question.views || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <BarChart3 className="w-4 h-4" />
-                          <span>{question.submissions || 0}</span>
-                        </div>
-                        {question.successRate != null && (
-                          <div className="flex items-center gap-1.5 ml-auto">
-                            <Award className="w-4 h-4 text-emerald-600" />
-                            <span className="font-bold text-emerald-600">{question.successRate}%</span>
+                      {isMCQ && question.options && (
+                        <div className="mb-3 p-2 bg-purple-50 border border-purple-200 rounded-lg">
+                          <div className="flex items-center gap-1.5 mb-1.5"><FileText className="w-3 h-3 text-purple-600" /><span className="text-[10px] font-semibold text-purple-700">Options Preview</span></div>
+                          <div className="grid grid-cols-2 gap-1 text-[10px]">
+                            {Object.entries(question.options).slice(0, 4).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-1">
+                                <span className={`w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded ${question.correctAnswer?.includes(key) ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"}`}>{key}</span>
+                                <span className="text-gray-600 truncate">{value as string}</span>
+                              </div>
+                            ))}
                           </div>
-                        )}
+                          {question.correctAnswer && (<div className="mt-1.5 text-[10px] text-green-600 font-medium">Correct: {question.correctAnswer}</div>)}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {question.skillTags && question.skillTags.slice(0, 4).map((tag) => (<span key={tag} className="px-2 py-0.5 bg-blue-50 text-[#1B73E8] rounded-md text-[9px] font-medium border border-blue-100">{tag}</span>))}
+                        {question.skillTags && question.skillTags.length > 4 && (<span className="px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded-md text-[9px] font-medium border border-gray-200">+{question.skillTags.length - 4}</span>)}
                       </div>
 
-                      <div className="mt-4 flex items-center gap-2">
-                        <StatusSelect
-                          value={
-                            (["pending_review", "approved", "rejected"].includes(question.status)
-                              ? (question.status as any)
-                              : "pending_review")
-                          }
-                          onChange={(next) => changeStatus(question, next)}
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditQuestion(question);
-                          }}
-                          className="p-2 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center gap-2.5 text-[11px] text-gray-600 border-t border-gray-100 pt-3">
+                        <div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /><span>{question.views || 0}</span></div>
+                        <div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /><span>{question.submissions || 0}</span></div>
+                        {question.successRate != null && (<div className="flex items-center gap-1 ml-auto"><Award className="w-3.5 h-3.5 text-emerald-600" /><span className="font-bold text-emerald-600">{question.successRate}%</span></div>)}
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-1.5">
+                        <StatusSelect value={(["pending_review", "approved", "rejected"].includes(question.status) ? (question.status as any) : "pending_review")} onChange={(next) => changeStatus(question, next)} />
+                        <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   </motion.div>
@@ -1749,210 +1326,67 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
             </AnimatePresence>
           </div>
         ) : (
-          // ENHANCED TABLE DESIGN
           <div className={`${panel} overflow-hidden shadow-xl`}>
-            {/* Enhanced Header with Gradient */}
-            <div className="px-6 py-4 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] flex items-center justify-between">
-              <div className="flex items-center gap-3 text-white">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <List className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">Question Database</h3>
-                  <p className="text-xs text-blue-100">
-                    Showing {paginatedQuestions.length} of {filteredQuestions.length} results
-                  </p>
-                </div>
+            <div className="px-4 py-3 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"><List className="w-4 h-4" /></div>
+                <div><h3 className="text-sm font-bold">Question Database</h3><p className="text-[10px] text-blue-100">Showing {paginatedQuestions.length} of {filteredQuestions.length} results</p></div>
               </div>
-              <div className="flex items-center gap-2 text-white/90">
-                <SlidersHorizontal className="w-4 h-4" />
-                <span className="text-sm font-medium">{filteredQuestions.length} Total</span>
-              </div>
+              <div className="flex items-center gap-1.5 text-white/90"><SlidersHorizontal className="w-3.5 h-3.5" /><span className="text-[10px] font-medium">{filteredQuestions.length} Total</span></div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-b-2 border-[#1B73E8]/20">
                   <tr>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-[#1B73E8]" />
-                        Question
-                      </div>
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Skills
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Source
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Difficulty
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4 text-[#1B73E8]" />
-                        Views
-                      </div>
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      <div className="flex items-center gap-1">
-                        <BarChart3 className="w-4 h-4 text-[#1B73E8]" />
-                        Subs
-                      </div>
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-black text-gray-800 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#1B73E8]" />Question</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Skills</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Type</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Source</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Status</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-[#1B73E8]" />Views</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-[#1B73E8]" />Subs</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {paginatedQuestions.map((q, idx) => {
                     const isAI = !!q.aiGenerated || (q.source && q.source.startsWith("ai"));
-                    const statusPill =
-                      q.status === "approved"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : q.status === "pending_review"
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : q.status === "rejected"
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : "bg-slate-50 text-slate-700 border-slate-200";
+                    const statusPill = q.status === "approved" ? "bg-green-50 text-green-700 border-green-200" : q.status === "pending_review" ? "bg-amber-50 text-amber-700 border-amber-200" : q.status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-50 text-slate-700 border-slate-200";
 
                     return (
-                      <motion.tr
-                        key={q.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.02 }}
-                        className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 group"
-                      >
-                        <td className="px-6 py-5">
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`w-1 h-full rounded-full ${
-                                q.difficulty === "easy"
-                                  ? "bg-emerald-500"
-                                  : q.difficulty === "medium"
-                                  ? "bg-amber-500"
-                                  : "bg-rose-500"
-                              }`}
-                            />
+                      <motion.tr key={q.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 group">
+                        <td className="px-3 py-3">
+                          <div className="flex items-start gap-2">
+                            <div className={`w-1 h-full rounded-full ${q.difficulty === "easy" ? "bg-emerald-500" : q.difficulty === "medium" ? "bg-amber-500" : "bg-rose-500"}`} />
                             <div className="flex-1 min-w-0">
-                              <div className="font-bold text-gray-900 group-hover:text-[#1B73E8] cursor-pointer transition-colors">
-                                {q.title}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1 line-clamp-1">{q.description}</div>
+                              <div className="font-bold text-[11px] text-gray-900 group-hover:text-[#1B73E8] cursor-pointer transition-colors">{q.title}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{q.description}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-5">
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-1 max-w-[150px]">
                             {q.skillTags && q.skillTags.length > 0 ? (
                               <>
-                                {q.skillTags.slice(0, 2).map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="px-2 py-0.5 bg-blue-50 text-[#1B73E8] rounded text-[10px] font-medium border border-blue-100 whitespace-nowrap"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                                {q.skillTags.length > 2 && (
-                                  <span className="px-2 py-0.5 bg-gray-50 text-gray-600 rounded text-[10px] font-medium border border-gray-200 whitespace-nowrap">
-                                    +{q.skillTags.length - 2}
-                                  </span>
-                                )}
+                                {q.skillTags.slice(0, 2).map((tag) => (<span key={tag} className="px-1.5 py-0.5 bg-blue-50 text-[#1B73E8] rounded text-[9px] font-medium border border-blue-100 whitespace-nowrap">{tag}</span>))}
+                                {q.skillTags.length > 2 && (<span className="px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded text-[9px] font-medium border border-gray-200 whitespace-nowrap">+{q.skillTags.length - 2}</span>)}
                               </>
-                            ) : (
-                              <span className="text-xs text-gray-400">—</span>
-                            )}
+                            ) : (<span className="text-[10px] text-gray-400">—</span>)}
                           </div>
                         </td>
-                        <td className="px-6 py-5">
-                          <span className="px-3 py-1.5 rounded-lg text-[11px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm">
-                            {(q.type || "coding").toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span
-                            className={`${pill} shadow-sm ${
-                              isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"
-                            }`}
-                          >
-                            {isAI ? (
-                              <>
-                                <Zap className="w-3.5 h-3.5" /> AI
-                              </>
-                            ) : (
-                              <>
-                                <FileText className="w-3.5 h-3.5" /> MANUAL
-                              </>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span
-                            className={`${pill} shadow-sm font-bold ${
-                              q.difficulty === "easy"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : q.difficulty === "medium"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-rose-50 text-rose-700 border-rose-200"
-                            }`}
-                          >
-                            {q.difficulty.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`${pill} shadow-sm ${statusPill}`}>
-                            {q.status === "approved" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                            {q.status === "pending_review" && <Clock className="w-3.5 h-3.5" />}
-                            {q.status === "rejected" && <XCircle className="w-3.5 h-3.5" />}
-                            {q.status.replace("_", " ").toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-2 text-gray-700 font-semibold">
-                            <Eye className="w-4 h-4 text-gray-400" />
-                            {q.views || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-2 text-gray-700 font-semibold">
-                            <BarChart3 className="w-4 h-4 text-gray-400" />
-                            {q.submissions || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-2">
-                            <StatusSelect
-                              compact
-                              value={
-                                (["pending_review", "approved", "rejected"].includes(q.status)
-                                  ? (q.status as any)
-                                  : "pending_review")
-                              }
-                              onChange={(next) => changeStatus(q, next)}
-                            />
-                            <button
-                              onClick={() => handleEditQuestion(q)}
-                              className="p-2 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                        <td className="px-3 py-3"><span className="px-2 py-1 rounded-md text-[9px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm">{(q.type || "coding").toUpperCase()}</span></td>
+                        <td className="px-3 py-3"><span className={`${pill} shadow-sm ${isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>{isAI ? (<><Zap className="w-3 h-3" /> AI</>) : (<><FileText className="w-3 h-3" /> MANUAL</>)}</span></td>
+                        <td className="px-3 py-3"><span className={`${pill} shadow-sm font-bold ${q.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : q.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>{q.difficulty.toUpperCase()}</span></td>
+                        <td className="px-3 py-3"><span className={`${pill} shadow-sm ${statusPill}`}>{q.status === "approved" && <CheckCircle2 className="w-3 h-3" />}{q.status === "pending_review" && <Clock className="w-3 h-3" />}{q.status === "rejected" && <XCircle className="w-3 h-3" />}{q.status.replace("_", " ").toUpperCase()}</span></td>
+                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><Eye className="w-3.5 h-3.5 text-gray-400" />{q.views || 0}</div></td>
+                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><BarChart3 className="w-3.5 h-3.5 text-gray-400" />{q.submissions || 0}</div></td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <StatusSelect compact value={(["pending_review", "approved", "rejected"].includes(q.status) ? (q.status as any) : "pending_review")} onChange={(next) => changeStatus(q, next)} />
+                            <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </motion.tr>
@@ -1961,100 +1395,59 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
                 </tbody>
               </table>
 
-              {/* Empty state */}
               {paginatedQuestions.length === 0 && (
-                <div className="py-16 text-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl border-2 border-blue-200 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <FileText className="w-12 h-12 text-[#1B73E8]" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">No questions match your filters</h3>
-                  <p className="text-gray-600 mb-6">Try changing source, difficulty, status or search.</p>
+                <div className="py-12 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 flex items-center justify-center mx-auto mb-3 shadow-lg"><FileText className="w-10 h-10 text-[#1B73E8]" /></div>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">No questions match your filters</h3>
+                  <p className="text-[11px] text-gray-600 mb-4">Try changing source, difficulty, status or search.</p>
                 </div>
               )}
             </div>
 
-            {/* Pagination */}
             {paginatedQuestions.length > 0 && totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredQuestions.length}
-                itemsPerPage={itemsPerPage}
-              />
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={filteredQuestions.length} itemsPerPage={itemsPerPage} />
             )}
           </div>
         )}
       </div>
 
       {/* Modals */}
-      <AiGenerateModal
-        open={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        onGenerate={handleAiGenerate}
-        generating={generating}
-      />
-      <AiBatchModal
-        open={batchOpen}
-        onClose={() => setBatchOpen(false)}
-        onGenerate={handleAiBatchGenerate}
-        generating={batchGenerating}
-      />
+      <AiGenerateModal open={aiModalOpen} onClose={() => setAiModalOpen(false)} onGenerate={handleAiGenerate} generating={generating} />
+      <AiBatchModal open={batchOpen} onClose={() => setBatchOpen(false)} onGenerate={handleAiBatchGenerate} generating={batchGenerating} />
 
       {showEditor && (
-        <QuestionEditor
-          question={editingQuestion || undefined}
-          onSave={handleSaveQuestion}
-          onCancel={() => setShowEditor(false)}
-          mode={editorMode}
-        />
+        <QuestionEditor question={editingQuestion || undefined} onSave={handleSaveQuestion} onCancel={() => setShowEditor(false)} mode={editorMode} />
       )}
 
       {/* FULL-PAGE generating overlay */}
       <AnimatePresence>
         {generating && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-[#0D47A1]/10 backdrop-blur-[1px] flex items-center justify-center"
-          >
-            <div className={`${panel} px-6 py-5 flex items-center gap-3`}>
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
-              <div className="text-gray-700 font-semibold">Generating AI question…</div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-[#0D47A1]/10 backdrop-blur-[1px] flex items-center justify-center">
+            <div className={`${panel} px-5 py-4 flex items-center gap-2`}>
+              <div className="w-7 h-7 border-3 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
+              <div className="text-[12px] text-gray-700 font-semibold">Generating AI question…</div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
       {/* FULL-PAGE importing overlay */}
       <AnimatePresence>
         {importing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-gradient-to-br from-orange-900/20 via-red-900/20 to-pink-900/20 backdrop-blur-sm flex items-center justify-center"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className={`${panel} px-8 py-6 max-w-md`}
-            >
-              <div className="flex items-center gap-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-gradient-to-br from-orange-900/20 via-red-900/20 to-pink-900/20 backdrop-blur-sm flex items-center justify-center">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className={`${panel} px-6 py-5 max-w-sm`}>
+              <div className="flex items-center gap-2.5">
                 <div className="relative">
-                  <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin" />
-                  <Network className="absolute inset-0 m-auto w-5 h-5 text-orange-600" />
+                  <div className="w-10 h-10 border-3 border-orange-200 border-t-orange-600 rounded-full animate-spin" />
+                  <Network className="absolute inset-0 m-auto w-4 h-4 text-orange-600" />
                 </div>
                 <div>
-                  <div className="text-gray-900 font-bold text-lg">Scraping Real Questions...</div>
-                  <div className="text-gray-600 text-sm mt-1">
-                    Collecting questions from StackOverflow
-                  </div>
+                  <div className="text-gray-900 font-bold text-sm">Scraping Real Questions...</div>
+                  <div className="text-gray-600 text-[10px] mt-0.5">Collecting questions from StackOverflow</div>
                 </div>
               </div>
-              
-              <div className="mt-5 flex items-center gap-2 text-xs text-gray-500">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+              <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500">
+                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
                 Making HTTP requests to platform...
               </div>
             </motion.div>
@@ -2062,22 +1455,8 @@ const handleScrapeUrls = async (urls: string[], platform: 'stackoverflow' | 'lee
         )}
       </AnimatePresence>
 
-      {/* NOUVEAU: URL Scraper Modal */}
-      <UrlScraperModal
-        open={showUrlScraper}
-        onClose={() => setShowUrlScraper(false)}
-        onScrape={handleScrapeUrls}
-        scraping={importing}
-      />
-
-      {showEditor && (
-        <QuestionEditor
-          question={editingQuestion || undefined}
-          onSave={handleSaveQuestion}
-          onCancel={() => setShowEditor(false)}
-          mode={editorMode}
-        />
-      )}
+      {/* URL Scraper Modal */}
+      <UrlScraperModal open={showUrlScraper} onClose={() => setShowUrlScraper(false)} onScrape={handleScrapeUrls} scraping={importing}   token={token}  />
     </div>
   );
 };
