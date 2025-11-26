@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { applyAsAgency, getApplicationStatus } from "../controller/agency/agency.controller";
-import { getDashboardStats, getRecentActivities } from "../controller/agency/agency.dashboard.controller";
+import { getDashboardStats, getRecentActivities, getAnalytics } from "../controller/agency/agency.dashboard.controller";
 import { checkAuth } from "../middlewares/checkAuth.middleware"; 
+import { createCase, listCases, getCaseById, getClients } from "../controller/agency/agency.case.controller";
 
 const router = Router();
 
@@ -12,5 +13,12 @@ router.get("/application/:id", getApplicationStatus);
 // Protected routes (require auth)
 router.get("/dashboard/stats", checkAuth, getDashboardStats);
 router.get("/dashboard/activities", checkAuth, getRecentActivities);
+router.get("/dashboard/analytics", checkAuth, getAnalytics);
+
+// Case Management Routes
+router.post("/cases", checkAuth, createCase);
+router.get("/cases", checkAuth, listCases);
+router.get("/cases/:id", checkAuth, getCaseById);
+router.get("/clients", checkAuth, getClients);
 
 export default router;
