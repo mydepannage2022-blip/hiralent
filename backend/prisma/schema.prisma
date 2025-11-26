@@ -192,6 +192,9 @@ model Question {
   type        String   // coding, mcq, debugging
   canonicalSolution String
   testCases   Json     // { inputs: [], outputs: [] }
+   // ADD Variation
+  parameters  Json?    // Store variation parameters
+  metadata    Json?    // Store variation metadata
   //ADD THESE MCQ FIELDS
   options           Json?
   correctAnswer     String?
