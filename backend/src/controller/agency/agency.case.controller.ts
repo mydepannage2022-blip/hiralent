@@ -396,3 +396,118 @@ export const getClients = async (req: Request, res: Response) => {
     });
   }
 };
+
+// PUT /api/v1/agency/cases/:id - Update case
+export const updateCase = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.user_id;
+    const { id } = req.params;
+
+    console.log("=== UPDATE CASE DEBUG ===");
+    console.log("User ID:", userId);
+    console.log("Case ID:", id);
+    console.log("Request body:", req.body);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId },
+      select: { agency_id: true },
+    });
+
+    if (!user?.agency_id) {
+      return res.status(403).json({
+        success: false,
+        message: "User is not associated with an agency",
+      });
+    }
+
+    // Verify case belongs to agency
+    const existingCase = await prisma.relocationCase.findFirst({
+      where: {
+        case_id: id,
+        agency_id: user.agency_id,
+      },
+    });
+
+    if (!existingCase) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    const {
+      status,
+      priority_level,
+      estimated_completion,
+      estimated_cost,
+      actual_cost,
+      payment_status,
+      notes,
+      destination_city, 
+    } = req.body;
+
+    console.log("Extracted fields:", {
+      status,
+      priority_level,
+      estimated_completion,
+      estimated_cost,
+      destination_city, 
+      notes,
+    });
+
+    // Build update data object
+    const updateData: any = {};
+
+    if (status !== undefined) updateData.status = status;
+    if (priority_level !== undefined) updateData.priority_level = priority_level;
+    if (destination_city !== undefined) updateData.destination_city = destination_city; // ✅ Add this
+    if (estimated_completion !== undefined) {
+      updateData.estimated_completion = estimated_completion 
+        ? new Date(estimated_completion) 
+        : null;
+    }
+    if (estimated_cost !== undefined) updateData.estimated_cost = estimated_cost;
+    if (actual_cost !== undefined) updateData.actual_cost = actual_cost;
+    if (payment_status !== undefined) updateData.payment_status = payment_status;
+    if (notes !== undefined) updateData.notes = notes;
+
+    console.log("Update data object:", updateData);
+
+    const updatedCase = await prisma.relocationCase.update({
+      where: { case_id: id },
+      data: updateData,
+      include: {
+        candidate: {
+          select: {
+            user_id: true,
+            email: true,
+            full_name: true,
+            phone_number: true,
+          },
+        },
+      },
+    });
+
+    console.log("Updated case:", updatedCase);
+
+    return res.status(200).json({
+      success: true,
+      message: "Case updated successfully",
+      data: updatedCase,
+    });
+
+  } catch (error) {
+    console.error("Update case error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update case",
+    });
+  }
+};
