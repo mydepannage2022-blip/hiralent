@@ -162,7 +162,6 @@ router.use((req, res) => {
 });
 
 
-
-console.log('✅ Question routes loaded successfully');
+console.log(' Question routes loaded successfully');
 
 export default router; 

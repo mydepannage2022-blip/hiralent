@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
 from typing import Optional, Dict, Any
 from app.routes import variation_routes
+from app.routes.vector_routes import router as vector_router
 
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -1128,6 +1129,9 @@ except ImportError as e:
     @app.get("/variations/health")
     async def variation_fallback():
                 return {"error": "Variation Engine not available", "available": False}
+
+#vector store
+app.include_router(vector_router)
 
 
 # =============================================================================
