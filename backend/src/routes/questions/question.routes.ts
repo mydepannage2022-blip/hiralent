@@ -132,6 +132,26 @@ router.post('/scrape/leetcode/batch',
   controller.scrapeLeetCodeBatch.bind(controller)
 );
 
+// ========== VARIATION ENGINE ROUTES ==========
+router.get('/variation-engine/health',
+  controller.checkVariationEngineHealth.bind(controller)
+);
+
+router.post('/:id/generate-variations',
+  checkAuth,
+  controller.generateVariations.bind(controller)
+);
+
+router.post('/:id/analyze-variability',
+  checkAuth,
+  controller.analyzeVariability.bind(controller)
+);
+
+
+router.post('/:id/analyze-variability',
+  checkAuth,
+  controller.analyzeVariability.bind(controller)
+);
 // 404 handler
 router.use((req, res) => {
   console.log('❌ ROUTER 404 - No route matched:', req.method, req.url);
@@ -142,7 +162,6 @@ router.use((req, res) => {
 });
 
 
+console.log(' Question routes loaded successfully');
 
-console.log('✅ Question routes loaded successfully');
-
-export default router; // ✅ IMPORTANT: Export par défaut!
+export default router; 

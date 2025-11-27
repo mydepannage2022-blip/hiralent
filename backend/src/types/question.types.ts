@@ -293,3 +293,70 @@ export interface LeetCodeBatchScrapeResponse {
     error: string;
   }>;
 }
+
+// Variaion engine types
+export interface VariationGenerationResponse {
+  success: boolean;
+  message: string;
+  variations_generated: number;
+  base_question_id: string;
+  difficulty_distribution: Record<string, number>;
+  sample_variations: VariationQuestionData[];
+  metadata: {
+    variation_engine_version: string;
+    generated_at: string;
+    question_type: string;
+  };
+  error?: string;
+}
+export interface VariationGenerationRequest {
+  base_question_id: string;
+  variation_count?: number;
+  preserve_difficulty?: boolean;
+}
+export interface VariabilityAnalysisResponse {
+  success: boolean;
+  variability_analysis: {
+    question_type: string;
+    variability_score: number;
+    max_recommended_variations: number;
+    unique_titles_generated: number;
+    difficulty_variations: number;
+    parameter_variations: number;
+    suitability_for_anti_cheat: 'high' | 'medium' | 'low';
+  };
+  sample_variations: VariationQuestionData[];
+  error?: string;
+}
+
+export interface VariationQuestionData {
+  id: string;
+  base_question_id: string;
+  variation_number: number;
+  title: string;
+  problemStatement: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  parameters: Record<string, any>;
+  testCases: {
+    examples: Array<{ input: string; expected_output: string; description?: string }>;
+    inputs: string[];
+    outputs: string[];
+  };
+  skillTags: string[];
+  type: 'coding' | 'mcq';
+  is_variation: boolean;
+  parent_version: string;
+  canonicalSolution: string;
+  explanation: string;
+  status: 'pending_review' | 'approved' | 'rejected';
+  aiGenerated: boolean;
+  source: string;
+  metadata: {
+    generated_by: string;
+    question_type: string;
+    variation_engine_version: string;
+    generated_at: string;
+  };
+  
+
+}
