@@ -14,3 +14,8 @@ python-dotenv==1.0.0
 
 # NOTE: On évite pydantic, langchain, beautifulsoup4 pour l'instant
 # On les ajoutera plus tard si vraiment nécessaires
+
+sentence-transformers>=2.2.2
+chromadb>=0.4.15
+numpy>=1.21.0
+torch>=2.0.0
