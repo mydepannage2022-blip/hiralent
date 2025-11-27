@@ -41,21 +41,67 @@ class GeminiClient:
         # Fixed brain for this service
         self.system_prompt = SystemMessage(
             content=(
-                "You are an expert technical assessment designer for Hiralent. "
-                "Your job is to help employers create precise, fair, and role-aligned "
-                "skill assessments based ONLY on the information provided in the context "
-                "and the ongoing conversation.\n\n"
-                "Responsibilities:\n"
-                "- Read job information and employer inputs carefully.\n"
-                "- Identify relevant technical skills, domains, tools, and technologies.\n"
-                "- Suggest question types (coding, MCQ) "
-                "  and distributions aligned with the role and experience level.\n"
-                "- Ask focused clarifying questions when information is missing.\n"
-                "- When enough information is available, propose a structured assessment "
-                "  plan (sections, counts, difficulty, time) that can be converted into "
-                "  an AssessmentRequirements object by the backend.\n"
-                "- Never invent company policies or use external private data. "
-                "  Stay strictly within the provided context.\n"
+    "You are the AI assistant inside the Hiralent Assessment Creator.\n"
+    "You DO NOT design the assessment logic yourself – the backend state machine "
+    "handles all decisions and configuration. Your job is ONLY to:\n"
+    "- Speak to the employer in a clear, friendly and concise way.\n"
+    "- Ask focused questions that match the current step shown in `current_step`.\n"
+    "- Rephrase and summarize what was captured so far (from `assessment_data`) "
+    "  without inventing new fields.\n"
+    "- Give concrete examples of how to answer (especially for skills and question mix).\n\n"
+
+    "Important behaviour:\n"
+    "- Keep messages SHORT (2–6 lines max). Avoid long paragraphs.\n"
+    "- Ask ONE main question at a time.\n"
+    "- Never mention internal fields like `assessment_data` or `current_step`.\n"
+    "- Never output JSON or code blocks, only plain conversational text with simple bullets.\n"
+    "- Never invent company policies or external data. Stay strictly within the job info, "
+    "  assessment_data and conversation history.\n\n"
+
+    "How to handle each phase (the backend controls the exact step, you just talk to the user):\n"
+    "1) welcome / job_details\n"
+    "   - Acknowledge the role.\n"
+    "   - Ask briefly about the main responsibilities or typical scenarios for this role.\n"
+    "   - Keep it practical, e.g. 'What kind of problems will this person solve day-to-day?'.\n\n"
+    "2) skills_identification\n"
+    "   - Ask the user to list the skills and topics they want to test.\n"
+    "   - Encourage comma-separated answers, e.g. 'Power BI, DAX, SQL, data modeling'.\n"
+    "   - Optionally mention that they can give weights like '70% Power BI, 30% SQL'.\n\n"
+    "3) assessment_type\n"
+    "   - Briefly summarize the captured skills.\n"
+    "   - Present the four options:\n"
+    "     QUICK_CHECK (short screen), COMPREHENSIVE (deeper test), "
+    "     CERTIFICATION (formal, strict), COMPANY_SPECIFIC (tailored to their processes).\n"
+    "   - Ask them to choose one.\n\n"
+    "4) difficulty_level\n"
+    "   - Ask for the target level/difficulty using simple labels:\n"
+    "     BEGINNER / INTERMEDIATE / ADVANCED / EXPERT (you can hint that this often matches "
+    "     junior / mid / senior).\n"
+    "   - Explain each in one short line.\n\n"
+    "5) question_types\n"
+    "   - Ask what question types and proportions they want.\n"
+    "   - Give examples like '50% coding, 30% debugging, 20% MCQ' or "
+    "     'mostly coding with a bit of system design'.\n\n"
+    "6) time_settings\n"
+    "   - Ask for total duration (minutes) and approximate number of questions.\n"
+    "   - Encourage formats like '60 minutes, 20 questions'.\n\n"
+    "7) scoring_settings\n"
+    "   - Confirm the time and question count in one short sentence.\n"
+    "   - Ask what passing score (in %) they want, mentioning that 70% is a common default.\n\n"
+    "8) review\n"
+    "   - Summarize the full plan using the fields already present in assessment_data: "
+    "     role context, key skills, assessment type, difficulty, question categories and counts, "
+    "     total duration, number of questions, passing score.\n"
+    "   - Ask them to type 'confirm' to finalize, or 'back' if they want to adjust something.\n\n"
+    "Commands:\n"
+    "- If the user types 'back', the backend will move them to the previous step; you should just "
+    "  continue the conversation naturally from that step.\n"
+    "- If the user types 'restart', the backend will reset the flow; greet them briefly again and "
+    "  ask for the role they want to assess.\n\n"
+    "Overall goal:\n"
+    "Guide the employer through this short wizard so the backend can build a clean assessment "
+    "configuration (skills, domains, difficulty, question mix, duration, passing score). "
+    "Your answers should make the experience feel simple and guided, never technical or verbose."
             )
         )
 
@@ -145,62 +191,167 @@ Your task is to analyze the following job information (title + description) and 
 
 {title_block}{jd_block}
 
-Return ONLY a single valid JSON object with these EXACT keys:
+Return ONLY a single valid JSON object with these EXACT keys and types:
 
-- "technical_skills": array of specific technical skills explicitly mentioned or very strongly implied
-    (e.g. ["Python","FastAPI","React","TypeScript","SQL"]).
-    → Be exhaustive. Include all relevant languages, frameworks, libraries, databases, cloud services,
-      data tools, MLOps tools, CI/CD tools, container/orchestration tools, etc.
-      Include explicit cloud resources like "AWS EC2", "AWS Lambda", "AWS S3" as separate items when they appear.
+- "technical_skills": array<string>
+- "experience_level": string
+- "domains": array<string>
+- "tools_platforms": array<string>
+- "key_technologies": array<string>
+- "job_complexity": string
+- "primary_domain": string
+- "categories": array<string>
+- "question_recommendations": array<object>
+- "confidence_score": number
 
-- "experience_level": one of ["entry", "mid", "senior", "executive"].
-    → Use the strongest signal from the title ("Senior", "Lead", "Principal") and from the text
-      ("5+ years", "10+ years", etc.). If it clearly looks senior/lead, do NOT downgrade to "mid".
+----------------------------------------
+DETAILED FIELD GUIDELINES
+----------------------------------------
 
-- "domains": array of domains/areas, chosen from generic strings like
-    ["backend", "frontend", "fullstack", "data", "devops", "mobile", "ecommerce", "security", "cloud", "ai", "ml"]
-    or other clear domains found in the description.
-    → Do NOT use vague words such as "design", "environment", "team", "company" as domains.
+1) "technical_skills": array of specific hard skills and capabilities.
 
-- "tools_platforms": array of tools, frameworks, platforms
-    (e.g. ["PostgreSQL","Redis","Docker","Kubernetes","AWS","GitHub Actions","Linux","Kafka"]).
-    → Include databases, caches, message brokers, CI/CD tools, operating systems, monitoring tools, etc.
-
-- "key_technologies": array of the main technologies to focus the assessment on
-    (a subset of the MOST important skills/tools for this role).
-    → Usually 5–10 items, focusing on languages, frameworks, cloud stack and critical infrastructure.
-
-- "job_complexity": one of ["low", "medium", "high"] based on scale, architecture, and responsibilities.
-
-- "primary_domain": a single string, the main domain
-    (e.g. "backend", "frontend", "fullstack", "data", "devops", "ecommerce", "cloud").
-
-- "categories": array of suggested assessment categories,
-    e.g. ["coding","mcq","system_design","debugging","architecture","devops","leadership"].
-
-- "question_recommendations": array of objects:
-    [
-      {{
-        "category": "coding" | "mcq",
-        "count": integer (suggested number of questions),
-        "difficulty": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT"
-      }},
-      ...
-    ]
-
-- "confidence_score": float between 0 and 1 indicating how confident you are in this extraction.
+Examples:
+- For tech/data roles: ["Python","FastAPI","React","TypeScript","SQL","Data Analysis"]
+- For business roles: ["Financial Analysis","Budgeting","Accounting Principles"]
+- For healthcare roles: ["Clinical Research","Patient Care","Diagnostic Interpretation"]
 
 Rules:
+- Include programming languages, query languages, data skills, architecture patterns,
+  security skills, analytical methods, domain-specific hard skills (e.g. "financial analysis",
+  "clinical research", "supply chain management").
+- Include conceptual / method skills like "data modeling", "ETL design", "A/B testing".
+- DO NOT include soft skills (communication, teamwork, leadership, etc.).
+- DO NOT include pure job titles ("Software Engineer", "Data Analyst") as skills.
+- Avoid generic words like "teamwork", "fast learner", "environment", "motivation".
+
+2) "tools_platforms": array of concrete products, frameworks, platforms and tools.
+
+Examples:
+- Tech: ["PostgreSQL","Redis","Docker","Kubernetes","AWS","GitHub Actions","Linux","Kafka"]
+- Data/BI: ["Power BI","Tableau","Looker","Excel","Google Sheets"]
+- Business: ["Salesforce","HubSpot","SAP","Workday","QuickBooks"]
+- Design: ["Figma","Adobe XD","Photoshop"]
+
+Rules:
+- Include databases, caches, message brokers, CI/CD tools, operating systems,
+  monitoring tools, IDEs, cloud providers, BI tools, CRMs, ERPs, ATS, design tools.
+- Treat explicit cloud resources as separate items when named, e.g. "AWS EC2",
+  "AWS Lambda", "AWS S3".
+- A tool should appear in EITHER "technical_skills" OR "tools_platforms" (prefer tools_platforms).
+  Example: "Power BI" -> tools_platforms; "data analysis" -> technical_skills.
+
+3) "experience_level": one of ["entry","mid","senior","executive"].
+
+Rules:
+- Use the strongest signal from the title ("Senior", "Lead", "Principal", "Head of", "Director")
+  and from the text ("5+ years", "10+ years", "extensive experience").
+- If it clearly looks senior/lead, DO NOT downgrade to "mid".
+- If the description is vague, assume "mid" unless there are strong junior signals
+  (e.g. "intern", "graduate", "0–1 years").
+
+4) "domains": array of domains/areas.
+
+Examples:
+- Tech: ["backend","frontend","fullstack","data","devops","mobile","security","cloud","ml","ai"]
+- Other domains: ["finance","accounting","marketing","sales","hr","healthcare",
+  "operations","logistics","supply_chain","legal","product","design","customer_support"]
+
+Rules:
+- Use generic, reusable domain labels.
+- Derive from the role focus and responsibilities.
+- You MAY invent simple clear labels if needed (e.g. "bi_analytics","project_management").
+- DO NOT use vague words such as "design", "environment", "team", "company" as domains
+  unless clearly qualified (e.g. "ux_design" is valid, "design" alone is not).
+
+5) "tools_platforms" (see above) and "technical_skills" together should cover
+   ALL relevant hard skills for assessment design. Be exhaustive.
+
+6) "key_technologies": array of the main technologies to focus the assessment on.
+
+Rules:
+- Choose 5–10 of the MOST critical items from "technical_skills" and "tools_platforms".
+- Prioritize: primary programming languages, main frameworks, core data stack,
+  main cloud provider, critical infrastructure or business systems.
+- Order from most important to least important.
+
+7) "job_complexity": one of ["low","medium","high"].
+
+Guidance:
+- "high": complex systems, large scale, multi-team coordination, architecture ownership,
+         senior/lead responsibilities, enterprise-wide impact.
+- "medium": standard professional role with varied responsibilities and some autonomy.
+- "low": narrow scope, repetitive tasks, strong supervision, junior/entry roles.
+
+8) "primary_domain": a single string, the MAIN domain for the role.
+
+Examples:
+- "backend", "frontend", "fullstack", "data", "devops", "security", "cloud",
+  "ml", "ai", "finance", "marketing", "sales", "hr", "healthcare", "operations".
+
+Choose the domain that best describes the core of the job, not every secondary aspect.
+
+9) "categories": array of suggested assessment categories.
+
+Examples:
+- For backend roles: ["coding","mcq","system_design","architecture","devops"]
+- For data roles: ["coding","mcq","data_modeling","statistics","ml_theory"]
+- For non-coding roles (finance, marketing, hr, etc.):
+  ["mcq","case_studies","scenario_judgment"]
+
+Rules:
+- Use only simple, generic labels such as:
+  ["coding","mcq","system_design","debugging","architecture",
+   "devops","data_modeling","statistics","ml_theory","case_studies",
+   "scenario_judgment","leadership","people_management"].
+- Do NOT invent extremely specific or obscure category names.
+
+10) "question_recommendations": array of objects, each with:
+    {{
+      "category": "coding" or "mcq",
+      "count": integer (suggested number of questions),
+      "difficulty": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT"
+    }}
+
+Guidance:
+- For technical roles (backend, frontend, data, devops, ml):
+  - Always include at least one "coding" entry and one "mcq" entry.
+- For non-coding roles (finance, marketing, hr, operations, etc.):
+  - Use "mcq" only (no coding).
+- Align "difficulty" with "experience_level":
+  - entry      -> "BEGINNER"
+  - mid        -> "INTERMEDIATE"
+  - senior     -> "ADVANCED"
+  - executive  -> "EXPERT"
+
+11) "confidence_score": float between 0 and 1.
+
+Rules:
+- Reflect how clearly the description supports your extraction.
+- Use higher values (0.8–0.95) when the JD is detailed and unambiguous.
+- Use lower values (0.5–0.7) when information is sparse, generic or contradictory.
+
+----------------------------------------
+GENERAL RULES
+----------------------------------------
+
 - Use ONLY the information in the job title and description or very strong implications.
 - Capture ALL relevant technologies and tools; avoid being conservative.
-- Avoid vague domain labels like "design", "environment", "team".
-- Consider both the wording (e.g. "Senior", "Lead", "Principal") and years of experience when deciding "experience_level".
-- If the description clearly indicates a senior or higher level, do NOT downgrade it to "mid" without a strong reason.
+- DO NOT add skills, tools, or domains that are not supported by the text.
+- DO NOT include soft skills in "technical_skills" or "tools_platforms".
+- Avoid vague domain labels like "design", "environment", "team", "company".
+- Always return the correct data types:
+  - Arrays must always be arrays, even if empty.
+  - "experience_level", "job_complexity" and "primary_domain" must be strings.
+  - "confidence_score" must be a number.
+- Remove duplicates inside each array; each skill/tool should appear at most once.
+
+Output format:
 - Do NOT include any explanation, comments, or markdown.
 - Do NOT wrap the JSON in ``` or any other fences.
 - The first character of your response MUST be '{{' and the last character MUST be '}}'.
 - Ensure the JSON is syntactically valid.
 """
+
 
         try:
             response = await self.llm.agenerate(
