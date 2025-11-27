@@ -204,6 +204,8 @@ model Question {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  assessments AssessmentQuestion[]   // 👈 NEW
+
   @@map("questions")
 }
 
@@ -1438,6 +1440,7 @@ model EmployerAssessment {
   
   candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
   competeChallenges CompeteChallenge[]
+  questions            AssessmentQuestion[]   // 👈 NEW
 
   @@index([company_id])
   @@index([job_id])
@@ -1488,6 +1491,27 @@ enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
   MANUAL
+}
+
+model AssessmentQuestion {
+  id            String   @id @default(uuid())
+  assessment_id String
+  question_id   String
+
+  // Optional metadata
+  order         Int?
+  points        Int      @default(1)
+  section       String?  // "algorithms", "sql", etc. if you want
+  isReserve     Boolean  @default(false)
+
+  assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  question   Question           @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([assessment_id, question_id])
+  @@index([assessment_id])
+  @@index([question_id])
+
+  @@map("assessment_questions")
 }
 
 // Conversation Model
