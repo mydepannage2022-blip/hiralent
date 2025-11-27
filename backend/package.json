@@ -13,7 +13,9 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "dev:test": "ts-node src/scripts/dev-test.ts",
-    "worker": "ts-node src/workers/ai_company_setup.worker.ts"
+    "worker": "ts-node src/workers/ai_company_setup.worker.ts",
+    "migrate:vectors": "ts-node scripts/migrateQuestionsToVectorDB.ts",
+    "dev:with-migration": "npm run migrate:vectors && npm run dev"
   },
   "module": "CommonJS",
   "type": "commonjs",

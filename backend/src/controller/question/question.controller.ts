@@ -21,7 +21,7 @@ import {
 
 } from '../../types/question.types';
 export class QuestionController {
-  private questionService: QuestionService;
+  public questionService: QuestionService;
   private generatorService: QuestionGeneratorService;
 
   constructor() {
