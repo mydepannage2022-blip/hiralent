@@ -4,23 +4,20 @@ import { Shield, Upload, CheckCircle, Clock, AlertCircle, RefreshCw } from "luci
 import { useAuth } from "@/src/context/AuthContext";
 
 export default function VerificationSection() {
-  const { user, token } = useAuth(); // <-- get token from context
+  const { user, token } = useAuth();
   const [companyProfile, setCompanyProfile] = useState<any>(null);
-  const [companyId, setCompanyId] = useState<string>(""); // <-- keep real companyId here
+  const [companyId, setCompanyId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCompanyId, setIsLoadingCompanyId] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     const fetchCompanyProfile = async () => {
-      if (!user || user.role !== "company_admin") {
+      if (!user || user.role !== "company_admin" || !token) {
         setIsLoading(false);
-        return;
-      }
-
-      if (!token) {
-        setIsLoading(false);
+        setIsLoadingCompanyId(false);
         return;
       }
 
@@ -36,6 +33,7 @@ export default function VerificationSection() {
           const err = await response.text().catch(() => "");
           console.error("profile error:", response.status, err);
           setIsLoading(false);
+          setIsLoadingCompanyId(false);
           return;
         }
 
@@ -43,27 +41,20 @@ export default function VerificationSection() {
         const profile = data?.data?.profile || null;
         setCompanyProfile(profile);
 
-        // ✅ derive & store the REAL companyId (don’t use user_id)
-        const derivedCompanyId =
-          profile?.company_id ??
-          profile?.id ??
-          (user as any)?.company_id ??
-          "";
-
+        const derivedCompanyId = user.user_id;
         setCompanyId(derivedCompanyId);
-        console.log("✅ Using companyId:", derivedCompanyId);
+        console.log("✅ Using companyId (user_id):", derivedCompanyId);
+        console.log("✅ Profile data:", profile);
       } catch (error) {
         console.error("Network error:", error);
       } finally {
         setIsLoading(false);
+        setIsLoadingCompanyId(false);
       }
     };
 
     fetchCompanyProfile();
-  }, [user, token]); // include token
-
-  // ❌ REMOVE this old line:
-  // const companyId = user?.user_id || "";
+  }, [user, token]);
 
   const verificationStatus = companyProfile?.verification_status || "unverified";
   const verified = companyProfile?.verified || false;
@@ -102,7 +93,6 @@ export default function VerificationSection() {
         alert("Please upload a PDF, JPG, or PNG file");
         return;
       }
-      // backend allows 15 MB → align UI to 15 MB
       if (selectedFile.size > 15 * 1024 * 1024) {
         alert("File size must be ≤ 15MB");
         return;
@@ -112,6 +102,11 @@ export default function VerificationSection() {
   };
 
   const handleVerification = async () => {
+    if (isLoadingCompanyId) {
+      alert("⏳ Loading company information... Please wait.");
+      return;
+    }
+
     if (!token) {
       alert("❌ Session expired. Please login again.");
       return;
@@ -121,7 +116,10 @@ export default function VerificationSection() {
       return;
     }
     if (!companyId) {
-      alert("Missing company ID. Please reload the page.");
+      console.error("Current companyId state:", companyId);
+      console.error("Current user:", user);
+      console.error("Current companyProfile:", companyProfile);
+      alert("❌ Company ID not found. Please complete your company profile setup first.");
       return;
     }
     if (!companyProfile?.registration_number || !companyProfile?.full_address) {
@@ -133,7 +131,6 @@ export default function VerificationSection() {
     setUploadProgress(0);
 
     try {
-      // 1) create run
       setUploadProgress(10);
       const runRes = await fetch("http://localhost:5000/api/v1/verification/run/create", {
         method: "POST",
@@ -143,7 +140,7 @@ export default function VerificationSection() {
         },
         body: JSON.stringify({
           subject_type: "COMPANY",
-          subject_id: companyId, // ✅ real companyId
+          subject_id: companyId,
         }),
       });
 
@@ -157,7 +154,6 @@ export default function VerificationSection() {
       const run_id = runData.run_id;
       setUploadProgress(20);
 
-      // 2) upload with OCR
       const form = new FormData();
       form.append("file", file);
       form.append("document_type", "registration_cert");
@@ -168,7 +164,7 @@ export default function VerificationSection() {
 
       const uploadRes = await fetch(`http://localhost:5000/api/v1/uploads/company/${companyId}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, // don’t add Content-Type with FormData
+        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
 
@@ -182,7 +178,6 @@ export default function VerificationSection() {
       console.log("Uploaded:", uploadData);
       setUploadProgress(70);
 
-      // 3) finalize
       const finalizeRes = await fetch("http://localhost:5000/api/v1/verification/run/finalize", {
         method: "POST",
         headers: {
@@ -192,7 +187,7 @@ export default function VerificationSection() {
         body: JSON.stringify({
           run_id,
           subject_type: "COMPANY",
-          subject_id: companyId, // ✅ real companyId
+          subject_id: companyId,
         }),
       });
 
@@ -222,14 +217,15 @@ export default function VerificationSection() {
         alert("❌ Session invalid/expired. Please login again.");
         window.location.href = "/company/login";
       } else {
-        alert("❌ Unauthorized. Check you’re logged in with the correct company account.");
+        alert("❌ Unauthorized. Check you're logged in with the correct company account.");
       }
     } else if (status === 403) {
-      alert("❌ Forbidden. You don’t have access to this company. Use the correct company account.");
+      alert("❌ Forbidden. You don't have access to this company. Use the correct company account.");
     } else {
       alert(`❌ ${safeParse(text)?.error || "Request failed"}`);
     }
   }
+
   function safeParse(s: string) {
     try { return JSON.parse(s); } catch { return {}; }
   }
@@ -247,7 +243,8 @@ export default function VerificationSection() {
       </div>
     );
   }
-  // VERIFIED STATE - Premium Professional Badge
+
+  // VERIFIED STATE
   if (verified || verificationStatus === "verified") {
     return (
       <motion.div
@@ -257,71 +254,25 @@ export default function VerificationSection() {
         className="relative overflow-hidden bg-gradient-to-br from-white via-green-50/30 to-emerald-50/40 
                    border border-green-200/60 rounded-2xl shadow-lg shadow-green-100/50 p-6"
       >
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-[0.03]">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(34 197 94) 1px, transparent 0)`,
-            backgroundSize: '32px 32px'
-          }} />
-        </div>
-
-        {/* Content */}
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Icon with glow effect */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-green-400/20 blur-xl rounded-full" />
-              <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 
-                            flex items-center justify-center shadow-lg shadow-green-500/25
-                            ring-4 ring-green-100/50">
-                <Shield className="w-7 h-7 text-white" strokeWidth={2.5} />
-              </div>
-              {/* Checkmark badge */}
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 
-                            rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30
-                            ring-3 ring-white">
-                <CheckCircle className="w-4 h-4 text-white" strokeWidth={3} />
-              </div>
-            </div>
-
-            {/* Text content */}
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-gray-900 tracking-tight">
-                  Verified Business
-                </h3>
-                <div className="px-2 py-0.5 bg-green-100 rounded-md">
-                  <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">
-                    Official
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 leading-tight">
-                Identity authenticated • Trusted by candidates
-              </p>
-            </div>
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
-
-          {/* Status badge */}
-          <motion.div
-            initial={{ x: 10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm 
-                     border border-green-200 rounded-xl shadow-sm"
-          >
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-sm font-semibold text-green-700">Active</span>
-          </motion.div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-gray-900">Company Verified </h3>
+              <StatusBadge />
+            </div>
+            <p className="text-sm text-gray-600">
+              Your company has been successfully verified! You now have full access to all platform features.
+            </p>
+            {companyProfile?.verification_date && (
+              <p className="text-xs text-gray-500 mt-2">
+                Verified on {new Date(companyProfile.verification_date).toLocaleDateString()}
+              </p>
+            )}
+          </div>
         </div>
-
-        {/* Bottom accent line */}
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 origin-left"
-        />
       </motion.div>
     );
   }
@@ -339,23 +290,29 @@ export default function VerificationSection() {
               <h3 className="font-semibold text-gray-900">Verification Pending</h3>
               <StatusBadge />
             </div>
+            <p className="text-sm text-gray-600 mb-3">
+              Your verification documents are being reviewed. This usually takes 1-2 business days.
+            </p>
             
             {verificationNotes && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800 font-medium mb-1">Why is this pending?</p>
-                <p className="text-sm text-yellow-700">{verificationNotes}</p>
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                <p className="text-xs font-medium text-yellow-800 mb-1">Review Notes:</p>
+                <p className="text-xs text-yellow-700">{verificationNotes}</p>
               </div>
             )}
 
-            <p className="text-sm text-gray-600 mb-4">
-              You can re-upload a clearer document to trigger automatic re-verification.
-            </p>
+            {companyProfile?.verification_submitted_at && (
+              <p className="text-xs text-gray-500 mb-4">
+                Submitted: {new Date(companyProfile.verification_submitted_at).toLocaleDateString()}
+              </p>
+            )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Re-upload Document
-                </label>
+            {/* Re-upload Option */}
+            <div className="mt-4 pt-4 border-t border-yellow-200">
+              <p className="text-sm text-gray-700 mb-3 font-medium">
+                Need to update your document?
+              </p>
+              <div className="space-y-3">
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -367,47 +324,47 @@ export default function VerificationSection() {
                     file:bg-yellow-50 file:text-yellow-700
                     hover:file:bg-yellow-100
                     cursor-pointer border border-gray-300 rounded-lg"
-                  disabled={isUploading}
+                  disabled={isUploading || isLoadingCompanyId}
                 />
                 {file && (
-                  <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                  <p className="text-xs text-green-600 flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
                     {file.name}
                   </p>
                 )}
-              </div>
 
-              {isUploading && uploadProgress > 0 && (
-                <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <motion.div
-                      className="bg-yellow-600 h-2 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${uploadProgress}%` }}
-                      transition={{ duration: 0.3 }}
-                    />
+                {isUploading && uploadProgress > 0 && (
+                  <div className="space-y-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <motion.div
+                        className="bg-yellow-600 h-2 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${uploadProgress}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600 text-center">
+                      {uploadProgress < 20 && "Creating verification run..."}
+                      {uploadProgress >= 20 && uploadProgress < 70 && "Uploading to MinIO & processing OCR..."}
+                      {uploadProgress >= 70 && uploadProgress < 100 && "Finalizing verification..."}
+                      {uploadProgress === 100 && "Complete!"}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-600 text-center">
-                    {uploadProgress < 20 && "Creating verification run..."}
-                    {uploadProgress >= 20 && uploadProgress < 70 && "Uploading to MinIO & processing OCR..."}
-                    {uploadProgress >= 70 && uploadProgress < 100 && "Finalizing verification..."}
-                    {uploadProgress === 100 && "Complete!"}
-                  </p>
-                </div>
-              )}
+                )}
 
-              <motion.button
-                onClick={handleVerification}
-                disabled={!file || isUploading}
-                className="w-full bg-yellow-600 text-white py-2.5 px-4 rounded-lg font-medium
-                  hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2 text-sm transition-colors"
-                whileHover={{ scale: !isUploading && file ? 1.02 : 1 }}
-                whileTap={{ scale: !isUploading && file ? 0.98 : 1 }}
-              >
-                <RefreshCw className={`w-4 h-4 ${isUploading ? 'animate-spin' : ''}`} />
-                {isUploading ? "Re-verifying..." : "Re-submit for Verification"}
-              </motion.button>
+                <motion.button
+                  onClick={handleVerification}
+                  disabled={!file || isUploading || isLoadingCompanyId}
+                  className="w-full bg-yellow-600 text-white py-2.5 px-4 rounded-lg font-medium
+                    hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed
+                    flex items-center justify-center gap-2 text-sm transition-colors"
+                  whileHover={{ scale: !isUploading && file && !isLoadingCompanyId ? 1.02 : 1 }}
+                  whileTap={{ scale: !isUploading && file && !isLoadingCompanyId ? 0.98 : 1 }}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isUploading ? 'animate-spin' : ''}`} />
+                  {isUploading ? "Re-submitting..." : "Re-submit Document"}
+                </motion.button>
+              </div>
             </div>
           </div>
         </div>
@@ -447,7 +404,7 @@ export default function VerificationSection() {
                   file:bg-blue-50 file:text-blue-700
                   hover:file:bg-blue-100
                   cursor-pointer border border-gray-300 rounded-lg"
-                disabled={isUploading}
+                disabled={isUploading || isLoadingCompanyId}
               />
               {file && (
                 <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
@@ -456,7 +413,7 @@ export default function VerificationSection() {
                 </p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Accepted formats: PDF, JPG, PNG (Max 10MB)
+                Accepted formats: PDF, JPG, PNG (Max 15MB)
               </p>
             </div>
 
@@ -481,12 +438,12 @@ export default function VerificationSection() {
 
             <motion.button
               onClick={handleVerification}
-              disabled={!file || isUploading}
+              disabled={!file || isUploading || isLoadingCompanyId}
               className="w-full bg-[#1B73E8] text-white py-2.5 px-4 rounded-lg font-medium
                 hover:bg-[#1557B0] disabled:opacity-50 disabled:cursor-not-allowed
                 flex items-center justify-center gap-2 text-sm transition-colors"
-              whileHover={{ scale: !isUploading && file ? 1.02 : 1 }}
-              whileTap={{ scale: !isUploading && file ? 0.98 : 1 }}
+              whileHover={{ scale: !isUploading && file && !isLoadingCompanyId ? 1.02 : 1 }}
+              whileTap={{ scale: !isUploading && file && !isLoadingCompanyId ? 0.98 : 1 }}
             >
               <Upload className={`w-4 h-4 ${isUploading ? 'animate-bounce' : ''}`} />
               {isUploading ? "Verifying..." : "Submit for Verification"}

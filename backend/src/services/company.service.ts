@@ -34,9 +34,9 @@ export const createCompanyProfile = async (userId: string, data: CreateCompanyPr
         business_type: data.business_type,
         employee_count: data.employee_count,
         remote_policy: data.remote_policy,
-        registration_number: data.registration_number,
-        verified: false,
-        full_address: data.full_address,
+        registration_number: data.registration_number, 
+        full_address: data.full_address,             
+        verified: false, 
         rating: null,
         total_jobs_posted: 0,
         active_jobs_count: 0

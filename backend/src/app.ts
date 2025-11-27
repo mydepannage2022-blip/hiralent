@@ -10,13 +10,12 @@ const allowedOrigins = [
   'https://hiralent.vercel.app'
 ];
 
-// CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     // allow requests like Postman or server-to-server without origin
     if (!origin) return callback(null, true);
 
-    // In development allow any localhost origin (different ports like 3001)
+
     if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
       return callback(null, true);
     }
@@ -33,6 +32,8 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
+import agencyRoutes from './routes/agency.routes';
+import adminAgencyRoutes from './routes/admin.agency.routes';
 import authRoutes from './routes/auth/auth.routes';
 import candidateRoutes from './routes/candidate.routes';
 import companyRoutes from './routes/company.routes';
@@ -41,27 +42,29 @@ import ocrRoutes from './routes/ocr.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
-import sessionRoutes from './routes/auth/session.routes';
 import questionRoutes from './routes/questions/question.routes';
+import messageRoutes from './routes/message.routes';
 import submissionsRoutes from './routes/submissions';
 import executionRoutes from './routes/execution.routes';
+import insightsRoutes from './routes/insights.routes';
+import jobRoutes from './routes/job.routes';
+import employerAssessmentRoutes from './routes/employerAssessment.routes';
 // Dev-only routes are mounted below to avoid exposing them in production.
 
 
 // Mount routes
+app.use("/api/v1/agency", agencyRoutes);
+app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/ocr', ocrRoutes);
+app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
-app.use('/api/v1/auth/sessions', sessionRoutes);
+app.use('/api/v1/auth/sessions', authRoutes);
 
 
-
-// Register admin auth routes
-app.use('/api/v1/admin', adminAuthRoutes);
-app.use('/api/v1/admin', adminVerificationRoutes);
+app.use('/api/v1/messages', messageRoutes);
 
 
 //Question Bank
@@ -86,8 +89,17 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 
+// ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
+app.use('/api/v1/admin', adminAuthRoutes);
+app.use('/api/v1/admin', adminVerificationRoutes);
+
+app.use('/api/v1', insightsRoutes);
+
+app.use('/api/v1', jobRoutes);
+app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
+
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
 });
 
-export default app;
+  export default app;

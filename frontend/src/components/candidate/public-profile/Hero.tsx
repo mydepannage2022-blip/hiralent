@@ -3,12 +3,12 @@
 import Image from "next/image";
 import ProfileCard from "./ProfileCard";
 import { Download, MapPin, Globe } from "lucide-react";
-import { HeroProps , ParsedLanguage } from "@/src/types/profile";
+import { HeroProps, ParsedLanguage } from "@/src/types/profile";
 
 export default function Hero({ profile }: HeroProps) {
     // Parse languages if available
     const languages: ParsedLanguage[] = profile.languages ? JSON.parse(profile.languages) : [];
-    
+
     // Format location
     const getLocationDisplay = () => {
         if (profile.city && profile.location) {
@@ -49,7 +49,7 @@ export default function Hero({ profile }: HeroProps) {
         <section className="px-4 sm:p-0 relative bg-[#EFF5FF] overflow-hidden">
             {/* Background SVG shape */}
             <svg
-                className="absolute right-[-250px] top-[550px] w-[575px] h-[575px] sm:right-[115px] sm:top-[440px] sm:w-[615px] sm:h-[615px] md:right-[340px] md:top-[450px] md:w-[640px] md:h-[640px] lg:right-[-150px] lg:top-[115px] lg:w-[1024px] lg:h-[1024px] xl:right-[-100px] xl:top-[115px] 2xl:right-[400px] 2xl:top-[115px] xl:w-[1080px] xl:h-[1080px] text-[#005DDC] z-0"
+                className="absolute right-[-200px] top-[535px] w-[575px] h-[575px] sm:right-[0px] sm:top-[350px] sm:w-[615px]sm:h-[615px] md:right-[0px] md:top-[350px] md:w-[640px] md:h-[640px] lg:right-[-150px] lg:top-[115px] lg:w-[1024px] lg:h-[1024px] xl:right-[-100px] xl:top-[115px] 2xl:right-[400px] 2xl:top-[115px] xl:w-[1080px] xl:h-[1080px] text-[#005DDC] z-0"
                 viewBox="0 0 1304 1294"
                 xmlns="http://www.w3.org/2000/svg"
             >
@@ -59,9 +59,9 @@ export default function Hero({ profile }: HeroProps) {
                 />
             </svg>
 
-            <div className="sm:max-w-[690px] md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl container mx-auto py-40 pb-80 lg:py-40 grid lg:grid-cols-2 gap-8 items-start relative z-10">
+            <div className="sm:max-w-[690px] md:max-w-[920px] lg:max-w-5xl xl:max-w-7xl container mx-auto py-20 pt-30 sm:py-40 grid lg:grid-cols-2 gap-8 items-start relative z-10">
                 {/* LEFT: Text block */}
-                <div className="max-w-xl">
+                <div className="sm:max-w-xl text-center sm:text-left">
                     <h1 className="text-4xl sm:text-5xl lg:text-5xl font-bold leading-tight text-[#111827]">
                         <span className="inline-block name-highlight">
                             Meet {profile.full_name?.split(' ')[0] || 'Professional'}
@@ -74,20 +74,20 @@ export default function Hero({ profile }: HeroProps) {
 
                     {/* Headline */}
                     {profile.headline && (
-                        <p className="mt-6 text-sm md:text-base text-[#4b5563] max-w-lg">
+                        <p className="mt-6 text-sm md:text-base text-[#4b5563] sm:max-w-lg">
                             {profile.headline}
                         </p>
                     )}
 
                     {/* About Me */}
                     {profile.about_me && (
-                        <p className="mt-4 text-sm md:text-base text-[#4b5563] max-w-lg">
+                        <p className="mt-4 text-sm md:text-base text-[#4b5563] sm:max-w-lg">
                             {profile.about_me}
                         </p>
                     )}
 
                     {/* Location & Language Info */}
-                    <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+                    <div className="mt-6 flex flex-wrap justify-center sm:justify-start items-center gap-3 text-sm">
                         {/* Location */}
                         <div className="flex items-center gap-2 text-[#374151]">
                             <MapPin className="w-4 h-4" />
@@ -109,11 +109,11 @@ export default function Hero({ profile }: HeroProps) {
                     <div className="mt-4">
                         <span className="inline-flex items-center gap-2 bg-[#005DDC] text-white px-3 py-2 rounded-full text-sm font-medium">
                             {countryFlag ? (
-                                <Image 
-                                    src={countryFlag} 
-                                    width={18} 
-                                    height={12} 
-                                    alt="Flag" 
+                                <Image
+                                    src={countryFlag}
+                                    width={18}
+                                    height={12}
+                                    alt="Flag"
                                 />
                             ) : (
                                 <Globe className="w-4 h-4" />
@@ -123,7 +123,7 @@ export default function Hero({ profile }: HeroProps) {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="mt-8 flex flex-wrap gap-4">
+                    <div className="mt-8 flex flex-wrap gap-4 justify-center sm:justify-start">
                         <button
                             className="rounded-full px-5 py-3 bg-[#1B1B1B] text-white font-medium shadow-sm hover:opacity-95 transition"
                             aria-label="Contact for opportunity"
@@ -154,7 +154,7 @@ export default function Hero({ profile }: HeroProps) {
                             >
                                 LinkedIn Profile
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                                 </svg>
                             </a>
                         )}
@@ -163,7 +163,8 @@ export default function Hero({ profile }: HeroProps) {
 
                 {/* RIGHT: Profile Card */}
                 <div className="relative">
-                    <div className="absolute lg:left-[-25px] lg:top-10">
+                    <div className="sm:absolute sm:-top-100 sm:left-110 md:left-130 md:-top-100 lg:left-[-18px] lg:-top-10
+                    relative flex justify-center sm:justify-start">
                         <ProfileCard profile={profile} />
                     </div>
                 </div>

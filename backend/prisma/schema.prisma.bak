@@ -1,0 +1,1515 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployerAssessmentStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum AgencyType {
+  VISA
+  RELOCATION
+  INTEGRATION
+}
+
+enum AgencyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model Agency {
+  agency_id             String                    @id @default(uuid())
+  name                  String
+  email          String?   @unique
+  phone          String?
+  type                  AgencyType?
+  billing_contact_email String?
+  owner_user_id         String?
+  status                AgencyStatus              @default(PENDING)
+  created_at            DateTime                  @default(now())
+  updated_at            DateTime                  @updatedAt
+  approval_notes        String?
+  approved_at           DateTime?
+  approved_by           String?
+  logo_url              String?
+  website               String?
+  accreditations        String[]
+  average_case_duration Int?
+  languages_supported   String[]
+  license_expiry        DateTime?
+  license_number        String?
+  operating_countries   String[]
+  rating                Float?
+  service_categories    String[]
+  service_description   String?
+  success_rate          Float?
+  total_cases_handled   Int?
+  business_license_url  String?
+  rejection_reason      String?
+  subscription          AgencySubscription?
+  jobs                  CompanyJob[]
+  users                 User[]
+  webhooks              WebhookEndpoint[]
+  reviews               AgencyReview[]
+  caseAssignments       CaseAssignment[]
+  invitations           CompanyAgencyInvitation[]
+  relocationAnalytics   RelocationAnalytics[]
+  cases                 RelocationCase[]
+}
+
+model User {
+  user_id           String    @id @default(uuid())
+  agency_id         String?
+  email             String    @unique
+  password_hash     String
+  full_name         String
+  role              String    // candidate, company_admin, agency_admin, superadmin
+  is_email_verified Boolean 
+  phone_number      String?
+  position          String?
+  linkedin_url      String?
+  company_role      String? // For company users: HR Manager, CEO, etc.
+  branding_notes    String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  last_login_at     DateTime?
+
+  // NEW: MFA Support
+  mfa_secret        String?   // TOTP secret for 2FA
+  mfa_enabled       Boolean   @default(false)
+
+  // Relations
+  agency              Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  candidateProfile    CandidateProfile?
+  companyProfile      CompanyProfile?            // Changed from recruiterProfile
+  agencyAdminProfile  AgencyAdminProfile?
+  auditLogs           AdminAuditLog[]
+  jobsPosted          CompanyJob[]               // Changed from RecruiterJob
+  jobApplications     JobApplication[]
+  assessments         SkillAssessment[]
+  userAnalytics       UsageAnalytics[]           @relation("UserAnalytics")
+  sessions            UserSession[]              @relation("UserSessions")
+
+  // Inverse relations needed for Prisma
+  candidateProgressTrackers   CandidateProgressTracker[] @relation("CandidateProgressTrackers")
+  progressUpdatedBy           CandidateProgressTracker[] @relation("ProgressUpdatedBy")
+
+  aiInterviewResults          AIInterviewResult[]        @relation("CandidateAIResults")
+  relocationCases             RelocationCase[]           @relation("CandidateRelocationCases")
+  caseAssignments             CaseAssignment[]           @relation("AgentCaseAssignments")
+  agencyReviews               AgencyReview[]             @relation("ClientReviews")
+  companyInvites              CompanyAgencyInvitation[]  @relation("CompanyInvites")
+  jobRecommendations          JobRecommendation[]        @relation("JobRecommendations")
+  notifications               Notification[]             @relation("UserNotifications")
+  candidateDocuments          CandidateDocument[]        @relation("CandidateDocuments")
+  candidateSkills             CandidateSkill[]           @relation("CandidateSkills")
+  skillExtractions            SkillExtraction[]          @relation("SkillExtractions")
+  careerPredictions           CareerPrediction[]         @relation("CareerPredictions")
+  candidateVectors            CandidateVector[]          @relation("CandidateVector")
+  profileCompleteness         ProfileCompleteness[]      @relation("ProfileCompleteness")
+  assessmentResults           AssessmentResult[]        @relation("AssessmentResults")
+  communicationLogsReceived   CommunicationLog[]         @relation("ReceivedMessages")
+  communicationLogsSent       CommunicationLog[]         @relation("SentMessages")
+  generatedContents           GeneratedContent[]         @relation("GeneratedContent")
+  aiFeedbacks                 AIFeedback[]               @relation("AIFeedback")
+  uploadedDocuments           UploadedDocument[]         @relation("UserUploadedDocuments")
+
+  companyAssessments           EmployerAssessment[]       @relation("CompanyAssessments")
+  candidateAssessments         EmployerAssessment[]       @relation("EmployerToCandidateAssessments")
+  competeChallenges            CompeteChallenge[]        @relation("CompeteChallenges")
+
+  conversationsParticipant1    Conversation[]             @relation("ConversationP1")
+  conversationsParticipant2    Conversation[]             @relation("ConversationP2")
+  messagesSent                 Message[]                  @relation("UserMessages")
+}
+
+
+// Enhanced Company Profile (Previously RecruiterProfile)
+model CompanyProfile {
+  company_id String @id
+
+  // Basic Company Info
+  company_name String? // Official registered company name
+  display_name String? // Display name (can be different from legal name)
+  industry     String? // Technology, Healthcare, Finance, etc.
+  company_size String? // startup, small, medium, large, enterprise
+  website      String?
+  headquarters String? // Primary location
+  founded_year Int?
+  description  String? // Company description/about
+
+  // Contact & Social
+  contact_number   String?
+  linkedin_profile String?
+  twitter_handle   String?
+  facebook_page    String?
+
+  // Business Details
+  business_type       String? // public, private, non-profit, government
+  registration_number String? // Business registration number
+  tax_id            String?  // Tax identification number
+  employee_count    Int?     // Approximate number of employees
+  annual_revenue    String?  // Revenue range
+
+  //  ADD THESE NEW FIELDS FOR VERIFICATION 
+  full_address      String?  // Complete registered address (street, building, city....)
+  verification_status String? @default("unverified") // unverified, pending, verified, rejected
+  verification_submitted_at DateTime? // When verification was submitted
+  verification_notes String? // Admin notes about verification
+  
+  // Hiring Details
+  hiring_volume     String?  // low, medium, high volume hiring
+  typical_roles     String[] // Common roles they hire for
+  hiring_regions    String[] // Geographic regions they hire from/for
+  remote_policy     String?  // fully_remote, hybrid, office_only
+  
+  // Platform Specific
+  logo_url          String?
+  banner_url        String?
+  verified          Boolean  @default(false)
+  verification_date DateTime?
+  rating            Float?   // Company rating from candidates
+  total_jobs_posted Int?     // Total jobs posted on platform
+  active_jobs_count Int?     // Currently active jobs
+  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user              User     @relation(fields: [company_id], references: [user_id])
+}
+
+model Question {
+  id                String   @id @default(cuid())
+  title             String
+  description       String
+  problemStatement  String
+  difficulty        String // easy, medium, hard
+  skillTags         String[]
+  type              String // coding, mcq, debugging
+  canonicalSolution String
+  testCases   Json     // { inputs: [], outputs: [] }
+  status      String   // draft, pending_review, approved, rejected
+  createdBy   String?  // user ID who created/generated
+  aiGenerated Boolean  @default(false)
+  source      String?  // ai_generated, web_scraped, manual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("questions")
+}
+
+// Enhanced Agency Admin Profile
+model AgencyAdminProfile {
+  admin_id       String  @id
+  phone_number   String?
+  position       String?
+  linkedin_url   String?
+  company_role   String?
+  branding_notes String?
+
+  // Agency specific fields
+  license_details  String? // Professional license details
+  specialization   String[] // Areas of specialization
+  languages        String[] // Languages spoken
+  years_experience Int? // Years of experience in relocation services
+  certifications   String[] // Professional certifications
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+}
+
+// Enhanced Job Model (Previously RecruiterJob)
+model CompanyJob {
+  job_id          String  @id @default(uuid())
+  company_id      String // Changed from recruiter_id
+  agency_id       String? // Optional: if job requires relocation services
+  title           String
+  location        String
+  description     String
+  salary_range    String?
+  required_skills String[]
+  status          JobStatus @default(DRAFT) // draft, active, paused, closed, cancelled
+
+  // Enhanced Job Fields
+  job_type              String? // full_time, part_time, contract, internship
+  experience_level      String? // entry, mid, senior, executive
+  education_level       String? // high_school, bachelor, master, phd
+  remote_option         String? // fully_remote, hybrid, office_only
+  visa_sponsored        Boolean? // Whether company sponsors visa
+  relocation_assistance Boolean? // Whether company provides relocation help
+  urgency_level         String? // low, medium, high, urgent
+  department            String? // Engineering, Marketing, Sales, etc.
+  reporting_to          String? // Position this role reports to
+  team_size             Int? // Size of team this role will join
+
+  // Application Settings
+  application_deadline DateTime?
+  max_applications     Int? // Maximum number of applications to accept
+  auto_reject_after    Int? // Days after which to auto-reject
+  screening_questions  String[] // Custom screening questions
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  company            User                       @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
+  agency             Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  applications       JobApplication[]
+  progressTrackers   CandidateProgressTracker[]
+  assessments        SkillAssessment[]
+  jobRecommendations JobRecommendation[]        @relation("JobRecommendations")
+  jobVector          JobVector?                 @relation("JobVector")
+  relocationCases    RelocationCase[]           @relation("JobRelocationCases")
+  interviewSchedules InterviewSchedule[] // Added relation without fields/references
+
+  employerAssessments EmployerAssessment[] @relation("JobAssessments")
+}
+
+// JOB STATUS enum 
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  CANCELLED
+  ARCHIVED
+}
+
+model JobApplication {
+  application_id String   @id @default(uuid())
+  candidate_id   String
+  job_id         String
+  status         String // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  cover_letter   String?
+  applied_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Enhanced Application Fields
+  salary_expectation  Float?
+  available_from      DateTime? // When candidate can start
+  visa_status         String? // citizen, permanent_resident, work_visa, student_visa, needs_sponsorship
+  willing_to_relocate Boolean?
+  current_location    String?
+
+  // Screening & Assessment
+  screening_answers  Json? // Answers to custom screening questions
+  assessment_score   Float? // Overall assessment score
+  interview_feedback String? // Interview feedback from company
+  rejection_reason   String? // Reason for rejection
+
+  candidate          User                @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job                CompanyJob          @relation(fields: [job_id], references: [job_id]) // Changed relation
+  interview          AIInterviewResult?
+  interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
+}
+
+model CandidateProgressTracker {
+  progress_id  String     @id @default(uuid())
+  candidate_id String
+  job_id       String
+  stage        String // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  updated_by   String
+  notes        String?
+  updated_at   DateTime   @default(now())
+  candidate    User       @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job          CompanyJob @relation(fields: [job_id], references: [job_id])
+  updatedBy    User       @relation("ProgressUpdatedBy", fields: [updated_by], references: [user_id], onDelete: Cascade)
+}
+
+model AIInterviewResult {
+  interview_id   String         @id @default(uuid())
+  application_id String         @unique
+  interview_type String
+  score          String?
+  video_url      String?
+  feedback       String?
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  candidate_id   String
+  application    JobApplication @relation(fields: [application_id], references: [application_id])
+  candidate      User           @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model SkillAssessment {
+  assessment_id String           @id @default(uuid())
+  candidate_id  String
+  job_id        String?
+  provider      String
+  score         String?
+  status        AssessmentStatus @default(PENDING)
+  completed_at  DateTime?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+
+  // AI Skill Assessment Fields
+  assessment_type    AssessmentType  @default(COMPREHENSIVE)
+  skill_category     String
+  difficulty         DifficultyLevel @default(BEGINNER)
+  total_questions    Int             @default(20)
+  time_limit         Int             @default(30)
+  current_question   Int             @default(0)
+  started_at         DateTime?
+  questions          Json
+  answers            Json
+  overall_score      Float?
+  skill_level_result String?
+  strengths          String[]
+  weaknesses         String[]
+  recommendations    String[]
+  ai_analysis        Json?
+  confidence_score   Float?
+  summary            AssessmentSummary?
+  candidate          User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job                CompanyJob?        @relation(fields: [job_id], references: [job_id])
+
+  @@map("skill_assessments")
+}
+
+model RelocationCase {
+  case_id      String  @id @default(uuid())
+  candidate_id String
+  job_id       String? // Optional: linked to specific job
+  agency_id    String
+  case_number  String  @unique // Human readable case number
+
+  // Case Details
+  service_type         String // visa_processing, housing_assistance, documentation, full_relocation
+  priority_level       String // low, medium, high, urgent
+  status               String // initiated, in_progress, pending_documents, completed, cancelled
+  estimated_completion DateTime?
+  actual_completion    DateTime?
+
+  // Locations
+  origin_country      String
+  destination_country String
+  destination_city    String?
+
+  // Financial
+  estimated_cost Float?
+  actual_cost    Float?
+  payment_status String? // pending, partial, paid, refunded
+
+  // Case Management
+  case_manager_id    String? // Assigned case manager
+  notes              String?
+  documents_required String[] // List of required documents
+  documents_received String[] // List of received documents
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
+  agency      Agency               @relation(fields: [agency_id], references: [agency_id])
+  assignments CaseAssignment[]
+  updates     CaseProgressUpdate[]
+  documents   CaseDocument[]
+
+  @@map("relocation_cases")
+}
+
+model CaseAssignment {
+  assignment_id String         @id @default(uuid())
+  case_id       String
+  agent_id      String
+  assigned_at   DateTime       @default(now())
+  status        String
+  notes         String?
+  agency_id     String
+  agency        Agency         @relation(fields: [agency_id], references: [agency_id])
+  agent         User           @relation("AgentCaseAssignments", fields: [agent_id], references: [user_id], onDelete: Cascade)
+  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
+
+  @@map("case_assignments")
+}
+
+model CaseProgressUpdate {
+  update_id    String         @id @default(uuid())
+  case_id      String
+  updated_by   String
+  status       String
+  description  String
+  is_milestone Boolean        @default(false)
+  created_at   DateTime       @default(now())
+  case_details RelocationCase @relation(fields: [case_id], references: [case_id])
+
+  @@map("case_progress_updates")
+}
+
+model CaseDocument {
+  document_id   String         @id @default(uuid())
+  case_id       String
+  file_name     String
+  file_path     String
+  file_type     String
+  file_size     Int
+  document_type String
+  uploaded_by   String
+  status        String
+  notes         String?
+  created_at    DateTime       @default(now())
+  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
+
+  @@map("case_documents")
+}
+
+model AgencyReview {
+  review_id    String   @id @default(uuid())
+  agency_id    String
+  reviewer_id  String
+  case_id      String?
+  rating       Int
+  review_text  String?
+  service_type String?
+  created_at   DateTime @default(now())
+  agency       Agency   @relation(fields: [agency_id], references: [agency_id])
+  reviewer     User     @relation("ClientReviews", fields: [reviewer_id], references: [user_id], onDelete: Cascade)
+
+  @@map("agency_reviews")
+}
+
+model CompanyAgencyInvitation {
+  invitation_id   String   @id @default(uuid())
+  agency_id       String
+  inviter_id      String
+  email           String
+  full_name       String
+  position        String?
+  invitation_type String
+  status          String
+  expires_at      DateTime
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  agency          Agency   @relation(fields: [agency_id], references: [agency_id])
+  inviter         User     @relation("CompanyInvites", fields: [inviter_id], references: [user_id], onDelete: Cascade)
+
+  @@map("company_agency_invitations")
+}
+
+model JobRecommendation {
+  recommendation_id String     @id @default(uuid())
+  candidate_id      String
+  job_id            String
+  match_score       Float
+  skill_match       Json
+  salary_match      Float?
+  location_match    Float?
+  experience_match  Float?
+  ai_reasoning      String?
+  is_viewed         Boolean    @default(false)
+  is_applied        Boolean    @default(false)
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+  candidate         User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job               CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+}
+
+model JobVector {
+  vector_id           String     @id @default(uuid())
+  job_id              String     @unique
+  requirements_vector Json
+  skills_vector       Json
+  combined_vector     Json
+  vector_version      String
+  last_updated        DateTime   @default(now())
+  created_at          DateTime   @default(now())
+  job                 CompanyJob @relation("JobVector", fields: [job_id], references: [job_id])
+}
+
+model CandidateProfile {
+  candidate_id           String   @id
+  resume_url             String?
+  video_intro_url        String?
+  education              String?
+  experience             String?
+  preferred_locations    String?
+  languages              String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  location               String?
+  minimum_salary_amount  Float?
+  postal_code            Int?
+  payment_period         String?
+  profile_picture_url    String?
+  headline               String?  @db.VarChar(120)
+  about_me               String?  @db.VarChar(500)
+  city                   String?
+  job_benefits           String?
+  links                  String?
+  skills                 String[]
+  resume_application_url String?
+  user                   User     @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model AdminAuditLog {
+  log_id       String   @id @default(uuid())
+  admin_id     String
+  action_type  String
+  target_table String
+  target_id    String
+  description  String?
+  created_at   DateTime @default(now())
+  admin        User     @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+}
+
+model RolePermission {
+  permission_id String      @id @default(uuid())
+  role_name     String
+  module        String
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  access_level  AccessLevel
+}
+
+model Notification {
+  notification_id String   @id @default(uuid())
+  user_id         String
+  type            String
+  message         String
+  is_read         Boolean  @default(false)
+  sent_via        String
+  created_at      DateTime @default(now())
+  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  plan_id                  String               @id @default(uuid())
+  name                     String
+  price_monthly_usd        Decimal
+  price_annually_usd       Decimal
+  job_post_limit           Int
+  ai_interview_limit       Int
+  features_included        String
+  is_publicly_available    Boolean
+  stripe_price_id_monthly  String
+  stripe_price_id_annually String
+  created_at               DateTime             @default(now())
+  updated_at               DateTime             @updatedAt
+  agencySubscriptions      AgencySubscription[]
+}
+
+model AgencySubscription {
+  agency_subscription_id String           @id @default(uuid())
+  agency_id              String           @unique
+  plan_id                String
+  stripe_subscription_id String
+  status                 String
+  current_period_start   DateTime
+  current_period_end     DateTime
+  trial_ends_at          DateTime?
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  agency                 Agency           @relation(fields: [agency_id], references: [agency_id])
+  plan                   SubscriptionPlan @relation(fields: [plan_id], references: [plan_id])
+}
+
+model WebhookEndpoint {
+  webhook_id                  String    @id @default(uuid())
+  agency_id                   String
+  url                         String
+  secret_key                  String
+  subscribed_event_types      String
+  status                      String
+  last_successful_delivery_at DateTime?
+  last_failed_delivery_at     DateTime?
+  created_at                  DateTime  @default(now())
+  updated_at                  DateTime  @updatedAt
+  agency                      Agency    @relation(fields: [agency_id], references: [agency_id])
+}
+
+model CandidateDocument {
+  document_id       String            @id @default(uuid())
+  candidate_id      String
+  file_name         String
+  file_path         String
+  file_type         String
+  file_size         Int
+  upload_status     String
+  extraction_status String?
+  processed_text    String?
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  candidate         User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  candidateSkills   CandidateSkill[]  @relation("SkillsFromDocument")
+  skillExtractions  SkillExtraction[]
+}
+
+model CandidateSkill {
+  skill_id           String             @id @default(uuid())
+  candidate_id       String
+  skill_name         String
+  skill_category     String?
+  proficiency        String?
+  years_experience   Int?
+  confidence_score   Float?
+  source_type        String
+  source_document_id String?
+  is_verified        Boolean            @default(false)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  candidate          User               @relation("CandidateSkills", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  sourceDocument     CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id])
+}
+
+model SkillExtraction {
+  extraction_id    String            @id @default(uuid())
+  document_id      String
+  candidate_id     String
+  status           String
+  ai_provider      String
+  prompt_used      String?
+  raw_response     String?
+  extracted_skills Json?
+  processing_time  Int?
+  error_message    String?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  candidate        User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  document         CandidateDocument @relation(fields: [document_id], references: [document_id])
+}
+
+model CareerPrediction {
+  prediction_id      String   @id @default(uuid())
+  candidate_id       String
+  current_role       String?
+  predicted_roles    Json
+  career_path        Json
+  skill_gaps         Json
+  salary_prediction  Json
+  confidence_score   Float
+  ai_model_version   String
+  input_data_summary String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  candidate          User     @relation("CareerPredictions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model CandidateVector {
+  vector_id         String   @id @default(uuid())
+  candidate_id      String   @unique
+  skill_vector      Json
+  experience_vector Json
+  education_vector  Json
+  combined_vector   Json
+  vector_version    String
+  last_updated      DateTime @default(now())
+  created_at        DateTime @default(now())
+  candidate         User     @relation("CandidateVector", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model ProfileCompleteness {
+  completeness_id       String   @id @default(uuid())
+  candidate_id          String   @unique
+  overall_score         Float
+  basic_info_score      Float
+  skills_score          Float
+  experience_score      Float
+  education_score       Float
+  document_score        Float
+  missing_fields        Json
+  suggestions           Json
+  last_calculated       DateTime @default(now())
+  created_at            DateTime @default(now())
+  profile_picture_score Float
+  headline_score        Float    @default(0.0)
+  candidate             User     @relation("ProfileCompleteness", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model AssessmentResult {
+  result_id       String          @id @default(uuid())
+  assessment_id   String
+  question_id     String
+  question_text   String
+  question_type   QuestionType
+  expected_answer String?
+  user_answer     String
+  is_correct      Boolean?
+  partial_score   Float?
+  time_taken      Int
+  ai_evaluation   Json?
+  feedback        String?
+  answered_at     DateTime        @default(now())
+  assessment      SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+
+  @@map("assessment_results")
+}
+
+
+model AssessmentSummary {
+  summary_id          String          @id @default(uuid())
+  assessment_id       String          @unique
+  
+  // Overall Metrics
+  overall_score       Float
+  skill_level         String          // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  pass_status         String          // passed, failed, needs_review
+  
+  // Performance Breakdown
+  correct_answers     Int
+  incorrect_answers   Int
+  partial_answers     Int             @default(0)
+  total_questions     Int
+  accuracy_rate       Float           // percentage
+  
+  // Time Metrics
+  total_time_spent    Int             // seconds
+  avg_time_per_question Float         // seconds
+  
+  // Category-wise Performance (JSON)
+  category_scores     Json?           // { "React Basics": 85, "Hooks": 70 }
+  difficulty_scores   Json            // { "BEGINNER": { "correct": 5, "total": 5 }, ... }
+  
+  // AI Insights
+  strengths           String[]
+  weaknesses          String[]
+  recommendations     String[]
+  next_steps          String[]
+  ai_confidence       Float
+  
+  // Achievements (Optional)
+  achievements        String[]        @default([])
+  badges_earned       String[]        @default([])
+  
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  
+  assessment          SkillAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  
+  @@map("assessment_summaries")
+}
+
+
+model QuestionBank {
+  question_id      String          @id @default(uuid())
+  question_text    String
+  question_type    QuestionType
+  skill_category   String
+  difficulty       DifficultyLevel
+  options          Json?
+  correct_answer   String?
+  explanation      String?
+  ai_generated     Boolean         @default(false)
+  generated_by     String?
+  times_used       Int             @default(0)
+  avg_score        Float?
+  difficulty_index Float?
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  @@map("question_bank")
+}
+
+model InterviewSchedule {
+  schedule_id          String         @id @default(uuid())
+  application_id       String
+  job_id               String?
+  interview_type       String
+  scheduled_time       DateTime
+  timezone             String
+  duration_minutes     Int            @default(60)
+  status               String
+  ai_optimized         Boolean        @default(false)
+  optimal_time_score   Float?
+  reschedule_count     Int            @default(0)
+  auto_rescheduled     Boolean        @default(false)
+  meeting_link         String?
+  meeting_room         String?
+  interviewer_ids      String[]
+  preparation_sent     Boolean        @default(false)
+  reminder_sent        Boolean        @default(false)
+  conducted_by         String?
+  actual_duration      Int?
+  interview_notes      String?
+  outcome              String?
+  next_round_scheduled Boolean        @default(false)
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+  application          JobApplication @relation(fields: [application_id], references: [application_id])
+  job                  CompanyJob?    @relation(fields: [job_id], references: [job_id])
+
+  @@map("interview_schedules")
+}
+
+model CommunicationLog {
+  log_id              String    @id @default(uuid())
+  sender_id           String
+  recipient_id        String
+  message_type        String
+  channel             String?
+  subject             String?
+  content             String
+  content_type        String    @default("text")
+  ai_generated        Boolean   @default(false)
+  ai_model_used       String?
+  status              String
+  sent_at             DateTime?
+  delivered_at        DateTime?
+  read_at             DateTime?
+  failed_reason       String?
+  related_entity_type String?
+  related_entity_id   String?
+  campaign_id         String?
+  clicked             Boolean   @default(false)
+  reply_received      Boolean   @default(false)
+  unsubscribed        Boolean   @default(false)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  recipient           User      @relation("ReceivedMessages", fields: [recipient_id], references: [user_id], onDelete: Cascade)
+  sender              User      @relation("SentMessages", fields: [sender_id], references: [user_id], onDelete: Cascade)
+
+  @@map("communication_logs")
+}
+
+model HiringAnalytics {
+  analytics_id          String   @id @default(uuid())
+  company_id            String
+  metric_type           String
+  metric_value          Float
+  metric_unit           String?
+  period_type           String
+  period_start          DateTime
+  period_end            DateTime
+  job_id                String?
+  department            String?
+  seniority_level       String?
+  previous_period_value Float?
+  benchmark_value       Float?
+  trend                 String?
+  ai_insights           Json?
+  recommendations       Json?
+  confidence_score      Float?
+  calculated_at         DateTime @default(now())
+  created_at            DateTime @default(now())
+  company               User     @relation("CompanyAnalytics", fields: [company_id], references: [user_id], onDelete: Cascade)
+
+  @@map("hiring_analytics")
+}
+
+model RelocationAnalytics {
+  analytics_id        String   @id @default(uuid())
+  agency_id           String
+  metric_type         String
+  metric_value        Float
+  metric_unit         String?
+  period_type         String
+  period_start        DateTime
+  period_end          DateTime
+  service_type        String?
+  origin_country      String?
+  destination_country String?
+  cases_completed     Int?
+  cases_failed        Int?
+  average_duration    Float?
+  client_rating       Float?
+  ai_insights         Json?
+  recommendations     Json?
+  market_trends       Json?
+  calculated_at       DateTime @default(now())
+  created_at          DateTime @default(now())
+  agency              Agency   @relation(fields: [agency_id], references: [agency_id])
+
+  @@map("relocation_analytics")
+}
+
+enum InsightType {
+  recommendation
+  prediction
+  trend
+  alert
+  opportunity
+}
+
+enum InsightCategory {
+  hiring // With who? (team, staffing needs, key roles to hire)
+  performance // How well? (efficiency, KPIs, retention, product quality, team productivity)
+  market // Where? (industry, competitors, geography, positioning)
+  finance // How much? (revenue, costs, margins, runway, funding)
+  growth // How to improve? (expansion strategies, acquisition channels, partnerships)
+  business_model // How to make money? (revenue streams, pricing model, value capture)
+}
+
+model BusinessInsight {
+  insight_id  String @id @default(uuid())
+  target_id   String // company_id, agency_id, or system-wide
+  target_type String // company, agency, platform
+
+  // Insight Details
+  insight_type      InsightType
+  category          InsightCategory
+  title             String
+  description       String
+  detailed_analysis String?
+
+  // AI Details
+  ai_model   String // Which AI model generated this
+  confidence Float? // 0-1 confidence score (now optional)
+  evidence   Json? // Supporting data/evidence
+  payload    Json? // raw structured JSON from the LLM
+
+  // Actionability
+  priority          String   @default("medium") // low, medium, high, critical
+  action_required   Boolean  @default(false)
+  suggested_actions String[] // Array of suggested actions
+  expected_impact   String? // Expected impact if acted upon
+
+  // Status
+  status          String    @default("new") // new, viewed, acted_upon, dismissed
+  viewed_at       DateTime?
+  acted_upon_at   DateTime?
+  feedback_rating Int? // 1-5 rating from user
+  feedback_text   String?
+
+  // Validity
+  expires_at   DateTime? // When this insight becomes stale
+  is_recurring Boolean   @default(false)
+  next_update  DateTime? // When to regenerate this insight
+
+  // Idempotency / dedupe (NEW)
+  /// Date-only bucket; 1 insight max per (company, category, day)
+  day_bucket      DateTime @default(dbgenerated("CURRENT_DATE"))
+  /// Optional stronger guard (hash of companyId|category|YYYY-MM-DD|content)
+  dedupe_checksum String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([target_type, target_id, category, day_bucket], map: "insight_daily_unique")
+  @@index([target_type, target_id])
+  @@index([dedupe_checksum])
+  @@map("business_insights")
+}
+
+model GeneratedContent {
+  content_id        String    @id @default(uuid())
+  user_id           String
+  content_type      String
+  template_id       String?
+  title             String?
+  original_input    String?
+  generated_content String
+  ai_model          String
+  prompt_used       String?
+  generation_time   Int?
+  tokens_used       Int?
+  status            String    @default("draft")
+  version           Int       @default(1)
+  parent_content_id String?
+  usage_count       Int       @default(0)
+  performance_score Float?
+  user_rating       Int?
+  user_feedback     String?
+  customizations    Json?
+  brand_guidelines  Json?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  published_at      DateTime?
+  user              User      @relation("GeneratedContent", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("generated_content")
+}
+
+model SystemHealth {
+  health_id         String   @id @default(uuid())
+  service_name      String
+  service_type      String
+  endpoint          String?
+  status            String
+  response_time     Float?
+  uptime_percentage Float?
+  error_count       Int      @default(0)
+  last_error        String?
+  error_details     Json?
+  cpu_usage         Float?
+  memory_usage      Float?
+  disk_usage        Float?
+  network_latency   Float?
+  check_interval    Int      @default(300)
+  timeout_seconds   Int      @default(30)
+  alerts_enabled    Boolean  @default(true)
+  checked_at        DateTime @default(now())
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("system_health")
+}
+
+model UsageAnalytics {
+  usage_id        String   @id @default(uuid())
+  user_id         String?
+  session_id      String?
+  action_type     String
+  resource_type   String?
+  resource_id     String?
+  page_url        String?
+  user_agent      String?
+  ip_address      String?
+  country         String?
+  city            String?
+  device_type     String?
+  browser         String?
+  response_time   Float?
+  success         Boolean  @default(true)
+  error_message   String?
+  metadata        Json?
+  ab_test_variant String?
+  timestamp       DateTime @default(now())
+  user            User?    @relation("UserAnalytics", fields: [user_id], references: [user_id])
+
+  @@map("usage_analytics")
+}
+
+model ModelPerformance {
+  performance_id        String   @id @default(uuid())
+  model_name            String
+  model_type            String
+  version               String
+  provider              String
+  accuracy_score        Float?
+  precision_score       Float?
+  recall_score          Float?
+  f1_score              Float?
+  total_requests        Int      @default(0)
+  successful_requests   Int      @default(0)
+  failed_requests       Int      @default(0)
+  average_response_time Float?
+  user_satisfaction     Float?
+  feedback_count        Int      @default(0)
+  positive_feedback     Int      @default(0)
+  negative_feedback     Int      @default(0)
+  total_cost            Float?
+  cost_per_request      Float?
+  tokens_used           Int?
+  measurement_period    String
+  period_start          DateTime
+  period_end            DateTime
+  performance_trend     String?
+  issues_identified     String[]
+  recommendations       String[]
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@map("model_performance")
+}
+
+model AIFeedback {
+  feedback_id             String   @id @default(uuid())
+  user_id                 String
+  feature_type            String
+  feature_instance_id     String?
+  rating                  Int
+  feedback_text           String?
+  improvement_suggestions String?
+  accuracy_rating         Int?
+  usefulness_rating       Int?
+  speed_rating            Int?
+  user_experience_level   String?
+  use_case                String?
+  would_recommend         Boolean?
+  would_use_again         Boolean?
+  contact_for_followup    Boolean  @default(false)
+  created_at              DateTime @default(now())
+  user                    User     @relation("AIFeedback", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("ai_feedback")
+}
+
+model AITrainingData {
+  training_id         String   @id @default(uuid())
+  data_type           String
+  source_table        String
+  source_id           String
+  model_name          String
+  training_purpose    String
+  input_data          Json
+  expected_output     Json?
+  actual_output       Json?
+  data_quality_score  Float?
+  verified            Boolean  @default(false)
+  verified_by         String?
+  used_in_training    Boolean  @default(false)
+  training_session_id String?
+  contribution_score  Float?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("ai_training_data")
+}
+
+model PlatformEvolution {
+  evolution_id         String    @id @default(uuid())
+  type                 String
+  category             String
+  priority             String
+  title                String
+  description          String
+  technical_details    String?
+  business_impact      String?
+  requested_by         String?
+  affected_users       String[]
+  user_pain_points     String[]
+  status               String    @default("submitted")
+  assigned_to          String?
+  estimated_effort     String?
+  sprint_planned       String?
+  ai_feasibility_score Float?
+  ai_impact_prediction Json?
+  ai_similar_requests  String[]
+  upvotes              Int       @default(0)
+  downvotes            Int       @default(0)
+  user_comments        Json?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  completed_at         DateTime?
+
+  @@map("platform_evolution")
+}
+
+
+
+
+// Verification Run table
+model VerificationRun {
+  run_id       String                  @id @default(uuid())
+  subject_type VerificationSubjectType
+  subject_id   String
+  status       VerificationRunStatus
+  started_at   DateTime                @default(now())
+  ended_at     DateTime?
+  risk_score   Float?
+  decision     VerificationDecision?
+  reason_codes String[]                @default([])
+
+  signals  VerificationSignal[]
+  snapshot VerificationSnapshot?
+
+  companyLatestOf CompanyVerification? @relation("CompanyLatestRun")
+  agencyLatestOf  AgencyVerification?  @relation("AgencyLatestRun")
+}
+
+// Verification Signal table
+model VerificationSignal {
+  signal_id   String          @id @default(uuid())
+  run_id      String
+  signal_type String
+  passed      Boolean
+  score       Float?
+  explanation String?
+  raw_payload Json?
+  run         VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+model VerificationSnapshot {
+  snapshot_id String          @id @default(uuid())
+  run_id      String          @unique
+  profile     Json
+  documents   Json
+  created_at  DateTime        @default(now())
+  run         VerificationRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+}
+
+model CompanyVerification {
+  verification_id   String                 @id @default(uuid())
+  company_id        String
+  documents         Json
+  verified_by       String?
+  verification_date DateTime?
+  latest_run_id     String?                @unique
+  reason_codes      String[]               @default([])
+  risk_score        Float?
+  status            VerificationCaseStatus @default(DRAFT)
+  latest_run        VerificationRun?       @relation("CompanyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([company_id])
+  @@index([status])
+}
+
+model AgencyVerification {
+  verification_id        String    @id @default(uuid())
+  agency_id              String
+  license_status         String
+  verification_documents Json
+  verified_by            String?
+  verification_date      DateTime?
+  latest_run_id          String?                @unique
+  reason_codes           String[]               @default([])
+  risk_score             Float?
+  status                 VerificationCaseStatus @default(DRAFT)
+  latest_run             VerificationRun?       @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id])
+
+  @@index([agency_id])
+  @@index([status])
+}
+
+model SuperAdmin {
+  admin_id    String   @id @default(uuid())
+  user_id     String
+  permissions String[]
+  created_at  DateTime @default(now())
+}
+
+model UploadedDocument {
+  document_id   String   @id @default(uuid())
+  uploaded_by   String
+  subject_type  String
+  subject_id    String
+  file_name     String
+  storage_key   String
+  url           String?
+  mime_type     String
+  file_ext      String?
+  file_size     Int
+  sha256        String
+  document_type String
+  status        String   @default("pending")
+  notes         String?
+  preview_key   String?
+  preview_ready Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  uploader      User     @relation("UserUploadedDocuments", fields: [uploaded_by], references: [user_id], onDelete: Cascade)
+
+  @@index([subject_type, subject_id])
+  @@index([uploaded_by])
+  @@index([document_type])
+}
+
+model UserSession {
+  session_id        String    @id @default(uuid())
+  user_id           String
+  device_name       String?
+  device_type       String?
+  browser_name      String?
+  browser_version   String?
+  os_name           String?
+  os_version        String?
+  ip_address        String
+  location_country  String?
+  location_city     String?
+  location_region   String?
+  jwt_token_hash    String
+  is_current        Boolean   @default(false)
+  last_activity     DateTime  @default(now())
+  login_time        DateTime  @default(now())
+  expires_at        DateTime
+  user_agent        String
+  screen_resolution String?
+  timezone          String?
+  language          String?
+  is_active         Boolean   @default(true)
+  terminated_at     DateTime?
+  terminated_by     String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  user              User      @relation("UserSessions", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([jwt_token_hash])
+  @@index([is_active])
+  @@index([expires_at])
+  @@map("user_sessions")
+}
+
+model JwtBlacklist {
+  id         Int      @id @default(autoincrement())
+  token_hash String   @unique @db.VarChar(255)
+  session_id String?  @db.VarChar(255)
+  user_id    String?  @db.VarChar(255)
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@index([token_hash])
+  @@index([expires_at])
+  @@map("jwt_blacklist")
+}
+
+enum AccessLevel {
+  none
+  read
+  write
+  manage
+}
+
+enum AssessmentType {
+  QUICK_CHECK
+  COMPREHENSIVE
+  CERTIFICATION
+  COMPANY_SPECIFIC
+}
+
+enum AssessmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum QuestionType {
+  MCQ
+  CODING
+  ESSAY
+  TRUE_FALSE
+  SCENARIO
+  SHORT_ANSWER
+}
+
+enum VerificationSubjectType {
+  COMPANY
+  AGENCY
+}
+
+enum VerificationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationDecision {
+  APPROVE
+  REJECT
+  MANUAL_REVIEW
+  NO_DECISION
+}
+
+enum VerificationCaseStatus {
+  DRAFT
+  PENDING_DOCUMENTS
+  IN_REVIEW
+  AUTO_APPROVED
+  AUTO_REJECTED
+  APPROVED
+  REJECTED
+  EXPIRED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+model CompeteChallenge {
+  challenge_id       String              @id @default(uuid())
+  assessment_id      String
+  employerAssessment EmployerAssessment  @relation(fields: [assessment_id], references: [assessment_id])
+
+  @@map("compete_challenges")
+}
+
+// EMPLOYER ASSESSMENT MANAGEMENT
+model EmployerAssessment {
+  assessment_id     String   @id @default(uuid())
+  company_id        String
+  job_id            String
+  title             String
+  description       String
+  status            EmployerAssessmentStatus
+  assessment_type   AssessmentType
+  skill_category    String
+  difficulty        DifficultyLevel
+  time_limit        Int      @default(60)
+  total_questions   Int      @default(20)
+  passing_score     Int?     @default(70)
+  question_ids      String[]
+  settings          Json?
+
+  creation_method   AssessmentCreationMethod
+  extracted_skills  String[]
+  enhanced_data     Json?
+  auto_generated    Boolean  @default(false)
+
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  company           User        @relation("CompanyAssessments", fields: [company_id], references: [user_id], onDelete: Cascade)
+  job               CompanyJob  @relation("JobAssessments", fields: [job_id], references: [job_id], onDelete: Cascade)
+  
+  candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
+  competeChallenges    CompeteChallenge[]
+
+  @@index([company_id])
+  @@index([job_id])
+  @@index([status])
+  @@map("employer_assessments")
+}
+
+
+// Add this enum 
+enum AssessmentCreationMethod {
+  JOB_DESCRIPTION_PARSE
+  CHATBOT_GUIDED
+  MANUAL
+}
+
+// Conversation Model
+model Conversation {
+  conversation_id   String    @id @default(uuid())
+  participant_1_id  String    
+  participant_2_id  String    
+  last_message_at   DateTime?
+  last_message_id   String?
+  unread_count_p1   Int       @default(0)
+  unread_count_p2   Int       @default(0)
+  is_archived_p1    Boolean   @default(false)
+  is_archived_p2    Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  // Relations add karne hain
+  participant_1     User      @relation("ConversationP1", fields: [participant_1_id], references: [user_id])
+  participant_2     User      @relation("ConversationP2", fields: [participant_2_id], references: [user_id])
+  messages          Message[]
+  
+  @@unique([participant_1_id, participant_2_id])
+  @@map("conversations")
+}
+
+// Message Model  
+model Message {
+  message_id      String       @id @default(uuid())
+  conversation_id String
+  sender_id       String
+  content         String?
+  reply_to_id     String?      
+  message_type    String       @default("text")
+  file_url        String?
+  file_name       String?
+  file_size       Int?
+  is_read         Boolean      @default(false)
+  is_deleted      Boolean      @default(false)
+  sent_at         DateTime     @default(now())
+  read_at         DateTime?
+  
+  // Relations
+  conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+  sender          User         @relation("UserMessages", fields: [sender_id], references: [user_id])
+  reply_to        Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
+  replies         Message[]    @relation("MessageReplies")
+  
+  @@map("messages")
+}

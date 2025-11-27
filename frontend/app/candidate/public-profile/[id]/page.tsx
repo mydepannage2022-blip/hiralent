@@ -109,9 +109,9 @@ export default function PublicProfilePage() {
             <SkillsSection skills={profile.skills} />
             
             {/* Experience & Education */}
-            <div className="py-16 bg-gray-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid lg:grid-cols-2 gap-12">
+            <div className="py-8 sm:py-16 bg-gray-50">
+                <div className="max-w-[400px] sm:max-w-[740px] md:max-w-[970px] lg:max-w-[1090px] xl:max-w-[1345px] mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid lg:grid-cols-2 gap-6 sm:gap-12">
                         <ExperienceSection experience={experience} />
                         <EducationSection education={education} />
                     </div>
@@ -174,9 +174,9 @@ export default function PublicProfilePage() {
             )}
             
             {/* Testimonials */}
-            <div className="py-16 bg-gray-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">What People Say</h2>
+            <div className="py-0 sm:py-16 bg-gray-50">
+                <div className="max-w-[1345px] mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-0 sm:mb-12">What People Say</h2>
                     <TestimonialSlider testimonials={testimonials} />
                 </div>
             </div>

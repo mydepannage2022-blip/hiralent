@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PrismaClient } = require('@prisma/client');
 import { verifyToken } from '../utils/jwt.util';
 
 // dynamically load worker queue if available, otherwise use a noop fallback

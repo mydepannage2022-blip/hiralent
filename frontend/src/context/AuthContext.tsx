@@ -81,17 +81,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("✅ Verification - Token in localStorage:", verify ? "YES" : "NO");
   };
 
-  const logout = () => {
-    console.log("🚪 Logout called");
-    
-    localStorage.removeItem('profileData');
-    localStorage.removeItem('profileCompleteness');
-    
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
-    
-    console.log("✅ Auth cleared from localStorage");
-  };
+const logout = () => {
+  console.log("🚪 Logout called");
+  
+  localStorage.removeItem('profileData');
+  localStorage.removeItem('profileCompleteness');
+  
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("authUser");
+
+  // ✅ Clear in-memory state too
+  setUser(null);
+  setToken(null);
+
+  console.log("✅ Auth cleared from localStorage and state");
+};
+
 
   return (
     <AuthContext.Provider

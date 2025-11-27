@@ -8,6 +8,7 @@ import Companies from '../../../src/components/candidate/home/Companies'
 import Achievements from '../../../src/components/candidate/home/Achievements'
 import BlogSection from '../../../src/components/candidate/home/Blog'
 import Employer from '../../../src/components/candidate/home/Employer'
+import Agency from '../../../src/components/candidate/home/Agency'
 
 const page = () => {
   return (
@@ -20,6 +21,7 @@ const page = () => {
       <Achievements />
       <BlogSection />
       <Employer />
+      <Agency />
     </div>
   )
 }

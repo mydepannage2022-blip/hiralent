@@ -1,0 +1,19 @@
+# Remove all fixed versions - use latest compatible
+fastapi
+uvicorn
+pydantic
+python-multipart
+python-dotenv
+
+# Gemini 2.5 Flash - LATEST VERSIONS
+google-generativeai>=0.3.2
+langchain-google-genai>=0.1.0
+langchain
+
+# Other packages
+spacy
+scikit-learn
+redis
+httpx
+python-jose
+aiofiles

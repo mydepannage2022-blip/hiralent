@@ -19,6 +19,7 @@ router.get('/health', (req, res) => {
 });
 
 router.use(checkAuth);
+router.get('/profile', getProfileController);  // <-- Celle-ci manque !
 
 router.post(
   '/create-profile',

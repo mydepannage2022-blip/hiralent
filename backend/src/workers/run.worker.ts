@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import * as Prisma from '@prisma/client';
 import { nextRunJob } from '../queues/runs.queue';
 import { run_submission_and_grade } from '../services/execution.service';
 import { emitSubmissionEvent } from '../lib/submissionEmitter';
@@ -9,7 +9,7 @@ import { runProcessed, runFailed, runDuration } from '../lib/metrics';
 import { setTimeout as wait } from 'node:timers/promises';
 import { Worker as BullWorker, QueueEvents } from 'bullmq';
 
-const prisma = new PrismaClient();
+const prisma = new Prisma.PrismaClient();
 
 let processed = 0;
 let failed = 0;
