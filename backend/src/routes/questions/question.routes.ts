@@ -156,7 +156,30 @@ router.post('/:id/analyze-variability',
 
 
 // ========== VECTOR ENGINE ROUTES ==========
+// ========== VECTOR ENGINE ROUTES ==========
 
+// Vector engine health check
+router.get('/vector/health', 
+  async (req: Request, res: Response) => {
+    try {
+      const health = await vectorEngineService.healthCheck();
+      res.json({
+        success: true,
+        vectorEngine: health,
+        config: {
+          aiServiceUrl: process.env.AI_SERVICE_URL,
+          enabled: process.env.VECTOR_ENGINE_ENABLED
+        }
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        success: false,
+        error: 'Vector engine unavailable',
+        details: error.message
+      });
+    }
+  }
+);
 // Vector engine health check
 router.get('/vector-engine/health', 
   async (req: Request, res: Response) => {
@@ -300,6 +323,7 @@ router.delete('/:id/delete-from-vector-db',
       });
     }
   }
+
 );
 // 404 handler
 router.use((req, res) => {

@@ -102,6 +102,69 @@ export class VectorEngineService {
   }
 
   /**
+   * Normalize question data for vector engine compatibility
+   * Handles MCQ options conversion and ensures JSON compatibility
+   */
+  private normalizeQuestionForVector(questionData: any): any {
+    console.log('🔄 Normalizing question data for vector engine...');
+    
+    const normalized = {
+      id: questionData.id,
+      title: questionData.title || '',
+      description: questionData.description || '',
+      problemStatement: questionData.problemStatement || '',
+      type: questionData.type || 'coding',
+      difficulty: questionData.difficulty || 'medium',
+      skillTags: questionData.skillTags || [],
+      canonicalSolution: questionData.canonicalSolution || '',
+      testCases: questionData.testCases || {},
+      source: questionData.source || 'manual',
+      // ✅ Handle MCQ options conversion to plain object
+      options: questionData.options ? this.normalizeOptions(questionData.options) : undefined,
+      correctAnswer: questionData.correctAnswer || '',
+      explanation: questionData.explanation || ''
+    };
+
+    console.log('✅ Normalized question data:', {
+      title: normalized.title,
+      type: normalized.type,
+      hasOptions: !!normalized.options
+    });
+
+    return normalized;
+  }
+
+  /**
+   * Normalize MCQ options to ensure JSON compatibility
+   */
+  private normalizeOptions(options: any): any {
+    if (!options) return undefined;
+    
+    // If options is already a plain object with A, B, C, D properties
+    if (typeof options === 'object' && 'A' in options) {
+      return {
+        A: options.A || '',
+        B: options.B || '',
+        C: options.C || '',
+        D: options.D || ''
+      };
+    }
+    
+    // If options is in a different format, try to convert it
+    if (Array.isArray(options)) {
+      return {
+        A: options[0] || '',
+        B: options[1] || '',
+        C: options[2] || '',
+        D: options[3] || ''
+      };
+    }
+    
+    // Return as is if we can't normalize
+    return options;
+  }
+
+  /**
    * Check if a new question is similar to existing questions
    */
   async checkSimilarity(questionData: Partial<Question>): Promise<SimilarityCheckResult> {
@@ -118,27 +181,16 @@ export class VectorEngineService {
     try {
       console.log('🔍 Checking question similarity:', questionData.title);
       
+      // ✅ Use normalized data for vector engine compatibility
+      const normalizedData = this.normalizeQuestionForVector(questionData);
+      
       const response = await fetch(`${this.baseURL}/vector-search/analyze-similarity`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          id: questionData.id,
-          title: questionData.title,
-          problemStatement: questionData.problemStatement,
-          type: questionData.type,
-          difficulty: questionData.difficulty,
-          skillTags: questionData.skillTags,
-          canonicalSolution: questionData.canonicalSolution,
-          testCases: questionData.testCases,
-          source: questionData.source,
-          // Include MCQ fields if present
-          options: questionData.options,
-          correctAnswer: questionData.correctAnswer,
-          explanation: questionData.explanation
-        })
+        body: JSON.stringify(normalizedData)
       });
 
       if (!response.ok) {
@@ -188,27 +240,16 @@ export class VectorEngineService {
     try {
       console.log('💾 Storing question in vector database:', question.id);
       
+      // ✅ Use normalized data for vector engine compatibility
+      const normalizedData = this.normalizeQuestionForVector(question);
+      
       const response = await fetch(`${this.baseURL}/vector-search/store-question`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          id: question.id,
-          title: question.title,
-          problemStatement: question.problemStatement,
-          type: question.type,
-          difficulty: question.difficulty,
-          skillTags: question.skillTags,
-          canonicalSolution: question.canonicalSolution,
-          testCases: question.testCases,
-          source: question.source,
-          // Include MCQ fields
-          options: question.options,
-          correctAnswer: question.correctAnswer,
-          explanation: question.explanation
-        })
+        body: JSON.stringify(normalizedData)
       });
 
       if (!response.ok) {
@@ -389,7 +430,69 @@ export class VectorEngineService {
       };
     }
   }
+
+  /**
+   * Check similarity for any question-like object (flexible input)
+   * Useful for scraped data, AI-generated data, etc.
+   */
+  async checkSimilarityFlexible(questionData: any): Promise<SimilarityCheckResult> {
+    if (!this.enabled) {
+      console.log('⚠️ Vector engine disabled, skipping similarity check');
+      return {
+        success: true,
+        duplication_risk: 'unknown',
+        similar_questions_found: 0,
+        top_similar_questions: []
+      };
+    }
+
+    try {
+      console.log('🔍 Checking similarity for flexible question data:', questionData.title);
+      
+      // ✅ Use normalized data for vector engine compatibility
+      const normalizedData = this.normalizeQuestionForVector(questionData);
+      
+      const response = await fetch(`${this.baseURL}/vector-search/analyze-similarity`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(normalizedData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Vector service returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json() as AISimilarityResponse;
+      
+      console.log('📊 Similarity check result:', {
+        risk: result.result?.duplication_risk,
+        similarFound: result.result?.similar_questions_found,
+        success: result.success
+      });
+
+      return result.result || {
+        success: result.success,
+        duplication_risk: 'unknown',
+        similar_questions_found: 0,
+        top_similar_questions: []
+      };
+
+    } catch (error: any) {
+      console.error('❌ Vector similarity check failed:', error.message);
+      return {
+        success: false,
+        duplication_risk: 'unknown',
+        similar_questions_found: 0,
+        top_similar_questions: [],
+        error: error.message
+      };
+    }
+  }
 }
+
 
 // Export singleton instance
 export const vectorEngineService = new VectorEngineService();

@@ -20,6 +20,7 @@ import {
   VariabilityAnalysisResponse
 
 } from '../../types/question.types';
+import { vectorEngineService } from '../../services/question/vectorEngine.service';
 export class QuestionController {
   public questionService: QuestionService;
   private generatorService: QuestionGeneratorService;
@@ -84,15 +85,12 @@ export class QuestionController {
   }
 
   // POST /api/questions
-// POST /api/questions
 async createQuestion(req: Request, res: Response) {
   console.log('📝 [CONTROLLER] createQuestion called');
-  console.log('👤 [CONTROLLER] req.user:', req.user); // ✅ AJOUTÉ
-
+  
   try {
-    const userId = req.user?.user_id; // ✅ AJOUTÉ
-
-    // ✅ AJOUTÉ: Vérifier l'authentification
+    const userId = req.user?.user_id;
+    
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -100,19 +98,65 @@ async createQuestion(req: Request, res: Response) {
       });
     }
 
-    console.log('👤 [CONTROLLER] User ID:', userId); // ✅ AJOUTÉ
+    //  STEP 1: Check for duplicates using vector engine
+    console.log('🔍 [CONTROLLER] Checking similarity with vector engine...');
+    const similarityCheck = await vectorEngineService.checkSimilarity(req.body);
+    
+    //  STEP 2: If high similarity risk, prevent creation or warn
+    if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Duplicate question detected',
+        details: 'This question is very similar to existing questions',
+        code: 'DUPLICATE_QUESTION',
+        similarityCheck: similarityCheck
+      });
+    }
 
+    //  STEP 3: Create the question in database
     const question = await this.questionService.createQuestion({
       ...req.body,
-      createdBy: userId,  // ✅ AJOUTÉ!
-      aiGenerated: false, // ✅ AJOUTÉ!
-      source: 'manual'    // ✅ AJOUTÉ!
+      createdBy: userId,
+      aiGenerated: false,
+      source: 'manual'
     });
 
     console.log('💾 [CONTROLLER] Question created:', question.id);
-    console.log('👤 [CONTROLLER] Created by:', question.createdBy); // ✅ AJOUTÉ
 
-    res.json({ success: true, question });
+    // ✅ STEP 4: Store in vector database
+    console.log('💾 [CONTROLLER] Storing question in vector database...');
+    const vectorResult = await vectorEngineService.storeQuestion(question);
+    
+    if (vectorResult.success) {
+      // ✅ STEP 5: Update question with vector storage status
+      const updatedQuestion = await this.questionService.updateQuestion(question.id, {
+        vectorStored: true,
+        vectorId: vectorResult.question_id
+      });
+      
+      console.log('✅ [CONTROLLER] Question stored in vector DB');
+
+      res.json({ 
+        success: true, 
+        question: updatedQuestion,
+        similarityCheck: similarityCheck,
+        vectorStorage: vectorResult,
+        message: 'Question created and stored in vector database'
+      });
+      
+    } else {
+      // If vector storage fails, still return success but with warning
+      console.log('⚠️ [CONTROLLER] Vector storage failed:', vectorResult.message);
+      
+      res.json({ 
+        success: true, 
+        question: question,
+        similarityCheck: similarityCheck,
+        vectorStorage: vectorResult,
+        message: 'Question created but vector storage failed'
+      });
+    }
+    
   } catch (error: any) {
     console.error('❌ [CONTROLLER] createQuestion ERROR:', error);
     res.status(500).json({ 
@@ -342,6 +386,9 @@ async createQuestion(req: Request, res: Response) {
 /**
  * Génère une seule question via AI
  */
+/**
+ * Génère une seule question via AI
+ */
 async generateQuestion(req: Request, res: Response) {
   console.log('🤖 [CONTROLLER] generateQuestion called');
   console.log('👤 [CONTROLLER] req.user:', req.user);
@@ -350,7 +397,6 @@ async generateQuestion(req: Request, res: Response) {
     const { topic, difficulty } = req.body;
     const userId = req.user?.user_id;
 
-    // ✅ CORRECTION: Exiger absolument l'authentification
     if (!userId) {
       console.log('❌ [CONTROLLER] User not authenticated for AI generation');
       return res.status(401).json({
@@ -362,7 +408,6 @@ async generateQuestion(req: Request, res: Response) {
 
     console.log('✅ [CONTROLLER] User authenticated:', userId);
 
-    // Validation du topic
     if (!topic) {
       return res.status(400).json({
         success: false,
@@ -384,7 +429,21 @@ async generateQuestion(req: Request, res: Response) {
     console.log('✅ [CONTROLLER] AI generation successful');
     console.log('📝 [CONTROLLER] Question:', aiResponse.question.title);
 
-    // ✅ CORRECTION: S'assurer que createdBy est toujours défini
+    // ✅ VECTOR ENGINE: Check similarity for AI-generated question
+    console.log('🔍 [CONTROLLER] Checking similarity with vector engine...');
+    const similarityCheck = await vectorEngineService.checkSimilarity(aiResponse.question);
+    
+    // ✅ Prevent creation if high similarity risk
+    if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'AI generated a duplicate question',
+        details: 'The AI generated a question very similar to existing ones',
+        similarityCheck: similarityCheck
+      });
+    }
+
+    // Save to database
     const savedQuestion = await this.questionService.createQuestion({
       title: aiResponse.question.title,
       description: aiResponse.question.explanation,
@@ -397,16 +456,34 @@ async generateQuestion(req: Request, res: Response) {
       status: 'draft',
       aiGenerated: true,
       source: 'ai_gemini',
-      createdBy: userId  // ✅ TOUJOURS défini maintenant
+      createdBy: userId
     });
 
     console.log('💾 [CONTROLLER] Question saved:', savedQuestion.id);
-    console.log('👤 [CONTROLLER] Created by:', savedQuestion.createdBy);
+
+    // ✅ VECTOR ENGINE: Store in vector database
+    console.log('💾 [CONTROLLER] Storing question in vector database...');
+    const vectorResult = await vectorEngineService.storeQuestion(savedQuestion);
+    
+    let finalQuestion = savedQuestion;
+    
+    if (vectorResult.success) {
+      // Update question with vector storage status
+      finalQuestion = await this.questionService.updateQuestion(savedQuestion.id, {
+        vectorStored: true,
+        vectorId: vectorResult.question_id
+      });
+      console.log('✅ [CONTROLLER] AI question stored in vector DB');
+    } else {
+      console.log('⚠️ [CONTROLLER] Vector storage failed:', vectorResult.message);
+    }
 
     res.status(201).json({
       success: true,
       message: 'Question generated and saved successfully',
-      question: savedQuestion
+      question: finalQuestion,
+      similarityCheck: similarityCheck,
+      vectorStorage: vectorResult
     });
 
   } catch (error: any) {
@@ -431,6 +508,9 @@ async generateQuestion(req: Request, res: Response) {
 /**
  * Génère plusieurs questions en batch
  */
+/**
+ * Génère plusieurs questions en batch
+ */
 async generateBatchQuestions(req: Request, res: Response) {
   console.log('🤖 [CONTROLLER] generateBatchQuestions called');
   console.log('👤 [CONTROLLER] req.user:', req.user);
@@ -439,7 +519,6 @@ async generateBatchQuestions(req: Request, res: Response) {
     const { topics, difficulty, countPerTopic } = req.body;
     const userId = req.user?.user_id;
 
-    // ✅ CORRECTION: Exiger absolument l'authentification
     if (!userId) {
       console.log('❌ [CONTROLLER] User not authenticated for batch AI generation');
       return res.status(401).json({
@@ -473,32 +552,83 @@ async generateBatchQuestions(req: Request, res: Response) {
     console.log('📝 [CONTROLLER] Generated', result.questions.length, 'questions');
 
     const savedQuestions = [];
-    for (const question of result.questions) {
-      const saved = await this.questionService.createQuestion({
-        title: question.title,
-        description: question.explanation,
-        problemStatement: question.problemStatement,
-        difficulty: question.difficulty as 'easy' | 'medium' | 'hard',
-        skillTags: question.skillTags,
-        type: 'coding',
-        canonicalSolution: question.canonicalSolution,
-        testCases: question.testCases,
-        status: 'draft',
-        aiGenerated: true,
-        source: 'ai_gemini',
-        createdBy: userId  //  TOUJOURS défini maintenant
-      });
-      savedQuestions.push(saved);
+    const vectorResults = [];
+    const errors = [];
+
+    for (const [index, question] of result.questions.entries()) {
+      try {
+        console.log(`🔍 [CONTROLLER] Checking similarity for question ${index + 1}...`);
+        
+        // ✅ VECTOR ENGINE: Check similarity for each question
+        const similarityCheck = await vectorEngineService.checkSimilarity(question);
+        
+        // Skip if high similarity risk
+        if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+          console.log(`⏭️ [CONTROLLER] Skipped duplicate question: ${question.title}`);
+          errors.push({
+            index,
+            title: question.title,
+            error: 'High similarity with existing questions'
+          });
+          continue;
+        }
+
+        const saved = await this.questionService.createQuestion({
+          title: question.title,
+          description: question.explanation,
+          problemStatement: question.problemStatement,
+          difficulty: question.difficulty as 'easy' | 'medium' | 'hard',
+          skillTags: question.skillTags,
+          type: 'coding',
+          canonicalSolution: question.canonicalSolution,
+          testCases: question.testCases,
+          status: 'draft',
+          aiGenerated: true,
+          source: 'ai_gemini',
+          createdBy: userId
+        });
+
+        // ✅ VECTOR ENGINE: Store in vector database
+        console.log(`💾 [CONTROLLER] Storing question ${index + 1} in vector database...`);
+        const vectorResult = await vectorEngineService.storeQuestion(saved);
+        
+        if (vectorResult.success) {
+          const updatedQuestion = await this.questionService.updateQuestion(saved.id, {
+            vectorStored: true,
+            vectorId: vectorResult.question_id
+          });
+          savedQuestions.push(updatedQuestion);
+          vectorResults.push({ ...vectorResult, questionId: saved.id });
+          console.log(`✅ [CONTROLLER] Saved and vectorized: ${updatedQuestion.title}`);
+        } else {
+          savedQuestions.push(saved);
+          vectorResults.push({ ...vectorResult, questionId: saved.id });
+          console.log(`⚠️ [CONTROLLER] Saved but vector storage failed: ${saved.title}`);
+        }
+
+      } catch (error: any) {
+        console.error(`❌ [CONTROLLER] Error processing question ${index}:`, error.message);
+        errors.push({
+          index,
+          title: question.title,
+          error: error.message
+        });
+      }
     }
 
-    console.log('💾 [CONTROLLER] Saved', savedQuestions.length, 'questions');
-    console.log('👤 [CONTROLLER] All created by:', userId);
+    console.log('💾 [CONTROLLER] Batch processing completed');
+    console.log(`✅ Saved: ${savedQuestions.length}, ❌ Errors: ${errors.length}`);
+
+    const vectorSuccessCount = vectorResults.filter(r => r.success).length;
 
     res.status(201).json({
       success: true,
-      message: `Generated and saved ${savedQuestions.length} questions`,
+      message: `Generated ${result.questions.length} questions, saved ${savedQuestions.length} to database`,
       count: savedQuestions.length,
-      questions: savedQuestions
+      vectorized_count: vectorSuccessCount,
+      questions: savedQuestions,
+      vector_results: vectorResults,
+      errors: errors.length > 0 ? errors : undefined
     });
 
   } catch (error: any) {
@@ -539,7 +669,6 @@ async checkScrapeServiceHealth(req: Request, res: Response) {
 /**
  * Scrape questions from coding platforms via AI service
  */
-
 async scrapeQuestions(req: Request, res: Response) {
   console.log('🌐 [CONTROLLER] scrapeQuestions called');
   console.log('👤 [CONTROLLER] req.user:', req.user);
@@ -595,12 +724,51 @@ async scrapeQuestions(req: Request, res: Response) {
 
     // Save scraped questions to database
     const savedQuestions = [];
+    const vectorResults = [];
     const errors = [];
 
     if (scrapeData.questions && Array.isArray(scrapeData.questions)) {
       for (const [index, questionData] of scrapeData.questions.entries()) {
         try {
           console.log(`💾 [CONTROLLER] Processing question ${index + 1}:`, questionData.title);
+
+          // ✅ FIX: Convert ScrapedQuestionData to Question-compatible format for vector engine
+          const vectorCompatibleData = {
+            id: undefined, // Will be generated by database
+            title: questionData.title,
+            description: questionData.description,
+            problemStatement: questionData.problemStatement,
+            difficulty: questionData.difficulty || 'medium',
+            skillTags: questionData.skillTags || [],
+            type: questionData.type || 'coding',
+            canonicalSolution: questionData.canonicalSolution,
+            testCases: questionData.testCases,
+            // ✅ FIX: Convert MCQOptions to plain object for vector engine
+            options: questionData.options ? {
+              A: questionData.options.A || '',
+              B: questionData.options.B || '',
+              C: questionData.options.C || '',
+              D: questionData.options.D || ''
+            } : undefined,
+            correctAnswer: questionData.correctAnswer,
+            explanation: questionData.explanation,
+            source: questionData.platform || 'web_scraped'
+          };
+
+          // ✅ VECTOR ENGINE: Check similarity for scraped question
+          console.log(`🔍 [CONTROLLER] Checking similarity for scraped question...`);
+          const similarityCheck = await vectorEngineService.checkSimilarity(vectorCompatibleData);
+          
+          // Skip if high similarity risk
+          if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+            console.log(`⏭️ [CONTROLLER] Skipped duplicate scraped question: ${questionData.title}`);
+            errors.push({
+              index,
+              title: questionData.title,
+              error: 'High similarity with existing questions'
+            });
+            continue;
+          }
 
           // Prepare the question data for database
           const questionToSave = {
@@ -612,6 +780,15 @@ async scrapeQuestions(req: Request, res: Response) {
             type: questionData.type || 'coding',
             canonicalSolution: questionData.canonicalSolution || `# Solution placeholder\n# Source: ${questionData.sourceUrl}`,
             testCases: questionData.testCases || { inputs: [], outputs: [] },
+            // ✅ FIX: Convert MCQOptions to Prisma-compatible format
+            options: questionData.options ? {
+              A: questionData.options.A || '',
+              B: questionData.options.B || '',
+              C: questionData.options.C || '',
+              D: questionData.options.D || ''
+            } : undefined,
+            correctAnswer: questionData.correctAnswer,
+            explanation: questionData.explanation,
             status: 'pending_review' as const,
             createdBy: userId,
             aiGenerated: false,
@@ -621,14 +798,30 @@ async scrapeQuestions(req: Request, res: Response) {
           console.log(`📊 [CONTROLLER] Question data prepared:`, {
             title: questionToSave.title,
             difficulty: questionToSave.difficulty,
-            source: questionToSave.source
+            source: questionToSave.source,
+            hasOptions: !!questionToSave.options
           });
 
           // Save to database using your QuestionService
           const saved = await this.questionService.createQuestion(questionToSave);
 
-          savedQuestions.push(saved);
-          console.log(`✅ [CONTROLLER] Saved scraped question to database:`, saved.id);
+          // ✅ VECTOR ENGINE: Store scraped question in vector database
+          console.log(`💾 [CONTROLLER] Storing scraped question in vector database...`);
+          const vectorResult = await vectorEngineService.storeQuestion(saved);
+          
+          if (vectorResult.success) {
+            const updatedQuestion = await this.questionService.updateQuestion(saved.id, {
+              vectorStored: true,
+              vectorId: vectorResult.question_id
+            });
+            savedQuestions.push(updatedQuestion);
+            vectorResults.push({ ...vectorResult, questionId: saved.id });
+            console.log(`✅ [CONTROLLER] Saved and vectorized scraped question:`, updatedQuestion.id);
+          } else {
+            savedQuestions.push(saved);
+            vectorResults.push({ ...vectorResult, questionId: saved.id });
+            console.log(`⚠️ [CONTROLLER] Saved scraped question but vector storage failed:`, saved.id);
+          }
 
         } catch (error: any) {
           console.error(`❌ [CONTROLLER] Error saving scraped question ${index}:`, error.message);
@@ -646,6 +839,8 @@ async scrapeQuestions(req: Request, res: Response) {
     console.log('💾 [CONTROLLER] Scraping completed');
     console.log(`✅ Saved to DB: ${savedQuestions.length}, ❌ Errors: ${errors.length}`);
 
+    const vectorSuccessCount = vectorResults.filter(r => r.success).length;
+
     res.status(201).json({
       success: true,
       message: `Scraped ${scrapeData.questions?.length || 0} questions and saved ${savedQuestions.length} to database`,
@@ -653,10 +848,12 @@ async scrapeQuestions(req: Request, res: Response) {
         totalUrls: urls.length,
         successfullyScraped: scrapeData.questions?.length || 0,
         successfullySaved: savedQuestions.length,
+        vectorizedCount: vectorSuccessCount,
         scrapingFailed: urls.length - (scrapeData.questions?.length || 0),
         savingErrors: errors.length
       },
       questions: savedQuestions,
+      vector_results: vectorResults,
       errors: errors.length > 0 ? errors : undefined
     });
 
@@ -668,7 +865,6 @@ async scrapeQuestions(req: Request, res: Response) {
       details: error.message
     });
   }
-  
 }
 /**
  * Importer automatiquement des questions scrapées
@@ -878,6 +1074,10 @@ private normalizeTestCases(testCases: any): any[] {
  * Generate a single MCQ question via AI
  * Route: POST /api/questions/generate-mcq
  */
+/**
+ * Generate a single MCQ question via AI
+ * Route: POST /api/questions/generate-mcq
+ */
 async generateMCQQuestion(req: Request, res: Response) {
   console.log('🎯 [CONTROLLER] generateMCQQuestion called');
   console.log('👤 [CONTROLLER] req.user:', req.user);
@@ -928,21 +1128,33 @@ async generateMCQQuestion(req: Request, res: Response) {
       throw new Error(mcqData.error || 'MCQ generation failed');
     }
 
+    // ✅ VECTOR ENGINE: Check similarity for MCQ
+    console.log('🔍 [CONTROLLER] Checking MCQ similarity with vector engine...');
+    const similarityCheck = await vectorEngineService.checkSimilarity(mcqData.question);
+    
+    if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Duplicate MCQ detected',
+        details: 'This MCQ is very similar to existing questions',
+        similarityCheck: similarityCheck
+      });
+    }
+
     // Save MCQ to database
     const savedQuestion = await this.questionService.createQuestion({
       title: mcqData.question.title,
       description: mcqData.question.description,
-      problemStatement: mcqData.question.description, // For MCQ, description = problem
+      problemStatement: mcqData.question.description,
       difficulty: mcqData.question.difficulty as 'easy' | 'medium' | 'hard',
       skillTags: mcqData.question.skillTags,
-      type: 'mcq', // ✅ MCQ type
+      type: 'mcq',
       
       // MCQ-specific fields
       options: mcqData.question.options,
       correctAnswer: mcqData.question.correctAnswer,
       explanation: mcqData.question.explanation,
       
-      // No canonical solution or test cases for MCQ
       canonicalSolution: null,
       testCases: null,
       
@@ -954,10 +1166,28 @@ async generateMCQQuestion(req: Request, res: Response) {
 
     console.log('💾 [CONTROLLER] MCQ saved:', savedQuestion.id);
 
+    // ✅ VECTOR ENGINE: Store MCQ in vector database
+    console.log('💾 [CONTROLLER] Storing MCQ in vector database...');
+    const vectorResult = await vectorEngineService.storeQuestion(savedQuestion);
+    
+    let finalQuestion = savedQuestion;
+    
+    if (vectorResult.success) {
+      finalQuestion = await this.questionService.updateQuestion(savedQuestion.id, {
+        vectorStored: true,
+        vectorId: vectorResult.question_id
+      });
+      console.log('✅ [CONTROLLER] MCQ stored in vector DB');
+    } else {
+      console.log('⚠️ [CONTROLLER] MCQ vector storage failed:', vectorResult.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'MCQ question generated and saved successfully',
-      question: savedQuestion
+      question: finalQuestion,
+      similarityCheck: similarityCheck,
+      vectorStorage: vectorResult
     });
 
   } catch (error: any) {
@@ -979,6 +1209,10 @@ async generateMCQQuestion(req: Request, res: Response) {
   }
 }
 
+/**
+ * Generate multiple MCQ questions in batch
+ * Route: POST /api/questions/generate-mcq-batch
+ */
 /**
  * Generate multiple MCQ questions in batch
  * Route: POST /api/questions/generate-mcq-batch
@@ -1035,10 +1269,27 @@ async generateMCQBatch(req: Request, res: Response) {
 
     // Save all MCQs to database
     const savedQuestions = [];
+    const vectorResults = [];
     const errors = [];
 
     for (const [index, mcqQuestion] of batchData.questions.entries()) {
       try {
+        console.log(`🔍 [CONTROLLER] Checking similarity for MCQ ${index + 1}...`);
+        
+        // ✅ VECTOR ENGINE: Check similarity for each MCQ
+        const similarityCheck = await vectorEngineService.checkSimilarity(mcqQuestion);
+        
+        // Skip if high similarity risk
+        if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+          console.log(`⏭️ [CONTROLLER] Skipped duplicate MCQ: ${mcqQuestion.title}`);
+          errors.push({
+            index,
+            title: mcqQuestion.title,
+            error: 'High similarity with existing questions'
+          });
+          continue;
+        }
+
         const saved = await this.questionService.createQuestion({
           title: mcqQuestion.title,
           description: mcqQuestion.description,
@@ -1061,8 +1312,23 @@ async generateMCQBatch(req: Request, res: Response) {
           createdBy: userId
         });
 
-        savedQuestions.push(saved);
-        console.log(`✅ [CONTROLLER] Saved MCQ ${index + 1}/${batchData.questions.length}`);
+        // ✅ VECTOR ENGINE: Store MCQ in vector database
+        console.log(`💾 [CONTROLLER] Storing MCQ ${index + 1} in vector database...`);
+        const vectorResult = await vectorEngineService.storeQuestion(saved);
+        
+        if (vectorResult.success) {
+          const updatedQuestion = await this.questionService.updateQuestion(saved.id, {
+            vectorStored: true,
+            vectorId: vectorResult.question_id
+          });
+          savedQuestions.push(updatedQuestion);
+          vectorResults.push({ ...vectorResult, questionId: saved.id });
+          console.log(`✅ [CONTROLLER] Saved and vectorized MCQ: ${updatedQuestion.title}`);
+        } else {
+          savedQuestions.push(saved);
+          vectorResults.push({ ...vectorResult, questionId: saved.id });
+          console.log(`⚠️ [CONTROLLER] Saved MCQ but vector storage failed: ${saved.title}`);
+        }
 
       } catch (error: any) {
         console.error(`❌ [CONTROLLER] Error saving MCQ ${index}:`, error.message);
@@ -1074,17 +1340,21 @@ async generateMCQBatch(req: Request, res: Response) {
       }
     }
 
-    console.log('💾 [CONTROLLER] Batch MCQ save completed');
+    console.log('💾 [CONTROLLER] Batch MCQ processing completed');
     console.log(`✅ Saved: ${savedQuestions.length}, ❌ Errors: ${errors.length}`);
+
+    const vectorSuccessCount = vectorResults.filter(r => r.success).length;
 
     res.status(201).json({
       success: true,
       message: `Generated ${batchData.generated_count} MCQs and saved ${savedQuestions.length} to database`,
       generated_count: batchData.generated_count,
       saved_count: savedQuestions.length,
+      vectorized_count: vectorSuccessCount,
       failed_count: batchData.failed_count || 0,
       error_count: errors.length,
       questions: savedQuestions,
+      vector_results: vectorResults,
       errors: errors.length > 0 ? errors : undefined
     });
 
@@ -1273,6 +1543,19 @@ async scrapeLeetCodeByUrl(req: Request, res: Response) {
       });
     }
 
+    // ✅ VECTOR ENGINE: Check similarity for LeetCode problem
+    console.log('🔍 [CONTROLLER] Checking similarity for LeetCode problem...');
+    const similarityCheck = await vectorEngineService.checkSimilarity(scrapeData.problem);
+    
+    if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Duplicate LeetCode problem detected',
+        details: 'This problem is very similar to existing questions',
+        similarityCheck: similarityCheck
+      });
+    }
+
     // Prepare question data for database
     const questionData = {
       title: scrapeData.problem.title,
@@ -1294,10 +1577,28 @@ async scrapeLeetCodeByUrl(req: Request, res: Response) {
 
     console.log('💾 [CONTROLLER] LeetCode question saved:', savedQuestion.id);
 
+    // ✅ VECTOR ENGINE: Store LeetCode problem in vector database
+    console.log('💾 [CONTROLLER] Storing LeetCode problem in vector database...');
+    const vectorResult = await vectorEngineService.storeQuestion(savedQuestion);
+    
+    let finalQuestion = savedQuestion;
+    
+    if (vectorResult.success) {
+      finalQuestion = await this.questionService.updateQuestion(savedQuestion.id, {
+        vectorStored: true,
+        vectorId: vectorResult.question_id
+      });
+      console.log('✅ [CONTROLLER] LeetCode problem stored in vector DB');
+    } else {
+      console.log('⚠️ [CONTROLLER] LeetCode vector storage failed:', vectorResult.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'LeetCode problem scraped and saved successfully',
-      question: savedQuestion,
+      question: finalQuestion,
+      similarityCheck: similarityCheck,
+      vectorStorage: vectorResult,
       metadata: scrapeData.metadata
     });
 
@@ -1733,6 +2034,36 @@ async analyzeVariability(req: Request, res: Response) {
     });
   }
 }
+  /**
+   * Health check for Vector Engine
+   * Route: GET /api/questions/vector/health
+   */
+  async checkVectorHealth(req: Request, res: Response) {
+    console.log('🔍 [CONTROLLER] checkVectorHealth called');
+    
+    try {
+      const healthCheck = await vectorEngineService.healthCheck();
+      
+      res.json({
+        success: healthCheck.success,
+        service: 'Vector Search Engine',
+        status: healthCheck.status,
+        message: healthCheck.success ? 'Vector engine is operational' : 'Vector engine issues detected',
+        error: healthCheck.error,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('❌ [CONTROLLER] Vector health check ERROR:', error.message);
+      
+      res.status(503).json({
+        success: false,
+        service: 'Vector Search Engine',
+        status: 'unhealthy',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
 
 /**
  * Health check for Variation Engine
@@ -1770,6 +2101,9 @@ async checkVariationEngineHealth(req: Request, res: Response) {
     });
   }
 }
+
+
+
 
 }
   
