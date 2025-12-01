@@ -1,4 +1,4 @@
-# python-services/qgen-service/app/vetting_pipeline/redis_manager.py
+# python-services/ai-service/app/vetting_pipeline/redis_manager.py
 import redis
 import json
 import pickle

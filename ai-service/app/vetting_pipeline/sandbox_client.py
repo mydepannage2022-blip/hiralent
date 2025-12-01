@@ -5,7 +5,7 @@ import logging
 from grpc._channel import _InactiveRpcError
 
 # Import generated gRPC code
-from ..grpc import sandbox_pb2, sandbox_pb2_grpc
+from app.grpc import sandbox_pb2, sandbox_pb2_grpc
 
 class SandboxClient:
     def __init__(self, sandbox_service_url: str):
