@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package sandbox;
+
+service SandboxService {
+  rpc RunTests(TestRequest) returns (TestResponse);
+}
+
+message TestRequest {
+  string code = 1;
+  repeated TestCase test_cases = 2;
+  string language = 3;
+}
+
+message TestCase {
+  string input = 1;
+  string expected_output = 2;
+  bool is_hidden = 3;
+}
+
+message TestResult {
+  bool passed = 1;
+  string error_message = 2;
+}
+
+message TestResponse {
+  bool all_passed = 1;
+  repeated TestResult test_results = 2;
+  float execution_time = 3;
+}

@@ -200,12 +200,19 @@ model Question {
   correctAnswer     String?
   explanation       String?
 
+  // ADD VECTOR ENGINE FIELDS
+  vectorStored      Boolean @default(false)  // Track if stored in vector DB
+  vectorId          String?                  // Reference to vector DB ID
+  embeddingHash     String?                  // Hash of embedding for cache
+
   status      String   // draft, pending_review, approved, rejected
   createdBy   String?  // user ID who created/generated
   aiGenerated Boolean  @default(false)
   source      String?  // ai_generated, web_scraped, manual
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  assessments AssessmentQuestion[]   // 👈 NEW
 
   @@map("questions")
 }
@@ -1441,6 +1448,7 @@ model EmployerAssessment {
   
   candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
   competeChallenges CompeteChallenge[]
+  questions            AssessmentQuestion[]   // 👈 NEW
 
   @@index([company_id])
   @@index([job_id])
@@ -1491,6 +1499,27 @@ enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
   MANUAL
+}
+
+model AssessmentQuestion {
+  id            String   @id @default(uuid())
+  assessment_id String
+  question_id   String
+
+  // Optional metadata
+  order         Int?
+  points        Int      @default(1)
+  section       String?  // "algorithms", "sql", etc. if you want
+  isReserve     Boolean  @default(false)
+
+  assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  question   Question           @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([assessment_id, question_id])
+  @@index([assessment_id])
+  @@index([question_id])
+
+  @@map("assessment_questions")
 }
 
 // Conversation Model

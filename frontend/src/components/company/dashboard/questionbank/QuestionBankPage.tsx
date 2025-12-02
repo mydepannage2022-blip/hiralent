@@ -35,7 +35,7 @@ import {
   Copy,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-import QuestionEditor from "./QuestionEditor";
+import QuestionEditor from "../questionbank/QuestionEditor";
 
 interface Question {
   id: string;
@@ -57,6 +57,8 @@ interface Question {
   views?: number;
   submissions?: number;
   successRate?: number;
+  vectorStored?: boolean;
+  vectorId?: string;
 }
 
 const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border";
@@ -729,6 +731,8 @@ const QuestionBankPage: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [showSourceSelector, setShowSourceSelector] = useState(false);
   const [showUrlScraper, setShowUrlScraper] = useState(false);
+  //  Vector health state
+  const [vectorHealth, setVectorHealth] = useState<boolean>(true);
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",
@@ -743,6 +747,33 @@ const QuestionBankPage: React.FC = () => {
     }
     return true;
   };
+// Add a useEffect to check vector engine health
+useEffect(() => {
+  const checkVectorHealth = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/questions/vector/health', {
+        headers: authHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Use the success field from your service response
+        setVectorHealth(data.success && data.status !== 'unavailable');
+      } else {
+        setVectorHealth(false);
+      }
+    } catch (error) {
+      console.error('Vector health check failed:', error);
+      setVectorHealth(false);
+    }
+  };
+  
+  checkVectorHealth();
+  
+  // Optional: Check health periodically (every 30 seconds)
+  const interval = setInterval(checkVectorHealth, 30000);
+  return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     setCurrentUserId(user?.user_id ?? null);
@@ -834,24 +865,33 @@ const QuestionBankPage: React.FC = () => {
   const handleCreateQuestion = () => { if (!requireAuth()) return; setEditorMode("create"); setEditingQuestion(null); setShowEditor(true); };
   const handleEditQuestion = (question: Question) => { if (!requireAuth()) return; setEditorMode("edit"); setEditingQuestion(question); setShowEditor(true); };
 
-  const handleSaveQuestion = async (questionData: Partial<Question>) => {
-    if (!requireAuth()) return;
-    try {
-      const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
-      const method = editorMode === "create" ? "POST" : "PUT";
-      const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
-      const data = await response.json();
-      if (data.success) {
-        setShowEditor(false);
-        if (editorMode === "create" && data.question) {
-          setQuestions(prev => [{ ...data.question, createdBy: currentUserId }, ...prev]);
-        } else await loadQuestions();
-      } else alert("Failed to save question: " + (data.error || "Unknown error"));
-    } catch (error) {
-      console.error("Failed to save question:", error);
-      alert("Network error while saving question.");
+// In handleCreateQuestion function
+const handleSaveQuestion = async (questionData: Partial<Question>) => {
+  if (!requireAuth()) return;
+  try {
+    const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
+    const method = editorMode === "create" ? "POST" : "PUT";
+    const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
+    const data = await response.json();
+    
+    if (data.success) {
+      setShowEditor(false);
+      if (editorMode === "create" && data.question) {
+        setQuestions(prev => [{ ...data.question, createdBy: currentUserId }, ...prev]);
+      } else await loadQuestions();
+    } else {
+      // Handle vector search duplicate detection
+      if (data.code === 'DUPLICATE_QUESTION') {
+        alert(`❌ Duplicate Question Detected!\n\nThis question is very similar to ${data.similarityCheck?.similar_questions_found} existing questions.\n\nSimilarity Risk: ${data.similarityCheck?.duplication_risk}\n\nPlease modify your question to make it more unique.`);
+      } else {
+        alert("Failed to save question: " + (data.error || "Unknown error"));
+      }
     }
-  };
+  } catch (error) {
+    console.error("Failed to save question:", error);
+    alert("Network error while saving question.");
+  }
+};
 
 const handleAiGenerate = async (payload: {
   topic: string;
@@ -881,21 +921,26 @@ const handleAiGenerate = async (payload: {
     });
 
     const data = await response.json();
-    if (data.success && data.question) {
-      const q: Question = {
-        ...data.question,
-        aiGenerated: true,
-        source: data.question.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
-        type: payload.type || data.question.type,
-        skillTags: payload.tags?.length
-          ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
-          : data.question.skillTags || [],
-      };
-      setQuestions((prev) => [q, ...prev]);
-      setAiModalOpen(false);
-    } else {
-      alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
-    }
+if (data.success && data.question) {
+  const q: Question = {
+    ...data.question,
+    aiGenerated: true,
+    source: data.question.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
+    type: payload.type || data.question.type,
+    skillTags: payload.tags?.length
+      ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
+      : data.question.skillTags || [],
+  };
+  setQuestions((prev) => [q, ...prev]);
+  setAiModalOpen(false);
+} else {
+  // Handle AI duplicate detection
+  if (data.error?.includes('duplicate') || data.details?.includes('similar')) {
+    alert(`❌ AI Generated Duplicate!\n\nThe AI generated a question that's very similar to existing ones.\n\nPlease try a different topic or modify the generated question.`);
+  } else {
+    alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
+  }
+}
   } catch (e) {
     console.error(e);
     alert("Network error during AI generation.");
@@ -1127,6 +1172,7 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                 <button onClick={() => setViewMode("grid")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><Grid3x3 className="w-3.5 h-3.5" />Grid</button>
                 <button onClick={() => setViewMode("table")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><List className="w-3.5 h-3.5" />Table</button>
               </div>
+              
 
               {viewMode === "table" && (
                 <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
@@ -1165,6 +1211,14 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                   </button>
                 ))}
               </div>
+                {/* ADD THE VECTOR STATUS INDICATOR RIGHT HERE */}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className={`flex items-center gap-1 ${vectorHealth ? 'text-green-600' : 'text-red-600'}`}>
+                    <Database className="w-3 h-3" />
+                    <span>Vector DB: {vectorHealth ? 'Online' : 'Offline'}</span>
+                  </div>
+                </div>
+
 
               <span className="hidden xl:block h-5 w-px bg-gray-200" />
 
@@ -1268,10 +1322,18 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                           {question.status.replace("_", " ").toUpperCase()}
                         </span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`${pill} ${question.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : question.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>{question.difficulty.toUpperCase()}</span>
+                          <span className={`${pill} ${question.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : question.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                            {question.difficulty.toUpperCase()}
+                          </span>
                           <span className={`${pill} ${isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
                             {isAI ? (<><Zap className="w-3 h-3" /> AI</>) : (<><FileText className="w-3 h-3" /> MANUAL</>)}
                           </span>
+                          {/* Add vector status indicator */}
+                          {question.vectorStored && (
+                            <span className={`${pill} bg-blue-50 text-blue-700 border-blue-200`} title="Stored in vector database">
+                              <Database className="w-3 h-3" /> VECTOR
+                            </span>
+                          )}
                         </div>
                       </div>
 

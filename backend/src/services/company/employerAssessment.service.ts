@@ -475,7 +475,7 @@ export async function createEmployerAssessmentFromJobDescription(
       creation_method: PrismaCreationMethod.JOB_DESCRIPTION_PARSE,
       extracted_skills: uniqueSkills,
       enhanced_data: enhanced as any,
-      auto_generated: Boolean(args.auto_generate),
+      auto_generated: true,
     },
     include: { job: true, _count: { select: { candidateAssessments: true } } },
   });

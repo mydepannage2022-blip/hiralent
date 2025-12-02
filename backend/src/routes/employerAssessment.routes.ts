@@ -12,6 +12,7 @@ import {
   update,
   updateStatus,
   remove,
+  generateQuestionsForAssessment,
 } from '../controller/company/employerAssessment.controller';
 
 const router = Router();
@@ -28,6 +29,9 @@ router.post('/create-from-request', createFromRequest); // dispatcher: JD-parse 
 router.post('/from-jd', createFromJD);                  // JD parse -> AI.extractSkills (+optional AI.generateQuestions)
 router.post('/with-chatbot', createWithChatbot);        // start chatbot-guided flow
 router.post('/chatbot/message', sendChatbotMessage);
+
+// ---- Question generation (Wafaa link) ----
+router.post('/:assessment_id/generate-questions', generateQuestionsForAssessment);
 
 // ---- Read ----
 router.get('/:assessment_id', getById);                 // get one by id
