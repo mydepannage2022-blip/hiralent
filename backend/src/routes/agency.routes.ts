@@ -12,6 +12,7 @@ import {
   exportData,
   getSettings 
 } from "../controller/agency/agency.settings.controller";
+import { reviewDocument, getCaseDocuments } from "../controller/agency/agency.document.controller";
 
 const router = Router();
 
@@ -42,5 +43,9 @@ router.put("/settings/2fa", checkAuth, toggle2FA);
 router.get("/settings/notifications", checkAuth, getNotifications);
 router.put("/settings/notifications", checkAuth, updateNotifications);
 router.get("/settings/export-data", checkAuth, exportData);
+
+// Document Review Routes
+router.get("/cases/:id/documents", checkAuth, getCaseDocuments);
+router.put("/cases/:id/documents/:documentId/review", checkAuth, reviewDocument);
 
 export default router;

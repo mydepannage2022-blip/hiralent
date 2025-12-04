@@ -17,6 +17,9 @@ import {
   CheckCircle,
   Clock,
   X,
+  XCircle,
+  AlertTriangle,
+  Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -36,6 +39,7 @@ interface Document {
   file_size: number;
   status: string;
   notes?: string;
+  review_feedback?: string;
   created_at: string;
 }
 
@@ -87,12 +91,6 @@ export default function CaseDetailPage() {
     try {
       setLoading(true);
 
-      console.log("🔍 Fetching case:", caseId);
-      console.log(
-        "🔍 API URL:",
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}`
-      );
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}`,
         {
@@ -103,16 +101,12 @@ export default function CaseDetailPage() {
         }
       );
 
-      console.log("📡 Response status:", response.status);
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("❌ API Error:", errorData);
         throw new Error(errorData.message || "Failed to fetch case");
       }
 
       const data = await response.json();
-      console.log("✅ Case data:", data);
       setCaseData(data.data);
     } catch (err) {
       console.error("❌ Fetch case error:", err);
@@ -173,11 +167,6 @@ export default function CaseDetailPage() {
       if (uploadNotes) {
         formData.append("notes", uploadNotes);
       }
-
-      console.log(
-        "📤 Uploading to:",
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents`
-      );
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents`,
@@ -264,8 +253,25 @@ export default function CaseDetailPage() {
         return "bg-yellow-100 text-yellow-700 border-yellow-200";
       case "rejected":
         return "bg-red-100 text-red-700 border-red-200";
+      case "needs_revision":
+        return "bg-orange-100 text-orange-700 border-orange-200";
       default:
         return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return <CheckCircle className="w-4 h-4" />;
+      case "pending":
+        return <Clock className="w-4 h-4" />;
+      case "rejected":
+        return <XCircle className="w-4 h-4" />;
+      case "needs_revision":
+        return <AlertTriangle className="w-4 h-4" />;
+      default:
+        return <FileText className="w-4 h-4" />;
     }
   };
 
@@ -401,10 +407,10 @@ export default function CaseDetailPage() {
               <h2 className="text-xl font-bold text-slate-800">Documents</h2>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/30 font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg font-medium text-sm"
               >
                 <Upload className="w-4 h-4" />
-                <span>Upload Document</span>
+                <span>Upload</span>
               </button>
             </div>
 
@@ -421,7 +427,7 @@ export default function CaseDetailPage() {
                 {caseData.documents.map((doc) => (
                   <div
                     key={doc.document_id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
                   >
                     <div className="flex items-center gap-3 flex-1">
                       <FileText className="w-5 h-5 text-slate-400" />
@@ -442,26 +448,33 @@ export default function CaseDetailPage() {
                             {formatDate(doc.created_at)}
                           </span>
                         </div>
+                        {doc.review_feedback && (
+                          <p className="text-xs text-orange-600 mt-1 font-medium italic">
+                            Agency feedback: {doc.review_feedback}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${getStatusColor(
                           doc.status
                         )}`}
                       >
-                        {doc.status}
+                        {getStatusIcon(doc.status)}
+                        {doc.status.replace("_", " ")}
                       </span>
                       <a
                         href={doc.file_path}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                        title="Download"
+                        title="View/Download"
                       >
-                        <Download className="w-4 h-4 text-slate-600" />
+                        <Eye className="w-4 h-4 text-slate-600" />
                       </a>
+
                       {doc.status === "pending" && (
                         <button
                           onClick={() => {
@@ -512,7 +525,8 @@ export default function CaseDetailPage() {
             <ul className="space-y-2">
               {documentTypes.map((type) => {
                 const hasDoc = caseData.documents.some(
-                  (d) => d.document_type === type.value
+                  (d) =>
+                    d.document_type === type.value && d.status === "approved"
                 );
                 return (
                   <li
@@ -537,6 +551,7 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
+      {/* Upload Modal */}
       <AnimatePresence>
         {showUploadModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
