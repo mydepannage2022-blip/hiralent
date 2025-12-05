@@ -174,5 +174,71 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Failed to delete embedding for question {question_id}: {e}")
             return False
-    
-    
+
+    def get_all_questions(self) -> List[Dict[str, Any]]:
+        """Get all questions stored in the vector database"""
+        try:
+            # Get all data from the collection
+            results = self.collection.get(
+                include=["metadatas", "embeddings"]
+            )
+            
+            logger.info(f"Raw ChromaDB results - IDs: {results.get('ids', [])}, Metadatas count: {len(results.get('metadatas', []))}")
+            
+            questions = []
+            if results.get('ids'):
+                for i, question_id in enumerate(results['ids']):
+                    # Safely get metadata
+                    metadata = {}
+                    if results.get('metadatas') and i < len(results['metadatas']):
+                        metadata = results['metadatas'][i] or {}
+                    
+                    # Convert skill_tags string back to list for the response
+                    processed_metadata = metadata.copy()
+                    if "skill_tags" in processed_metadata and processed_metadata["skill_tags"]:
+                        processed_metadata["skill_tags"] = [tag.strip() for tag in processed_metadata["skill_tags"].split(",") if tag.strip()]
+                    
+                    # Safely get embedding length
+                    embedding_length = 0
+                    if results.get('embeddings') and i < len(results['embeddings']) and results['embeddings'][i]:
+                        embedding_length = len(results['embeddings'][i])
+                    
+                    questions.append({
+                        "id": question_id,
+                        "metadata": processed_metadata,
+                        "embedding_length": embedding_length
+                    })
+            
+            logger.info(f"Retrieved {len(questions)} questions from vector database")
+            return questions
+            
+        except Exception as e:
+            logger.error(f"Failed to get all questions: {e}")
+            return []
+
+    def get_question_by_id(self, question_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific question by ID"""
+        try:
+            results = self.collection.get(
+                ids=[question_id],
+                include=["embeddings", "metadatas"]
+            )
+            
+            if not results['ids']:
+                return None
+                
+            # Convert skill_tags string back to list for the response
+            metadata = results['metadatas'][0] if results['metadatas'] else {}
+            processed_metadata = metadata.copy()
+            if "skill_tags" in processed_metadata and processed_metadata["skill_tags"]:
+                processed_metadata["skill_tags"] = [tag.strip() for tag in processed_metadata["skill_tags"].split(",")]
+            
+            return {
+                "id": results['ids'][0],
+                "metadata": processed_metadata,
+                "embedding_length": len(results['embeddings'][0]) if results['embeddings'] else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get question {question_id}: {e}")
+            return None

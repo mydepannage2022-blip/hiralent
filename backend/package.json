@@ -8,9 +8,12 @@
     "notify:companies": "ts-node src/scripts/companyEmailNotifier.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "worker:dev": "ts-node --transpile-only src/workers/run.worker.ts",
-    "worker:run": "node dist/workers/run.worker.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "dev:test": "ts-node src/scripts/dev-test.ts",
+    "worker": "ts-node src/workers/ai_company_setup.worker.ts"
   },
   "module": "CommonJS",
   "type": "commonjs",

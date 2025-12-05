@@ -198,18 +198,22 @@ model CompanyProfile {
 }
 
 model Question {
-  id               String   @id @default(cuid())
-  title            String
-  description      String
-  problemStatement String?
-  difficulty       String
-  skillTags        String[]
-  type             String
-  canonicalSolution String?
-  testCases        Json    // { inputs: [], outputs: [] }
-  options          Json?
-  correctAnswer    String?
-  explanation      String?
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  problemStatement String
+  difficulty  String   // easy, medium, hard
+  skillTags   String[]
+  type        String   // coding, mcq, debugging
+  canonicalSolution String
+  testCases   Json     // { inputs: [], outputs: [] }
+   // ADD Variation
+  parameters  Json?    // Store variation parameters
+  metadata    Json?    // Store variation metadata
+  //ADD THESE MCQ FIELDS
+  options           Json?
+  correctAnswer     String?
+  explanation       String?
 
   status      String // draft, pending_review, approved, rejected
   createdBy   String? // user ID who created/generated
@@ -217,6 +221,8 @@ model Question {
   source      String? // ai_generated, web_scraped, manual
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  assessments AssessmentQuestion[]   // 👈 NEW
 
   @@map("questions")
 }
@@ -1454,6 +1460,7 @@ model EmployerAssessment {
 
   // Removed candidateAssessments (invalid inverse; SkillAssessment has no employer link)
   competeChallenges CompeteChallenge[]
+  questions            AssessmentQuestion[]   // 👈 NEW
 
   @@index([company_id])
   @@index([job_id])
@@ -1466,6 +1473,27 @@ enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
   MANUAL
+}
+
+model AssessmentQuestion {
+  id            String   @id @default(uuid())
+  assessment_id String
+  question_id   String
+
+  // Optional metadata
+  order         Int?
+  points        Int      @default(1)
+  section       String?  // "algorithms", "sql", etc. if you want
+  isReserve     Boolean  @default(false)
+
+  assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  question   Question           @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([assessment_id, question_id])
+  @@index([assessment_id])
+  @@index([question_id])
+
+  @@map("assessment_questions")
 }
 
 // Conversation Model
