@@ -4,10 +4,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev": "nodemon --exec \"ts-node --transpile-only src/server.ts\"",
     "notify:companies": "ts-node src/scripts/companyEmailNotifier.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "worker:dev": "ts-node --transpile-only src/workers/run.worker.ts",
+    "worker:run": "node dist/workers/run.worker.js",
     "postinstall": "prisma generate"
   },
   "module": "CommonJS",

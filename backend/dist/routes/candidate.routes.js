@@ -113,4 +113,4 @@ PUT    /profile/job-benefits       - Update job benefits preferences
 PUT    /profile/bulk               - Bulk update multiple sections
 
 TOTAL: 31 API ENDPOINTS
-*/ 
+*/

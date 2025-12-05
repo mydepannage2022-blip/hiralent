@@ -49,7 +49,6 @@ import executionRoutes from './routes/execution.routes';
 import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
-// Dev-only routes are mounted below to avoid exposing them in production.
 
 
 // Mount routes
@@ -94,10 +93,10 @@ app.use('/api/v1/admin', adminAuthRoutes);
 app.use('/api/v1/admin', adminVerificationRoutes);
 
 app.use('/api/v1', insightsRoutes);
+app.use('/api/v1', insightsRoutes);
 
 app.use('/api/v1', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
-
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
 });

@@ -2,15 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Upload,
-  FileText,
-  Wand2,
-  Sparkles,
-  CheckCircle2,
-  AlertTriangle,
-} from "lucide-react";
+import { X, Wand2, Sparkles, AlertTriangle } from "lucide-react";
 
 import { useAuth } from "../../../../context/AuthContext";
 
@@ -73,7 +65,6 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
   const { token } = useAuth();
 
   const [jobDescription, setJobDescription] = useState("");
-  const [fileName, setFileName] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +72,6 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
   useEffect(() => {
     if (!open) {
       setJobDescription("");
-      setFileName(null);
       setIsGenerating(false);
       setError(null);
       return;
@@ -94,11 +84,8 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
 
   if (!open || !job) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    // For now we don't send the file yet – backend uses the text JD.
+  const handleUseJobPosting = () => {
+    setJobDescription(job.description || "");
   };
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -106,25 +93,23 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
     setError(null);
 
     if (!jobDescription.trim()) {
-      setError("Please provide a job description or upload a JD file.");
+      setError("Please paste or edit a job description before continuing.");
       return;
     }
 
     setIsGenerating(true);
 
     try {
-      // Build payload expected by your backend
       const payload = {
         job_id: job.job_id,
         title: `${job.title} Assessment`,
-        description: "Generated from Job Description",
+        description:
+          "Assessment auto-generated from the job description. Please review and customize as needed.",
         job_title: job.title,
         job_description: jobDescription,
+        // Only tell the backend what *type* of assessment we want.
         assessment_type: "QUICK_CHECK",
-        difficulty: "INTERMEDIATE",
-        auto_generate: true,
-        total_questions: 12,
-        time_limit: 40,
+        // backend + AI service decide everything else
       };
 
       const headers: HeadersInit = {
@@ -147,7 +132,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
       try {
         data = await response.json();
       } catch {
-        // ignore JSON parse errors – we'll handle with generic message
+        // ignore JSON parse errors
       }
 
       if (!response.ok) {
@@ -159,7 +144,6 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
         return;
       }
 
-      // Assessment created successfully in DB
       if (onAssessmentCreated) {
         onAssessmentCreated();
       }
@@ -179,14 +163,14 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[11000] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[11000] flex items-center justify-center px-4 py-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -195,170 +179,187 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
 
           {/* Modal */}
           <motion.div
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            initial={{ scale: 0.95, y: 12, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.9, y: 20, opacity: 0 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl"
+            exit={{ scale: 0.96, y: 12, opacity: 0 }}
+            transition={{ type: "spring", damping: 24 }}
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-gradient-to-br from-slate-50 via-sky-50 to-indigo-50/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
           >
+            {/* Top accent border */}
+            <div className="h-1 w-full bg-gradient-to-r from-[#1B73E8] via-[#4F46E5] to-[#1B73E8]" />
+
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] p-6 text-white">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    <Upload className="w-5 h-5" />
-                  </motion.div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      Generate Assessment from Job Description
-                    </h2>
-                    <p className="text-blue-100 text-xs md:text-sm">
-                      Job: <span className="font-semibold">{job.title}</span>
-                    </p>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={onClose}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
+            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 bg-white/80 backdrop-blur-sm border-b border-slate-100">
+              <div>
+                <h2 className="text-lg md:text-xl font-semibold text-slate-900">
+                  Generate assessment from job description
+                </h2>
+                <p className="mt-1 text-xs md:text-sm text-slate-500">
+                  Paste or edit the job description. The AI will analyze it and
+                  create a tailored assessment draft for{" "}
+                  <span className="font-medium text-[#1B73E8]">
+                    {job.title}
+                  </span>
+                  .
+                </p>
               </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05, rotate: 90 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </motion.button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {/* Upload / Info */}
-              <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.9fr] gap-4">
-                <div className="border border-dashed border-gray-300 rounded-xl p-4 flex flex-col gap-3 bg-gray-50/60">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-[#1B73E8]" />
-                    <p className="text-sm font-semibold text-gray-800">
-                      Use existing JD or upload a file
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    You can keep the current job description, edit it, or upload
-                    a PDF / DOCX to be parsed by the AI engine later.
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 text-xs font-medium text-gray-700 cursor-pointer hover:border-[#1B73E8] hover:text-[#1B73E8] transition-all">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload JD file</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={handleFileChange}
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setJobDescription(job.description || "")
-                      }
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-semibold text-[#1B73E8] hover:bg-blue-100 transition-all"
-                    >
+            {/* Scrollable content */}
+            <div className="px-6 pb-4 overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* LEFT: What AI will do */}
+                <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 md:p-5 shadow-[0_10px_40px_rgba(15,23,42,0.03)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B73E8]/10 text-[#1B73E8]">
                       <Sparkles className="w-4 h-4" />
-                      Use job posting description
-                    </button>
-                  </div>
-                  {fileName && (
-                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-600">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      <span className="truncate max-w-[220px]">
-                        {fileName}
-                      </span>
                     </div>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 flex flex-col gap-2 text-xs text-[#12305d]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wand2 className="w-4 h-4 text-[#1B73E8]" />
-                    <p className="font-semibold text-[13px]">
+                    <p className="text-sm font-semibold text-slate-900">
                       What the AI will do
                     </p>
                   </div>
-                  <ul className="space-y-1 list-disc list-inside">
-                    <li>Detect core skills &amp; knowledge areas</li>
-                    <li>Propose question types and difficulty mix</li>
-                    <li>Align assessment structure with the JD</li>
-                    <li>Generate a first draft you can review &amp; edit</li>
+
+                  <ul className="space-y-1.5 text-xs text-slate-600 mb-4">
+                    <li>
+                      • Identify technical skills, tools, platforms, and soft
+                      skills mentioned or implied in the JD.
+                    </li>
+                    <li>
+                      • Detect domains, seniority level, and overall job
+                      complexity.
+                    </li>
+                    <li>
+                      • Generate key technologies and question recommendations
+                      tailored to the role.
+                    </li>
+                    <li>
+                      • Align assessment difficulty and structure with the job's
+                      responsibilities and requirements.
+                    </li>
                   </ul>
+
+                  <p className="text-[11px] text-slate-400">
+                    You keep full control — this just creates a starting point
+                    you can refine.
+                  </p>
+                </div>
+
+                {/* RIGHT: JD textarea */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Job description to parse
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        3–6 clear bullet-point sections work best (role, tech
+                        stack, requirements).
+                      </p>
+                    </div>
+
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleUseJobPosting}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:border-[#1B73E8]/60 hover:text-[#1B73E8]"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Use job posting text
+                    </motion.button>
+                  </div>
+
+                  <div className="flex-1 rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                    <textarea
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      rows={14}
+                      className="w-full h-full min-h-[260px] bg-transparent px-4 py-3 text-sm text-slate-800 outline-none resize-none custom-scrollbar"
+                      placeholder="Paste or edit the job description that will be used to generate the assessment..."
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>{error}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Description textarea */}
-              <form onSubmit={handleGenerate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Job Description to parse
-                  </label>
-                  <textarea
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    rows={10}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm resize-none"
-                    placeholder="Paste or edit the job description that will be used to generate the assessment..."
-                  />
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onClose}
-                    className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors"
-                  >
-                    Cancel
-                  </motion.button>
-
-                  <motion.button
-                    type="submit"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    disabled={isGenerating}
-                    className="px-5 py-2.5 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                        />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="w-4 h-4" />
-                        Generate Assessment Draft
-                      </>
-                    )}
-                  </motion.button>
-                </div>
-              </form>
             </div>
+
+            {/* Footer (sticky) */}
+{/* Footer (gradient visible) */}
+<div
+  className="
+    border-t border-white/20
+    bg-white/10 backdrop-blur-xl
+    px-6 py-3
+    flex flex-col md:flex-row md:items-center md:justify-between gap-3
+  "
+>
+  <p className="text-[11px] text-slate-700">
+    After generation, the assessment draft will appear in{" "}
+    <span className="font-medium text-[#1B73E8]">My Assessments</span> for this job.
+  </p>
+
+  <div className="flex justify-end gap-3">
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClose}
+      className="
+        px-4 py-2 rounded-full border border-white/30 
+        bg-white/10 backdrop-blur-xl 
+        text-sm font-medium text-slate-700 hover:bg-white/20
+      "
+    >
+      Cancel
+    </motion.button>
+
+    <motion.button
+      type="button"
+      whileHover={{ scale: isGenerating ? 1 : 1.02 }}
+      whileTap={{ scale: isGenerating ? 1 : 0.98 }}
+      disabled={isGenerating}
+      onClick={handleGenerate}
+      className="
+        inline-flex items-center gap-2 rounded-full 
+        bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] 
+        px-5 py-2 text-sm font-semibold text-white 
+        shadow-md disabled:opacity-60 disabled:cursor-not-allowed
+      "
+    >
+      {isGenerating ? (
+        <>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+          />
+          Generating…
+        </>
+      ) : (
+        <>
+          <Wand2 className="w-4 h-4" />
+          Generate assessment
+        </>
+      )}
+    </motion.button>
+  </div>
+</div>
+
           </motion.div>
         </motion.div>
       )}

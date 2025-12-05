@@ -13,7 +13,11 @@ import {
   MCQBatchGenerationResponse,   // ADD THIS
   LeetCodeTestResponse,
   LeetCodeScrapeResponse,
-  LeetCodeBatchScrapeResponse
+  LeetCodeBatchScrapeResponse,
+   VariationGenerationRequest,
+  VariationQuestionData,
+  VariationGenerationResponse,
+  VariabilityAnalysisResponse
 
 } from '../../types/question.types';
 export class QuestionController {
@@ -1531,6 +1535,241 @@ private normalizeLeetCodeTestCases(testCases: any): Array<{ input: string; outpu
   return [{ input: 'Sample input', output: 'Expected output' }];
 }
 
+
+/**
+ * Generate anti-cheat variations for a question
+ * Route: POST /api/questions/:id/generate-variations
+ */
+/**
+ * Generate anti-cheat variations for a question
+ * Route: POST /api/questions/:id/generate-variations
+ */
+async generateVariations(req: Request, res: Response) {
+  console.log('🔄 [CONTROLLER] generateVariations called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
+
+  try {
+    const { id } = req.params;
+    const { variation_count = 10, preserve_difficulty = true } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required for variation generation'
+      });
+    }
+
+    // Get base question from database
+    const baseQuestion = await this.questionService.getQuestionById(id);
+    if (!baseQuestion) {
+      return res.status(404).json({
+        success: false,
+        error: 'Base question not found'
+      });
+    }
+
+    console.log('🔄 [CONTROLLER] Generating variations for:', baseQuestion.title);
+
+    // Call Python Variation Engine
+    const variationResponse = await fetch('http://localhost:8000/variations/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        base_question: {
+          id: baseQuestion.id,
+          title: baseQuestion.title,
+          problemStatement: baseQuestion.problemStatement,
+          difficulty: baseQuestion.difficulty,
+          // FIX: Use empty object if parameters doesn't exist
+          parameters: (baseQuestion as any).parameters || {},
+          testCases: baseQuestion.testCases || { examples: [] },
+          skillTags: baseQuestion.skillTags,
+          type: baseQuestion.type,
+          canonicalSolution: baseQuestion.canonicalSolution,
+          explanation: baseQuestion.explanation,
+          version: '1.0'
+        },
+        variation_count,
+        preserve_difficulty
+      })
+    });
+
+    if (!variationResponse.ok) {
+      throw new Error(`Variation engine returned ${variationResponse.status}`);
+    }
+
+    // FIX: Add type assertion here
+    const variationData = await variationResponse.json() as VariationGenerationResponse;
+    console.log('✅ [CONTROLLER] Variation generation successful');
+
+    if (!variationData.success) {
+      throw new Error(variationData.error || 'Variation generation failed');
+    }
+
+    // Save variations to database
+    const savedVariations = [];
+    const errors = [];
+
+    for (const variation of variationData.sample_variations || []) {
+      try {
+        const saved = await this.questionService.createQuestion({
+          title: variation.title,
+          description: `Variation of: ${baseQuestion.title}`,
+          problemStatement: variation.problemStatement,
+          difficulty: variation.difficulty,
+          skillTags: variation.skillTags,
+          type: variation.type,
+          canonicalSolution: variation.canonicalSolution,
+          testCases: variation.testCases,
+          status: 'pending_review',
+          aiGenerated: true,
+          source: 'variation_engine',
+          createdBy: userId,
+          // FIX: Store variation info in description since metadata field doesn't exist
+          // metadata: {
+          //   is_variation: true,
+          //   base_question_id: baseQuestion.id,
+          //   variation_number: variation.variation_number,
+          //   variation_engine_version: variation.metadata?.variation_engine_version
+          // }
+        });
+
+        savedVariations.push(saved);
+        console.log(`✅ [CONTROLLER] Saved variation: ${saved.title}`);
+      } catch (error: any) {
+        console.error(`❌ [CONTROLLER] Error saving variation:`, error.message);
+        errors.push({
+          title: variation.title,
+          error: error.message
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${variationData.variations_generated} variations and saved ${savedVariations.length} to database`,
+      variations_generated: variationData.variations_generated,
+      saved_count: savedVariations.length,
+      difficulty_distribution: variationData.difficulty_distribution,
+      variations: savedVariations,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateVariations ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate variations',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Analyze question variability for anti-cheat
+ * Route: POST /api/questions/:id/analyze-variability
+ */
+async analyzeVariability(req: Request, res: Response) {
+  console.log('📊 [CONTROLLER] analyzeVariability called');
+
+  try {
+    const { id } = req.params;
+    
+    // Get base question from database
+    const baseQuestion = await this.questionService.getQuestionById(id);
+    if (!baseQuestion) {
+      return res.status(404).json({
+        success: false,
+        error: 'Question not found'
+      });
+    }
+
+    console.log('📊 [CONTROLLER] Analyzing variability for:', baseQuestion.title);
+
+    // Call Python Variation Engine for analysis
+    const analysisResponse = await fetch('http://localhost:8000/variations/analyze-variability', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        base_question: {
+          id: baseQuestion.id,
+          title: baseQuestion.title,
+          problemStatement: baseQuestion.problemStatement,
+          difficulty: baseQuestion.difficulty,
+          // FIX: Use empty object if parameters doesn't exist
+          parameters: (baseQuestion as any).parameters || {},
+          testCases: baseQuestion.testCases || { examples: [] },
+          skillTags: baseQuestion.skillTags,
+          type: baseQuestion.type
+        }
+      })
+    });
+
+    if (!analysisResponse.ok) {
+      throw new Error(`Variation engine returned ${analysisResponse.status}`);
+    }
+
+    // FIX: Add type assertion here
+    const analysisData = await analysisResponse.json() as VariabilityAnalysisResponse;
+    console.log('✅ [CONTROLLER] Variability analysis successful');
+
+    res.json({
+      success: true,
+      analysis: analysisData.variability_analysis,
+      sample_variations: analysisData.sample_variations
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] analyzeVariability ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to analyze variability',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Health check for Variation Engine
+ * Route: GET /api/questions/variation-engine/health
+ */
+async checkVariationEngineHealth(req: Request, res: Response) {
+  console.log('🔧 [CONTROLLER] checkVariationEngineHealth called');
+
+  try {
+    const healthResponse = await fetch('http://localhost:8000/variations/health');
+    
+    if (!healthResponse.ok) {
+      throw new Error(`Variation engine returned ${healthResponse.status}`);
+    }
+
+    // FIX: Add type assertion here
+    const healthData = await healthResponse.json() as any;
+    
+    res.json({
+      success: true,
+      service: 'Variation Engine',
+      status: healthData.status,
+      version: healthData.version,
+      components: healthData.components,
+      supported_question_types: healthData.supported_question_types
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] checkVariationEngineHealth ERROR:', error.message);
+    res.status(503).json({
+      success: false,
+      service: 'Variation Engine',
+      status: 'unavailable',
+      error: error.message
+    });
+  }
+}
 
 }
   
