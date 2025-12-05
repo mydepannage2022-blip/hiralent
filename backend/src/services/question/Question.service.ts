@@ -100,7 +100,9 @@ async createQuestion(data: any): Promise<Question> {
       status: data.status || 'draft',
       createdBy: data.createdBy,
       aiGenerated: data.aiGenerated || false,
-      source: data.source || 'manual'
+      source: data.source || 'manual',
+      isLibraryQuestion: data.isLibraryQuestion ?? false,
+
     };
 
     // Handle different question types
