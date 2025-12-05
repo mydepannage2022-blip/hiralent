@@ -83,6 +83,8 @@ import {
   uploadCaseDocument,
   getCaseDocuments,
   deleteCaseDocument,
+  confirmDocumentReplacement,  
+  cancelDocumentReplacement,
 } from '../controller/candidate/candidate.case.controller';
 import { uploadDocumentMiddleware, handleDocumentUploadError } from '../middlewares/upload.middleware';
 
@@ -294,6 +296,19 @@ router.get('/cases/:caseId/documents', checkAuth, getCaseDocuments);
 
 // Delete a document
 router.delete('/cases/:caseId/documents/:documentId', checkAuth, deleteCaseDocument);
+
+router.post(
+  '/cases/:caseId/documents/confirm-replacement',
+  checkAuth,
+  confirmDocumentReplacement
+);
+
+// Cancel document replacement (delete new document)
+router.delete(
+  '/cases/:caseId/documents/:documentId/cancel',
+  checkAuth,
+  cancelDocumentReplacement
+);
 
 export default router;
 

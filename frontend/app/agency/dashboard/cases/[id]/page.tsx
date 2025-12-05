@@ -30,6 +30,7 @@ interface Candidate {
 }
 
 interface Document {
+  is_active: boolean;
   document_id: string;
   document_type: string;
   file_name: string;
@@ -70,8 +71,12 @@ export default function AgencyCaseDetailPage() {
   const [reviewing, setReviewing] = useState(false);
 
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [reviewAction, setReviewAction] = useState<"approved" | "rejected" | "needs_revision">("approved");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(
+    null
+  );
+  const [reviewAction, setReviewAction] = useState<
+    "approved" | "rejected" | "needs_revision"
+  >("approved");
   const [reviewNotes, setReviewNotes] = useState("");
 
   const fetchCase = async () => {
@@ -184,6 +189,8 @@ export default function AgencyCaseDetailPage() {
         return "bg-red-100 text-red-700 border-red-200";
       case "needs_revision":
         return "bg-orange-100 text-orange-700 border-orange-200";
+      case "inactive":
+        return "bg-gray-100 text-gray-600 border-gray-300";
       default:
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
@@ -199,6 +206,8 @@ export default function AgencyCaseDetailPage() {
         return <XCircle className="w-4 h-4" />;
       case "needs_revision":
         return <AlertTriangle className="w-4 h-4" />;
+      case "inactive":
+        return <XCircle className="w-4 h-4" />;
       default:
         return <FileText className="w-4 h-4" />;
     }
@@ -232,9 +241,17 @@ export default function AgencyCaseDetailPage() {
     );
   }
 
-  const pendingDocuments = caseData.documents.filter(d => d.status === "pending").length;
-  const approvedDocuments = caseData.documents.filter(d => d.status === "approved").length;
-  const totalDocuments = caseData.documents.length;
+  const pendingDocuments = caseData.documents.filter(
+    (d) => d.status === "pending" && d.is_active === true
+  ).length;
+
+  const approvedDocuments = caseData.documents.filter(
+    (d) => d.status === "approved" && d.is_active === true
+  ).length;
+
+  const totalDocuments = caseData.documents.filter(
+    (d) => d.is_active === true
+  ).length;
 
   return (
     <div className="w-full">
@@ -281,7 +298,9 @@ export default function AgencyCaseDetailPage() {
             <Clock className="w-5 h-5 text-yellow-600" />
             <h3 className="font-semibold text-slate-700">Pending Review</h3>
           </div>
-          <p className="text-3xl font-bold text-yellow-600">{pendingDocuments}</p>
+          <p className="text-3xl font-bold text-yellow-600">
+            {pendingDocuments}
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
@@ -289,7 +308,9 @@ export default function AgencyCaseDetailPage() {
             <CheckCircle className="w-5 h-5 text-green-600" />
             <h3 className="font-semibold text-slate-700">Approved</h3>
           </div>
-          <p className="text-3xl font-bold text-green-600">{approvedDocuments}</p>
+          <p className="text-3xl font-bold text-green-600">
+            {approvedDocuments}
+          </p>
         </div>
       </div>
 
@@ -344,12 +365,23 @@ export default function AgencyCaseDetailPage() {
 
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${getStatusColor(
-                          doc.status
-                        )}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
+                          !doc.is_active
+                            ? getStatusColor("inactive")
+                            : getStatusColor(doc.status)
+                        }`}
                       >
-                        {getStatusIcon(doc.status)}
-                        {doc.status.replace("_", " ")}
+                        {!doc.is_active ? (
+                          <>
+                            {getStatusIcon("inactive")}
+                            inactive
+                          </>
+                        ) : (
+                          <>
+                            {getStatusIcon(doc.status)}
+                            {doc.status.replace("_", " ")}
+                          </>
+                        )}
                       </span>
 
                       <a
@@ -362,7 +394,7 @@ export default function AgencyCaseDetailPage() {
                         <Eye className="w-4 h-4 text-slate-600" />
                       </a>
 
-                      {doc.status === "pending" && (
+                      {doc.status === "pending" && doc.is_active && (
                         <>
                           <button
                             onClick={() => openReviewModal(doc, "approved")}
@@ -372,7 +404,9 @@ export default function AgencyCaseDetailPage() {
                             <ThumbsUp className="w-4 h-4 text-green-600" />
                           </button>
                           <button
-                            onClick={() => openReviewModal(doc, "needs_revision")}
+                            onClick={() =>
+                              openReviewModal(doc, "needs_revision")
+                            }
                             className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
                             title="Request Revision"
                           >
@@ -404,7 +438,8 @@ export default function AgencyCaseDetailPage() {
                   Action Required
                 </h3>
                 <p className="text-sm text-slate-600">
-                  {pendingDocuments} document{pendingDocuments > 1 ? "s" : ""} waiting for your review
+                  {pendingDocuments} document{pendingDocuments > 1 ? "s" : ""}{" "}
+                  waiting for your review
                 </p>
               </div>
             </div>

@@ -31,6 +31,7 @@ interface Agency {
 }
 
 interface Document {
+  is_active: boolean;
   document_id: string;
   document_type: string;
   file_name: string;
@@ -77,6 +78,14 @@ export default function CaseDetailPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [existingDocument, setExistingDocument] = useState<{
+    document_id: string;
+    file_name: string;
+    status: string;
+  } | null>(null);
+  const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
 
   const documentTypes = [
     { value: "passport", label: "Passport Copy" },
@@ -184,6 +193,17 @@ export default function CaseDetailPage() {
         throw new Error(errorData.message || "Failed to upload document");
       }
 
+      const data = await response.json();
+
+      // Check if replacement confirmation is required
+      if (data.requiresConfirmation && data.existingDocument) {
+        setExistingDocument(data.existingDocument);
+        setNewDocumentId(data.data.document_id);
+        setShowDuplicateWarning(true);
+        setUploading(false);
+        return;
+      }
+
       toast.success("Document uploaded successfully!");
 
       setSelectedFile(null);
@@ -197,6 +217,90 @@ export default function CaseDetailPage() {
       toast.error(
         err instanceof Error ? err.message : "Failed to upload document"
       );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ✅ NEW: Confirm replacement
+  const handleConfirmReplacement = async () => {
+    if (!existingDocument || !newDocumentId) return;
+
+    try {
+      setUploading(true);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents/confirm-replacement`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            oldDocumentId: existingDocument.document_id,
+            newDocumentId: newDocumentId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to confirm replacement");
+      }
+
+      toast.success("Document replaced successfully!");
+
+      // Reset states
+      setShowDuplicateWarning(false);
+      setExistingDocument(null);
+      setNewDocumentId(null);
+      setSelectedFile(null);
+      setDocumentType("");
+      setUploadNotes("");
+      setShowUploadModal(false);
+
+      fetchCase();
+    } catch (err) {
+      console.error("Confirm replacement error:", err);
+      toast.error("Failed to confirm replacement");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ✅ NEW: Cancel replacement
+  const handleCancelReplacement = async () => {
+    if (!newDocumentId) return;
+
+    try {
+      setUploading(true);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents/${newDocumentId}/cancel`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel upload");
+      }
+
+      toast.success("Upload cancelled");
+
+      // Reset states
+      setShowDuplicateWarning(false);
+      setExistingDocument(null);
+      setNewDocumentId(null);
+
+      // Keep the upload modal open with file selected
+      // so user can try again with different type
+    } catch (err) {
+      console.error("Cancel replacement error:", err);
+      toast.error("Failed to cancel upload");
     } finally {
       setUploading(false);
     }
@@ -458,12 +562,23 @@ export default function CaseDetailPage() {
 
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${getStatusColor(
-                          doc.status
-                        )}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
+                          !doc.is_active
+                            ? "bg-gray-100 text-gray-600 border-gray-300" // Inactive style
+                            : getStatusColor(doc.status) // Normal style
+                        }`}
                       >
-                        {getStatusIcon(doc.status)}
-                        {doc.status.replace("_", " ")}
+                        {!doc.is_active ? (
+                          <>
+                            <XCircle className="w-4 h-4" />
+                            inactive
+                          </>
+                        ) : (
+                          <>
+                            {getStatusIcon(doc.status)}
+                            {doc.status.replace("_", " ")}
+                          </>
+                        )}
                       </span>
                       <a
                         href={doc.file_path}
@@ -526,7 +641,9 @@ export default function CaseDetailPage() {
               {documentTypes.map((type) => {
                 const hasDoc = caseData.documents.some(
                   (d) =>
-                    d.document_type === type.value && d.status === "approved"
+                    d.document_type === type.value &&
+                    d.status === "approved" &&
+                    d.is_active === true
                 );
                 return (
                   <li
@@ -702,6 +819,91 @@ export default function CaseDetailPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Duplicate Warning Modal */}
+      <AnimatePresence>
+        {showDuplicateWarning && existingDocument && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-start gap-4 mb-6">
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">
+                    Document Already Approved
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    You already have an approved document of this type.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-900 truncate">
+                      {existingDocument.file_name}
+                    </p>
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                      {existingDocument.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                <p className="text-sm font-medium text-orange-900 mb-2">
+                  Uploading a new document will:
+                </p>
+                <ul className="space-y-2 text-sm text-orange-800">
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-600 mt-0.5">•</span>
+                    <span>Mark the current document as replaced</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-600 mt-0.5">•</span>
+                    <span>Reset status to pending review</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-600 mt-0.5">•</span>
+                    <span>Require agency to review the new document again</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelReplacement}
+                  className="flex-1 px-6 py-3 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-medium transition-all"
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmReplacement}
+                  className="flex-1 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Upload Anyway</span>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

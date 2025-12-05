@@ -478,6 +478,8 @@ model CaseDocument {
   review_feedback  String? // Agency's review feedback
   reviewed_by      String?
   reviewed_at      DateTime?
+  is_active            Boolean        @default(true)   // Track active document
+  replaces_document_id String?                          // Link to replaced doc
   created_at    DateTime       @default(now())
   case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
 
