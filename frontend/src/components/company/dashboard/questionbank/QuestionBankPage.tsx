@@ -29,14 +29,21 @@ import {
   Database,
   ExternalLink,
   ArrowRight,
-  Link,
+  Link as LinkIcon,
   Plus,
   Trash,
   Copy,
   AlertTriangle,
   Shield,
   Lock,
+  Filter,
+  ChevronDown,
+  Library,
+  User,
+  Menu,
 } from "lucide-react";
+import NextLink from "next/link";
+
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "../questionbank/QuestionEditor";
 
@@ -46,7 +53,7 @@ interface Question {
   description: string;
   difficulty: "easy" | "medium" | "hard" | string;
   skillTags: string[];
-  status: "draft" | "pending_review" | "approved" | "rejected" | string;
+  status: "draft" | "pending" | "approved" | "rejected" | string;
   createdAt: string;
   createdBy?: string;
   aiGenerated?: boolean;
@@ -65,9 +72,9 @@ interface Question {
 }
 
 const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border";
-const glassCard = "relative rounded-xl border border-white/10 bg-white/60 backdrop-blur-md shadow-[0_8px_24px_rgba(13,31,77,0.08)]";
-const panel = "rounded-xl border border-gray-200/70 bg-white shadow-[0_8px_32px_rgba(16,24,40,0.05)]";
+const panel = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
 
+// MODAL COMPONENTS (Keep all your existing modals exactly as they were)
 const StatusSelect: React.FC<{
   value: "pending_review" | "approved" | "rejected";
   onChange: (next: "pending_review" | "approved" | "rejected") => void;
@@ -89,6 +96,7 @@ const StatusSelect: React.FC<{
   );
 };
 
+// AiGenerateModal (keep your original)
 const AiGenerateModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -293,6 +301,7 @@ const AiGenerateModal: React.FC<{
   );
 };
 
+// AiBatchModal (keep your original)
 const AiBatchModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -420,6 +429,7 @@ const AiBatchModal: React.FC<{
   );
 };
 
+// Pagination (keep your original)
 const Pagination: React.FC<{
   currentPage: number;
   totalPages: number;
@@ -476,6 +486,7 @@ const Pagination: React.FC<{
   );
 };
 
+// UrlScraperModal (keep your original)
 const UrlScraperModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -553,7 +564,7 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
         <div className="px-5 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner"><Link className="w-4 h-4 text-white" /></div>
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner"><LinkIcon className="w-4 h-4 text-white" /></div>
               <div><h3 className="text-base font-bold">Import from Custom URLs</h3><p className="text-[10px] text-pink-100">Paste specific question URLs to scrape</p></div>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
@@ -713,7 +724,8 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
     </div>
   );
 };
-// Vetting Confirmation Modal
+
+// Vetting Confirmation Modal (keep your original)
 const VettingConfirmModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -722,7 +734,6 @@ const VettingConfirmModal: React.FC<{
 }> = ({ open, onClose, onConfirm, questionCount = 1 }) => {
   if (!open) return null;
 
-  // ✅ FIX: Définir les items avec le bon type
   const analysisItems = [
     { Icon: CheckCircle2, label: 'Code correctness', color: 'text-green-600' },
     { Icon: Shield, label: 'Test case validity', color: 'text-blue-600' },
@@ -770,7 +781,7 @@ const VettingConfirmModal: React.FC<{
             
             <div className="space-y-2">
               {analysisItems.map((item, i) => {
-                const IconComponent = item.Icon; //  Extract icon component
+                const IconComponent = item.Icon;
                 return (
                   <motion.div
                     key={item.label}
@@ -819,7 +830,7 @@ const VettingConfirmModal: React.FC<{
   );
 };
 
-// Vetting Results Modal
+// Vetting Results Modal (keep your original)
 const VettingResultsModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -831,7 +842,6 @@ const VettingResultsModal: React.FC<{
   const isSuccess = isBatch ? result.success : result.vetting?.status === 'APPROVED';
   const score = result.vetting?.overall_score || 0;
 
-  //  FIX: Définir les checks avec le bon type
   const checkItems = [
     { key: 'syntax_check', label: 'Syntax', Icon: Code2 },
     { key: 'logic_validation', label: 'Logic', Icon: Zap },
@@ -879,7 +889,6 @@ const VettingResultsModal: React.FC<{
 
         <div className="px-5 py-4">
           {isBatch ? (
-            // Batch results
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -903,7 +912,6 @@ const VettingResultsModal: React.FC<{
               </div>
             </div>
           ) : (
-            // Single question results
             <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-[#1B73E8]">
                 <div>
@@ -919,7 +927,7 @@ const VettingResultsModal: React.FC<{
                 {checkItems.map((check) => {
                   const status = result.vetting?.[check.key]?.status || 'N/A';
                   const isPassed = status === 'PASSED';
-                  const IconComponent = check.Icon; // ✅ Extract icon component
+                  const IconComponent = check.Icon;
                   
                   return (
                     <div key={check.key} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200">
@@ -962,6 +970,101 @@ const VettingResultsModal: React.FC<{
   );
 };
 
+// ACTIONS MENU (from new design - keep this)
+const ActionsMenu: React.FC<{
+  onAiGenerate: () => void;
+  onAiBatch: () => void;
+  onImportWeb: () => void;
+  onImportUrl: () => void;
+  generating: boolean;
+  importing: boolean;
+}> = ({ onAiGenerate, onAiBatch, onImportWeb, onImportUrl, generating, importing }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white rounded-lg text-xs font-semibold shadow-md transition-all"
+      >
+        <Menu className="w-4 h-4" />
+        Quick Actions
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50"
+          >
+            <button
+              onClick={() => { onAiGenerate(); setIsOpen(false); }}
+              disabled={generating}
+              className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 disabled:opacity-50"
+            >
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <Zap className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-900">AI Generate</div>
+                <div className="text-[10px] text-gray-500">Single question</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { onAiBatch(); setIsOpen(false); }}
+              disabled={generating}
+              className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 disabled:opacity-50"
+            >
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-[#1B73E8]" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-900">AI Batch</div>
+                <div className="text-[10px] text-gray-500">Multiple topics</div>
+              </div>
+            </button>
+
+            <div className="my-1 border-t border-gray-100" />
+
+            <button
+              onClick={() => { onImportWeb(); setIsOpen(false); }}
+              disabled={importing}
+              className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-3 disabled:opacity-50"
+            >
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Network className="w-4 h-4 text-orange-600" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-900">Import from Web</div>
+                <div className="text-[10px] text-gray-500">Auto scrape platforms</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { onImportUrl(); setIsOpen(false); }}
+              disabled={importing}
+              className="w-full px-4 py-2.5 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 disabled:opacity-50"
+            >
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <LinkIcon className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-900">Import from URL</div>
+                <div className="text-[10px] text-gray-500">Custom URLs</div>
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// MAIN COMPONENT - UPDATED LAYOUT
 const QuestionBankPage: React.FC = () => {
   const { user, token } = useAuth();
 
@@ -982,8 +1085,21 @@ const QuestionBankPage: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [showSourceSelector, setShowSourceSelector] = useState(false);
   const [showUrlScraper, setShowUrlScraper] = useState(false);
-  //  Vector health state
   const [vectorHealth, setVectorHealth] = useState<boolean>(true);
+  
+  // Vetting states (keep all your original vetting states)
+  const [vetting, setVetting] = useState(false);
+  const [vettingHealth, setVettingHealth] = useState<boolean>(true);
+  const [showVettingConfirm, setShowVettingConfirm] = useState(false);
+  const [showVettingResults, setShowVettingResults] = useState(false);
+  const [vettingResult, setVettingResult] = useState<any>(null);
+  const [currentVettingId, setCurrentVettingId] = useState<string | null>(null);
+  const [batchVettingIds, setBatchVettingIds] = useState<string[]>([]);
+  
+  // NEW STATE: Question source toggle (from new design)
+  const [questionSource, setQuestionSource] = useState<"mine" | "library">("mine");
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",
@@ -999,48 +1115,61 @@ const QuestionBankPage: React.FC = () => {
     return true;
   };
 
-// Add a useEffect to check vector engine health
-useEffect(() => {
-  const checkVectorHealth = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/questions/vector/health', {
-        headers: authHeaders()
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Use the success field from your service response
-        setVectorHealth(data.success && data.status !== 'unavailable');
-      } else {
+  // Add a useEffect to check vector engine health
+  useEffect(() => {
+    const checkVectorHealth = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/questions/vector/health', {
+          headers: authHeaders()
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setVectorHealth(data.success && data.status !== 'unavailable');
+        } else {
+          setVectorHealth(false);
+        }
+      } catch (error) {
+        console.error('Vector health check failed:', error);
         setVectorHealth(false);
       }
-    } catch (error) {
-      console.error('Vector health check failed:', error);
-      setVectorHealth(false);
-    }
-  };
-  
-  checkVectorHealth();
-  
-  // Optional: Check health periodically (every 30 seconds)
-  const interval = setInterval(checkVectorHealth, 30000);
-  return () => clearInterval(interval);
-}, []);
+    };
+    
+    checkVectorHealth();
+    const interval = setInterval(checkVectorHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     setCurrentUserId(user?.user_id ?? null);
   }, [user]);
 
+  // UPDATED loadQuestions to handle both mine and library
   const loadQuestions = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/questions?limit=1000&page=1", { headers: authHeaders() });
+      const endpoint = questionSource === "library" 
+        ? "http://localhost:5000/api/questions?limit=500&page=1&isLibrary=true&status=approved"
+        : "http://localhost:5000/api/questions?limit=1000&page=1";
+        
+      const response = await fetch(endpoint, { headers: authHeaders() });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+      
       let loadedQuestions = [];
       if (data?.success && data.questions) loadedQuestions = data.questions;
       else if (Array.isArray(data)) loadedQuestions = data;
       else if (data?.data && Array.isArray(data.data)) loadedQuestions = data.data;
+      
+      // Filter based on source
+      if (questionSource === "library") {
+        loadedQuestions = loadedQuestions.filter((q: any) => q.isLibraryQuestion === true && q.status === 'approved');
+      } else {
+        loadedQuestions = currentUserId 
+          ? loadedQuestions.filter((q: any) => q.createdBy === currentUserId)
+          : [];
+      }
+      
       setQuestions(loadedQuestions);
     } catch (error) {
       console.error("Failed to load questions:", error);
@@ -1049,18 +1178,23 @@ useEffect(() => {
     setLoading(false);
   };
 
-  useEffect(() => { loadQuestions(); }, [token]);
+  useEffect(() => { 
+    loadQuestions(); 
+  }, [token, questionSource, currentUserId]);
 
-  const mine = currentUserId ? questions.filter((q) => q.createdBy === currentUserId) : [];
-  const myStats = {
-    total: mine.length,
-    approved: mine.filter((q) => q.status === "approved").length,
-    pending: mine.filter((q) => q.status === "pending_review").length,
-    draft: mine.filter((q) => q.status === "draft").length,
-    rejected: mine.filter((q) => q.status === "rejected").length,
+  // Calculate stats for both mine and library
+  const stats = {
+    total: questions.length,
+    approved: questions.filter(q => q.status === 'approved').length,
+    pending: questions.filter(q => q.status === 'pending_review').length,
+    draft: questions.filter(q => q.status === 'draft').length,
+    rejected: questions.filter(q => q.status === 'rejected').length,
+    coding: questions.filter(q => q.type === 'coding').length,
+    mcq: questions.filter(q => q.type === 'mcq').length,
   };
 
-  const filteredQuestions = mine.filter((q) => {
+  // Filter questions (keep your original logic but adapt for library)
+  const filteredQuestions = questions.filter((q) => {
     const s = filters.search.trim().toLowerCase();
     const matchSearch = !s || q.title.toLowerCase().includes(s) || (q.skillTags && q.skillTags.some((tag) => tag.toLowerCase().includes(s)));
     const matchDifficulty = !filters.difficulty || q.difficulty === filters.difficulty;
@@ -1074,8 +1208,9 @@ useEffect(() => {
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
   const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  useEffect(() => { setCurrentPage(1); }, [filters, itemsPerPage]);
+  useEffect(() => { setCurrentPage(1); }, [filters, itemsPerPage, questionSource]);
 
+  // KEEP ALL YOUR ORIGINAL ACTION HANDLERS
   const changeStatus = async (q: Question, next: "pending_review" | "approved" | "rejected") => {
     if (!requireAuth()) return;
     try {
@@ -1117,143 +1252,138 @@ useEffect(() => {
   const handleCreateQuestion = () => { if (!requireAuth()) return; setEditorMode("create"); setEditingQuestion(null); setShowEditor(true); };
   const handleEditQuestion = (question: Question) => { if (!requireAuth()) return; setEditorMode("edit"); setEditingQuestion(question); setShowEditor(true); };
 
-// In handleCreateQuestion function
-const handleSaveQuestion = async (questionData: Partial<Question>) => {
-  if (!requireAuth()) return;
-  try {
-    const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
-    const method = editorMode === "create" ? "POST" : "PUT";
-    const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
-    const data = await response.json();
-    
-    if (data.success) {
-      setShowEditor(false);
-      if (editorMode === "create" && data.question) {
-        setQuestions(prev => [{ ...data.question, createdBy: currentUserId }, ...prev]);
-      } else await loadQuestions();
-    } else {
-      // Handle vector search duplicate detection
-      if (data.code === 'DUPLICATE_QUESTION') {
-        alert(`❌ Duplicate Question Detected!\n\nThis question is very similar to ${data.similarityCheck?.similar_questions_found} existing questions.\n\nSimilarity Risk: ${data.similarityCheck?.duplication_risk}\n\nPlease modify your question to make it more unique.`);
+  const handleSaveQuestion = async (questionData: Partial<Question>) => {
+    if (!requireAuth()) return;
+    try {
+      const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
+      const method = editorMode === "create" ? "POST" : "PUT";
+      const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
+      const data = await response.json();
+      
+      if (data.success) {
+        setShowEditor(false);
+        if (editorMode === "create" && data.question) {
+          setQuestions(prev => [{ ...data.question, createdBy: currentUserId }, ...prev]);
+        } else await loadQuestions();
       } else {
-        alert("Failed to save question: " + (data.error || "Unknown error"));
-      }
-    }
-  } catch (error) {
-    console.error("Failed to save question:", error);
-    alert("Network error while saving question.");
-  }
-};
-
-const handleAiGenerate = async (payload: {
-  topic: string;
-  difficulty: "easy" | "medium" | "hard";
-  type: "coding" | "mcq";
-  tags: string[];
-  testCaseCount: number;
-}) => {
-  if (!requireAuth()) return;
-  setGenerating(true);
-  try {
-    // ✅ Choose endpoint based on type
-    const endpoint = payload.type === "mcq" 
-      ? "http://localhost:5000/api/questions/generate-mcq"
-      : "http://localhost:5000/api/questions/generate";
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        topic: payload.topic,
-        difficulty: payload.difficulty,
-        type: payload.type,
-        skillTags: payload.tags,
-        testCaseCount: payload.testCaseCount,
-      }),
-    });
-
-    const data = await response.json();
-if (data.success && data.question) {
-  const q: Question = {
-    ...data.question,
-    aiGenerated: true,
-    source: data.question.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
-    type: payload.type || data.question.type,
-    skillTags: payload.tags?.length
-      ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
-      : data.question.skillTags || [],
-  };
-  setQuestions((prev) => [q, ...prev]);
-  setAiModalOpen(false);
-} else {
-  // Handle AI duplicate detection
-  if (data.error?.includes('duplicate') || data.details?.includes('similar')) {
-    alert(`❌ AI Generated Duplicate!\n\nThe AI generated a question that's very similar to existing ones.\n\nPlease try a different topic or modify the generated question.`);
-  } else {
-    alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
-  }
-}
-  } catch (e) {
-    console.error(e);
-    alert("Network error during AI generation.");
-  }
-  setGenerating(false);
-};
-
-const handleAiBatchGenerate = async (payload: {
-  topics: string[];
-  difficulty: "easy" | "medium" | "hard";
-  countPerTopic: number;
-  type: "coding" | "mcq";
-}) => {
-  if (!requireAuth()) return;
-  setBatchGenerating(true);
-  try {
-    // ✅ Choose endpoint based on type
-    const endpoint = payload.type === "mcq"
-      ? "http://localhost:5000/api/questions/generate-mcq-batch"
-      : "http://localhost:5000/api/questions/generate-batch";
-
-    // ✅ Different payload structure for MCQ batch
-    const requestBody = payload.type === "mcq"
-      ? {
-          topics: payload.topics,
-          difficulty: payload.difficulty,
-          count_per_topic: payload.countPerTopic, // Note: snake_case for MCQ endpoint
+        if (data.code === 'DUPLICATE_QUESTION') {
+          alert(`❌ Duplicate Question Detected!\n\nThis question is very similar to ${data.similarityCheck?.similar_questions_found} existing questions.\n\nSimilarity Risk: ${data.similarityCheck?.duplication_risk}\n\nPlease modify your question to make it more unique.`);
+        } else {
+          alert("Failed to save question: " + (data.error || "Unknown error"));
         }
-      : {
-          topics: payload.topics,
-          difficulty: payload.difficulty,
-          countPerTopic: payload.countPerTopic,
-        };
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await res.json();
-
-    if (data.success && Array.isArray(data.questions)) {
-      const normalized = data.questions.map((q: any) => ({
-        ...q,
-        aiGenerated: true,
-        source: q.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
-        type: payload.type,
-      })) as Question[];
-
-      setQuestions((prev) => [...normalized, ...prev]);
-      setBatchOpen(false);
-    } else {
-      throw new Error(data.error || data.details || "Invalid batch response");
+      }
+    } catch (error) {
+      console.error("Failed to save question:", error);
+      alert("Network error while saving question.");
     }
-  } catch (e: any) {
-    console.error(e);
-    alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
-  }
-  setBatchGenerating(false);
-};
+  };
+
+  const handleAiGenerate = async (payload: {
+    topic: string;
+    difficulty: "easy" | "medium" | "hard";
+    type: "coding" | "mcq";
+    tags: string[];
+    testCaseCount: number;
+  }) => {
+    if (!requireAuth()) return;
+    setGenerating(true);
+    try {
+      const endpoint = payload.type === "mcq" 
+        ? "http://localhost:5000/api/questions/generate-mcq"
+        : "http://localhost:5000/api/questions/generate";
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          topic: payload.topic,
+          difficulty: payload.difficulty,
+          type: payload.type,
+          skillTags: payload.tags,
+          testCaseCount: payload.testCaseCount,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.question) {
+        const q: Question = {
+          ...data.question,
+          aiGenerated: true,
+          source: data.question.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
+          type: payload.type || data.question.type,
+          skillTags: payload.tags?.length
+            ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
+            : data.question.skillTags || [],
+        };
+        setQuestions((prev) => [q, ...prev]);
+        setAiModalOpen(false);
+      } else {
+        if (data.error?.includes('duplicate') || data.details?.includes('similar')) {
+          alert(`❌ AI Generated Duplicate!\n\nThe AI generated a question that's very similar to existing ones.\n\nPlease try a different topic or modify the generated question.`);
+        } else {
+          alert("Failed to generate question: " + (data.error || data.details || "Unknown error"));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network error during AI generation.");
+    }
+    setGenerating(false);
+  };
+
+  const handleAiBatchGenerate = async (payload: {
+    topics: string[];
+    difficulty: "easy" | "medium" | "hard";
+    countPerTopic: number;
+    type: "coding" | "mcq";
+  }) => {
+    if (!requireAuth()) return;
+    setBatchGenerating(true);
+    try {
+      const endpoint = payload.type === "mcq"
+        ? "http://localhost:5000/api/questions/generate-mcq-batch"
+        : "http://localhost:5000/api/questions/generate-batch";
+
+      const requestBody = payload.type === "mcq"
+        ? {
+            topics: payload.topics,
+            difficulty: payload.difficulty,
+            count_per_topic: payload.countPerTopic,
+          }
+        : {
+            topics: payload.topics,
+            difficulty: payload.difficulty,
+            countPerTopic: payload.countPerTopic,
+          };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.questions)) {
+        const normalized = data.questions.map((q: any) => ({
+          ...q,
+          aiGenerated: true,
+          source: q.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
+          type: payload.type,
+        })) as Question[];
+
+        setQuestions((prev) => [...normalized, ...prev]);
+        setBatchOpen(false);
+      } else {
+        throw new Error(data.error || data.details || "Invalid batch response");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
+    }
+    setBatchGenerating(false);
+  };
+
   const handleImportScraped = async (source: string = 'stackoverflow', maxPages: number = 3) => {
     if (!requireAuth()) return;
     if (!window.confirm(`🌐 Import Real Programming Questions\n\nThis will scrape ${maxPages} page(s) from ${source.toUpperCase()}\nSource: Real questions from professional developers\n\nContinue?`)) return;
@@ -1278,565 +1408,559 @@ const handleAiBatchGenerate = async (payload: {
     }
   };
 
-const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "leetcode" | "hackerrank") => {
-  if (!requireAuth()) return;
-  setImporting(true);
-  setShowUrlScraper(false);
-  
-  try {
-    let response;
-    let data;
+  const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "leetcode" | "hackerrank") => {
+    if (!requireAuth()) return;
+    setImporting(true);
+    setShowUrlScraper(false);
+    
+    try {
+      let response;
+      let data;
 
-    if (platform === "leetcode") {
-      // Use the LeetCode batch endpoint
-      response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/batch", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ urls }),
-      });
-      data = await response.json();
-
-      if (data.success) {
-        const results = data.results;
-        alert(
-          `✅ LeetCode Scraping Complete!\n\n` +
-          `📊 Results:\n` +
-          `• Total URLs: ${results.total}\n` +
-          `• Successfully scraped: ${results.successful}\n` +
-          `• Saved to database: ${results.saved}\n` +
-          `• Skipped (duplicates): ${results.skipped}\n` +
-          `• Failed: ${results.failed}\n\n` +
-          `All questions are now in "Pending Review" status.`
-        );
-        await loadQuestions();
-      } else {
-        throw new Error(data.error || data.details || "LeetCode scraping failed");
-      }
-    } else {
-      // Use existing generic scrape endpoint for other platforms
-      response = await fetch("http://localhost:5000/api/questions/scrape", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ urls, platform }),
-      });
-      data = await response.json();
-
-      if (data.success) {
-        alert(
-          `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
-          `📊 Scraping Statistics:\n` +
-          `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
-          `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
-          `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
-          `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
-          `All questions are now in "Pending Review" status.`
-        );
-        await loadQuestions();
-      } else {
-        throw new Error(data.error || data.details || "Scraping failed");
-      }
-    }
-  } catch (error: any) {
-    console.error("Failed to scrape URLs:", error);
-    alert(
-      `❌ Scraping Failed\n\n` +
-      `Error: ${error.message || "Unknown error"}\n\n` +
-      `Make sure:\n` +
-      `• Backend is running on port 5000\n` +
-      `• Python AI service is running on port 8000\n` +
-      `• URLs are valid and accessible`
-    );
-  } finally {
-    setImporting(false);
-  }
-};
-
-// Add selection state
-const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
-
-// Toggle selection for a single question
-const toggleQuestionSelection = (questionId: string) => {
-  setSelectedQuestions(prev => {
-    const newSet = new Set(prev);
-    if (newSet.has(questionId)) {
-      newSet.delete(questionId);
-    } else {
-      newSet.add(questionId);
-    }
-    return newSet;
-  });
-};
-
-// Select all visible questions
-const selectAllVisibleQuestions = () => {
-  if (selectedQuestions.size === paginatedQuestions.length) {
-    setSelectedQuestions(new Set());
-  } else {
-    setSelectedQuestions(new Set(paginatedQuestions.map(q => q.id)));
-  }
-};
-
-// Clear selection
-const clearSelection = () => {
-  setSelectedQuestions(new Set());
-};
-// Delete multiple questions in batch
-const handleBatchDelete = async () => {
-  if (!requireAuth()) return;
-  
-  const selectedIds = Array.from(selectedQuestions);
-  
-  if (selectedIds.length === 0) {
-    alert('Please select at least one question to delete');
-    return;
-  }
-  
-  if (!window.confirm(`⚠️ Delete ${selectedIds.length} question${selectedIds.length > 1 ? 's' : ''}?\n\nThis action cannot be undone.`)) return;
-  
-  try {
-    let successCount = 0;
-    let errorCount = 0;
-
-    // Delete each question
-    for (const questionId of selectedIds) {
-      try {
-        const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
-          method: 'DELETE',
-          headers: authHeaders()
+      if (platform === "leetcode") {
+        response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/batch", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ urls }),
         });
-        const data = await response.json();
-        
+        data = await response.json();
+
         if (data.success) {
-          successCount++;
+          const results = data.results;
+          alert(
+            `✅ LeetCode Scraping Complete!\n\n` +
+            `📊 Results:\n` +
+            `• Total URLs: ${results.total}\n` +
+            `• Successfully scraped: ${results.successful}\n` +
+            `• Saved to database: ${results.saved}\n` +
+            `• Skipped (duplicates): ${results.skipped}\n` +
+            `• Failed: ${results.failed}\n\n` +
+            `All questions are now in "Pending Review" status.`
+          );
+          await loadQuestions();
         } else {
+          throw new Error(data.error || data.details || "LeetCode scraping failed");
+        }
+      } else {
+        response = await fetch("http://localhost:5000/api/questions/scrape", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ urls, platform }),
+        });
+        data = await response.json();
+
+        if (data.success) {
+          alert(
+            `✅ Successfully scraped ${data.scrapingResult.successfullySaved} questions!\n\n` +
+            `📊 Scraping Statistics:\n` +
+            `• Total URLs: ${data.scrapingResult.totalUrls}\n` +
+            `• Successfully scraped: ${data.scrapingResult.successfullyScraped}\n` +
+            `• Saved to database: ${data.scrapingResult.successfullySaved}\n` +
+            `• Errors: ${data.scrapingResult.savingErrors}\n\n` +
+            `All questions are now in "Pending Review" status.`
+          );
+          await loadQuestions();
+        } else {
+          throw new Error(data.error || data.details || "Scraping failed");
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to scrape URLs:", error);
+      alert(
+        `❌ Scraping Failed\n\n` +
+        `Error: ${error.message || "Unknown error"}\n\n` +
+        `Make sure:\n` +
+        `• Backend is running on port 5000\n` +
+        `• Python AI service is running on port 8000\n` +
+        `• URLs are valid and accessible`
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Selection handlers (from new design)
+  const toggleQuestionSelection = (questionId: string) => {
+    setSelectedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllVisibleQuestions = () => {
+    if (selectedQuestions.size === paginatedQuestions.length) {
+      setSelectedQuestions(new Set());
+    } else {
+      setSelectedQuestions(new Set(paginatedQuestions.map(q => q.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedQuestions(new Set());
+  };
+
+  const handleBatchDelete = async () => {
+    if (!requireAuth()) return;
+    
+    const selectedIds = Array.from(selectedQuestions);
+    if (selectedIds.length === 0) {
+      alert('Please select at least one question to delete');
+      return;
+    }
+    
+    if (!window.confirm(`⚠️ Delete ${selectedIds.length} question${selectedIds.length > 1 ? 's' : ''}?\n\nThis action cannot be undone.`)) return;
+    
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const questionId of selectedIds) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          const data = await response.json();
+          
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to delete question ${questionId}:`, error);
           errorCount++;
         }
-      } catch (error) {
-        console.error(`Failed to delete question ${questionId}:`, error);
-        errorCount++;
       }
+
+      setQuestions(prev => prev.filter(q => !selectedIds.includes(q.id)));
+      clearSelection();
+
+      if (errorCount === 0) {
+        alert(`✅ Successfully deleted ${successCount} question${successCount > 1 ? 's' : ''}!`);
+      } else {
+        alert(`⚠️ Deleted ${successCount} question${successCount > 1 ? 's' : ''}\n${errorCount} failed to delete.`);
+      }
+    } catch (error) {
+      console.error('Batch delete error:', error);
+      alert('❌ Network error during batch delete.');
     }
+  };
 
-    // Update UI
-    setQuestions(prev => prev.filter(q => !selectedIds.includes(q.id)));
-    clearSelection();
+  // KEEP YOUR ORIGINAL VETTING FUNCTIONS
+  useEffect(() => {
+    const checkVettingHealth = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/questions/vetting/health', {
+          headers: authHeaders()
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setVettingHealth(data.success && data.vetting?.status === 'healthy');
+        } else {
+          setVettingHealth(false);
+        }
+      } catch (error) {
+        console.error('Vetting health check failed:', error);
+        setVettingHealth(false);
+      }
+    };
+    
+    checkVettingHealth();
+    const interval = setInterval(checkVettingHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-    // Show result
-    if (errorCount === 0) {
-      alert(`✅ Successfully deleted ${successCount} question${successCount > 1 ? 's' : ''}!`);
-    } else {
-      alert(`⚠️ Deleted ${successCount} question${successCount > 1 ? 's' : ''}\n${errorCount} failed to delete.`);
-    }
-  } catch (error) {
-    console.error('Batch delete error:', error);
-    alert('❌ Network error during batch delete.');
-  }
-};
-// ========================================
-// VETTING STATES (remplace les anciens states)
-// ========================================
-const [vetting, setVetting] = useState(false);
-const [vettingHealth, setVettingHealth] = useState<boolean>(true);
-const [showVettingConfirm, setShowVettingConfirm] = useState(false);
-const [showVettingResults, setShowVettingResults] = useState(false);
-const [vettingResult, setVettingResult] = useState<any>(null);
-const [currentVettingId, setCurrentVettingId] = useState<string | null>(null);
-const [batchVettingIds, setBatchVettingIds] = useState<string[]>([]);
+  const handleVetQuestion = async (questionId: string) => {
+    if (!requireAuth()) return;
+    
+    setCurrentVettingId(questionId);
+    setShowVettingConfirm(true);
+  };
 
-// ========================================
-// VETTING HEALTH CHECK (garde ce useEffect)
-// ========================================
-useEffect(() => {
-  const checkVettingHealth = async () => {
+  const performVetting = async () => {
+    if (!currentVettingId) return;
+    
+    setVetting(true);
     try {
-      const response = await fetch('http://localhost:5000/api/questions/vetting/health', {
+      const response = await fetch(`http://localhost:5000/api/questions/${currentVettingId}/vet`, {
+        method: 'POST',
         headers: authHeaders()
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setVettingHealth(data.success && data.vetting?.status === 'healthy');
-      } else {
-        setVettingHealth(false);
-      }
-    } catch (error) {
-      console.error('Vetting health check failed:', error);
-      setVettingHealth(false);
+      const data = await response.json();
+      
+      setVettingResult(data);
+      setShowVettingResults(true);
+      await loadQuestions();
+    } catch (error: any) {
+      console.error('Vetting error:', error);
+      setVettingResult({ 
+        success: false, 
+        error: error.message 
+      });
+      setShowVettingResults(true);
+    } finally {
+      setVetting(false);
+      setCurrentVettingId(null);
     }
   };
-  
-  checkVettingHealth();
-  const interval = setInterval(checkVettingHealth, 30000);
-  return () => clearInterval(interval);
-}, []);
 
-// ========================================
-// NOUVEAU: Vet a single question (avec modal)
-// ========================================
-const handleVetQuestion = async (questionId: string) => {
-  if (!requireAuth()) return;
-  
-  setCurrentVettingId(questionId);
-  setShowVettingConfirm(true);
-};
-
-const performVetting = async () => {
-  if (!currentVettingId) return;
-  
-  setVetting(true);
-  try {
-    const response = await fetch(`http://localhost:5000/api/questions/${currentVettingId}/vet`, {
-      method: 'POST',
-      headers: authHeaders()
-    });
+  const handleBatchVetting = async (selectedIds: string[]) => {
+    if (!requireAuth()) return;
     
-    const data = await response.json();
+    if (selectedIds.length === 0) {
+      alert('Please select at least one question to vet');
+      return;
+    }
     
-    setVettingResult(data);
-    setShowVettingResults(true);
-    await loadQuestions();
-  } catch (error: any) {
-    console.error('Vetting error:', error);
-    setVettingResult({ 
-      success: false, 
-      error: error.message 
-    });
-    setShowVettingResults(true);
-  } finally {
-    setVetting(false);
-    setCurrentVettingId(null);
-  }
-};
+    setBatchVettingIds(selectedIds);
+    setShowVettingConfirm(true);
+  };
 
-// ========================================
-// NOUVEAU: Vet multiple questions (batch avec modal)
-// ========================================
-const handleBatchVetting = async (selectedIds: string[]) => {
-  if (!requireAuth()) return;
-  
-  if (selectedIds.length === 0) {
-    alert('Please select at least one question to vet');
-    return;
-  }
-  
-  setBatchVettingIds(selectedIds);
-  setShowVettingConfirm(true);
-};
-
-const performBatchVetting = async () => {
-  if (batchVettingIds.length === 0) return;
-  
-  setVetting(true);
-  try {
-    const response = await fetch('http://localhost:5000/api/questions/vetting/batch', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ ids: batchVettingIds })
-    });
+  const performBatchVetting = async () => {
+    if (batchVettingIds.length === 0) return;
     
-    const data = await response.json();
-    
-    setVettingResult({ 
-      ...data, 
-      total: batchVettingIds.length 
-    });
-    setShowVettingResults(true);
-    await loadQuestions();
-    clearSelection(); //  Clear selection after vetting
+    setVetting(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/questions/vetting/batch', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ ids: batchVettingIds })
+      });
+      
+      const data = await response.json();
+      
+      setVettingResult({ 
+        ...data, 
+        total: batchVettingIds.length 
+      });
+      setShowVettingResults(true);
+      await loadQuestions();
+      clearSelection();
 
-  } catch (error: any) {
-    console.error('Batch vetting error:', error);
-    setVettingResult({ 
-      success: false, 
-      error: error.message 
-    });
-    setShowVettingResults(true);
-  } finally {
-    setVetting(false);
-    setBatchVettingIds([]);
-  }
-};
+    } catch (error: any) {
+      console.error('Batch vetting error:', error);
+      setVettingResult({ 
+        success: false, 
+        error: error.message 
+      });
+      setShowVettingResults(true);
+    } finally {
+      setVetting(false);
+      setBatchVettingIds([]);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#F6FAFF_0%,#EEF4FF_100%)]">
-      {/* Hero */}
-      <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-16 -right-8 h-52 w-52 rounded-full bg-[#1B73E8]/20 blur-3xl" />
-          <div className="absolute -bottom-12 -left-8 h-56 w-56 rounded-full bg-[#0D47A1]/10 blur-3xl" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-5 pt-6 pb-4">
-          <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className={`${glassCard} px-5 py-4`}>
-              <div className="flex items-start gap-2.5">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-inner">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[#0D2A5B]">Question Bank</h1>
-                  <p className="text-[11px] md:text-xs text-[#2c477b]/80 mt-0.5">
-                    Build & curate assessments — manually or with AI assistance.
-                    {user?.full_name ? (<span className="ml-1 text-[#1B73E8] font-semibold">Welcome, {user.full_name.split(" ")[0]}!</span>) : null}
-                  </p>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        
+        {/* NEW HEADER DESIGN */}
+        <div className={`${panel} px-5 py-4 mb-5`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#1B73E8] rounded-lg flex items-center justify-center">
+                <Database className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">Question Bank</h1>
+                <p className="text-xs text-gray-600">
+                  {stats.total} questions • {stats.coding} coding • {stats.mcq} MCQ
+                </p>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mt-4">
-              {[
-                { label: "My Total", value: myStats.total, icon: FileText, accent: "from-[#1B73E8] to-[#1557B0]" },
-                { label: "My Approved", value: myStats.approved, icon: CheckCircle2, accent: "from-green-500 to-emerald-600" },
-                { label: "My Pending", value: myStats.pending, icon: Clock, accent: "from-yellow-300 to-amber-500" },
-                { label: "My Draft", value: myStats.draft, icon: Edit, accent: "from-slate-400 to-slate-500" },
-                { label: "My Rejected", value: myStats.rejected, icon: XCircle, accent: "from-rose-500 to-rose-600" },
-              ].map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }} className={`${glassCard} p-4`}>
-                  <div className="flex items-center justify-between">
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${s.accent} text-white flex items-center justify-center shadow-inner`}><s.icon className="w-4 h-4" /></div>
-                    <TrendingUp className="w-3.5 h-3.5 text-[#0D2A5B]/50" />
-                  </div>
-                  <div className="mt-2 text-2xl font-black text-[#0D2A5B]">{s.value}</div>
-                  <div className="text-[10px] text-[#0D2A5B]/70 mt-0.5">{s.label}</div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Main */}
-      <div className="max-w-7xl mx-auto px-5 pb-8">
-        {/* Controls */}
-        <div className={`${panel} p-4 mb-4 sticky top-3 z-10`}>
-          <div className="flex flex-col xl:flex-row gap-2.5 xl:items-center xl:justify-between">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search my questions by title or skills…"
-                value={filters.search}
-                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
-              />
-            </div>
-
-            {/* Right controls */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* View Toggle */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                <button onClick={() => setViewMode("grid")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><Grid3x3 className="w-3.5 h-3.5" />Grid</button>
-                <button onClick={() => setViewMode("table")} className={`px-3 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}><List className="w-3.5 h-3.5" />Table</button>
-              </div>
-              
-
-              {viewMode === "table" && (
-                <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
-                  <option value={5}>5 per page</option>
-                  <option value={10}>10 per page</option>
-                  <option value={25}>25 per page</option>
-                  <option value={50}>50 per page</option>
-                </select>
-              )}
-
-              <select value={filters.difficulty} onChange={(e) => setFilters((f) => ({ ...f, difficulty: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
-                <option value="">All Difficulty</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-
-              <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
-                <option value="">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="pending_review">Pending Review</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-
-              <select value={filters.type || ""} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[10px] font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all">
-                <option value="">All Types</option>
-                <option value="coding">Coding</option>
-                <option value="mcq">Multiple Choice</option>
-              </select>
-
-              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                {(["all", "ai", "manual"] as const).map((src) => (
-                  <button key={src} onClick={() => setFilters((f) => ({ ...f, source: src }))} className={`px-3 py-1.5 rounded-md text-[10px] font-medium transition-all ${filters.source === src ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600 hover:text-gray-900"}`} title={src === "all" ? "Show all" : src === "ai" ? "AI generated only" : "Manual only"}>
-                    {src === "ai" ? "AI" : src === "manual" ? "Manual" : "All"}
-                  </button>
-                ))}
-              </div>
-                {/* ADD THE VECTOR STATUS INDICATOR RIGHT HERE */}
-                <div className="flex items-center gap-2 text-xs">
-                  <div className={`flex items-center gap-1 ${vectorHealth ? 'text-green-600' : 'text-red-600'}`}>
-                    <Database className="w-3 h-3" />
-                    <span>Vector DB: {vectorHealth ? 'Online' : 'Offline'}</span>
-                  </div>
-                </div>
-                {/* ADD VETTING STATUS INDICATOR */}
-                <div className="flex items-center gap-2 text-xs">
-                  <div className={`flex items-center gap-1 ${vettingHealth ? 'text-green-600' : 'text-red-600'}`}>
-                    <Sparkles className="w-3 h-3" />
-                    <span>Vetting: {vettingHealth ? 'Online' : 'Offline'}</span>
-                  </div>
-                </div>
-
-
-              <span className="hidden xl:block h-5 w-px bg-gray-200" />
-
-
-              <motion.button onClick={handleCreateQuestion} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-[#1B73E8] hover:bg-[#1557B0] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow">Create</motion.button>
-              <motion.button onClick={() => setAiModalOpen(true)} disabled={generating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
-                {generating ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Generating…</span>) : (<span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" />AI Generate</span>)}
-              </motion.button>
-              <motion.button onClick={() => setBatchOpen(true)} disabled={batchGenerating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:to-[#0D47A1] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
-                {batchGenerating ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />AI Batch</span>) : (<span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />AI Batch</span>)}
-              </motion.button>
-                            {/* Selection Controls */}
-              {paginatedQuestions.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={selectAllVisibleQuestions}
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 text-[10px] font-semibold text-gray-700 transition-all"
-                  >
-                    {selectedQuestions.size === paginatedQuestions.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                  
-                  {selectedQuestions.size > 0 && (
-                    <>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1B73E8]" />
-                        <span className="text-[10px] font-bold text-[#1B73E8]">
-                          {selectedQuestions.size} selected
-                        </span>
-                      </div>
-                      
-                      <button
-                        onClick={clearSelection}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-all"
-                        title="Clear selection"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <span className="hidden xl:block h-5 w-px bg-gray-200" />
-              <motion.button 
-                onClick={() => {
-                  const selectedIds = Array.from(selectedQuestions);
-                  if (selectedIds.length === 0) {
-                    alert('Please select at least one question to vet');
-                    return;
-                  }
-                  handleBatchVetting(selectedIds);
-                }} 
-                disabled={vetting || !vettingHealth || selectedQuestions.size === 0}
-                whileHover={{ scale: 1.02 }} 
-                whileTap={{ scale: 0.98 }} 
-                className="bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] hover:from-[#1557B0] hover:via-[#0D47A1] hover:to-[#0A3A8C] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              >
-                {vetting ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                    Vetting...
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    AI Vetting {selectedQuestions.size > 0 && `(${selectedQuestions.size})`}
-                  </span>
-                )}
-              </motion.button>
-
-              <div className="relative">
-                <motion.button onClick={() => setShowSourceSelector(!showSourceSelector)} disabled={importing} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all">
-                  {importing ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Importing...</span>) : (<span className="inline-flex items-center gap-1.5"><Network className="w-3.5 h-3.5" />Import from Web</span>)}
-                </motion.button>
-
-                <motion.button onClick={() => setShowUrlScraper(true)} disabled={importing} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r mx-1.5 from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all">
-                  {importing ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Scraping...</span>) : (<span className="inline-flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />Import from URL</span>)}
-                </motion.button>
-                {/* Batch Delete Button */}
-                <motion.button 
-                  onClick={handleBatchDelete}
-                  disabled={selectedQuestions.size === 0}
-                  whileHover={{ scale: 1.02 }} 
-                  whileTap={{ scale: 0.98 }} 
-                  className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white p-2 rounded-lg shadow-lg shadow-red-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                  title={selectedQuestions.size > 0 ? `Delete ${selectedQuestions.size} selected question${selectedQuestions.size > 1 ? 's' : ''}` : 'Select questions to delete'}
+            {/* Source Toggle */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setQuestionSource("mine")}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                    questionSource === "mine"
+                      ? "bg-white text-[#1B73E8] shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
-                </motion.button>
+                  <User className="w-3.5 h-3.5" />
+                  My Questions
+                </button>
+                <button
+                  onClick={() => setQuestionSource("library")}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                    questionSource === "library"
+                      ? "bg-white text-[#1B73E8] shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Library className="w-3.5 h-3.5" />
+                  Library
+                </button>
+              </div>
 
-                <AnimatePresence>
-                  {showSourceSelector && !importing && (
-                    <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ type: "spring", duration: 0.3 }} className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-2xl border-2 border-gray-200 p-4 z-50 min-w-[360px]">
-                      <div className="mb-3 pb-3 border-b-2 border-gray-100">
-                        <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5"><Globe className="w-4 h-4 text-orange-600" />Select Platform</h3>
-                        <p className="text-[10px] text-gray-600 mt-0.5">Import real programming questions from professional platforms</p>
-                      </div>
-
-                      <motion.button onClick={() => handleImportScraped('stackoverflow', 2)} whileHover={{ scale: 1.02, x: 5 }} whileTap={{ scale: 0.98 }} className="w-full flex items-center gap-2.5 p-3 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-lg mb-2 border-2 border-orange-300 transition-all group shadow-sm hover:shadow-md">
-                        <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"><Code2 className="w-5 h-5 text-white" /></div>
-                        <div className="text-left flex-1">
-                          <div className="font-black text-gray-900 text-sm flex items-center gap-1.5">StackOverflow<span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full text-[8px] font-bold border border-green-200">REAL DATA</span></div>
-                          <div className="text-[10px] text-gray-600 mt-0.5 font-medium">Real questions from 20M+ developers</div>
-                          <div className="flex items-center gap-2 mt-1.5 text-[9px] text-gray-500">
-                            <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />~15 questions</span>
-                            <span className="flex items-center gap-0.5"><TrendingUp className="w-2.5 h-2.5" />High quality</span>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-orange-600 group-hover:translate-x-1 transition-transform" />
-                      </motion.button>
-
-                      <motion.button onClick={() => handleImportScraped('leetcode', 2)} whileHover={{ scale: 1.02, x: 5 }} whileTap={{ scale: 0.98 }} className="w-full flex items-center gap-2.5 p-3 bg-gradient-to-r from-yellow-50 to-amber-100 hover:from-yellow-100 hover:to-amber-200 rounded-lg mb-2 border-2 border-amber-300 transition-all group shadow-sm hover:shadow-md">
-                        <div className="w-11 h-11 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"><Code2 className="w-5 h-5 text-white" /></div>
-                        <div className="text-left flex-1">
-                          <div className="font-black text-gray-900 text-sm flex items-center gap-1.5">LeetCode<span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full text-[8px] font-bold border border-green-200">REAL DATA</span></div>
-                          <div className="text-[10px] text-gray-600 mt-0.5 font-medium">Algorithm challenges from LeetCode</div>
-                          <div className="flex items-center gap-2 mt-1.5 text-[9px] text-gray-500">
-                            <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />~20 questions</span>
-                            <span className="flex items-center gap-0.5"><TrendingUp className="w-2.5 h-2.5" />Algorithm focus</span>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-amber-600 group-hover:translate-x-1 transition-transform" />
-                      </motion.button>
-
-                      <div className="mt-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-start gap-1.5">
-                          <ExternalLink className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div className="text-[9px] text-blue-900 leading-relaxed"><span className="font-bold">Real Questions:</span> All scraped questions come from actual programming problems posted by real developers on these platforms. They will be imported with "Pending Review" status.</div>
-                        </div>
-                      </div>
-
-                      <button onClick={() => setShowSourceSelector(false)} className="w-full mt-3 px-3 py-2 text-[10px] text-gray-600 hover:text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              {/* Health Indicators */}
+              <div className="flex items-center gap-2 text-[10px]">
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${vectorHealth ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <Database className="w-3 h-3" />
+                  Vector
+                </div>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${vettingHealth ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <Sparkles className="w-3 h-3" />
+                  Vetting
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* List */}
+        {/* STATS PILLS (NEW DESIGN) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-5">
+          {[
+            { label: "Total", value: stats.total, color: "blue" },
+            { label: "Approved", value: stats.approved, color: "green" },
+            { label: "Pending", value: stats.pending, color: "amber" },
+            { label: "Draft", value: stats.draft, color: "gray" },
+            { label: "Rejected", value: stats.rejected, color: "red" },
+            { label: "Coding", value: stats.coding, color: "indigo" },
+            { label: "MCQ", value: stats.mcq, color: "purple" },
+          ].map((stat) => (
+            <div key={stat.label} className={`${panel} p-3 text-center`}>
+              <div className={`text-2xl font-black text-${stat.color}-600`}>{stat.value}</div>
+              <div className="text-[10px] text-gray-600 mt-0.5">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* SEARCH & CONTROLS (NEW DESIGN) */}
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by title, skills, or description..."
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              />
+            </div>
+
+            {/* Controls */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* View Mode */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`px-3 py-2 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600"
+                  }`}
+                >
+                  <Grid3x3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-3 py-2 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600"
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Filters Button */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-all"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {(filters.difficulty || filters.status || filters.type || filters.source !== "all") && (
+                  <span className="w-2 h-2 bg-[#1B73E8] rounded-full" />
+                )}
+              </button>
+
+              {/* Actions for "My Questions" only */}
+              {questionSource === "mine" && (
+                <>
+                  <button
+                    onClick={handleCreateQuestion}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create
+                  </button>
+
+                  <ActionsMenu
+                    onAiGenerate={() => setAiModalOpen(true)}
+                    onAiBatch={() => setBatchOpen(true)}
+                    onImportWeb={() => setShowSourceSelector(true)}
+                    onImportUrl={() => setShowUrlScraper(true)}
+                    generating={generating}
+                    importing={importing}
+                  />
+
+                  {/* Selection Controls */}
+                  {paginatedQuestions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={selectAllVisibleQuestions}
+                        className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 text-[10px] font-semibold text-gray-700 transition-all"
+                      >
+                        {selectedQuestions.size === paginatedQuestions.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                      
+                      {selectedQuestions.size > 0 && (
+                        <>
+                          <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#1B73E8]" />
+                            <span className="text-[10px] font-bold text-[#1B73E8]">
+                              {selectedQuestions.size} selected
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={clearSelection}
+                            className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-all"
+                            title="Clear selection"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedQuestions.size > 0 && (
+                    <>
+                      <motion.button 
+                        onClick={() => {
+                          const selectedIds = Array.from(selectedQuestions);
+                          handleBatchVetting(selectedIds);
+                        }} 
+                        disabled={vetting || !vettingHealth}
+                        whileHover={{ scale: 1.02 }} 
+                        whileTap={{ scale: 0.98 }} 
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] hover:from-[#1557B0] hover:via-[#0D47A1] hover:to-[#0A3A8C] text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-60"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Vet ({selectedQuestions.size})
+                      </motion.button>
+                      
+                      <button
+                        onClick={handleBatchDelete}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete ({selectedQuestions.size})
+                      </button>
+                    </>
+                  )}
+
+                  {/* Library Link */}
+                  <NextLink
+                    href="questions/library"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-semibold text-[#1B73E8] hover:bg-blue-50"
+                  >
+                    <Library className="w-4 h-4" />
+                    Browse Library
+                  </NextLink>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Advanced Filters (NEW DESIGN) */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-200">
+                  <select
+                    value={filters.difficulty}
+                    onChange={(e) => setFilters((f) => ({ ...f, difficulty: e.target.value }))}
+                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                  >
+                    <option value="">All Difficulty</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                  >
+                    <option value="">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="pending_review">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+
+                  <select
+                    value={filters.type}
+                    onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                  >
+                    <option value="">All Types</option>
+                    <option value="coding">Coding</option>
+                    <option value="mcq">MCQ</option>
+                  </select>
+
+                  <select
+                    value={filters.source}
+                    onChange={(e) => setFilters((f) => ({ ...f, source: e.target.value as any }))}
+                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="ai">AI Generated</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </div>
+
+                {(filters.difficulty || filters.status || filters.type || filters.source !== "all") && (
+                  <button
+                    onClick={() => setFilters({ difficulty: "", status: "", search: filters.search, source: "all", type: "" })}
+                    className="mt-3 text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear Filters
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* QUESTIONS GRID/TABLE (KEEP YOUR ORIGINAL COMPONENTS BUT UPDATE LAYOUT) */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className={`${panel} p-5 animate-pulse`}>
-                <div className="h-1.5 w-20 rounded bg-gradient-to-r from-[#1B73E8] to-[#1557B0]" />
-                <div className="mt-4 h-5 w-3/4 rounded bg-gray-200" />
-                <div className="mt-2.5 h-2.5 w-5/6 rounded bg-gray-200" />
-                <div className="mt-2 h-2.5 w-2/3 rounded bg-gray-200" />
-                <div className="mt-3 h-7 w-full rounded-lg bg-gray-100" />
+                <div className="h-3 w-24 rounded bg-gray-200" />
+                <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
+                <div className="mt-2 h-3 w-full rounded bg-gray-200" />
+                <div className="mt-4 flex gap-2">
+                  <div className="h-6 w-16 rounded bg-gray-200" />
+                  <div className="h-6 w-16 rounded bg-gray-200" />
+                </div>
               </div>
             ))}
           </div>
         ) : viewMode === "grid" ? (
+          // Grid View (update with new design but keep your functionality)
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {paginatedQuestions.map((question, idx) => {
@@ -1845,19 +1969,24 @@ const performBatchVetting = async () => {
                 const statusPill = question.status === "approved" ? "bg-green-50 text-green-700 border-green-200" : question.status === "pending_review" ? "bg-amber-50 text-amber-700 border-amber-200" : question.status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-50 text-slate-700 border-slate-200";
 
                 return (
-                  <motion.div key={question.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ delay: idx * 0.03 }} whileHover={{ y: -4 }} className={`${panel} overflow-hidden group`}>
+                  <motion.div key={question.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ delay: idx * 0.03 }} whileHover={{ y: -4 }} className={`${panel} overflow-hidden group relative`}>
+                    {/* Difficulty Strip */}
                     <div className={`h-1 ${question.difficulty === "easy" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : question.difficulty === "medium" ? "bg-gradient-to-r from-amber-400 to-amber-600" : "bg-gradient-to-r from-rose-400 to-rose-600"}`} />
-                      {/* Checkbox Overlay */}
-                    <div className="absolute top-3 left-3 z-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedQuestions.has(question.id)}
-                        onChange={() => toggleQuestionSelection(question.id)}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <div className="p-4 pl-12">
+                    
+                    {/* Checkbox (only for "mine") */}
+                    {questionSource === "mine" && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestions.has(question.id)}
+                          onChange={() => toggleQuestionSelection(question.id)}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+
+                    <div className={`p-4 ${questionSource === "mine" ? "pl-10" : ""}`}>
                       <div className="flex items-center justify-between mb-3">
                         <span className={`${pill} ${statusPill}`}>
                           {question.status === "approved" && <CheckCircle2 className="w-3 h-3" />}
@@ -1872,7 +2001,6 @@ const performBatchVetting = async () => {
                           <span className={`${pill} ${isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
                             {isAI ? (<><Zap className="w-3 h-3" /> AI</>) : (<><FileText className="w-3 h-3" /> MANUAL</>)}
                           </span>
-                          {/* Add vector status indicator */}
                           {question.vectorStored && (
                             <span className={`${pill} bg-blue-50 text-blue-700 border-blue-200`} title="Stored in vector database">
                               <Database className="w-3 h-3" /> VECTOR
@@ -1920,23 +2048,25 @@ const performBatchVetting = async () => {
                         {question.successRate != null && (<div className="flex items-center gap-1 ml-auto"><Award className="w-3.5 h-3.5 text-emerald-600" /><span className="font-bold text-emerald-600">{question.successRate}%</span></div>)}
                       </div>
 
-                      <div className="mt-3 flex items-center gap-1.5">
-                        <StatusSelect value={(["pending_review", "approved", "rejected"].includes(question.status) ? (question.status as any) : "pending_review")} onChange={(next) => changeStatus(question, next)} />
-                        {/* Add Vet button */}
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            handleVetQuestion(question.id); 
-                          }} 
-                          disabled={vetting || !vettingHealth}
-                          className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
-                          title="AI Vetting"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
+                      {/* Actions (only for "mine") */}
+                      {questionSource === "mine" && (
+                        <div className="mt-3 flex items-center gap-1.5">
+                          <StatusSelect value={(["pending_review", "approved", "rejected"].includes(question.status) ? (question.status as any) : "pending_review")} onChange={(next) => changeStatus(question, next)} />
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleVetQuestion(question.id); 
+                            }} 
+                            disabled={vetting || !vettingHealth}
+                            className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                            title="AI Vetting"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -1944,6 +2074,7 @@ const performBatchVetting = async () => {
             </AnimatePresence>
           </div>
         ) : (
+          // Table View (keep your original table but update styling)
           <div className={`${panel} overflow-hidden shadow-xl`}>
             <div className="px-4 py-3 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] flex items-center justify-between">
               <div className="flex items-center gap-2 text-white">
@@ -1957,15 +2088,17 @@ const performBatchVetting = async () => {
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-b-2 border-[#1B73E8]/20">
                   <tr>
-                    {/* Checkbox column */}
-                    <th className="px-3 py-2 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedQuestions.size === paginatedQuestions.length && paginatedQuestions.length > 0}
-                        onChange={selectAllVisibleQuestions}
-                        className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
-                      />
-                    </th>
+                    {/* Checkbox column (only for "mine") */}
+                    {questionSource === "mine" && (
+                      <th className="px-3 py-2 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestions.size === paginatedQuestions.length && paginatedQuestions.length > 0}
+                          onChange={selectAllVisibleQuestions}
+                          className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#1B73E8]" />Question</div></th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Skills</th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Type</th>
@@ -1974,7 +2107,9 @@ const performBatchVetting = async () => {
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Status</th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-[#1B73E8]" />Views</div></th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-[#1B73E8]" />Subs</div></th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Actions</th>
+                    {questionSource === "mine" && (
+                      <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1984,16 +2119,18 @@ const performBatchVetting = async () => {
 
                     return (
                       <motion.tr key={q.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 group">
-                          {/* Checkbox column */}
-                        <td className="px-3 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedQuestions.has(q.id)}
-                            onChange={() => toggleQuestionSelection(q.id)}
-                            className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </td>
+                        {/* Checkbox column (only for "mine") */}
+                        {questionSource === "mine" && (
+                          <td className="px-3 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedQuestions.has(q.id)}
+                              onChange={() => toggleQuestionSelection(q.id)}
+                              className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                        )}
                         <td className="px-3 py-3">
                           <div className="flex items-start gap-2">
                             <div className={`w-1 h-full rounded-full ${q.difficulty === "easy" ? "bg-emerald-500" : q.difficulty === "medium" ? "bg-amber-500" : "bg-rose-500"}`} />
@@ -2019,22 +2156,23 @@ const performBatchVetting = async () => {
                         <td className="px-3 py-3"><span className={`${pill} shadow-sm ${statusPill}`}>{q.status === "approved" && <CheckCircle2 className="w-3 h-3" />}{q.status === "pending_review" && <Clock className="w-3 h-3" />}{q.status === "rejected" && <XCircle className="w-3 h-3" />}{q.status.replace("_", " ").toUpperCase()}</span></td>
                         <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><Eye className="w-3.5 h-3.5 text-gray-400" />{q.views || 0}</div></td>
                         <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><BarChart3 className="w-3.5 h-3.5 text-gray-400" />{q.submissions || 0}</div></td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <StatusSelect compact value={(["pending_review", "approved", "rejected"].includes(q.status) ? (q.status as any) : "pending_review")} onChange={(next) => changeStatus(q, next)} />
-                            {/* Add Vet button */}
-                            <button 
-                              onClick={() => handleVetQuestion(q.id)} 
-                              disabled={vetting || !vettingHealth}
-                              className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 hover:shadow-md transition-all border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
-                              title="AI Vetting"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
+                        {questionSource === "mine" && (
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <StatusSelect compact value={(["pending_review", "approved", "rejected"].includes(q.status) ? (q.status as any) : "pending_review")} onChange={(next) => changeStatus(q, next)} />
+                              <button 
+                                onClick={() => handleVetQuestion(q.id)} 
+                                disabled={vetting || !vettingHealth}
+                                className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 hover:shadow-md transition-all border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                                title="AI Vetting"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        )}
                       </motion.tr>
                     );
                   })}
@@ -2055,9 +2193,30 @@ const performBatchVetting = async () => {
             )}
           </div>
         )}
+
+        {/* Empty State */}
+        {!loading && filteredQuestions.length === 0 && (
+          <div className={`${panel} p-12 text-center`}>
+            <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">No questions found</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {questionSource === "library" 
+                ? "The library is empty or no questions match your filters"
+                : "Create your first question or adjust your filters"}
+            </p>
+            {questionSource === "mine" && (
+              <button
+                onClick={handleCreateQuestion}
+                className="px-6 py-3 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-sm font-semibold shadow-sm transition-all"
+              >
+                Create Question
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Modals */}
+      {/* KEEP ALL YOUR EXISTING MODALS */}
       <AiGenerateModal open={aiModalOpen} onClose={() => setAiModalOpen(false)} onGenerate={handleAiGenerate} generating={generating} />
       <AiBatchModal open={batchOpen} onClose={() => setBatchOpen(false)} onGenerate={handleAiBatchGenerate} generating={batchGenerating} />
 
@@ -2076,6 +2235,7 @@ const performBatchVetting = async () => {
           </motion.div>
         )}
       </AnimatePresence>
+      
       {/* Vetting Modals */}
       <VettingConfirmModal
         open={showVettingConfirm}
@@ -2097,6 +2257,7 @@ const performBatchVetting = async () => {
         result={vettingResult}
         isBatch={batchVettingIds.length > 0 || (vettingResult?.total !== undefined)}
       />
+      
       {/* VETTING OVERLAY */}
       <AnimatePresence>
         {vetting && (
@@ -2142,7 +2303,7 @@ const performBatchVetting = async () => {
                 </div>
                 <div>
                   <div className="text-gray-900 font-bold text-sm">Scraping Real Questions...</div>
-                  <div className="text-gray-600 text-[10px] mt-0.5">Collecting questions from StackOverflow</div>
+                  <div className="text-gray-600 text-[10px] mt-0.5">Collecting questions from platform</div>
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500">
@@ -2155,9 +2316,8 @@ const performBatchVetting = async () => {
       </AnimatePresence>
 
       {/* URL Scraper Modal */}
-      <UrlScraperModal open={showUrlScraper} onClose={() => setShowUrlScraper(false)} onScrape={handleScrapeUrls} scraping={importing}   token={token}  />
+      <UrlScraperModal open={showUrlScraper} onClose={() => setShowUrlScraper(false)} onScrape={handleScrapeUrls} scraping={importing} token={token} />
     </div>
-    
   );
 };
 
