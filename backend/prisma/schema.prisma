@@ -221,8 +221,10 @@ model Question {
   source      String? // ai_generated, web_scraped, manual
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  isLibraryQuestion Boolean @default(false)
+  assessments AssessmentQuestion[]   //  NEW
 
-  assessments AssessmentQuestion[]   // 👈 NEW
 
   @@map("questions")
 }

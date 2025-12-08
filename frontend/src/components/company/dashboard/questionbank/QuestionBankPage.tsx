@@ -33,6 +33,9 @@ import {
   Plus,
   Trash,
   Copy,
+  AlertTriangle,
+  Shield,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "../questionbank/QuestionEditor";
@@ -710,6 +713,254 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
     </div>
   );
 };
+// Vetting Confirmation Modal
+const VettingConfirmModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  questionCount?: number;
+}> = ({ open, onClose, onConfirm, questionCount = 1 }) => {
+  if (!open) return null;
+
+  // ✅ FIX: Définir les items avec le bon type
+  const analysisItems = [
+    { Icon: CheckCircle2, label: 'Code correctness', color: 'text-green-600' },
+    { Icon: Shield, label: 'Test case validity', color: 'text-blue-600' },
+    { Icon: Award, label: 'Solution quality', color: 'text-purple-600' },
+    { Icon: Lock, label: 'Security issues', color: 'text-red-600' }
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`${panel} relative w-full max-w-md overflow-hidden`}
+      >
+        <div className="px-5 py-4 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">AI Vetting Analysis</h3>
+                <p className="text-[10px] text-blue-100">
+                  {questionCount === 1 ? 'Single question' : `${questionCount} questions`}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5 py-4">
+          <div className="mb-4">
+            <p className="text-sm text-gray-700 font-medium mb-3">
+              The AI will perform comprehensive analysis:
+            </p>
+            
+            <div className="space-y-2">
+              {analysisItems.map((item, i) => {
+                const IconComponent = item.Icon; //  Extract icon component
+                return (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-2 p-2 rounded-lg bg-gray-50"
+                  >
+                    <IconComponent className={`w-4 h-4 ${item.color}`} />
+                    <span className="text-[11px] font-medium text-gray-700">{item.label}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-2">
+              <Clock className="w-4 h-4 text-[#1B73E8] mt-0.5 flex-shrink-0" />
+              <div className="text-[10px] text-blue-900 leading-relaxed">
+                <span className="font-bold">Processing time:</span> This may take a few seconds depending on code complexity.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] font-semibold transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white text-[11px] font-semibold shadow transition-all"
+          >
+            Start Vetting
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Vetting Results Modal
+const VettingResultsModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  result: any;
+  isBatch?: boolean;
+}> = ({ open, onClose, result, isBatch = false }) => {
+  if (!open) return null;
+
+  const isSuccess = isBatch ? result.success : result.vetting?.status === 'APPROVED';
+  const score = result.vetting?.overall_score || 0;
+
+  //  FIX: Définir les checks avec le bon type
+  const checkItems = [
+    { key: 'syntax_check', label: 'Syntax', Icon: Code2 },
+    { key: 'logic_validation', label: 'Logic', Icon: Zap },
+    { key: 'test_case_validation', label: 'Test Cases', Icon: FileText },
+    { key: 'security_check', label: 'Security', Icon: Shield }
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`${panel} relative w-full max-w-md overflow-hidden`}
+      >
+        <div className={`px-5 py-4 ${isSuccess ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'} text-white`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+                {isSuccess ? (
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-white" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-bold">
+                  {isSuccess ? 'Vetting Complete' : 'Vetting Failed'}
+                </h3>
+                <p className="text-[10px] text-white/90">
+                  {isBatch ? 'Batch analysis' : 'Single question'}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5 py-4">
+          {isBatch ? (
+            // Batch results
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-black text-[#1B73E8]">{result.total || 0}</div>
+                  <div className="text-[9px] text-gray-600 mt-1">Total</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-2xl font-black text-green-600">{result.vetted_count || 0}</div>
+                  <div className="text-[9px] text-gray-600 mt-1">Vetted</div>
+                </div>
+                <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="text-2xl font-black text-red-600">{result.errors?.length || 0}</div>
+                  <div className="text-[9px] text-gray-600 mt-1">Errors</div>
+                </div>
+              </div>
+              
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-[11px] text-green-900">
+                  Questions have been updated with vetting results.
+                </p>
+              </div>
+            </div>
+          ) : (
+            // Single question results
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-[#1B73E8]">
+                <div>
+                  <div className="text-[10px] text-gray-600 font-semibold mb-1">Overall Score</div>
+                  <div className="text-3xl font-black text-[#1B73E8]">{score}/100</div>
+                </div>
+                <div className={`px-4 py-2 rounded-lg ${isSuccess ? 'bg-green-500' : 'bg-red-500'} text-white font-bold text-sm`}>
+                  {result.vetting?.status}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {checkItems.map((check) => {
+                  const status = result.vetting?.[check.key]?.status || 'N/A';
+                  const isPassed = status === 'PASSED';
+                  const IconComponent = check.Icon; // ✅ Extract icon component
+                  
+                  return (
+                    <div key={check.key} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="w-4 h-4 text-gray-600" />
+                        <span className="text-[11px] font-medium text-gray-700">{check.label}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isPassed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {result.vetting?.issues && result.vetting.issues.length > 0 && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <span className="text-[11px] font-bold text-amber-900">
+                      {result.vetting.issues.length} Issue{result.vetting.issues.length > 1 ? 's' : ''} Found
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-[#1B73E8] hover:bg-[#1557B0] text-white text-[11px] font-semibold shadow transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const QuestionBankPage: React.FC = () => {
   const { user, token } = useAuth();
@@ -747,6 +998,7 @@ const QuestionBankPage: React.FC = () => {
     }
     return true;
   };
+
 // Add a useEffect to check vector engine health
 useEffect(() => {
   const checkVectorHealth = async () => {
@@ -1099,6 +1351,211 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
   }
 };
 
+// Add selection state
+const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+
+// Toggle selection for a single question
+const toggleQuestionSelection = (questionId: string) => {
+  setSelectedQuestions(prev => {
+    const newSet = new Set(prev);
+    if (newSet.has(questionId)) {
+      newSet.delete(questionId);
+    } else {
+      newSet.add(questionId);
+    }
+    return newSet;
+  });
+};
+
+// Select all visible questions
+const selectAllVisibleQuestions = () => {
+  if (selectedQuestions.size === paginatedQuestions.length) {
+    setSelectedQuestions(new Set());
+  } else {
+    setSelectedQuestions(new Set(paginatedQuestions.map(q => q.id)));
+  }
+};
+
+// Clear selection
+const clearSelection = () => {
+  setSelectedQuestions(new Set());
+};
+// Delete multiple questions in batch
+const handleBatchDelete = async () => {
+  if (!requireAuth()) return;
+  
+  const selectedIds = Array.from(selectedQuestions);
+  
+  if (selectedIds.length === 0) {
+    alert('Please select at least one question to delete');
+    return;
+  }
+  
+  if (!window.confirm(`⚠️ Delete ${selectedIds.length} question${selectedIds.length > 1 ? 's' : ''}?\n\nThis action cannot be undone.`)) return;
+  
+  try {
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Delete each question
+    for (const questionId of selectedIds) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to delete question ${questionId}:`, error);
+        errorCount++;
+      }
+    }
+
+    // Update UI
+    setQuestions(prev => prev.filter(q => !selectedIds.includes(q.id)));
+    clearSelection();
+
+    // Show result
+    if (errorCount === 0) {
+      alert(`✅ Successfully deleted ${successCount} question${successCount > 1 ? 's' : ''}!`);
+    } else {
+      alert(`⚠️ Deleted ${successCount} question${successCount > 1 ? 's' : ''}\n${errorCount} failed to delete.`);
+    }
+  } catch (error) {
+    console.error('Batch delete error:', error);
+    alert('❌ Network error during batch delete.');
+  }
+};
+// ========================================
+// VETTING STATES (remplace les anciens states)
+// ========================================
+const [vetting, setVetting] = useState(false);
+const [vettingHealth, setVettingHealth] = useState<boolean>(true);
+const [showVettingConfirm, setShowVettingConfirm] = useState(false);
+const [showVettingResults, setShowVettingResults] = useState(false);
+const [vettingResult, setVettingResult] = useState<any>(null);
+const [currentVettingId, setCurrentVettingId] = useState<string | null>(null);
+const [batchVettingIds, setBatchVettingIds] = useState<string[]>([]);
+
+// ========================================
+// VETTING HEALTH CHECK (garde ce useEffect)
+// ========================================
+useEffect(() => {
+  const checkVettingHealth = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/questions/vetting/health', {
+        headers: authHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setVettingHealth(data.success && data.vetting?.status === 'healthy');
+      } else {
+        setVettingHealth(false);
+      }
+    } catch (error) {
+      console.error('Vetting health check failed:', error);
+      setVettingHealth(false);
+    }
+  };
+  
+  checkVettingHealth();
+  const interval = setInterval(checkVettingHealth, 30000);
+  return () => clearInterval(interval);
+}, []);
+
+// ========================================
+// NOUVEAU: Vet a single question (avec modal)
+// ========================================
+const handleVetQuestion = async (questionId: string) => {
+  if (!requireAuth()) return;
+  
+  setCurrentVettingId(questionId);
+  setShowVettingConfirm(true);
+};
+
+const performVetting = async () => {
+  if (!currentVettingId) return;
+  
+  setVetting(true);
+  try {
+    const response = await fetch(`http://localhost:5000/api/questions/${currentVettingId}/vet`, {
+      method: 'POST',
+      headers: authHeaders()
+    });
+    
+    const data = await response.json();
+    
+    setVettingResult(data);
+    setShowVettingResults(true);
+    await loadQuestions();
+  } catch (error: any) {
+    console.error('Vetting error:', error);
+    setVettingResult({ 
+      success: false, 
+      error: error.message 
+    });
+    setShowVettingResults(true);
+  } finally {
+    setVetting(false);
+    setCurrentVettingId(null);
+  }
+};
+
+// ========================================
+// NOUVEAU: Vet multiple questions (batch avec modal)
+// ========================================
+const handleBatchVetting = async (selectedIds: string[]) => {
+  if (!requireAuth()) return;
+  
+  if (selectedIds.length === 0) {
+    alert('Please select at least one question to vet');
+    return;
+  }
+  
+  setBatchVettingIds(selectedIds);
+  setShowVettingConfirm(true);
+};
+
+const performBatchVetting = async () => {
+  if (batchVettingIds.length === 0) return;
+  
+  setVetting(true);
+  try {
+    const response = await fetch('http://localhost:5000/api/questions/vetting/batch', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ ids: batchVettingIds })
+    });
+    
+    const data = await response.json();
+    
+    setVettingResult({ 
+      ...data, 
+      total: batchVettingIds.length 
+    });
+    setShowVettingResults(true);
+    await loadQuestions();
+    clearSelection(); //  Clear selection after vetting
+
+  } catch (error: any) {
+    console.error('Batch vetting error:', error);
+    setVettingResult({ 
+      success: false, 
+      error: error.message 
+    });
+    setShowVettingResults(true);
+  } finally {
+    setVetting(false);
+    setBatchVettingIds([]);
+  }
+};
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#F6FAFF_0%,#EEF4FF_100%)]">
       {/* Hero */}
@@ -1218,9 +1675,17 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                     <span>Vector DB: {vectorHealth ? 'Online' : 'Offline'}</span>
                   </div>
                 </div>
+                {/* ADD VETTING STATUS INDICATOR */}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className={`flex items-center gap-1 ${vettingHealth ? 'text-green-600' : 'text-red-600'}`}>
+                    <Sparkles className="w-3 h-3" />
+                    <span>Vetting: {vettingHealth ? 'Online' : 'Offline'}</span>
+                  </div>
+                </div>
 
 
               <span className="hidden xl:block h-5 w-px bg-gray-200" />
+
 
               <motion.button onClick={handleCreateQuestion} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-[#1B73E8] hover:bg-[#1557B0] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow">Create</motion.button>
               <motion.button onClick={() => setAiModalOpen(true)} disabled={generating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
@@ -1228,6 +1693,64 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
               </motion.button>
               <motion.button onClick={() => setBatchOpen(true)} disabled={batchGenerating} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:to-[#0D47A1] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow disabled:opacity-60 disabled:cursor-not-allowed">
                 {batchGenerating ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />AI Batch</span>) : (<span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />AI Batch</span>)}
+              </motion.button>
+                            {/* Selection Controls */}
+              {paginatedQuestions.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={selectAllVisibleQuestions}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 text-[10px] font-semibold text-gray-700 transition-all"
+                  >
+                    {selectedQuestions.size === paginatedQuestions.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  
+                  {selectedQuestions.size > 0 && (
+                    <>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1B73E8]" />
+                        <span className="text-[10px] font-bold text-[#1B73E8]">
+                          {selectedQuestions.size} selected
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={clearSelection}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-all"
+                        title="Clear selection"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <span className="hidden xl:block h-5 w-px bg-gray-200" />
+              <motion.button 
+                onClick={() => {
+                  const selectedIds = Array.from(selectedQuestions);
+                  if (selectedIds.length === 0) {
+                    alert('Please select at least one question to vet');
+                    return;
+                  }
+                  handleBatchVetting(selectedIds);
+                }} 
+                disabled={vetting || !vettingHealth || selectedQuestions.size === 0}
+                whileHover={{ scale: 1.02 }} 
+                whileTap={{ scale: 0.98 }} 
+                className="bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] hover:from-[#1557B0] hover:via-[#0D47A1] hover:to-[#0A3A8C] text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              >
+                {vetting ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                    Vetting...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    AI Vetting {selectedQuestions.size > 0 && `(${selectedQuestions.size})`}
+                  </span>
+                )}
               </motion.button>
 
               <div className="relative">
@@ -1237,6 +1760,17 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
 
                 <motion.button onClick={() => setShowUrlScraper(true)} disabled={importing} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="bg-gradient-to-r mx-1.5 from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all">
                   {importing ? (<span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Scraping...</span>) : (<span className="inline-flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />Import from URL</span>)}
+                </motion.button>
+                {/* Batch Delete Button */}
+                <motion.button 
+                  onClick={handleBatchDelete}
+                  disabled={selectedQuestions.size === 0}
+                  whileHover={{ scale: 1.02 }} 
+                  whileTap={{ scale: 0.98 }} 
+                  className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white p-2 rounded-lg shadow-lg shadow-red-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  title={selectedQuestions.size > 0 ? `Delete ${selectedQuestions.size} selected question${selectedQuestions.size > 1 ? 's' : ''}` : 'Select questions to delete'}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </motion.button>
 
                 <AnimatePresence>
@@ -1313,7 +1847,17 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                 return (
                   <motion.div key={question.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ delay: idx * 0.03 }} whileHover={{ y: -4 }} className={`${panel} overflow-hidden group`}>
                     <div className={`h-1 ${question.difficulty === "easy" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : question.difficulty === "medium" ? "bg-gradient-to-r from-amber-400 to-amber-600" : "bg-gradient-to-r from-rose-400 to-rose-600"}`} />
-                    <div className="p-4">
+                      {/* Checkbox Overlay */}
+                    <div className="absolute top-3 left-3 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestions.has(question.id)}
+                        onChange={() => toggleQuestionSelection(question.id)}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="p-4 pl-12">
                       <div className="flex items-center justify-between mb-3">
                         <span className={`${pill} ${statusPill}`}>
                           {question.status === "approved" && <CheckCircle2 className="w-3 h-3" />}
@@ -1378,6 +1922,18 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
 
                       <div className="mt-3 flex items-center gap-1.5">
                         <StatusSelect value={(["pending_review", "approved", "rejected"].includes(question.status) ? (question.status as any) : "pending_review")} onChange={(next) => changeStatus(question, next)} />
+                        {/* Add Vet button */}
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            handleVetQuestion(question.id); 
+                          }} 
+                          disabled={vetting || !vettingHealth}
+                          className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                          title="AI Vetting"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
@@ -1401,6 +1957,15 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-b-2 border-[#1B73E8]/20">
                   <tr>
+                    {/* Checkbox column */}
+                    <th className="px-3 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestions.size === paginatedQuestions.length && paginatedQuestions.length > 0}
+                        onChange={selectAllVisibleQuestions}
+                        className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                      />
+                    </th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#1B73E8]" />Question</div></th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Skills</th>
                     <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Type</th>
@@ -1419,6 +1984,16 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
 
                     return (
                       <motion.tr key={q.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 group">
+                          {/* Checkbox column */}
+                        <td className="px-3 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedQuestions.has(q.id)}
+                            onChange={() => toggleQuestionSelection(q.id)}
+                            className="w-4 h-4 rounded border-2 border-gray-300 text-[#1B73E8] focus:ring-2 focus:ring-[#1B73E8] cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
                         <td className="px-3 py-3">
                           <div className="flex items-start gap-2">
                             <div className={`w-1 h-full rounded-full ${q.difficulty === "easy" ? "bg-emerald-500" : q.difficulty === "medium" ? "bg-amber-500" : "bg-rose-500"}`} />
@@ -1447,6 +2022,15 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-1.5">
                             <StatusSelect compact value={(["pending_review", "approved", "rejected"].includes(q.status) ? (q.status as any) : "pending_review")} onChange={(next) => changeStatus(q, next)} />
+                            {/* Add Vet button */}
+                            <button 
+                              onClick={() => handleVetQuestion(q.id)} 
+                              disabled={vetting || !vettingHealth}
+                              className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 hover:shadow-md transition-all border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                              title="AI Vetting"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </button>
                             <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
                             <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
@@ -1492,6 +2076,59 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Vetting Modals */}
+      <VettingConfirmModal
+        open={showVettingConfirm}
+        onClose={() => {
+          setShowVettingConfirm(false);
+          setCurrentVettingId(null);
+          setBatchVettingIds([]);
+        }}
+        onConfirm={currentVettingId ? performVetting : performBatchVetting}
+        questionCount={currentVettingId ? 1 : batchVettingIds.length}
+      />
+
+      <VettingResultsModal
+        open={showVettingResults}
+        onClose={() => {
+          setShowVettingResults(false);
+          setVettingResult(null);
+        }}
+        result={vettingResult}
+        isBatch={batchVettingIds.length > 0 || (vettingResult?.total !== undefined)}
+      />
+      {/* VETTING OVERLAY */}
+      <AnimatePresence>
+        {vetting && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[60] bg-gradient-to-br from-purple-900/20 via-violet-900/20 to-purple-900/20 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} 
+              animate={{ scale: 1, y: 0 }} 
+              className={`${panel} px-6 py-5 max-w-sm`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="w-10 h-10 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                  <Sparkles className="absolute inset-0 m-auto w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-gray-900 font-bold text-sm">AI Vetting in Progress...</div>
+                  <div className="text-gray-600 text-[10px] mt-0.5">Analyzing code quality & correctness</div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500">
+                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+                Running syntax, logic, and security checks...
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* FULL-PAGE importing overlay */}
       <AnimatePresence>
@@ -1520,6 +2157,7 @@ const handleScrapeUrls = async (urls: string[], platform: "stackoverflow" | "lee
       {/* URL Scraper Modal */}
       <UrlScraperModal open={showUrlScraper} onClose={() => setShowUrlScraper(false)} onScrape={handleScrapeUrls} scraping={importing}   token={token}  />
     </div>
+    
   );
 };
 
