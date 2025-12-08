@@ -235,7 +235,8 @@ export interface EmployerAssessment {
   auto_generated?: boolean;
   creation_method: AssessmentCreationMethod;
   extracted_skills: string[];
-
+  // 👇 NEW: questions attached to this assessment (what UI will display)
+  questions?: AttachedQuestionSummary[];
   job?: {
     title: string;
     location: string;
@@ -356,3 +357,18 @@ export const EXPERIENCE_TO_DIFFICULTY: Record<
   senior: "ADVANCED" as DifficultyLevel,
   executive: "EXPERT" as DifficultyLevel,
 };
+
+// ==================== QUESTIONS ATTACHED TO ASSESSMENT ====================
+
+export interface AttachedQuestionSummary {
+  id: string;              // Question.id
+  title: string;
+  description: string;
+  problemStatement: string;
+  difficulty: string;      // "easy" | "medium" | "hard"
+  type: string;            // "coding" | "mcq" | "debugging" | ...
+  skillTags: string[];
+  order?: number;
+  points: number;
+  isReserve: boolean;
+}
