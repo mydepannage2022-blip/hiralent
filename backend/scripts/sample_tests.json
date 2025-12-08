@@ -1,0 +1,82 @@
+{
+  "samples": [
+    {
+      "name": "python-print-newline",
+      "language": "python",
+      "code": "print('Hello')\n",
+      "tests": [
+        { "input": "", "expected": "Hello" }
+      ]
+    },
+    {
+      "name": "python-trailing-space",
+      "language": "python",
+      "code": "print('Hello ')\n",
+      "tests": [
+        { "input": "", "expected": "Hello" }
+      ]
+    },
+    {
+      "name": "python-crlf",
+      "language": "python",
+      "code": "import sys\nsys.stdout.write('Line1\\r\\nLine2\\r\\n')\n",
+      "tests": [
+        { "input": "", "expected": "Line1\nLine2" }
+      ]
+    },
+    {
+      "name": "node-stdin-echo",
+      "language": "node",
+      "code": "const fs = require('fs'); const input = fs.readFileSync(0,'utf8'); console.log(input.trim());\n",
+      "tests": [
+        { "input": "  2 3  ", "expected": "2 3" }
+      ]
+    },
+    {
+      "name": "case-insensitive-test",
+      "language": "python",
+      "code": "print('HeLLo')\n",
+      "tests": [
+        { "input": "", "expected": "hello" }
+      ]
+    }
+    ,
+    {
+      "name": "java-hello",
+      "language": "java",
+      "code": "public class Main { public static void main(String[] args){ System.out.println(\"HiJava\"); } }\n",
+      "tests": [ { "input": "", "expected": "HiJava" } ]
+    },
+    {
+      "name": "cpp-hello",
+      "language": "cpp",
+      "code": "#include <bits/stdc++.h>\nusing namespace std; int main(){ cout<<\"HiCPP\"; return 0; }\n",
+      "tests": [ { "input": "", "expected": "HiCPP" } ]
+    },
+    {
+      "name": "go-hello",
+      "language": "go",
+      "code": "package main\nimport \"fmt\"\nfunc main(){ fmt.Print(\"HiGo\") }\n",
+      "tests": [ { "input": "", "expected": "HiGo" } ]
+    },
+    {
+      "name": "ruby-hello",
+      "language": "ruby",
+      "code": "puts 'HiRuby'\n",
+      "tests": [ { "input": "", "expected": "HiRuby" } ]
+    },
+    {
+      "name": "csharp-hello",
+      "language": "csharp",
+      "code": "using System;\nclass Program { static void Main(){ Console.Write(\"HiCS\"); } }\n",
+      "tests": [ { "input": "", "expected": "HiCS" } ]
+    }
+    ,
+    {
+      "name": "c-hello",
+      "language": "c",
+      "code": "#include <stdio.h>\nint main(){ printf(\"HiC\"); return 0; }\n",
+      "tests": [ { "input": "", "expected": "HiC" } ]
+    }
+  ]
+}

@@ -1,8 +1,9 @@
-import express from 'express';
 import { QuestionController } from '../../controller/question/question.controller';
 import { checkAuth } from '../../middlewares/checkAuth.middleware';
 import { checkAIServiceAvailable } from '../../middlewares/ai-service-check.middleware';
 import { validateBatchGeneration } from '../../middlewares/question.validation.middleware';
+import { vectorEngineService } from '../../../src/services/question/vectorEngine.service';
+import express, { Request, Response } from 'express'; 
 
 const router = express.Router();
 const controller = new QuestionController();
@@ -152,6 +153,178 @@ router.post('/:id/analyze-variability',
   checkAuth,
   controller.analyzeVariability.bind(controller)
 );
+
+
+// ========== VECTOR ENGINE ROUTES ==========
+// ========== VECTOR ENGINE ROUTES ==========
+
+// Vector engine health check
+router.get('/vector/health', 
+  async (req: Request, res: Response) => {
+    try {
+      const health = await vectorEngineService.healthCheck();
+      res.json({
+        success: true,
+        vectorEngine: health,
+        config: {
+          aiServiceUrl: process.env.AI_SERVICE_URL,
+          enabled: process.env.VECTOR_ENGINE_ENABLED
+        }
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        success: false,
+        error: 'Vector engine unavailable',
+        details: error.message
+      });
+    }
+  }
+);
+// Vector engine health check
+router.get('/vector-engine/health', 
+  async (req: Request, res: Response) => {
+    try {
+      const health = await vectorEngineService.healthCheck();
+      res.json({
+        success: true,
+        vectorEngine: health,
+        config: {
+          aiServiceUrl: process.env.AI_SERVICE_URL,
+          enabled: process.env.VECTOR_ENGINE_ENABLED
+        }
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        success: false,
+        error: 'Vector engine unavailable',
+        details: error.message
+      });
+    }
+  }
+);
+
+// Check similarity for a question
+router.post('/:id/check-similarity',
+  checkAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const question = await controller.questionService.getQuestionById(req.params.id);
+      if (!question) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Question not found' 
+        });
+      }
+
+      const result = await vectorEngineService.checkSimilarity(question);
+      res.json({ 
+        success: true, 
+        similarityCheck: result 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
+);
+
+// Check code similarity
+router.post('/:id/check-code-similarity',
+  checkAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const { codeSnippet } = req.body;
+      if (!codeSnippet) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'codeSnippet is required' 
+        });
+      }
+
+      const result = await vectorEngineService.checkCodeSimilarity(
+        codeSnippet, 
+        req.params.id
+      );
+      res.json({ 
+        success: true, 
+        codeSimilarityCheck: result 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
+);
+
+// Get vector database stats
+router.get('/vector-db/stats',
+  checkAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const stats = await vectorEngineService.getDatabaseStats();
+      res.json({ 
+        success: true, 
+        stats 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
+);
+
+// Store question in vector database (manual trigger)
+router.post('/:id/store-in-vector-db',
+  checkAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const question = await controller.questionService.getQuestionById(req.params.id);
+      if (!question) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Question not found' 
+        });
+      }
+
+      const result = await vectorEngineService.storeQuestion(question);
+      res.json({ 
+        success: true, 
+        storageResult: result 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
+);
+
+// Delete question from vector database
+router.delete('/:id/delete-from-vector-db',
+  checkAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const result = await vectorEngineService.deleteQuestion(req.params.id);
+      res.json({ 
+        success: true, 
+        deletionResult: result 
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
+
+);
 // 404 handler
 router.use((req, res) => {
   console.log('❌ ROUTER 404 - No route matched:', req.method, req.url);
@@ -162,7 +335,6 @@ router.use((req, res) => {
 });
 
 
-
-console.log('✅ Question routes loaded successfully');
+console.log(' Question routes loaded successfully');
 
 export default router; 

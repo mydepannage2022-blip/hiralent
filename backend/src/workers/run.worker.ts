@@ -7,6 +7,7 @@ import { RunnerResultSchema, PlagiarismReportSchema } from '../validation/execut
 import { ZodError } from 'zod';
 import { runProcessed, runFailed, runDuration } from '../lib/metrics';
 import { setTimeout as wait } from 'node:timers/promises';
+import Redis from 'ioredis';
 import { Worker as BullWorker, QueueEvents } from 'bullmq';
 
 const prisma = new PrismaClient();
@@ -96,6 +97,28 @@ async function pollerMain() {
 
 async function bullWorkerMain() {
   const redisUrl = process.env.REDIS_URL!;
+  // wait for Redis readiness with retries to avoid immediate ioredis fatal errors
+  const maxAttempts = 10;
+  let connected = false;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const tmp = new Redis(redisUrl, { enableOfflineQueue: true });
+      // eslint-disable-next-line no-await-in-loop
+      await tmp.ping();
+      tmp.disconnect();
+      connected = true;
+      break;
+    } catch (e) {
+      const delay = Math.min(200 * attempt, 2000);
+      console.warn(`Redis not ready (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms`);
+      // eslint-disable-next-line no-await-in-loop
+      await wait(delay);
+    }
+  }
+  if (!connected) {
+    throw new Error('Unable to connect to Redis after multiple attempts');
+  }
+
   const w = new BullWorker('runs', async (job: any) => {
     await processOne(job.data);
   }, { connection: { url: redisUrl } });
@@ -124,3 +147,6 @@ if (require.main === module) {
     pollerMain().catch((e) => { console.error(e); process.exit(1); });
   }
 }
+
+// Export the in-memory poller so other dev scripts can reuse it (single-process dev mode)
+export { pollerMain };

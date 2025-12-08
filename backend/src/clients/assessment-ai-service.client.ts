@@ -11,42 +11,24 @@ const BASE = `${AI_BASE_URL}/api/v1`;
 
 // ============ JD PARSE TYPES (match FastAPI) ============
 
-// Pydantic: JDParseRequest
-// class JDParseRequest(BaseModel):
-//     job_description: str
-//     job_title: Optional[str] = None
 export interface JDParseApiRequest {
   job_description: string;
   job_title?: string;
 }
 
-// Pydantic: JDParseResponse
-// class JDParseResponse(BaseModel):
-//     analysis: SkillsAnalysis
-//     requirements: Dict[str, List[str]]
 export interface JDParseApiResponse {
   analysis: SkillsAnalysis;
-  requirements: Record<string, string[]>;
+  requirements: Record<string, any>; // v2 has structured object
 }
 
 // ============ CHATBOT TYPES (match FastAPI) ============
 
-// Pydantic: ChatbotStartRequest
-// class ChatbotStartRequest(BaseModel):
-//     company_id: str
-//     job_id: Optional[str] = None
-//     initial_data: Optional[Dict[str, Any]] = None
 export interface ChatbotStartApiRequest {
   company_id: string;
   job_id?: string;
   initial_data?: Record<string, any>;
 }
 
-// Pydantic: ChatbotResponse
-// class ChatbotResponse(BaseModel):
-//     session: ChatbotSession
-//     reply: str
-//     is_completed: bool = False
 export interface ChatbotApiResponse {
   session: ChatbotSession;
   reply: string;
@@ -92,8 +74,8 @@ export async function sendChatbotMessage(
   payload: { session_id: string; message: string }
 ): Promise<ChatbotApiResponse> {
   return safeFetch<ChatbotApiResponse>(`${BASE}/chatbot/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }

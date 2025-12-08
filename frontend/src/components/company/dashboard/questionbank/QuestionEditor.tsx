@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SimilaritySearch from './SimilaritySearch';
 import { 
   Save, 
   X, 
@@ -27,6 +28,7 @@ import {
   Circle,
   Check
 } from 'lucide-react';
+import { Query } from '@tanstack/react-query';
 
 interface Question {
   id: string;
@@ -455,6 +457,47 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       </div>
                     </div>
                   </div>
+{/* Similarity Search - ADD THIS SECTION */}
+<SimilaritySearch 
+  onSimilarityCheck={async (query) => {
+    try {
+      // You'll need to implement this API endpoint or use an existing one
+      const response = await fetch('http://localhost:5000/api/questions/check-similarity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth headers if needed
+        },
+        body: JSON.stringify({ 
+          text: query,
+          // You can also include the current question data for better comparison
+          currentQuestion: mode === 'edit' && question ? {
+            id: question.id,
+            title: formData.title,
+            description: formData.description,
+            problemStatement: formData.problemStatement
+          } : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Similarity check failed');
+      }
+      
+      return await response.json();
+    } catch (error: any) {
+      console.error('Similarity check error:', error);
+      return { 
+        success: false, 
+        error: error.message,
+        similar_questions_found: 0,
+        duplication_risk: 'unknown'
+      };
+    }
+  }}
+/>
+
+                  
                 </motion.div>
               )}
 
