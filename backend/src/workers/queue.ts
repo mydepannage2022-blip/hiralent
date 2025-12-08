@@ -15,15 +15,37 @@ async function tryInitRedisQueue() {
   const url = process.env.REDIS_URL;
   if (!url) return null;
 
-  // quick ping check to avoid creating long-lived clients when Redis is down
-  const tmp = new Redis(url, { connectTimeout: 1000, maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null });
+  // ping check with retries to avoid failing hard when Redis is starting
+  const tmp = new Redis(url, {
+    connectTimeout: 1000,
+    // allow offline queue so the client does not emit fatal errors while Redis starts
+    enableOfflineQueue: true,
+    maxRetriesPerRequest: null,
+    retryStrategy: (times) => Math.min(50 + times * 100, 2000),
+  });
   try {
-    await tmp.ping();
+    let ok = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await tmp.ping();
+        ok = true;
+        break;
+      } catch (err) {
+        // wait a short interval before retrying
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((res) => setTimeout(res, 500));
+      }
+    }
+    if (!ok) {
+      console.warn('Redis unreachable after retries — falling back to in-memory queue');
+      return null;
+    }
     // Redis reachable — create the bull queue
     const q = new Queue('runs', { connection: { url } });
     return q;
   } catch (e) {
-    console.warn('Redis unreachable — falling back to in-memory queue');
+    console.warn('Redis unreachable — falling back to in-memory queue', e);
     return null;
   } finally {
     try { tmp.disconnect(); } catch {}

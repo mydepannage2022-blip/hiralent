@@ -11,3 +11,4 @@ numpy
 pika
 redis
 pinecone-client
+

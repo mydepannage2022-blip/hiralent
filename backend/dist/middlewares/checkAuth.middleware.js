@@ -40,25 +40,17 @@ const checkAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({
-                error: true,
-                message: 'Access token required'
-            });
+            return res.status(401).json({ error: true, message: 'Access token required' });
         }
         const token = authHeader.substring(7);
-        const isBlacklisted = await blacklistService.isTokenBlacklisted(token);
+        // optional blacklist support
+        const isBlacklisted = await blacklistService.isTokenBlacklisted?.(token);
         if (isBlacklisted) {
-            return res.status(401).json({
-                error: true,
-                message: 'Session terminated. Please login again.'
-            });
+            return res.status(401).json({ error: true, message: 'Session terminated. Please login again.' });
         }
         const { payload, error, expired } = (0, jwt_util_1.verifyTokenWithDetails)(token);
         if (error || !payload) {
-            return res.status(401).json({
-                error: true,
-                message: expired ? 'Token expired' : 'Invalid token'
-            });
+            return res.status(401).json({ error: true, message: expired ? 'Token expired' : 'Invalid token' });
         }
         req.user = {
             user_id: payload.user_id,
@@ -67,17 +59,18 @@ const checkAuth = async (req, res, next) => {
             session_id: payload.session_id || 'bypass',
             is_email_verified: payload.is_email_verified,
             email: payload.email,
-            full_name: payload.full_name
+            full_name: payload.full_name,
+            company_id: payload.company_id ?? undefined, //  keep it on req.user
         };
-        console.log('✅ Auth successful for user:', payload.user_id);
+        // (Optional) Enforce for company routes at middleware level:
+        // if ((req.user.role === 'company' || req.user.role === 'company_admin') && !req.user.company_id) {
+        //   return res.status(400).json({ success: false, message: 'Missing company_id in auth token' });
+        // }
         next();
     }
     catch (error) {
         console.error('❌ Auth error:', error);
-        res.status(500).json({
-            error: true,
-            message: 'Authentication failed'
-        });
+        res.status(500).json({ error: true, message: 'Authentication failed' });
     }
 };
 exports.checkAuth = checkAuth;
@@ -85,42 +78,31 @@ const checkAuthLegacy = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({
-                error: true,
-                message: 'Access token required'
-            });
+            return res.status(401).json({ error: true, message: 'Access token required' });
         }
         const token = authHeader.substring(7);
         const { payload, error, expired } = (0, jwt_util_1.verifyTokenWithDetails)(token);
         if (error || !payload) {
-            return res.status(401).json({
-                error: true,
-                message: expired ? 'Token expired' : 'Invalid token'
-            });
+            return res.status(401).json({ error: true, message: expired ? 'Token expired' : 'Invalid token' });
         }
         req.user = {
             user_id: payload.user_id,
             role: payload.role,
             agency_id: payload.agency_id,
-            session_id: payload.session_id || 'unknown'
+            session_id: payload.session_id || 'unknown',
+            company_id: payload.company_id ?? undefined, //  keep it on legacy too
         };
         next();
     }
     catch (error) {
         console.error('Auth Legacy Middleware Error:', error);
-        res.status(500).json({
-            error: true,
-            message: 'Authentication failed'
-        });
+        res.status(500).json({ error: true, message: 'Authentication failed' });
     }
 };
 exports.checkAuthLegacy = checkAuthLegacy;
 const requireActiveSession = async (req, res, next) => {
     if (!req.user?.session_id || req.user.session_id === 'legacy') {
-        return res.status(401).json({
-            error: true,
-            message: 'Active session required. Please login again.'
-        });
+        return res.status(401).json({ error: true, message: 'Active session required. Please login again.' });
     }
     next();
 };
