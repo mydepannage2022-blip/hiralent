@@ -8,7 +8,6 @@ import {
   Edit,
   Trash2,
   Play,
-  Pause,
   Eye,
   Calendar,
   Building,
@@ -30,7 +29,8 @@ import {
   BarChart3,
   Layers,
 } from "lucide-react";
-
+import AssessmentQuestionsSummary from "./AssessmentQuestionsSummary";
+import AssessmentAnalyticsModal from "./AssessmentAnalyticsModal";
 import { useAuth } from "../../../../context/AuthContext";
 
 /* =============================
@@ -45,7 +45,10 @@ type EmployerAssessmentStatus =
   | "ARCHIVED"
   | "EXPIRED";
 
-type AssessmentCreationMethod = "JOB_DESCRIPTION_PARSE" | "CHATBOT_GUIDED" | "MANUAL";
+type AssessmentCreationMethod =
+  | "JOB_DESCRIPTION_PARSE"
+  | "CHATBOT_GUIDED"
+  | "MANUAL";
 
 type DifficultyLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
 
@@ -233,64 +236,64 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
     }
   };
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  if (
-    !formData.title.trim() ||
-    !formData.job_id ||
-    !formData.description.trim()
-  ) {
-    alert("Please fill all required fields (Job, Title, Description).");
-    return;
-  }
+    if (
+      !formData.title.trim() ||
+      !formData.job_id ||
+      !formData.description.trim()
+    ) {
+      alert("Please fill all required fields (Job, Title, Description).");
+      return;
+    }
 
-  const timeLimitNumber = Number(formData.time_limit);
-  const totalQuestionsNumber = Number(formData.total_questions);
-  const passingScoreNumber = Number(formData.passing_score);
+    const timeLimitNumber = Number(formData.time_limit);
+    const totalQuestionsNumber = Number(formData.total_questions);
+    const passingScoreNumber = Number(formData.passing_score);
 
-  if (
-    Number.isNaN(timeLimitNumber) ||
-    Number.isNaN(totalQuestionsNumber) ||
-    Number.isNaN(passingScoreNumber)
-  ) {
-    alert("Time limit, total questions and passing score must be numbers.");
-    return;
-  }
+    if (
+      Number.isNaN(timeLimitNumber) ||
+      Number.isNaN(totalQuestionsNumber) ||
+      Number.isNaN(passingScoreNumber)
+    ) {
+      alert("Time limit, total questions and passing score must be numbers.");
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const payload = {
-      job_id: formData.job_id,
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      assessment_type: formData.assessment_type,
-      skill_category: formData.skill_category.trim() || "General",
-      difficulty: formData.difficulty,
-      time_limit: timeLimitNumber,
-      total_questions: totalQuestionsNumber,
-      passing_score: passingScoreNumber,
-      extracted_skills: formData.extracted_skills,
-      status: formData.status,
-      question_ids: assessment?.question_ids || [], // Preserve existing questions
-      creation_method: "MANUAL" as AssessmentCreationMethod,
-      auto_generated: false,
-      settings: assessment?.settings || {}, // Preserve existing settings
-    };
+    setLoading(true);
+    try {
+      const payload = {
+        job_id: formData.job_id,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        assessment_type: formData.assessment_type,
+        skill_category: formData.skill_category.trim() || "General",
+        difficulty: formData.difficulty,
+        time_limit: timeLimitNumber,
+        total_questions: totalQuestionsNumber,
+        passing_score: passingScoreNumber,
+        extracted_skills: formData.extracted_skills,
+        status: formData.status,
+        question_ids: assessment?.question_ids || [], // Preserve existing questions
+        creation_method: "MANUAL" as AssessmentCreationMethod,
+        auto_generated: false,
+        settings: assessment?.settings || {}, // Preserve existing settings
+      };
 
-    await onSubmit(payload);
-    onClose();
-  } catch (err) {
-    console.error("Error submitting assessment:", err);
-    alert(
-      isEdit
-        ? "Failed to update assessment. Please try again."
-        : "Failed to create assessment. Please try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      await onSubmit(payload);
+      onClose();
+    } catch (err) {
+      console.error("Error submitting assessment:", err);
+      alert(
+        isEdit
+          ? "Failed to update assessment. Please try again."
+          : "Failed to create assessment. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!visible) return null;
 
@@ -468,7 +471,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   <option value="PAUSED">Paused</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="ARCHIVED">Archived</option>
-                  <option value="EXPIRED">Expired</option> {/* Added EXPIRED option */}
+                  <option value="EXPIRED">Expired</option>
                 </select>
               </div>
             </div>
@@ -833,7 +836,7 @@ const assessmentService = {
     }
 
     const json = await response.json();
-    return json; // shape handled in loadAll()
+    return json;
   },
 
   async create(token: string, payload: any) {
@@ -857,55 +860,58 @@ const assessmentService = {
     return response.json();
   },
 
-async update(token: string, assessment_id: string, payload: any) {
-  const API_BASE =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+  async update(token: string, assessment_id: string, payload: any) {
+    const API_BASE =
+      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
 
-  // Send ALL fields that should be updatable
-  const cleanPayload = {
-    assessment_id,
-    // Basic info
-    title: payload.title,
-    description: payload.description,
-    status: payload.status,
-    job_id: payload.job_id,
-    
-    // Assessment configuration
-    assessment_type: payload.assessment_type,
-    skill_category: payload.skill_category,
-    difficulty: payload.difficulty,
-    time_limit: payload.time_limit,
-    total_questions: payload.total_questions,
-    passing_score: payload.passing_score,
-    
-    // Skills and data
-    extracted_skills: payload.extracted_skills,
-    
-    // Settings
-    settings: payload.settings || {},
-  };
+    const cleanPayload = {
+      assessment_id,
+      // Basic info
+      title: payload.title,
+      description: payload.description,
+      status: payload.status,
+      job_id: payload.job_id,
 
-  console.log("Sending update payload:", cleanPayload); // Debug log
+      // Assessment configuration
+      assessment_type: payload.assessment_type,
+      skill_category: payload.skill_category,
+      difficulty: payload.difficulty,
+      time_limit: payload.time_limit,
+      total_questions: payload.total_questions,
+      passing_score: payload.passing_score,
 
-  const response = await fetch(`${API_BASE}/employer-assessments`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(cleanPayload),
-  });
+      // Skills and data
+      extracted_skills: payload.extracted_skills,
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Update failed:", errorText);
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
-  }
+      // Settings
+      settings: payload.settings || {},
+    };
 
-  return response.json();
-},
+    console.log("Sending update payload:", cleanPayload);
 
-  async updateStatus(token: string, assessment_id: string, status: EmployerAssessmentStatus) {
+    const response = await fetch(`${API_BASE}/employer-assessments`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(cleanPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Update failed:", errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  async updateStatus(
+    token: string,
+    assessment_id: string,
+    status: EmployerAssessmentStatus
+  ) {
     const API_BASE =
       process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
 
@@ -1010,7 +1016,22 @@ const AssessmentsManagement: React.FC = () => {
   const [editingAssessment, setEditingAssessment] =
     useState<EmployerAssessment | null>(null);
 
+  // Analytics modal state
+  const [analyticsAssessment, setAnalyticsAssessment] =
+    useState<EmployerAssessment | null>(null);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+
   const { token } = useAuth();
+
+  const openAnalytics = (assessment: EmployerAssessment) => {
+    setAnalyticsAssessment(assessment);
+    setShowAnalyticsModal(true);
+  };
+
+  const closeAnalytics = () => {
+    setShowAnalyticsModal(false);
+    setAnalyticsAssessment(null);
+  };
 
   const loadAll = async () => {
     if (!token) {
@@ -1137,14 +1158,20 @@ const AssessmentsManagement: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (assessment: EmployerAssessment, newStatus: EmployerAssessmentStatus) => {
+  const handleStatusChange = async (
+    assessment: EmployerAssessment,
+    newStatus: EmployerAssessmentStatus
+  ) => {
     if (!token) return;
 
     try {
-      await assessmentService.updateStatus(token, assessment.assessment_id, newStatus);
+      await assessmentService.updateStatus(
+        token,
+        assessment.assessment_id,
+        newStatus
+      );
       await loadAll();
-      
-      // Update selected assessment if it's the one being changed
+
       if (selectedAssessment?.assessment_id === assessment.assessment_id) {
         setSelectedAssessment({ ...assessment, status: newStatus });
       }
@@ -1246,7 +1273,7 @@ const AssessmentsManagement: React.FC = () => {
         }
       `}</style>
 
-      {/* Modal */}
+      {/* Create/Edit Modal */}
       <AnimatePresence>
         {modalMode && (
           <AssessmentFormModal
@@ -1383,7 +1410,9 @@ const AssessmentsManagement: React.FC = () => {
                 >
                   {s.value}
                 </motion.div>
-                <div className="text-xs text-[#0D2A5B]/70 mt-1">{s.label}</div>
+                <div className="text-xs text-[#0D2A5B]/70 mt-1">
+                  {s.label}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -1447,474 +1476,511 @@ const AssessmentsManagement: React.FC = () => {
             </motion.button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* ASSESSMENT LIST */}
-            <div className="lg:col-span-2">
-              <motion.div
-                className="flex items-center justify-between mb-4"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <h2 className="text-xl font-black text-[#0D2A5B] flex items-center gap-2">
-                  <Eye className="w-6 h-6 text-[#1B73E8]" />
-                  Assessments
-                </h2>
-                <motion.span
-                  className="px-3 py-1 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-full text-xs font-bold shadow-lg"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* ASSESSMENT LIST */}
+              <div className="lg:col-span-2">
+                <motion.div
+                  className="flex items-center justify-between mb-4"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
                 >
-                  {filteredAssessments.length} assessments
-                </motion.span>
-              </motion.div>
-
-              {/* Filters */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${panel} p-4 mb-6`}
-              >
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by assessment, job or skill category..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <select
-                    className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                  <h2 className="text-xl font-black text-[#0D2A5B] flex items-center gap-2">
+                    <Eye className="w-6 h-6 text-[#1B73E8]" />
+                    Assessments
+                  </h2>
+                  <motion.span
+                    className="px-3 py-1 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-full text-xs font-bold shadow-lg"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <option value="ALL">All Status</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="PAUSED">Paused</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="ARCHIVED">Archived</option>
-                    <option value="EXPIRED">Expired</option>
-                  </select>
-                </div>
-              </motion.div>
+                    {filteredAssessments.length} assessments
+                  </motion.span>
+                </motion.div>
 
-              {/* Assessments list as cards */}
-              <div className="space-y-4">
-                {paginatedAssessments.map((assessment, idx) => {
-                  const difficultyLabel =
-                    assessment.difficulty === "BEGINNER"
-                      ? "Beginner"
-                      : assessment.difficulty === "INTERMEDIATE"
-                      ? "Intermediate"
-                      : assessment.difficulty === "ADVANCED"
-                      ? "Advanced"
-                      : "Expert";
-
-                  const timeLabel = `${assessment.time_limit} min`;
-                  const questionsLabel = `${assessment.total_questions} Q`;
-                  const completion =
-                    assessment.completion_rate !== undefined &&
-                    assessment.completion_rate !== null
-                      ? `${assessment.completion_rate}% completed`
-                      : assessment.candidate_count
-                      ? `${assessment.candidate_count} candidates`
-                      : "No data yet";
-
-                  return (
-                    <motion.div
-                      key={assessment.assessment_id}
-                      initial={{ opacity: 0, y: 20, x: -20 }}
-                      animate={{ opacity: 1, y: 0, x: 0 }}
-                      transition={{ delay: idx * 0.08 }}
-                      whileHover={{ y: -5, x: 5, scale: 1.02 }}
-                      onClick={() => setSelectedAssessment(assessment)}
-                      className={`${panel} p-6 cursor-pointer border-2 transition-all duration-300 ${
-                        selectedAssessment?.assessment_id ===
-                        assessment.assessment_id
-                          ? "border-[#1B73E8] shadow-xl shadow-blue-200/50"
-                          : "border-transparent hover:border-blue-200 hover:shadow-lg"
-                      }`}
+                {/* Filters */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`${panel} p-4 mb-6`}
+                >
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by assessment, job or skill category..."
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <select
+                      className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Status pill */}
-                          <motion.span
-                            whileHover={{ scale: 1.1 }}
-                            className={`${pill} ${
-                              assessment.status === "ACTIVE"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : assessment.status === "DRAFT"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : assessment.status === "PAUSED"
-                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                                : assessment.status === "COMPLETED"
-                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                : assessment.status === "ARCHIVED"
-                                ? "bg-slate-50 text-slate-700 border-slate-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
-                          >
-                            {assessment.status}
-                          </motion.span>
+                      <option value="ALL">All Status</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="PAUSED">Paused</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="ARCHIVED">Archived</option>
+                      <option value="EXPIRED">Expired</option>
+                    </select>
+                  </div>
+                </motion.div>
 
-                          {/* Type pill */}
-                          <motion.span
-                            whileHover={{ scale: 1.1 }}
-                            className={`${pill} bg-blue-50 text-blue-700 border-blue-200`}
-                          >
-                            {assessment.assessment_type}
-                          </motion.span>
+                {/* Assessments list as cards */}
+                <div className="space-y-4">
+                  {paginatedAssessments.map((assessment, idx) => {
+                    const difficultyLabel =
+                      assessment.difficulty === "BEGINNER"
+                        ? "Beginner"
+                        : assessment.difficulty === "INTERMEDIATE"
+                        ? "Intermediate"
+                        : assessment.difficulty === "ADVANCED"
+                        ? "Advanced"
+                        : "Expert";
 
-                          {/* Difficulty pill */}
-                          <motion.span
-                            whileHover={{ scale: 1.1 }}
-                            className={`${pill} ${
-                              assessment.difficulty === "BEGINNER"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : assessment.difficulty === "INTERMEDIATE"
-                                ? "bg-sky-50 text-sky-700 border-sky-200"
-                                : assessment.difficulty === "ADVANCED"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-rose-50 text-rose-700 border-rose-200"
-                            }`}
-                          >
-                            {difficultyLabel} difficulty
-                          </motion.span>
+                    const timeLabel = `${assessment.time_limit} min`;
+                    const questionsLabel = `${assessment.total_questions} Q`;
+                    const completion =
+                      assessment.completion_rate !== undefined &&
+                      assessment.completion_rate !== null
+                        ? `${assessment.completion_rate}% completed`
+                        : assessment.candidate_count
+                        ? `${assessment.candidate_count} candidates`
+                        : "No data yet";
+
+                    return (
+                      <motion.div
+                        key={assessment.assessment_id}
+                        initial={{ opacity: 0, y: 20, x: -20 }}
+                        animate={{ opacity: 1, y: 0, x: 0 }}
+                        transition={{ delay: idx * 0.08 }}
+                        whileHover={{ y: -5, x: 5, scale: 1.02 }}
+                        onClick={() => setSelectedAssessment(assessment)}
+                        className={`${panel} p-6 cursor-pointer border-2 transition-all duration-300 ${
+                          selectedAssessment?.assessment_id ===
+                          assessment.assessment_id
+                            ? "border-[#1B73E8] shadow-xl shadow-blue-200/50"
+                            : "border-transparent hover:border-blue-200 hover:shadow-lg"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Status pill */}
+                            <motion.span
+                              whileHover={{ scale: 1.1 }}
+                              className={`${pill} ${
+                                assessment.status === "ACTIVE"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : assessment.status === "DRAFT"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : assessment.status === "PAUSED"
+                                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                  : assessment.status === "COMPLETED"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  : assessment.status === "ARCHIVED"
+                                  ? "bg-slate-50 text-slate-700 border-slate-200"
+                                  : "bg-red-50 text-red-700 border-red-200"
+                              }`}
+                            >
+                              {assessment.status}
+                            </motion.span>
+
+                            {/* Type pill */}
+                            <motion.span
+                              whileHover={{ scale: 1.1 }}
+                              className={`${pill} bg-blue-50 text-blue-700 border-blue-200`}
+                            >
+                              {assessment.assessment_type}
+                            </motion.span>
+
+                            {/* Difficulty pill */}
+                            <motion.span
+                              whileHover={{ scale: 1.1 }}
+                              className={`${pill} ${
+                                assessment.difficulty === "BEGINNER"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : assessment.difficulty === "INTERMEDIATE"
+                                  ? "bg-sky-50 text-sky-700 border-sky-200"
+                                  : assessment.difficulty === "ADVANCED"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
+                              }`}
+                            >
+                              {difficultyLabel} difficulty
+                            </motion.span>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            <span>
+                              {new Date(
+                                assessment.created_at
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Calendar className="w-3 h-3" />
-                          <span>
+                        <motion.h3
+                          className="text-[15.5px] font-extrabold text-[#142c52] leading-snug mb-1"
+                          whileHover={{ x: 5 }}
+                        >
+                          {assessment.title}
+                        </motion.h3>
+
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          {assessment.job?.title && (
+                            <div className="flex items-center gap-1">
+                              <Building className="w-4 h-4" />
+                              <span>{assessment.job.title}</span>
+                            </div>
+                          )}
+                          {assessment.skill_category && (
+                            <div className="flex items-center gap-1">
+                              <Layers className="w-4 h-4" />
+                              <span>{assessment.skill_category}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-[#2b3952]/80 line-clamp-2 mb-3">
+                          {assessment.description}
+                        </p>
+
+                        <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
+                          <div className="flex items-center gap-4">
+                            <span>
+                              <strong>{questionsLabel}</strong> · {timeLabel}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {completion}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <BarChart3 className="w-4 h-4 text-blue-500" />
+                            {assessment.creation_method ===
+                            "JOB_DESCRIPTION_PARSE"
+                              ? "From JD"
+                              : assessment.creation_method ===
+                                "CHATBOT_GUIDED"
+                              ? "Chatbot / guided flow"
+                              : "Manual creation"}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredAssessments.length}
+                  itemsPerPage={itemsPerPage}
+                />
+
+                {filteredAssessments.length === 0 && !loading && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`${panel} p-14 text-center`}
+                  >
+                    <motion.div
+                      className="w-24 h-24 bg-emerald-100 rounded-3xl border border-emerald-200 flex items-center justify-center mx-auto mb-4"
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <FileText className="w-10 h-10 text-emerald-600" />
+                    </motion.div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-2">
+                      No assessments yet
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Create a manual assessment to start evaluating
+                      candidates.
+                    </p>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleCreateAssessment}
+                      className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 mx-auto"
+                    >
+                      <Plus size={20} />
+                      Create First Assessment
+                    </motion.button>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* ASSESSMENT DETAILS / Right panel */}
+              <AnimatePresence mode="wait">
+                {selectedAssessment ? (
+                  <motion.div
+                    key={selectedAssessment.assessment_id}
+                    initial={{ opacity: 0, x: 30, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 30, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                    className={`${panel} p-6 sticky top-6 max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar`}
+                  >
+                    {/* Header */}
+                    <motion.div
+                      className="-m-6 mb-6 p-6 rounded-t-2xl bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] relative overflow-hidden"
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                    >
+                      <div className="relative">
+                        <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                          <Target className="w-6 h-6" />
+                          Assessment Details
+                        </h2>
+                        <p className="text-blue-100 text-sm mt-1">
+                          Manual assessment configuration
+                        </p>
+                      </div>
+                    </motion.div>
+
+                    {/* Title + basic info */}
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">
+                        {selectedAssessment.title}
+                      </h3>
+
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        {selectedAssessment.job?.title && (
+                          <div className="flex items-center gap-3">
+                            <Building className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-700">
+                              {selectedAssessment.job.title}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3">
+                          <Layers className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            {selectedAssessment.skill_category || "General"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Clock className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            {selectedAssessment.total_questions} questions ·{" "}
+                            {selectedAssessment.time_limit} min · Passing score{" "}
+                            {selectedAssessment.passing_score ?? 70}%
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            Created{" "}
                             {new Date(
-                              assessment.created_at
+                              selectedAssessment.created_at
                             ).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
+                    </motion.div>
 
-                      <motion.h3
-                        className="text-[15.5px] font-extrabold text-[#142c52] leading-snug mb-1"
-                        whileHover={{ x: 5 }}
-                      >
-                        {assessment.title}
-                      </motion.h3>
-
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                        {assessment.job?.title && (
-                          <div className="flex items-center gap-1">
-                            <Building className="w-4 h-4" />
-                            <span>{assessment.job.title}</span>
-                          </div>
-                        )}
-                        {assessment.skill_category && (
-                          <div className="flex items-center gap-1">
-                            <Layers className="w-4 h-4" />
-                            <span>{assessment.skill_category}</span>
-                          </div>
-                        )}
+                    {/* Description */}
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <motion.div
+                          className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"
+                          whileHover={{ rotate: 360, scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <FileText className="w-5 h-5 text-[#1B73E8]" />
+                        </motion.div>
+                        <h3 className="font-bold text-gray-900">
+                          Assessment Description
+                        </h3>
                       </div>
-
-                      <p className="text-sm text-[#2b3952]/80 line-clamp-2 mb-3">
-                        {assessment.description}
-                      </p>
-
-                      <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
-                        <div className="flex items-center gap-4">
-                          <span>
-                            <strong>{questionsLabel}</strong> · {timeLabel}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {completion}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <BarChart3 className="w-4 h-4 text-blue-500" />
-                          {assessment.creation_method ===
-                          "JOB_DESCRIPTION_PARSE"
-                            ? "From JD"
-                            : assessment.creation_method === "CHATBOT_GUIDED"
-                            ? "Chatbot / guided flow"
-                            : "Manual creation"}
-                        </div>
+                      <div className="rounded-xl p-4 border border-gray-200 bg-white">
+                        <ScrollShadow className="max-h-60 overflow-auto custom-scrollbar">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                            {selectedAssessment.description}
+                          </p>
+                        </ScrollShadow>
                       </div>
                     </motion.div>
-                  );
-                })}
-              </div>
 
-              {/* Pagination */}
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredAssessments.length}
-                itemsPerPage={itemsPerPage}
-              />
+                    {/* Skills */}
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <motion.div
+                          className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"
+                          whileHover={{ rotate: 360, scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <Target className="w-5 h-5 text-green-600" />
+                        </motion.div>
+                        <h3 className="font-bold text-gray-900">
+                          Skills to Assess
+                        </h3>
+                        <motion.span
+                          className="ml-auto px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          {(selectedAssessment.extracted_skills || []).length}
+                        </motion.span>
+                      </div>
 
-              {filteredAssessments.length === 0 && !loading && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`${panel} p-14 text-center`}
-                >
-                  <motion.div
-                    className="w-24 h-24 bg-emerald-100 rounded-3xl border border-emerald-200 flex items-center justify-center mx-auto mb-4"
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <FileText className="w-10 h-10 text-emerald-600" />
-                  </motion.div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-2">
-                    No assessments yet
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Create a manual assessment to start evaluating candidates.
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleCreateAssessment}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={20} />
-                    Create First Assessment
-                  </motion.button>
-                </motion.div>
-              )}
-            </div>
-
-            {/* ASSESSMENT DETAILS / Right panel */}
-            <AnimatePresence mode="wait">
-              {selectedAssessment ? (
-                <motion.div
-                  key={selectedAssessment.assessment_id}
-                  initial={{ opacity: 0, x: 30, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: 30, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${panel} p-6 sticky top-6 max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar`}
-                >
-                  {/* Header */}
-                  <motion.div
-                    className="-m-6 mb-6 p-6 rounded-t-2xl bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] relative overflow-hidden"
-                    initial={{ y: -20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                  >
-                    <div className="relative">
-                      <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                        <Target className="w-6 h-6" />
-                        Assessment Details
-                      </h2>
-                      <p className="text-blue-100 text-sm mt-1">
-                        Manual assessment configuration
-                      </p>
-                    </div>
-                  </motion.div>
-
-                  {/* Title + basic info */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
-                      {selectedAssessment.title}
-                    </h3>
-
-                    <div className="grid grid-cols-1 gap-3 text-sm">
-                      {selectedAssessment.job?.title && (
-                        <div className="flex items-center gap-3">
-                          <Building className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-700">
-                            {selectedAssessment.job.title}
-                          </span>
+                      {!selectedAssessment.extracted_skills ||
+                      selectedAssessment.extracted_skills.length === 0 ? (
+                        <div className="rounded-xl p-4 border border-gray-200 bg-gray-50 text-center">
+                          <p className="text-sm text-gray-600">
+                            No skills specified yet. Edit this assessment to add
+                            skills.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedAssessment.extracted_skills || []).map(
+                            (skill, i) => (
+                              <motion.span
+                                key={skill}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.05 }}
+                                whileHover={{ scale: 1.1, y: -2 }}
+                                className="px-3 py-2 bg-blue-50 text-[#1B73E8] rounded-lg text-sm font-medium border border-blue-100"
+                              >
+                                {skill}
+                              </motion.span>
+                            )
+                          )}
                         </div>
                       )}
+                    </motion.div>
 
-                      <div className="flex items-center gap-3">
-                        <Layers className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700">
-                          {selectedAssessment.skill_category || "General"}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700">
-                          {selectedAssessment.total_questions} questions ·{" "}
-                          {selectedAssessment.time_limit} min · Passing score{" "}
-                          {selectedAssessment.passing_score ?? 70}%
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700">
-                          Created{" "}
-                          {new Date(
-                            selectedAssessment.created_at
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  {/* Description */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
+                    {/* Questions summary + generator */}
+                    {token && (
                       <motion.div
-                        className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"
-                        whileHover={{ rotate: 360, scale: 1.1 }}
-                        transition={{ duration: 0.5 }}
+                        className="mb-6"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
                       >
-                        <FileText className="w-5 h-5 text-[#1B73E8]" />
+                        <AssessmentQuestionsSummary
+                          token={token}
+                          assessment={selectedAssessment}
+                          onAfterGenerate={loadAll}
+                        />
                       </motion.div>
-                      <h3 className="font-bold text-gray-900">
-                        Assessment Description
-                      </h3>
-                    </div>
-                    <div className="rounded-xl p-4 border border-gray-200 bg-white">
-                      <ScrollShadow className="max-h-60 overflow-auto custom-scrollbar">
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                          {selectedAssessment.description}
-                        </p>
-                      </ScrollShadow>
-                    </div>
-                  </motion.div>
-
-                  {/* Skills */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <motion.div
-                        className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"
-                        whileHover={{ rotate: 360, scale: 1.1 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Target className="w-5 h-5 text-green-600" />
-                      </motion.div>
-                      <h3 className="font-bold text-gray-900">
-                        Skills to Assess
-                      </h3>
-                      <motion.span
-                        className="ml-auto px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        {(selectedAssessment.extracted_skills || []).length}
-                      </motion.span>
-                    </div>
-
-                    {!selectedAssessment.extracted_skills || selectedAssessment.extracted_skills.length === 0 ? (
-                      <div className="rounded-xl p-4 border border-gray-200 bg-gray-50 text-center">
-                        <p className="text-sm text-gray-600">
-                          No skills specified yet. Edit this assessment to add
-                          skills.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {(selectedAssessment.extracted_skills || []).map((skill, i) => (
-                          <motion.span
-                            key={skill}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.05 }}
-                            whileHover={{ scale: 1.1, y: -2 }}
-                            className="px-3 py-2 bg-blue-50 text-[#1B73E8] rounded-lg text-sm font-medium border border-blue-100"
-                          >
-                            {skill}
-                          </motion.span>
-                        ))}
-                      </div>
                     )}
-                  </motion.div>
 
-                  {/* Actions */}
-                  <motion.div
-                    className="flex flex-col gap-3 pt-4 border-t border-gray-200"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                  >
-
-                    <motion.button
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-200"
+                    {/* Actions */}
+                    <motion.div
+                      className="flex flex-col gap-3 pt-4 border-t border-gray-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
                     >
-                      <BarChart3 className="w-5 h-5" />
-                      View Analytics
-                    </motion.button>
+                      <div className="grid grid-cols-3 gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() =>
+                            handleEditAssessment(selectedAssessment)
+                          }
+                          className="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </motion.button>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleEditAssessment(selectedAssessment)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edit
-                      </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleDelete(selectedAssessment)}
+                          className="bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </motion.button>
 
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleDelete(selectedAssessment)}
-                        className="bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </motion.button>
-                    </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => openAnalytics(selectedAssessment)}
+                          className="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          Analytics
+                        </motion.button>
+                      </div>
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`${panel} p-10 text-center sticky top-6`}
-                >
+                ) : (
                   <motion.div
-                    className="relative w-20 h-20 mx-auto mb-4"
-                    animate={{
-                      rotate: [0, 10, -10, 0],
-                      scale: [1, 1.1, 1],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`${panel} p-10 text-center sticky top-6`}
                   >
-                    <Layers className="w-20 h-20 text-[#1B73E8] mx-auto" />
+                    <motion.div
+                      className="relative w-20 h-20 mx-auto mb-4"
+                      animate={{
+                        rotate: [0, 10, -10, 0],
+                        scale: [1, 1.1, 1],
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <Layers className="w-20 h-20 text-[#1B73E8] mx-auto" />
+                    </motion.div>
+                    <h3 className="text-xl font-bold text-[#0D2A5B] mb-1">
+                      Assessment builder
+                    </h3>
+                    <p className="text-[#29406e] text-sm mb-4">
+                      Select an assessment on the left to review its
+                      configuration...
+                    </p>
                   </motion.div>
-                  <h3 className="text-xl font-bold text-[#0D2A5B] mb-1">
-                    Assessment builder
-                  </h3>
-                  <p className="text-[#29406e] text-sm mb-4">
-                    Select an assessment on the left to review its
-                    configuration...
-                  </p>
-                </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Analytics Modal – separate from list container */}
+            <AnimatePresence>
+              {showAnalyticsModal && analyticsAssessment && token && (
+                <AssessmentAnalyticsModal
+                  key={analyticsAssessment.assessment_id}
+                  token={token}
+                  assessment={analyticsAssessment}
+                  onClose={closeAnalytics}
+                />
               )}
             </AnimatePresence>
-          </div>
+          </>
         )}
 
         {/* Floating "New Assessment" Button */}

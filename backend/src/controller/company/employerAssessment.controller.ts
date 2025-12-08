@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import EmployerAssessmentService from '../../services/company/employerAssessment.service';
-import { attachQuestionsToAssessment } from '../../services/company/assessmentQuestion.service'; // 👈 ADD THIS
+import { attachQuestionsToAssessment,getQuestionsForAssessment } from '../../services/company/assessmentQuestion.service'; // 👈 ADD THIS
 import type { AuthUser } from '../../types/express.d';
 
 // Local helper type: an Express Request that definitely has a user
@@ -98,13 +98,34 @@ export const generateQuestionsForAssessment = asyncHandler(
     // 1) Make sure assessment belongs to this company
     await EmployerAssessmentService.getById(company_id, assessment_id);
 
-    // 2) Call service that talks to Wafaa’s question bank
+    // 2) Generate + attach
     const result = await attachQuestionsToAssessment(assessment_id);
 
     res.status(200).json({
       status: 'ok',
       message: 'Questions attached successfully',
-      result,
+      result, // { assessment_id, question_count, questions: [...] }
+    });
+  },
+);
+
+// GET /api/employer-assessments/:assessment_id/questions
+export const listAssessmentQuestions = asyncHandler(
+  async (req: AuthedReq, res: Response) => {
+    const company_id = req.user.user_id;
+    const { assessment_id } = req.params as { assessment_id: string };
+
+    // Ensure ownership
+    await EmployerAssessmentService.getById(company_id, assessment_id);
+
+    const questions = await getQuestionsForAssessment(assessment_id);
+
+    res.json({
+      status: 'ok',
+      result: {
+        assessment_id,
+        questions,
+      },
     });
   },
 );
