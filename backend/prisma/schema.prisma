@@ -200,6 +200,11 @@ model Question {
   correctAnswer     String?
   explanation       String?
 
+  // ADD VECTOR ENGINE FIELDS
+  vectorStored      Boolean @default(false)  // Track if stored in vector DB
+  vectorId          String?                  // Reference to vector DB ID
+  embeddingHash     String?                  // Hash of embedding for cache
+
   status      String   // draft, pending_review, approved, rejected
   createdBy   String?  // user ID who created/generated
   aiGenerated Boolean  @default(false)

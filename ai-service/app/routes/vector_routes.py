@@ -141,3 +141,45 @@ async def delete_question_embedding(question_id: str):
     except Exception as e:
         logger.error(f"Question deletion API error: {e}")
         raise HTTPException(status_code=500, detail=f"Question deletion failed: {str(e)}")
+    
+@router.get("/all-questions")
+async def get_all_stored_questions():
+    """
+    Get all questions stored in the vector database
+    """
+    try:
+        all_questions = similarity_engine.get_all_stored_questions()
+        
+        return {
+            "success": True,
+            "total_questions": len(all_questions),
+            "questions": all_questions,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get all questions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve questions: {str(e)}")
+
+@router.get("/question/{question_id}")
+async def get_question_by_id(question_id: str):
+    """
+    Get a specific question by ID from vector database
+    """
+    try:
+        question = similarity_engine.get_question_by_id(question_id)
+        
+        if not question:
+            raise HTTPException(status_code=404, detail=f"Question {question_id} not found")
+        
+        return {
+            "success": True,
+            "question": question,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get question {question_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve question: {str(e)}")

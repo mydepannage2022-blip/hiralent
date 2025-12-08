@@ -1,6 +1,6 @@
 # ai-service/vector_engine/similarity_search.py
 import numpy as np
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import logging
 from .embeddings import EmbeddingGenerator
 from .vector_store import VectorStore
@@ -172,3 +172,10 @@ class SimilaritySearchEngine:
         except Exception as e:
             logger.error(f"Failed to store question for future comparison: {e}")
             return False
+    def get_all_stored_questions(self) -> List[Dict[str, Any]]:
+     """Get all questions stored in the vector database"""
+     return self.vector_store.get_all_questions()
+
+    def get_question_by_id(self, question_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific question by ID from vector database"""
+        return self.vector_store.get_question_by_id(question_id)
