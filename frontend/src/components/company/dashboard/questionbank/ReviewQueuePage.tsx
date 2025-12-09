@@ -35,6 +35,13 @@ import { useAuth } from "../../../../context/AuthContext";
    Types
 ============================= */
 interface TestCase { input: string; output: string }
+interface VettingResult {
+  status: "APPROVED" | "REJECTED" | "NEEDS_REVIEW" | string;
+  score: number;
+  reason?: string;
+  issues?: string[];
+}
+
 interface Question {
   id: string;
   title: string;
@@ -60,6 +67,14 @@ interface Question {
   };
   correctAnswer?: string;
   explanation?: string;
+  views?: number;
+  submissions?: number;
+  successRate?: number;
+  vectorStored?: boolean;
+  vectorId?: string;
+
+  //  NEW: last vetting result kept client-side
+  lastVetting?: VettingResult;
 }
 
 /* =============================
@@ -288,6 +303,7 @@ const ReviewQueuePage: React.FC = () => {
 
   // test cases show-all toggle (default show 2)
   const [showAllTC, setShowAllTC] = useState(false);
+  
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",

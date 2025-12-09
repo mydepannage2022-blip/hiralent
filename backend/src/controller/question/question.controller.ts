@@ -20,6 +20,7 @@ import {
   VariabilityAnalysisResponse
 
 } from '../../types/question.types';
+import { vettingService, VettingQuestionPayload } from '../../services/question/vetting.service';
 import { vectorEngineService } from '../../services/question/vectorEngine.service';
 export class QuestionController {
   public questionService: QuestionService;
@@ -2101,6 +2102,175 @@ async checkVariationEngineHealth(req: Request, res: Response) {
     });
   }
 }
+
+//methode de vetting
+
+  // POST /api/questions/:id/vet
+  async vetQuestionById(req: Request, res: Response): Promise<void> {
+    console.log('🧪 [CONTROLLER] vetQuestionById called with id:', req.params.id);
+
+    try {
+      const { id } = req.params;
+
+      // 1️⃣ Récupérer la question
+      const question = await this.questionService.getQuestionById(id);
+      if (!question) {
+        res.status(404).json({
+          success: false,
+          error: 'Question not found',
+        });
+        return;
+      }
+
+      // 2️⃣ Mapper vers le format attendu par le service Python
+      const payload = this.mapToVettingPayload(question);
+
+      // 3️⃣ Appeler le service de vetting Python
+      const vettingResponse = await vettingService.vetSingleQuestion(payload);
+      const result = vettingResponse.result || vettingResponse;
+
+      // 4️⃣ Mettre à jour le status en base
+      let newStatus = question.status;
+      if (result.status === 'APPROVED') newStatus = 'approved';
+      else if (result.status === 'REJECTED') newStatus = 'rejected';
+
+      const updated = await this.questionService.updateQuestion(id, {
+        status: newStatus,
+        // ici tu pourras plus tard stocker vettingScore, vettingMetadata, etc.
+      });
+
+      // 5️⃣ Réponse API
+      res.json({
+        success: true,
+        message: `Question vetted with status: ${result.status}`,
+        vetting: result,
+        question: updated,
+      });
+    } catch (error: any) {
+      console.error('❌ [CONTROLLER] vetQuestionById ERROR:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to vet question',
+        details: error.message,
+      });
+    }
+  }
+
+  // POST /api/questions/vetting/batch
+  // Body: { ids: ["id1", "id2", ...] }
+  async vetBatchQuestions(req: Request, res: Response): Promise<void> {
+    console.log('🧪 [CONTROLLER] vetBatchQuestions called');
+
+    try {
+      const { ids } = req.body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Question IDs array required',
+        });
+        return;
+      }
+
+      const results: any[] = [];
+      const updatedQuestions: any[] = [];
+      const errors: Array<{ id: string; error: string }> = [];
+
+      for (const id of ids) {
+        try {
+          const question = await this.questionService.getQuestionById(id);
+          if (!question) {
+            errors.push({ id, error: 'Question not found' });
+            continue;
+          }
+
+          const payload = this.mapToVettingPayload(question);
+          const vettingResponse = await vettingService.vetSingleQuestion(payload);
+          const result = vettingResponse.result || vettingResponse;
+
+          let newStatus = question.status;
+          if (result.status === 'APPROVED') newStatus = 'approved';
+          else if (result.status === 'REJECTED') newStatus = 'rejected';
+
+          const updated = await this.questionService.updateQuestion(id, {
+            status: newStatus,
+          });
+
+          results.push({ id, vetting: result });
+          updatedQuestions.push(updated);
+        } catch (e: any) {
+          console.error(`❌ [CONTROLLER] Error vetting question ${id}:`, e.message);
+          errors.push({ id, error: e.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Vetting completed for ${ids.length} questions`,
+        vetted_count: updatedQuestions.length,
+        results,
+        questions: updatedQuestions,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      console.error('❌ [CONTROLLER] vetBatchQuestions ERROR:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to vet batch questions',
+        details: error.message,
+      });
+    }
+  }
+
+  //  Convertit une question Prisma vers le format attendu par le service de vetting Python
+  private mapToVettingPayload(dbQuestion: any): VettingQuestionPayload {
+    const testCases = dbQuestion.testCases;
+
+    const mappedTestCases = this.mapTestCasesForVetting(testCases);
+
+    return {
+      id: dbQuestion.id,
+      problem_statement: dbQuestion.problemStatement,
+      canonical_solution: dbQuestion.canonicalSolution,
+      language: (dbQuestion as any).language || 'python', // défaut: python
+      test_cases: mappedTestCases,
+    };
+  }
+
+  // Normalise les test cases stockés en JSON vers [{ input, expected_output }]
+  private mapTestCasesForVetting(testCases: any): Array<{ input: string; expected_output: string }> {
+    if (!testCases) return [];
+
+    // Cas 1 : déjà un tableau [{ input, output/expected_output }]
+    if (Array.isArray(testCases)) {
+      return testCases
+        .filter((tc: any) => tc && tc.input !== undefined)
+        .map((tc: any) => ({
+          input: String(tc.input),
+          expected_output: String(tc.expected_output ?? tc.output ?? ''),
+        }))
+        .filter(tc => tc.expected_output !== '');
+    }
+
+    // Cas 2 : objet avec inputs / outputs (ton ancien format)
+    if (typeof testCases === 'object' && testCases.inputs && testCases.outputs) {
+      const inputs = Array.isArray(testCases.inputs) ? testCases.inputs : [];
+      const outputs = Array.isArray(testCases.outputs) ? testCases.outputs : [];
+      const len = Math.min(inputs.length, outputs.length);
+
+      const result: Array<{ input: string; expected_output: string }> = [];
+      for (let i = 0; i < len; i++) {
+        result.push({
+          input: String(inputs[i]),
+          expected_output: String(outputs[i]),
+        });
+      }
+      return result;
+    }
+
+    // Fallback : rien d’exploitable
+    return [];
+  }
 
 
 

@@ -4,6 +4,7 @@ import { checkAIServiceAvailable } from '../../middlewares/ai-service-check.midd
 import { validateBatchGeneration } from '../../middlewares/question.validation.middleware';
 import { vectorEngineService } from '../../../src/services/question/vectorEngine.service';
 import express, { Request, Response } from 'express'; 
+import { vettingService } from '../../services/question/vetting.service';
 
 const router = express.Router();
 const controller = new QuestionController();
@@ -325,6 +326,40 @@ router.delete('/:id/delete-from-vector-db',
   }
 
 );
+// ========== VETTING ENGINE ROUTES ==========
+
+// Health check vetting
+router.get('/vetting/health', async (req: Request, res: Response) => {
+  try {
+    const health = await vettingService.healthCheck();
+    res.json({
+      success: true,
+      vetting: health,
+      config: {
+        vettingServiceUrl: process.env.AI_VETTING_URL,
+      },
+    });
+  } catch (error: any) {
+    res.status(503).json({
+      success: false,
+      error: 'Vetting service unavailable',
+      details: error.message,
+    });
+  }
+});
+
+// Vetter une question par ID
+router.post('/:id/vet',
+  checkAuth,
+  controller.vetQuestionById.bind(controller)
+);
+
+// Vetter un batch (liste d’IDs)
+router.post('/vetting/batch',
+  checkAuth,
+  controller.vetBatchQuestions.bind(controller)
+);
+
 // 404 handler
 router.use((req, res) => {
   console.log('❌ ROUTER 404 - No route matched:', req.method, req.url);

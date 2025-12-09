@@ -23,14 +23,14 @@ const generateTokenLegacy = (userId, role, agencyId) => {
     }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 exports.generateTokenLegacy = generateTokenLegacy;
-// Generate token for login (includes session_id)
-const generateTokenWithSession = (userId, role, sessionId, agencyId, deviceHash) => {
+const generateTokenWithSession = (userId, role, sessionId, agencyId, deviceHash, companyId) => {
     return jsonwebtoken_1.default.sign({
         user_id: userId,
         role,
         session_id: sessionId,
         ...(agencyId && { agency_id: agencyId }),
-        ...(deviceHash && { device_hash: deviceHash })
+        ...(deviceHash && { device_hash: deviceHash }),
+        ...(companyId && { company_id: companyId }) // ✅
     }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 exports.generateTokenWithSession = generateTokenWithSession;
