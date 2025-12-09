@@ -839,14 +839,58 @@ const VettingResultsModal: React.FC<{
 }> = ({ open, onClose, result, isBatch = false }) => {
   if (!open) return null;
 
-  const isSuccess = isBatch ? result.success : result.vetting?.status === 'APPROVED';
-  const score = result.vetting?.overall_score || 0;
-
+  // Parse the actual backend response structure
+  const vettingData = result?.vetting || {};
+  
+  // Get status from the actual backend response
+  const status = vettingData.status || result.status || 'UNKNOWN';
+  const isSuccess = status.toUpperCase() === 'APPROVED';
+  
+  // Get quality score (backend returns 0-1, convert to 0-100)
+  const qualityScore = vettingData.quality_score || 0;
+  const score = Math.round(qualityScore * 100);
+  
+  // Parse static validation results
+  const staticValidation = vettingData.static_validation || {};
+  const sandboxResult = vettingData.sandbox_result || {};
+  
+  // Get issues and recommendations
+  const issues = staticValidation.issues || [];
+  const recommendation = vettingData.recommendation || '';
+  const hasErrors = vettingData.metadata?.has_errors || false;
+  
+  // Build check items from actual backend data
   const checkItems = [
-    { key: 'syntax_check', label: 'Syntax', Icon: Code2 },
-    { key: 'logic_validation', label: 'Logic', Icon: Zap },
-    { key: 'test_case_validation', label: 'Test Cases', Icon: FileText },
-    { key: 'security_check', label: 'Security', Icon: Shield }
+    {
+      key: 'static_validation',
+      label: 'Static Validation',
+      Icon: Code2,
+      status: staticValidation.is_valid ? 'PASSED' : 'FAILED',
+      message: staticValidation.is_valid ? `Quality: ${(staticValidation.quality_score * 100).toFixed(0)}%` : 'Validation failed'
+    },
+    {
+      key: 'sandbox_test',
+      label: 'Sandbox Execution',
+      Icon: Zap,
+      status: sandboxResult.all_passed ? 'PASSED' : 'FAILED',
+      message: sandboxResult.all_passed 
+        ? `All ${sandboxResult.test_results?.length || 0} tests passed (${(sandboxResult.execution_time * 1000).toFixed(2)}ms)`
+        : `${sandboxResult.test_results?.filter((t: any) => !t.passed).length || 0} tests failed`
+    },
+    {
+      key: 'test_cases',
+      label: 'Test Cases',
+      Icon: FileText,
+      status: sandboxResult.all_passed ? 'PASSED' : 'FAILED',
+      message: `${sandboxResult.test_results?.filter((t: any) => t.passed).length || 0}/${sandboxResult.test_results?.length || 0} passed`
+    },
+    {
+      key: 'security',
+      label: 'Security',
+      Icon: Shield,
+      status: hasErrors ? 'FAILED' : 'PASSED',
+      message: hasErrors ? 'Security issues detected' : 'No security issues'
+    }
   ] as const;
 
   return (
@@ -860,8 +904,9 @@ const VettingResultsModal: React.FC<{
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`${panel} relative w-full max-w-md overflow-hidden`}
+        className={`${panel} relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col`}
       >
+        {/* Header */}
         <div className={`px-5 py-4 ${isSuccess ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'} text-white`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -874,10 +919,10 @@ const VettingResultsModal: React.FC<{
               </div>
               <div>
                 <h3 className="text-base font-bold">
-                  {isSuccess ? 'Vetting Complete' : 'Vetting Failed'}
+                  {isSuccess ? '✓ Vetting Passed' : '✗ Vetting Failed'}
                 </h3>
                 <p className="text-[10px] text-white/90">
-                  {isBatch ? 'Batch analysis' : 'Single question'}
+                  {isBatch ? `${result?.total || 0} questions analyzed` : 'Single question analysis'}
                 </p>
               </div>
             </div>
@@ -887,68 +932,176 @@ const VettingResultsModal: React.FC<{
           </div>
         </div>
 
-        <div className="px-5 py-4">
+        {/* Body */}
+        <div className="px-5 py-4 overflow-y-auto flex-1">
           {isBatch ? (
+            // Batch results
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-black text-[#1B73E8]">{result.total || 0}</div>
+                  <div className="text-2xl font-black text-[#1B73E8]">{result?.total || 0}</div>
                   <div className="text-[9px] text-gray-600 mt-1">Total</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-2xl font-black text-green-600">{result.vetted_count || 0}</div>
-                  <div className="text-[9px] text-gray-600 mt-1">Vetted</div>
+                  <div className="text-2xl font-black text-green-600">{result?.vetted_count || 0}</div>
+                  <div className="text-[9px] text-gray-600 mt-1">Passed</div>
                 </div>
                 <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="text-2xl font-black text-red-600">{result.errors?.length || 0}</div>
-                  <div className="text-[9px] text-gray-600 mt-1">Errors</div>
+                  <div className="text-2xl font-black text-red-600">{result?.errors?.length || 0}</div>
+                  <div className="text-[9px] text-gray-600 mt-1">Failed</div>
                 </div>
               </div>
               
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-[11px] text-green-900">
-                  Questions have been updated with vetting results.
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-[11px] text-blue-900">
+                  All questions have been updated with vetting results.
                 </p>
               </div>
             </div>
           ) : (
+            // Single question results
             <div className="space-y-3">
+              {/* Overall Score */}
               <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-[#1B73E8]">
                 <div>
-                  <div className="text-[10px] text-gray-600 font-semibold mb-1">Overall Score</div>
+                  <div className="text-[10px] text-gray-600 font-semibold mb-1">Quality Score</div>
                   <div className="text-3xl font-black text-[#1B73E8]">{score}/100</div>
+                  <div className="text-[9px] text-gray-500 mt-1">
+                    Difficulty: {vettingData.difficulty || 'N/A'}
+                  </div>
                 </div>
-                <div className={`px-4 py-2 rounded-lg ${isSuccess ? 'bg-green-500' : 'bg-red-500'} text-white font-bold text-sm`}>
-                  {result.vetting?.status}
+                <div className={`px-4 py-2 rounded-lg ${isSuccess ? 'bg-green-500' : 'bg-red-500'} text-white font-bold text-sm shadow-lg`}>
+                  {status}
                 </div>
               </div>
 
+              {/* Recommendation Badge */}
+              {recommendation && (
+                <div className={`p-3 rounded-lg border-2 ${
+                  recommendation === 'APPROVE' 
+                    ? 'bg-green-50 border-green-300' 
+                    : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <Award className={`w-4 h-4 ${recommendation === 'APPROVE' ? 'text-green-600' : 'text-red-600'}`} />
+                    <span className={`text-xs font-bold ${recommendation === 'APPROVE' ? 'text-green-900' : 'text-red-900'}`}>
+                      Recommendation: {recommendation}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Individual Checks */}
               <div className="space-y-2">
+                <div className="text-xs font-bold text-gray-700 mb-2">Detailed Analysis:</div>
                 {checkItems.map((check) => {
-                  const status = result.vetting?.[check.key]?.status || 'N/A';
-                  const isPassed = status === 'PASSED';
+                  const isPassed = check.status === 'PASSED';
                   const IconComponent = check.Icon;
                   
                   return (
-                    <div key={check.key} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="w-4 h-4 text-gray-600" />
-                        <span className="text-[11px] font-medium text-gray-700">{check.label}</span>
+                    <div key={check.key} className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <IconComponent className={`w-4 h-4 ${isPassed ? 'text-green-600' : 'text-red-600'}`} />
+                          <span className="text-[11px] font-medium text-gray-700">{check.label}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          isPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {check.status}
+                        </span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isPassed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {status}
-                      </span>
+                      
+                      {/* Show check details */}
+                      {check.message && (
+                        <div className={`mt-1.5 text-[10px] rounded px-2 py-1 ${
+                          isPassed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                        }`}>
+                          {check.message}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              {result.vetting?.issues && result.vetting.issues.length > 0 && (
+              {/* Test Results Details (if failed) */}
+              {!sandboxResult.all_passed && sandboxResult.test_results && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-bold text-red-900">Failed Test Cases</span>
+                  </div>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {sandboxResult.test_results
+                      .map((test: any, idx: number) => ({ test, idx }))
+                      .filter(({ test }: any) => !test.passed)
+                      .map(({ test, idx }: any) => (
+                        <div key={idx} className="flex items-start gap-2">
+                          <div className="w-1 h-1 bg-red-600 rounded-full mt-1.5 flex-shrink-0" />
+                          <span className="text-[10px] text-red-700 leading-relaxed">
+                            Test {idx + 1}: {test.error_message || 'Failed'}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Issues List */}
+              {issues.length > 0 && (
                 <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    <span className="text-[11px] font-bold text-amber-900">
-                      {result.vetting.issues.length} Issue{result.vetting.issues.length > 1 ? 's' : ''} Found
+                    <span className="text-xs font-bold text-amber-900">
+                      {issues.length} Issue{issues.length > 1 ? 's' : ''} Found
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {issues.map((issue: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-amber-600 rounded-full mt-1.5 flex-shrink-0" />
+                        <span className="text-[10px] text-amber-900 leading-relaxed">
+                          {typeof issue === 'string' ? issue : issue.message || 'Unknown issue'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Metadata Info */}
+              {vettingData.metadata && (
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div>
+                      <span className="text-gray-600">Cached:</span>
+                      <span className="ml-1 font-semibold text-gray-900">
+                        {vettingData.metadata.cached ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Sandbox:</span>
+                      <span className="ml-1 font-semibold text-gray-900">
+                        {vettingData.metadata.sandbox_tested ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                  {vettingData.processed_at && (
+                    <div className="mt-2 text-[9px] text-gray-500">
+                      Processed: {new Date(vettingData.processed_at).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {isSuccess && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-[11px] font-bold text-green-900">
+                      Question approved and ready for use!
                     </span>
                   </div>
                 </div>
@@ -957,12 +1110,17 @@ const VettingResultsModal: React.FC<{
           )}
         </div>
 
+        {/* Footer */}
         <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-[#1B73E8] hover:bg-[#1557B0] text-white text-[11px] font-semibold shadow transition-all"
+            className={`px-4 py-2 rounded-lg ${
+              isSuccess 
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700' 
+                : 'bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1]'
+            } text-white text-[11px] font-semibold shadow-md transition-all`}
           >
-            Close
+            {isSuccess ? '✓ Close' : 'Close'}
           </button>
         </div>
       </motion.div>
@@ -1720,22 +1878,33 @@ const QuestionBankPage: React.FC = () => {
         </div>
 
         {/* STATS PILLS (NEW DESIGN) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-5">
-          {[
-            { label: "Total", value: stats.total, color: "blue" },
-            { label: "Approved", value: stats.approved, color: "green" },
-            { label: "Pending", value: stats.pending, color: "amber" },
-            { label: "Draft", value: stats.draft, color: "gray" },
-            { label: "Rejected", value: stats.rejected, color: "red" },
-            { label: "Coding", value: stats.coding, color: "indigo" },
-            { label: "MCQ", value: stats.mcq, color: "purple" },
-          ].map((stat) => (
-            <div key={stat.label} className={`${panel} p-3 text-center`}>
-              <div className={`text-2xl font-black text-${stat.color}-600`}>{stat.value}</div>
-              <div className="text-[10px] text-gray-600 mt-0.5">{stat.label}</div>
-            </div>
-          ))}
+{/* STATS PILLS WITH ICONS - COMPACT VERSION */}
+<div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-5">
+  {[
+    { label: "Total", value: stats.total, icon: Database, color: "blue" },
+    { label: "Approved", value: stats.approved, icon: CheckCircle2, color: "green" },
+    { label: "Pending", value: stats.pending, icon: Clock, color: "amber" },
+    { label: "Draft", value: stats.draft, icon: FileText, color: "gray" },
+    { label: "Rejected", value: stats.rejected, icon: XCircle, color: "red" },
+    { label: "Coding", value: stats.coding, icon: Code2, color: "indigo" },
+    { label: "MCQ", value: stats.mcq, icon: Award, color: "purple" },
+  ].map((stat) => {
+    const IconComponent = stat.icon;
+    return (
+      <motion.div 
+        key={stat.label} 
+        whileHover={{ scale: 1.03 }}
+        className={`${panel} p-3 hover:shadow-md transition-all`}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <IconComponent className={`w-4 h-4 text-${stat.color}-600`} />
+          <div className="text-[9px] text-gray-500 uppercase font-semibold tracking-wide">{stat.label}</div>
         </div>
+        <div className={`text-2xl font-black text-${stat.color}-600`}>{stat.value}</div>
+      </motion.div>
+    );
+  })}
+</div>
 
         {/* SEARCH & CONTROLS (NEW DESIGN) */}
         <div className={`${panel} p-4 mb-4`}>
