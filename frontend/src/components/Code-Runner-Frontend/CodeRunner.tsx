@@ -1,7 +1,8 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Play, Settings, Copy, Download, X, Sun, Moon, Command, Zap } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Play, Settings, Copy, Download, X, Sun, Moon, Command, Zap, BookOpen, ChevronDown, CheckCircle, AlertCircle, Send } from 'lucide-react';
 import { api } from '../../lib/auth/auth.api';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
@@ -36,7 +37,15 @@ function usePrefs() {
 }
 
 export default function CodeRunner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const questionId = searchParams?.get('id') || null;
+  const questionTitle = searchParams?.get('title') || 'Coding Challenge';
+  const questionLanguage = searchParams?.get('language') || 'python';
+  
   const [pageOffset, setPageOffset] = useState<number>(48);
+  const [showQuestionPanel, setShowQuestionPanel] = useState(true);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const editorRefInstance = useRef<any>(null);
   const [files, setFiles] = useState<{ id: string; name: string; language: string; code: string }[]>(() => {
     try {
@@ -297,35 +306,63 @@ export default function CodeRunner() {
 
   function downloadResult() { const blob = new Blob([JSON.stringify(result || {}, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `submission-${submissionId || 'result'}.json`; a.click(); URL.revokeObjectURL(url); setToast('Downloaded result'); }
 
+  function handleSubmit() {
+    // Show modal with confirmation
+    setShowSubmitModal(true);
+  }
+
+  function handleConfirmSubmit() {
+    setShowSubmitModal(false);
+    
+    // Prepare submission data
+    const active = files.find(f => f.id === activeFile);
+    const submissionData = {
+      questionId: questionId || 'unknown',
+      questionTitle: questionTitle,
+      language: questionLanguage,
+      code: active?.code || '',
+      score: result?.score || 0,
+      runtimeMs: result?.runner?.runtimeMs || 0,
+      results: result?.results || []
+    };
+
+    // Redirect to results page with data in URL
+    const encoded = encodeURIComponent(JSON.stringify(submissionData));
+    setTimeout(() => {
+      router.push(`/candidate/results?data=${encoded}`);
+    }, 800);
+    setToast('✅ Submission completed! Redirecting...');
+  }
+
   return (
     <div
       ref={containerRef}
-      className="rounded-lg overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 p-4 text-slate-200 shadow-2xl flex flex-col"
+      className="rounded-lg overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 p-4 text-slate-800 shadow-2xl flex flex-col"
       style={{ minHeight: `calc(100vh - ${pageOffset}px)` }}
     >
       {/* Top toolbar */}
       <div className="flex items-center gap-3 mb-3">
-        <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-md backdrop-blur">
-          <div className="w-10 h-10 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">C</div>
+        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-md backdrop-blur shadow-sm border border-slate-200">
+          <div className="w-10 h-10 rounded bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-md">C</div>
           <div>
-            <div className="text-sm font-semibold">Code Playground</div>
-            <div className="text-xs text-slate-300">Run, test and share code</div>
+            <div className="text-sm font-semibold text-slate-800">Code Playground</div>
+            <div className="text-xs text-slate-600">Run, test and share code</div>
           </div>
         </div>
 
           <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-white/6`} role="status" aria-live="polite">
-              <span className={`w-2 h-2 rounded-full ${status ? (String(status).toLowerCase().includes('pass') || String(status).toLowerCase().includes('completed') ? 'bg-emerald-400' : String(status).toLowerCase().includes('fail') || String(status).toLowerCase().includes('error') ? 'bg-rose-400' : 'bg-yellow-400') : 'bg-gray-500'}`} />
-              <strong className="text-slate-100 text-sm">{status ? String(status) : 'idle'}</strong>
+            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-white border border-slate-200 shadow-sm`} role="status" aria-live="polite">
+              <span className={`w-2 h-2 rounded-full ${status ? (String(status).toLowerCase().includes('pass') || String(status).toLowerCase().includes('completed') ? 'bg-emerald-500' : String(status).toLowerCase().includes('fail') || String(status).toLowerCase().includes('error') ? 'bg-rose-500' : 'bg-yellow-500') : 'bg-slate-400'}`} />
+              <strong className="text-slate-800 text-sm">{status ? String(status) : 'idle'}</strong>
             </span>
-            <div className="text-sm text-slate-300" aria-hidden>
+            <div className="text-sm text-slate-600" aria-hidden>
               {result && result.runner?.runtimeMs ? <span className="text-xs">{result.runner.runtimeMs} ms</span> : null}
             </div>
           </div>
 
           <button
-            className={`inline-flex items-center gap-3 px-4 py-2 rounded-md text-white shadow-md transition transform ${submitting ? 'opacity-90 scale-95 bg-gradient-to-r from-indigo-500 to-teal-400' : 'hover:-translate-y-0.5 bg-gradient-to-r from-indigo-600 to-cyan-500'}`}
+            className={`inline-flex items-center gap-3 px-4 py-2 rounded-md text-white shadow-md transition transform ${submitting ? 'opacity-90 scale-95 bg-gradient-to-r from-indigo-600 to-blue-600' : 'hover:-translate-y-0.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 hover:shadow-lg'}`}
             onClick={() => handleRun()}
             disabled={submitting}
             aria-label="Run code (Ctrl+Enter)"
@@ -338,57 +375,128 @@ export default function CodeRunner() {
             <span className="text-white font-medium">{submitting ? 'Running…' : 'Run'}</span>
           </button>
 
-          <button title="Settings" className="p-2 rounded bg-white/5 hover:bg-white/8" onClick={() => setShowSettings(true)} aria-label="Open settings"><Settings className="w-4 h-4" /></button>
-          <button title="Command Palette (Ctrl+K)" className="p-2 rounded bg-white/5 hover:bg-white/8" onClick={() => setShowCommandPalette(true)} aria-label="Open command palette"><Command className="w-4 h-4" /></button>
+          {result && result.score !== undefined && (
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 shadow-md transition transform hover:-translate-y-0.5"
+              onClick={handleSubmit}
+              aria-label="Submit solution"
+            >
+              <Send className="w-4 h-4" />
+              <span className="font-medium">Submit</span>
+            </button>
+          )}
+
+          <button title="Settings" className="p-2 rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" onClick={() => setShowSettings(true)} aria-label="Open settings"><Settings className="w-4 h-4" /></button>
+          <button title="Command Palette (Ctrl+K)" className="p-2 rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" onClick={() => setShowCommandPalette(true)} aria-label="Open command palette"><Command className="w-4 h-4" /></button>
         </div>
       </div>
 
       {/* Content area */}
       <div className="flex-1 flex items-stretch gap-3">
-        {/* Sidebar */}
-        <div className={`${showSidebar ? 'w-80' : 'hidden'} p-3 transition-all`}> 
-          <div className="bg-white/6 rounded p-3 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold">Recent Runs</div>
-              <div className="flex gap-2">
-                <button className="text-xs px-2 py-1 rounded bg-white/5" onClick={() => setHistory([] as any) }>Clear</button>
-                <button className="text-xs px-2 py-1 rounded bg-white/5" onClick={() => setShowSidebar(false)}>Hide</button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto">
-              {history.length === 0 && <div className="text-xs text-slate-400">No submissions yet</div>}
-              {history.map((h, i) => (
-                <div key={i} className="p-2 rounded mb-2 bg-white/5">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">{h.name}</div>
-                    <div className={`text-xs px-2 py-0.5 rounded ${statusColor(h.status)}`}>{String(h.status || '')}</div>
-                  </div>
-                  <div className="text-xs text-slate-400">{new Date(h.createdAt).toLocaleString()}</div>
+        {/* Left Sidebar - Question Panel */}
+        {showQuestionPanel && (
+          <div className={`w-80 p-3 transition-all flex flex-col`}> 
+            <div className="bg-white rounded-lg p-3 h-full flex flex-col overflow-auto border border-slate-200 shadow-lg">
+              {/* Question Section */}
+              <>
+                <div className="flex items-center gap-2 mb-4">
+                  <BookOpen className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-sm font-semibold text-slate-800">Question</h3>
                 </div>
-              ))}
+                <div className="bg-white rounded-lg p-3 mb-4 border border-slate-200 shadow-sm">
+                  <p className="text-xs text-slate-600 font-semibold mb-2">Problem</p>
+                  <h4 className="text-base font-bold text-slate-900 mb-3 leading-snug">{questionTitle}</h4>
+                  <p className="text-sm text-slate-700 leading-relaxed mb-4">
+                    {questionId
+                      ? 'Write a function that solves this problem. Run your code against the test cases to verify your solution.'
+                      : 'No question ID provided. Load a challenge to see its full statement.'}
+                  </p>
+                  <div className="flex gap-2">
+                    <span className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
+                      {questionLanguage}
+                    </span>
+                  </div>
+                </div>
+              </>
+
+              {/* Divider */}
+              <div className="border-t border-slate-200 my-4"></div>
+
+              {/* Recent Runs */}
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Recent Runs</div>
+                  <div className="flex gap-1">
+                    {history.length > 0 && (
+                      <button 
+                        className="text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
+                        onClick={() => {
+                          setHistory([]);
+                          localStorage.setItem(HISTORY_KEY, '[]');
+                          setToast('History cleared');
+                        }}
+                        title="Clear history"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button 
+                      className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
+                      onClick={() => setShowQuestionPanel(false)}
+                      title="Minimize panel"
+                    >
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto">
+                  {history.length === 0 && <div className="text-xs text-slate-500">No submissions yet</div>}
+                  {history.map((h, i) => (
+                    <div key={i} className="p-2 rounded mb-2 bg-slate-50 border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-slate-800">{h.name}</div>
+                        <div className={`text-xs px-2 py-0.5 rounded ${statusColor(h.status)}`}>{String(h.status || '')}</div>
+                      </div>
+                      <div className="text-xs text-slate-600">{new Date(h.createdAt).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-600 mt-3 pt-3 border-t border-slate-200">Tip: Ctrl+Enter to run</div>
             </div>
-            <div className="text-xs text-slate-400 mt-2">Tip: Ctrl+Enter to run • Ctrl+K command palette</div>
           </div>
-        </div>
+        )}
+
+        {/* Collapsed panel button */}
+        {!showQuestionPanel && (
+          <button
+            onClick={() => setShowQuestionPanel(true)}
+            className="p-2 rounded bg-white text-slate-700 hover:bg-slate-50 h-fit border border-slate-200 shadow-sm"
+            title="Show question"
+          >
+            <ChevronDown className="w-4 h-4 rotate-270" />
+          </button>
+        )}
 
         {/* Editor + tabs */}
         <div className="flex-1 p-3 flex flex-col">
-          <div className="bg-white/6 rounded p-2 mb-2 flex items-center gap-3">
+          <div className="bg-white rounded-lg p-2 mb-2 flex items-center gap-3 border border-slate-200 shadow-sm">
             <div className="flex gap-2 items-center" role="tablist" aria-label="Files">
               {files.map(f => (
-                <div key={f.id} className={`flex items-center gap-2 px-3 py-1 rounded-full transition ${activeFile === f.id ? 'bg-indigo-600 text-white shadow' : 'bg-white/5 text-slate-200 hover:bg-white/10'}`} role="tab" aria-selected={activeFile===f.id} tabIndex={0} onClick={() => setActiveFile(f.id)}>
+                <div key={f.id} className={`flex items-center gap-2 px-3 py-1 rounded-full transition ${activeFile === f.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`} role="tab" aria-selected={activeFile===f.id} tabIndex={0} onClick={() => setActiveFile(f.id)}>
                   <button className="text-xs font-medium truncate max-w-[10rem]" onClick={() => setActiveFile(f.id)}>{f.name}</button>
-                  <button title="Duplicate file" onClick={() => duplicateFile(f.id)} className="p-1 rounded hover:bg-white/8" aria-label={`Duplicate ${f.name}`}><Copy className="w-3 h-3"/></button>
-                  <button title="Delete file" onClick={() => deleteFile(f.id)} className="p-1 rounded hover:bg-white/8" aria-label={`Delete ${f.name}`}><X className="w-3 h-3"/></button>
+                  <button title="Duplicate file" onClick={() => duplicateFile(f.id)} className="p-1 rounded hover:bg-current/20" aria-label={`Duplicate ${f.name}`}><Copy className="w-3 h-3"/></button>
+                  <button title="Delete file" onClick={() => deleteFile(f.id)} className="p-1 rounded hover:bg-current/20" aria-label={`Delete ${f.name}`}><X className="w-3 h-3"/></button>
                 </div>
               ))}
-              <button onClick={addFile} className="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-sm" title="Create file" aria-label="Create file">+</button>
+              <button onClick={addFile} className="px-3 py-1 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow-sm" title="Create file" aria-label="Create file">+</button>
             </div>
             <div className="ml-auto flex gap-2">
                 {/* Language selector for active file */}
-                <div className="flex items-center gap-2 bg-white/6 rounded px-2 py-1">
-                  <label className="text-xs text-slate-300 mr-1">Lang</label>
-                  <select value={(files.find(f => f.id === activeFile)?.language) || 'python'} onChange={(e) => changeLanguage(activeFile, e.target.value)} className="bg-transparent text-sm outline-none">
+                <div className="flex items-center gap-2 bg-white rounded px-2 py-1 border border-slate-200">
+                  <label className="text-xs text-slate-600 mr-1">Lang</label>
+                  <select value={(files.find(f => f.id === activeFile)?.language) || 'python'} onChange={(e) => changeLanguage(activeFile, e.target.value)} className="bg-transparent text-sm outline-none text-slate-800">
                     <option value="python">Python</option>
                     <option value="javascript">JavaScript</option>
                     <option value="typescript">TypeScript</option>
@@ -437,43 +545,48 @@ export default function CodeRunner() {
         <div className="w-96 p-3 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-slate-500" />
-              <div className="text-sm font-semibold">Output</div>
-              <div className="text-xs text-slate-300">Terminal</div>
+              <div className="w-3 h-3 rounded-full bg-indigo-500" />
+              <div className="text-sm font-semibold text-slate-800">Output</div>
+              <div className="text-xs text-slate-600">Terminal</div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => { navigator.clipboard?.writeText(JSON.stringify(result || {}, null, 2)); setToast('Output copied'); }} className="px-2 py-1 rounded bg-white/6 hover:bg-white/8 text-sm" title="Copy output" aria-label="Copy output">Copy</button>
-              <button onClick={() => downloadResult()} className="px-2 py-1 rounded bg-white/6 hover:bg-white/8 text-sm" title="Download output" aria-label="Download output">Download</button>
-              <button onClick={() => { setResult(null); setToast('Output cleared'); }} className="px-2 py-1 rounded bg-white/6 hover:bg-white/8 text-sm" title="Clear output" aria-label="Clear output">Clear</button>
+              <button onClick={() => { navigator.clipboard?.writeText(JSON.stringify(result || {}, null, 2)); setToast('Output copied'); }} className="px-2 py-1 rounded bg-white hover:bg-slate-50 text-slate-700 text-sm border border-slate-200" title="Copy output" aria-label="Copy output">Copy</button>
+              <button onClick={() => downloadResult()} className="px-2 py-1 rounded bg-white hover:bg-slate-50 text-slate-700 text-sm border border-slate-200" title="Download output" aria-label="Download output">Download</button>
+              <button onClick={() => { setResult(null); setToast('Output cleared'); }} className="px-2 py-1 rounded bg-white hover:bg-slate-50 text-slate-700 text-sm border border-slate-200" title="Clear output" aria-label="Clear output">Clear</button>
             </div>
           </div>
 
-          <div className="bg-gradient-to-b from-black/75 to-slate-900 rounded p-3 flex-1 overflow-auto text-sm min-h-0 font-mono text-slate-200 shadow-inner">
+          <div className="bg-gradient-to-b from-slate-900 to-black rounded-lg p-3 flex-1 overflow-auto text-sm min-h-0 font-mono text-slate-100 shadow-inner border border-slate-700">
             {!result && (
-              <div className="flex flex-col items-center justify-center h-full text-center gap-3 opacity-80">
-                <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                  <rect x="6" y="8" width="108" height="56" rx="6" stroke="#334155" strokeWidth="2" fill="#0b1220" />
-                  <path d="M18 28h30M18 36h20M18 44h22" stroke="#475569" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <div className="text-slate-400">No results yet</div>
-                <div className="text-xs text-slate-500">Run your code to see output here. Tip: Ctrl+Enter to run • Ctrl+K for commands</div>
+              <div className="flex flex-col items-start justify-start h-full text-left gap-3 opacity-90">
+                <div className="flex items-center gap-3">
+                  <svg width="120" height="72" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <rect x="6" y="8" width="108" height="56" rx="6" stroke="#6366f1" strokeWidth="2" fill="#0b1220" />
+                    <path d="M18 28h30M18 36h20M18 44h22" stroke="#a5b4fc" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-semibold text-indigo-100">No results yet</div>
+                    <div className="text-xs text-indigo-200">Run your code to see output here.</div>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-400">Tip: Ctrl+Enter to run • Ctrl+K for commands</div>
               </div>
             )}
 
             {result && (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-xs text-slate-300">
-                  <div className="px-2 py-1 rounded bg-white/6"><strong>Score</strong><div className="text-sm mt-0.5">{result.score ?? '—'}</div></div>
-                  <div className="px-2 py-1 rounded bg-white/6"><strong>Runtime</strong><div className="text-sm mt-0.5">{result.runner?.runtimeMs ?? '—'} ms</div></div>
-                  <div className="px-2 py-1 rounded bg-white/6"><strong>Memory</strong><div className="text-sm mt-0.5">{result.runner?.memoryKb ?? '—'} KB</div></div>
+                  <div className="px-2 py-1 rounded bg-indigo-900/50 border border-indigo-800"><strong>Score</strong><div className="text-sm mt-0.5">{result.score ?? '—'}</div></div>
+                  <div className="px-2 py-1 rounded bg-indigo-900/50 border border-indigo-800"><strong>Runtime</strong><div className="text-sm mt-0.5">{result.runner?.runtimeMs ?? '—'} ms</div></div>
+                  <div className="px-2 py-1 rounded bg-indigo-900/50 border border-indigo-800"><strong>Memory</strong><div className="text-sm mt-0.5">{result.runner?.memoryKb ?? '—'} KB</div></div>
                 </div>
 
                 <div>
-                  <h5 className="font-medium mb-2">Tests</h5>
+                  <h5 className="font-medium mb-2 text-slate-100">Tests</h5>
                   {(result.runner?.results || result.results || []).map((t: any, i: number) => (
-                    <div key={i} className="mb-2 p-2 rounded bg-white/6">
-                      <div className="flex items-center justify-between"><div>#{i+1} - {t.name || ''}</div><div className={`${t.passed ? 'text-emerald-400' : 'text-rose-400'} font-medium`}>{t.passed ? 'PASSED' : 'FAILED'}</div></div>
-                      <pre className="bg-black text-slate-200 p-2 rounded mt-2 text-xs whitespace-pre-wrap">{String(t.output)}</pre>
+                    <div key={i} className="mb-2 p-2 rounded bg-slate-800/60">
+                      <div className="flex items-center justify-between"><div className="text-slate-200">#{i+1} - {t.name || ''}</div><div className={`${t.passed ? 'text-emerald-400' : 'text-rose-400'} font-medium`}>{t.passed ? 'PASSED' : 'FAILED'}</div></div>
+                      <pre className="bg-black/60 text-slate-100 p-2 rounded mt-2 text-xs whitespace-pre-wrap">{String(t.output)}</pre>
                     </div>
                   ))}
                 </div>
@@ -510,6 +623,64 @@ export default function CodeRunner() {
         <div className="fixed inset-0 flex items-start justify-center pt-24 pointer-events-none">
           <div className="pointer-events-auto w-[640px] bg-slate-800 rounded p-3">
             <div className="flex items-center gap-2 mb-2"><Command className="w-4 h-4"/><input autoFocus placeholder="Type a command (run, new file, toggle sidebar)..." className="flex-1 bg-transparent outline-none text-slate-100" onKeyDown={(e) => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.toLowerCase(); if (v.includes('run')) handleRun(); if (v.includes('new')) addFile(); if (v.includes('sidebar')) setShowSidebar(s => !s); setShowCommandPalette(false); } }} /></div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-slate-200">
+            {/* Success Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="p-4 bg-emerald-100 rounded-full shadow-sm">
+                <CheckCircle className="w-8 h-8 text-emerald-600" />
+              </div>
+            </div>
+
+            {/* Title & Message */}
+            <h3 className="text-xl font-bold text-slate-900 text-center mb-2">Great Job!</h3>
+            <p className="text-slate-600 text-center mb-4">Your solution has been tested</p>
+
+            {/* Results Summary */}
+            {result && (
+              <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Score</span>
+                    <span className="text-lg font-bold text-emerald-600">{result.score ?? '—'}%</span>
+                  </div>
+                  {result.results && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Tests Passed</span>
+                      <span className="text-slate-800">
+                        {result.results.filter((r: any) => r.passed).length} / {result.results.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition font-medium shadow-sm"
+              >
+                Keep Coding
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition font-medium shadow-lg"
+              >
+                Done & Exit
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 text-center mt-4">
+              You will be redirected to the challenges page
+            </p>
           </div>
         </div>
       )}
