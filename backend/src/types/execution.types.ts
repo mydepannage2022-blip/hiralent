@@ -7,6 +7,8 @@ export interface TestCaseResult {
   expected?: string | null;
   durationMs?: number | null;
   stderr?: string | null;
+  input?: string | null;
+  memKb?: number | null;
 }
 
 export interface RunnerResult {

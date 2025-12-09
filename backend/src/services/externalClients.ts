@@ -13,7 +13,16 @@ const IHSN_KEY = process.env.IHSSANE_API_KEY || '';
 export type QuestionTestCase = { input: string; expected_output: string };
 
 export async function get_question_test_cases(questionId: string): Promise<QuestionTestCase[]> {
+  // In mock mode we return canned test cases for real questions, but
+  // for the interactive playground (ad-hoc runs) we should not inject
+  // numeric testcases that make the runner expect numbers. Detect
+  // playground-like IDs and return an empty test set so the run is
+  // evaluated based on runner-provided heuristics or manual tests.
+  const playgroundIds = ['playground', 'code-playground', 'editor-run', 'ad-hoc'];
   if (MOCK_MODE || !WAFAA_BASE) {
+    if (!questionId || playgroundIds.includes(String(questionId).toLowerCase())) {
+      return [];
+    }
     return [
       { input: '1 2', expected_output: '3' },
       { input: '4 5', expected_output: '9' },

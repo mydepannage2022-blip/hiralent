@@ -1,0 +1,828 @@
+"use client";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import SimilaritySearch from './SimilaritySearch';
+import { 
+  Save, 
+  X, 
+  Play, 
+  TestTube, 
+  Code, 
+  FileText, 
+  Sparkles,
+  Plus,
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+  Zap,
+  Tag,
+  Hash,
+  ArrowRight,
+  Target,
+  Lightbulb,
+  Terminal,
+  FlaskConical,
+  List,
+  CheckSquare,
+  Type,
+  Circle,
+  Check
+} from 'lucide-react';
+import { Query } from '@tanstack/react-query';
+
+interface Question {
+  id: string;
+  title: string;
+  description: string;
+  problemStatement: string;
+  difficulty: string;
+  skillTags: string[];
+  type: string;
+  canonicalSolution: string;
+  testCases: Array<{ input: string; output: string }>;
+  status: string;
+  options?: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctAnswer?: string;
+  explanation?: string;
+}
+
+interface QuestionEditorProps {
+  question?: Question;
+  onSave: (question: Partial<Question>) => void;
+  onCancel: () => void;
+  mode: 'create' | 'edit';
+}
+
+const QuestionEditor: React.FC<QuestionEditorProps> = ({
+  question,
+  onSave,
+  onCancel,
+  mode
+}) => {
+  const [formData, setFormData] = useState<Partial<Question>>({
+    title: '',
+    description: '',
+    problemStatement: '',
+    difficulty: 'medium',
+    skillTags: [],
+    type: 'coding',
+    canonicalSolution: '',
+    testCases: [{ input: '', output: '' }],
+    status: 'draft',
+    options: { A: '', B: '', C: '', D: '' },
+    correctAnswer: '',
+    explanation: ''
+  });
+
+  const [newTag, setNewTag] = useState('');
+  const [activeTab, setActiveTab] = useState<'details' | 'solution' | 'tests' | 'mcq'>('details');
+
+  useEffect(() => {
+    if (question) {
+      setFormData(question);
+      if (question.type === 'mcq') {
+        setActiveTab('mcq');
+      }
+    }
+  }, [question]);
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !formData.skillTags?.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        skillTags: [...(prev.skillTags || []), newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      skillTags: prev.skillTags?.filter(tag => tag !== tagToRemove) || []
+    }));
+  };
+
+  const handleAddTestCase = () => {
+    setFormData(prev => ({
+      ...prev,
+      testCases: [...(prev.testCases || []), { input: '', output: '' }]
+    }));
+  };
+
+  const handleTestCaseChange = (index: number, field: 'input' | 'output', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      testCases: prev.testCases?.map((testCase, i) => 
+        i === index ? { ...testCase, [field]: value } : testCase
+      ) || []
+    }));
+  };
+
+  const handleRemoveTestCase = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      testCases: prev.testCases?.filter((_, i) => i !== index) || []
+    }));
+  };
+
+  const handleOptionChange = (optionKey: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      options: { ...prev.options, [optionKey]: value }
+    }));
+  };
+
+  const handleMultipleCorrectAnswers = (answerKey: string) => {
+    const currentAnswers = formData.correctAnswer?.split(',').filter(Boolean) || [];
+    let newAnswers: string[];
+    if (currentAnswers.includes(answerKey)) {
+      newAnswers = currentAnswers.filter(a => a !== answerKey);
+    } else {
+      newAnswers = [...currentAnswers, answerKey];
+    }
+    setFormData(prev => ({ ...prev, correctAnswer: newAnswers.sort().join(',') }));
+  };
+
+  const handleTypeChange = (newType: string) => {
+    setFormData(prev => ({ ...prev, type: newType }));
+    if (newType === 'mcq') {
+      setActiveTab('mcq');
+    } else {
+      setActiveTab('details');
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const difficultyConfig = {
+    easy: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    medium: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    hard: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' }
+  };
+
+  const currentDifficulty = difficultyConfig[formData.difficulty as keyof typeof difficultyConfig];
+  const isMCQ = formData.type === 'mcq';
+
+  const getTabs = () => {
+    const baseTabs = [{ id: 'details' as const, label: 'Details', icon: FileText }];
+    if (isMCQ) {
+      return [...baseTabs, { id: 'mcq' as const, label: 'MCQ Options', icon: List }];
+    } else {
+      return [
+        ...baseTabs,
+        { id: 'solution' as const, label: 'Solution', icon: Code },
+        { id: 'tests' as const, label: 'Tests', icon: TestTube }
+      ];
+    }
+  };
+
+  const tabs = getTabs();
+
+  const optionColors = {
+    A: { bg: 'from-blue-500 to-cyan-500', light: 'bg-blue-50 border-blue-200 hover:border-blue-400', selected: 'bg-blue-100 border-blue-500 ring-2 ring-blue-200' },
+    B: { bg: 'from-purple-500 to-pink-500', light: 'bg-purple-50 border-purple-200 hover:border-purple-400', selected: 'bg-purple-100 border-purple-500 ring-2 ring-purple-200' },
+    C: { bg: 'from-orange-500 to-red-500', light: 'bg-orange-50 border-orange-200 hover:border-orange-400', selected: 'bg-orange-100 border-orange-500 ring-2 ring-orange-200' },
+    D: { bg: 'from-emerald-500 to-teal-500', light: 'bg-emerald-50 border-emerald-200 hover:border-emerald-400', selected: 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-200' }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+      >
+        {/* Header - Fixed */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
+          <div className="absolute inset-0 opacity-10">
+            <div 
+              className="absolute inset-0" 
+              style={{
+                backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                backgroundSize: '24px 24px'
+              }}
+            />
+          </div>
+
+          <div className="relative px-5 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <motion.div 
+                  className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                >
+                  {mode === 'create' ? <Sparkles className="w-5 h-5 text-white" /> : <Code className="w-5 h-5 text-white" />}
+                </motion.div>
+                <div>
+                  <h2 className="text-lg font-black tracking-tight">
+                    {mode === 'create' ? 'Create New Question' : 'Edit Question'}
+                  </h2>
+                  <p className="text-blue-100 text-xs">
+                    {mode === 'create' ? 'Design a new assessment challenge' : 'Update question details'}
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                onClick={onCancel}
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
+
+            {/* Type Selector & Tabs */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Type className="w-4 h-4 text-blue-200" />
+                  <span className="text-xs font-bold text-white">Type:</span>
+                </div>
+                <div className="flex gap-2">
+                  <motion.button
+                    type="button"
+                    onClick={() => handleTypeChange('coding')}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                      !isMCQ ? 'bg-white text-[#1B73E8] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    <Code className="w-4 h-4" />
+                    Coding
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={() => handleTypeChange('mcq')}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                      isMCQ ? 'bg-white text-[#1B73E8] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    <List className="w-4 h-4" />
+                    MCQ
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-2">
+                {tabs.map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-white text-[#1B73E8] shadow-md'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Wave */}
+          <div className="absolute bottom-0 left-0 right-0">
+            <svg viewBox="0 0 1440 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+              <path d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z" fill="white" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Scrollable Form Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <form onSubmit={handleSubmit} className="p-6">
+            <AnimatePresence mode="wait">
+              {/* Details Tab */}
+              {activeTab === 'details' && (
+                <motion.div
+                  key="details"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-5"
+                >
+                  {/* Title & Difficulty */}
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="col-span-3">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                        <FileText className="w-4 h-4 text-[#1B73E8]" />
+                        Question Title
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full px-4 py-3 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8] focus:bg-white transition-all"
+                        placeholder="Enter a descriptive title..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                        <Target className="w-4 h-4 text-[#1B73E8]" />
+                        Difficulty
+                      </label>
+                      <select
+                        value={formData.difficulty || 'medium'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value }))}
+                        className={`w-full px-4 py-3 text-sm border-2 rounded-xl focus:outline-none focus:ring-2 transition-all font-bold ${
+                          currentDifficulty?.bg} ${currentDifficulty?.text} ${currentDifficulty?.border}`}
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                      <Lightbulb className="w-4 h-4 text-[#1B73E8]" />
+                      Short Description
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      required
+                      value={formData.description || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                      className="w-full px-4 py-3 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8] focus:bg-white transition-all resize-none"
+                      placeholder="Brief description of the question..."
+                    />
+                  </div>
+
+                  {/* Problem Statement */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                      <Code className="w-4 h-4 text-[#1B73E8]" />
+                      Problem Statement
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        required
+                        value={formData.problemStatement || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, problemStatement: e.target.value }))}
+                        rows={6}
+                        className="w-full px-4 py-3 text-sm bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8] transition-all resize-y min-h-[150px]"
+                        placeholder="Detailed problem statement with examples, constraints, and requirements..."
+                      />
+                      <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white px-2 py-1 rounded-lg shadow-sm">
+                        <Hash className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-500 font-medium">
+                          {formData.problemStatement?.length || 0} chars
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skills Tags */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                      <Tag className="w-4 h-4 text-[#1B73E8]" />
+                      Skills Tags
+                    </label>
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4">
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="text"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                          className="flex-1 px-4 py-2 text-sm bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8]"
+                          placeholder="Type a skill tag..."
+                        />
+                        <motion.button
+                          type="button"
+                          onClick={handleAddTag}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="px-5 py-2 text-sm bg-[#1B73E8] text-white rounded-lg hover:bg-[#1557B0] transition-colors font-bold flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add
+                        </motion.button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <AnimatePresence>
+                          {formData.skillTags?.map(tag => (
+                            <motion.span
+                              key={tag}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-bold flex items-center gap-2 shadow-sm"
+                            >
+                              {tag}
+                              <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:bg-white/20 rounded-full p-0.5">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </motion.span>
+                          ))}
+                        </AnimatePresence>
+                        {formData.skillTags?.length === 0 && (
+                          <span className="text-sm text-gray-400 italic">No tags added yet</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+{/* Similarity Search - ADD THIS SECTION */}
+<SimilaritySearch 
+  onSimilarityCheck={async (query) => {
+    try {
+      // You'll need to implement this API endpoint or use an existing one
+      const response = await fetch('http://localhost:5000/api/questions/check-similarity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth headers if needed
+        },
+        body: JSON.stringify({ 
+          text: query,
+          // You can also include the current question data for better comparison
+          currentQuestion: mode === 'edit' && question ? {
+            id: question.id,
+            title: formData.title,
+            description: formData.description,
+            problemStatement: formData.problemStatement
+          } : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Similarity check failed');
+      }
+      
+      return await response.json();
+    } catch (error: any) {
+      console.error('Similarity check error:', error);
+      return { 
+        success: false, 
+        error: error.message,
+        similar_questions_found: 0,
+        duplication_risk: 'unknown'
+      };
+    }
+  }}
+/>
+
+                  
+                </motion.div>
+              )}
+
+              {/* Solution Tab */}
+              {activeTab === 'solution' && (
+                <motion.div
+                  key="solution"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                        <Terminal className="w-4 h-4 text-[#1B73E8]" />
+                        Canonical Solution
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Used to validate test cases
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <textarea
+                        required
+                        value={formData.canonicalSolution || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, canonicalSolution: e.target.value }))}
+                        rows={16}
+                        className="w-full px-4 py-3 bg-gray-900 text-green-400 border-2 border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B73E8] font-mono text-sm resize-y min-h-[400px]"
+                        placeholder="def solution(input):&#10;    # Write your canonical solution here&#10;    pass"
+                      />
+                      <div className="absolute top-3 right-3 flex items-center gap-2">
+                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold">Python</span>
+                        <span className="px-2 py-1 bg-gray-800 text-gray-400 rounded-lg text-xs">
+                          {formData.canonicalSolution?.split('\n').length || 0} lines
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Test Cases Tab */}
+              {activeTab === 'tests' && (
+                <motion.div
+                  key="tests"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                        <FlaskConical className="w-4 h-4 text-[#1B73E8]" />
+                        Test Cases
+                        <span className="text-red-500">*</span>
+                        <span className="ml-2 px-2 py-1 bg-blue-100 text-[#1B73E8] rounded-full text-xs font-bold">
+                          {formData.testCases?.length || 0} cases
+                        </span>
+                      </label>
+                      <motion.button
+                        type="button"
+                        onClick={handleAddTestCase}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Test Case
+                      </motion.button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {formData.testCases?.map((testCase, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, x: -100 }}
+                            className="bg-gradient-to-br from-gray-50 to-blue-50 border-2 border-gray-200 rounded-xl p-4"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 bg-[#1B73E8] text-white rounded-lg text-sm flex items-center justify-center font-bold">
+                                  {index + 1}
+                                </div>
+                                <span className="text-sm font-bold text-gray-700">Test Case #{index + 1}</span>
+                              </div>
+                              {formData.testCases && formData.testCases.length > 1 && (
+                                <motion.button
+                                  type="button"
+                                  onClick={() => handleRemoveTestCase(index)}
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </motion.button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-600 mb-2">
+                                  <ArrowRight className="w-3 h-3" />
+                                  Input
+                                </label>
+                                <textarea
+                                  value={testCase.input}
+                                  onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
+                                  rows={3}
+                                  className="w-full px-3 py-2 text-sm bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8] font-mono resize-none"
+                                  placeholder="Test input..."
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-600 mb-2">
+                                  <CheckCircle className="w-3 h-3" />
+                                  Expected Output
+                                </label>
+                                <textarea
+                                  value={testCase.output}
+                                  onChange={(e) => handleTestCaseChange(index, 'output', e.target.value)}
+                                  rows={3}
+                                  className="w-full px-3 py-2 text-sm bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B73E8] focus:border-[#1B73E8] font-mono resize-none"
+                                  placeholder="Expected output..."
+                                />
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* MCQ Options Tab - ENHANCED */}
+              {activeTab === 'mcq' && (
+                <motion.div
+                  key="mcq"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <List className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-gray-800">Multiple Choice Options</h3>
+                        <p className="text-xs text-gray-500">Click on an option to mark it as correct</p>
+                      </div>
+                    </div>
+                    {formData.correctAnswer && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl shadow-lg"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-bold">
+                          Correct: {formData.correctAnswer.split(',').join(', ')}
+                        </span>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Options Grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {(['A', 'B', 'C', 'D'] as const).map((optionKey) => {
+                      const isSelected = formData.correctAnswer?.includes(optionKey);
+                      const colors = optionColors[optionKey];
+                      
+                      return (
+                        <motion.div
+                          key={optionKey}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          whileHover={{ scale: 1.01, y: -2 }}
+                          className={`relative border-2 rounded-2xl p-4 transition-all cursor-pointer shadow-sm hover:shadow-md ${
+                            isSelected ? colors.selected : colors.light
+                          }`}
+                          onClick={() => handleMultipleCorrectAnswers(optionKey)}
+                        >
+                          {/* Option Header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className={`w-9 h-9 bg-gradient-to-r ${colors.bg} text-white rounded-xl flex items-center justify-center font-bold text-base shadow-md`}>
+                              {optionKey}
+                            </div>
+                            
+                            {/* Custom Checkbox */}
+                            <motion.div
+                              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                isSelected 
+                                  ? 'bg-green-500 border-green-500 shadow-md' 
+                                  : 'bg-white border-gray-300'
+                              }`}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              {isSelected && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ type: "spring", stiffness: 500 }}
+                                >
+                                  <Check className="w-4 h-4 text-white" />
+                                </motion.div>
+                              )}
+                            </motion.div>
+                            
+                            <span className={`text-xs font-bold ${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
+                              {isSelected ? '✓ Correct Answer' : 'Click to mark correct'}
+                            </span>
+                          </div>
+
+                          {/* Option Input */}
+                          <textarea
+                            required
+                            value={formData.options?.[optionKey] || ''}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleOptionChange(optionKey, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            rows={3}
+                            className="w-full px-4 py-3 text-sm bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 resize-none"
+                            placeholder={`Enter option ${optionKey}...`}
+                          />
+
+                          {/* Selection Indicator */}
+                          {isSelected && (
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: '100%' }}
+                              className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-b-2xl"
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Explanation */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
+                        <Lightbulb className="w-4 h-4 text-white" />
+                      </div>
+                      <label className="text-sm font-bold text-gray-700">Explanation (Why is this the correct answer?)</label>
+                    </div>
+                    <textarea
+                      value={formData.explanation || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, explanation: e.target.value }))}
+                      rows={4}
+                      className="w-full px-4 py-3 text-sm bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 resize-y min-h-[100px]"
+                      placeholder="Explain why the selected answer(s) are correct and why other options are incorrect..."
+                    />
+                  </div>
+
+                  {/* Tips */}
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                      <span className="font-bold">Tips:</span> You can select multiple correct answers for questions with more than one valid response. Click anywhere on the option card or use the checkbox to toggle selection.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </form>
+        </div>
+
+        {/* Footer - Fixed */}
+        <div className="bg-gray-50 border-t-2 border-gray-200 px-6 py-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <AlertCircle className="w-4 h-4" />
+              <span>Fields marked with</span>
+              <span className="text-red-500 font-bold">*</span>
+              <span>are required</span>
+            </div>
+            <div className="flex gap-3">
+              <motion.button
+                type="button"
+                onClick={onCancel}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-2.5 text-sm border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-bold flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </motion.button>
+              <motion.button
+                type="submit"
+                onClick={handleSubmit}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-2.5 text-sm bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-xl hover:shadow-lg transition-all font-bold flex items-center gap-2"
+              >
+                {mode === 'create' ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Create Question
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export default QuestionEditor;

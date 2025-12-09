@@ -4,6 +4,17 @@ import "./globals.css";
 import Providers from "../src/context/Providers";
 import ConditionalLayout from "../src/components/layout/ConditionalLayout";
 import { Toaster } from 'react-hot-toast';
+// Dev-only token injector (sets NEXT_PUBLIC_DEV_TOKEN into localStorage or cookie)
+let DevTokenSetter: any = null;
+if (process.env.NODE_ENV !== 'production') {
+  // dynamic import on client only
+  try {
+    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+    DevTokenSetter = require('../src/components/DevTokenSetter').default;
+  } catch (e) {
+    DevTokenSetter = null;
+  }
+}
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -59,6 +70,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
     
         <Providers>
+          {process.env.NODE_ENV !== 'production' && DevTokenSetter ? <DevTokenSetter /> : null}
           <ConditionalLayout>
    <Toaster
           position="top-right"

@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
 from typing import Optional, Dict, Any
 from app.routes import variation_routes
+from app.routes.vector_routes import router as vector_router
 
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -24,6 +25,8 @@ import logging
 from typing import List, Dict, Optional, Any
 import re
 from datetime import datetime
+from app.vetting_pipeline.service import VettingPipelineService
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -1128,6 +1131,9 @@ except ImportError as e:
     @app.get("/variations/health")
     async def variation_fallback():
                 return {"error": "Variation Engine not available", "available": False}
+
+#vector store
+app.include_router(vector_router)
 
 
 # =============================================================================
@@ -2481,6 +2487,70 @@ def health_check():
         "status": "healthy",
         "timestamp": time.time()
     })
+
+
+# Initialiser le service de vetting
+vetting_service = VettingPipelineService(
+    redis_url="redis://localhost:6379/1",
+    sandbox_url="localhost:50054"  # Port de Youssra
+)
+
+# Ajouter les routes
+@app.post("/vetting/process")
+async def process_question(request: Dict[str, Any]):
+    """Process a single question through vetting pipeline"""
+    try:
+        question = request.get("question")
+        if not question:
+            raise HTTPException(status_code=400, detail="Question is required")
+        
+        result = vetting_service.process_question(question)
+        return {
+            "success": True,
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/vetting/batch-process")
+async def batch_process_questions(request: Dict[str, Any]):
+    """Process multiple questions"""
+    try:
+        questions = request.get("questions", [])
+        if not questions:
+            raise HTTPException(status_code=400, detail="Questions list is required")
+        
+        result = vetting_service.batch_process(questions)
+        return {
+            "success": True,
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/vetting/stats")
+async def get_vetting_stats():
+    """Get pipeline statistics"""
+    return {
+        "success": True,
+        "stats": vetting_service.get_pipeline_stats()
+    }
+
+@app.get("/vetting/health")
+async def vetting_health():
+    """Health check for vetting pipeline"""
+    try:
+        stats = vetting_service.get_pipeline_stats()
+        return {
+            "status": "healthy",
+            "sandbox_connected": stats['sandbox_connected'],
+            "redis_connected": stats['redis_connected']
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================

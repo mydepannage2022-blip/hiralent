@@ -1,12 +1,16 @@
 from fastapi import APIRouter, HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 from app.domain.schemas import (
     ChatbotStartRequest,
     ChatbotMessageRequest,
     ChatbotResponse,
 )
-from app.services.chatbot.engine import chatbot_engine
+from app.services.chatbot.engine import chatbot_engine  # adjust path if needed
 
 router = APIRouter()
 
@@ -24,11 +28,9 @@ async def start_chatbot(request: ChatbotStartRequest) -> ChatbotResponse:
         )
 
     try:
-        # ✅ await the coroutine
         session = await chatbot_engine.start_session(request)
 
         if not session.messages:
-            # Engine should always push a first assistant message
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Chatbot session initialized without messages.",
@@ -82,7 +84,6 @@ async def send_chatbot_message(request: ChatbotMessageRequest) -> ChatbotRespons
         return response
 
     except ValueError as e:
-        # Engine uses ValueError when session not found or invalid
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
             detail=str(e),

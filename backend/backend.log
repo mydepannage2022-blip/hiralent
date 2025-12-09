@@ -1,0 +1,18 @@
+
+> backend@1.0.0 dev
+> nodemon --exec ts-node src/server.ts
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+ QuestionService initialized
+­ƒÄ» QuestionController initialized
+ Loading question routes...
+ Question routes loaded successfully
+Ô£à MongoDB connected successfully
+­ƒÜÇ Server listening on port 5000
+Ô£à Postgresql connected successfully
+[32m[nodemon] restarting child process[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
