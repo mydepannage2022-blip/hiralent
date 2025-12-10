@@ -3,6 +3,16 @@ import { applyAsAgency, getApplicationStatus } from "../controller/agency/agency
 import { getDashboardStats, getRecentActivities, getAnalytics } from "../controller/agency/agency.dashboard.controller";
 import { checkAuth } from "../middlewares/checkAuth.middleware"; 
 import { createCase, listCases, getCaseById, getClients, updateCase } from "../controller/agency/agency.case.controller";
+import { getProfile, updateProfile } from "../controller/agency/agency.profile.controller";
+import { 
+  changePassword, 
+  toggle2FA, 
+  updateNotifications, 
+  getNotifications,
+  exportData,
+  getSettings 
+} from "../controller/agency/agency.settings.controller";
+import { reviewDocument, getCaseDocuments } from "../controller/agency/agency.document.controller";
 
 const router = Router();
 
@@ -21,5 +31,21 @@ router.get("/cases", checkAuth, listCases);
 router.get("/cases/:id", checkAuth, getCaseById);
 router.put("/cases/:id", checkAuth, updateCase);
 router.get("/clients", checkAuth, getClients);
+
+// Profile Routes
+router.get("/profile", checkAuth, getProfile);
+router.put("/profile", checkAuth, updateProfile);
+
+// Settings Routes
+router.get("/settings", checkAuth, getSettings);
+router.put("/settings/password", checkAuth, changePassword);
+router.put("/settings/2fa", checkAuth, toggle2FA);
+router.get("/settings/notifications", checkAuth, getNotifications);
+router.put("/settings/notifications", checkAuth, updateNotifications);
+router.get("/settings/export-data", checkAuth, exportData);
+
+// Document Review Routes
+router.get("/cases/:id/documents", checkAuth, getCaseDocuments);
+router.put("/cases/:id/documents/:documentId/review", checkAuth, reviewDocument);
 
 export default router;
