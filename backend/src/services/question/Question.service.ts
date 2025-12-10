@@ -101,7 +101,7 @@ async createQuestion(data: any): Promise<Question> {
       createdBy: data.createdBy,
       aiGenerated: data.aiGenerated || false,
       source: data.source || 'manual',
-      isLibraryQuestion: data.isLibraryQuestion ?? false,
+      isLibraryQuestion: data.isLibraryQuestion === true,
 
     };
 
