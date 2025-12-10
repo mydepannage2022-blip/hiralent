@@ -88,8 +88,8 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
     setJobDescription(job.description || "");
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError(null);
 
     if (!jobDescription.trim()) {
@@ -144,10 +144,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
         return;
       }
 
-      if (onAssessmentCreated) {
-        onAssessmentCreated();
-      }
-
+      onAssessmentCreated?.();
       onClose();
     } catch (err) {
       console.error("Error generating assessment from JD:", err);
@@ -170,57 +167,89 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Modal */}
+          {/* Modal card – same shell as AI Assessment Designer */}
           <motion.div
             initial={{ scale: 0.95, y: 12, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-gradient-to-br from-slate-50 via-sky-50 to-indigo-50/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
           >
-            {/* Top accent border */}
-            <div className="h-1 w-full bg-gradient-to-r from-[#1B73E8] via-[#4F46E5] to-[#1B73E8]" />
-
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 bg-white/80 backdrop-blur-sm border-b border-slate-100">
-              <div>
-                <h2 className="text-lg md:text-xl font-semibold text-slate-900">
-                  Generate assessment from job description
-                </h2>
-                <p className="mt-1 text-xs md:text-sm text-slate-500">
-                  Paste or edit the job description. The AI will analyze it and
-                  create a tailored assessment draft for{" "}
-                  <span className="font-medium text-[#1B73E8]">
-                    {job.title}
-                  </span>
-                  .
-                </p>
+            {/* Gradient header */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
+              {/* dotted pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 90 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onClose}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
-              >
-                <X className="w-4 h-4" />
-              </motion.button>
+              <div className="relative px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <motion.div
+                      className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                    >
+                      <Wand2 className="w-5 h-5 text-white" />
+                    </motion.div>
+                    <div>
+                      <h2 className="text-lg font-black tracking-tight">
+                        Generate assessment from job description
+                      </h2>
+                      <p className="text-blue-100 text-xs">
+                        Paste or edit the JD; the AI will analyze it and create
+                        a tailored assessment draft for this job.
+                      </p>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    onClick={onClose}
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Wave bottom, same as other modal */}
+              <div className="absolute bottom-0 left-0 right-0">
+                <svg
+                  viewBox="0 0 1440 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full"
+                >
+                  <path
+                    d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
             </div>
 
-            {/* Scrollable content */}
-            <div className="px-6 pb-4 overflow-y-auto custom-scrollbar flex-1">
+            {/* Body content (scrollable) */}
+            <div className="flex-1 flex flex-col px-6 pb-4 pt-3 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
               <div className="grid gap-6 md:grid-cols-2">
                 {/* LEFT: What AI will do */}
                 <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 md:p-5 shadow-[0_10px_40px_rgba(15,23,42,0.03)]">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B73E8]/10 text-[#1B73E8]">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/60 text-[#1B73E8] shadow-sm">
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <p className="text-sm font-semibold text-slate-900">
@@ -278,7 +307,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                     </motion.button>
                   </div>
 
-                  <div className="flex-1 rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                  <div className="flex-1 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm">
                     <textarea
                       value={jobDescription}
                       onChange={(e) => setJobDescription(e.target.value)}
@@ -298,68 +327,73 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
               </div>
             </div>
 
-            {/* Footer (sticky) */}
-{/* Footer (gradient visible) */}
-<div
-  className="
-    border-t border-white/20
-    bg-white/10 backdrop-blur-xl
-    px-6 py-3
-    flex flex-col md:flex-row md:items-center md:justify-between gap-3
-  "
->
-  <p className="text-[11px] text-slate-700">
-    After generation, the assessment draft will appear in{" "}
-    <span className="font-medium text-[#1B73E8]">My Assessments</span> for this job.
-  </p>
+            {/* Footer (gradient visible, same spirit as other modal) */}
+            <div
+              className="
+                border-t border-slate-100
+                bg-white/80 backdrop-blur-xl
+                px-6 py-3
+                flex flex-col md:flex-row md:items-center md:justify-between gap-3
+              "
+            >
+              <p className="text-[11px] text-slate-700">
+                After generation, the assessment draft will appear in{" "}
+                <span className="font-medium text-[#1B73E8]">
+                  My Assessments
+                </span>{" "}
+                for this job.
+              </p>
 
-  <div className="flex justify-end gap-3">
-    <motion.button
-      type="button"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClose}
-      className="
-        px-4 py-2 rounded-full border border-white/30 
-        bg-white/10 backdrop-blur-xl 
-        text-sm font-medium text-slate-700 hover:bg-white/20
-      "
-    >
-      Cancel
-    </motion.button>
+              <div className="flex justify-end gap-3">
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={onClose}
+                  className="
+                    px-4 py-2 rounded-full border border-slate-200
+                    bg-white text-sm font-medium text-slate-700
+                    hover:bg-slate-50
+                  "
+                >
+                  Cancel
+                </motion.button>
 
-    <motion.button
-      type="button"
-      whileHover={{ scale: isGenerating ? 1 : 1.02 }}
-      whileTap={{ scale: isGenerating ? 1 : 0.98 }}
-      disabled={isGenerating}
-      onClick={handleGenerate}
-      className="
-        inline-flex items-center gap-2 rounded-full 
-        bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] 
-        px-5 py-2 text-sm font-semibold text-white 
-        shadow-md disabled:opacity-60 disabled:cursor-not-allowed
-      "
-    >
-      {isGenerating ? (
-        <>
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-          />
-          Generating…
-        </>
-      ) : (
-        <>
-          <Wand2 className="w-4 h-4" />
-          Generate assessment
-        </>
-      )}
-    </motion.button>
-  </div>
-</div>
-
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: isGenerating ? 1 : 1.02 }}
+                  whileTap={{ scale: isGenerating ? 1 : 0.98 }}
+                  disabled={isGenerating}
+                  onClick={() => handleGenerate()}
+                  className="
+                    inline-flex items-center gap-2 rounded-full
+                    bg-gradient-to-r from-[#1B73E8] to-[#4F46E5]
+                    px-5 py-2 text-sm font-semibold text-white
+                    shadow-md disabled:opacity-60 disabled:cursor-not-allowed
+                  "
+                >
+                  {isGenerating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-4 h-4" />
+                      Generate assessment
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
         </motion.div>
       )}

@@ -253,7 +253,7 @@ const AssessmentQuestionsSummary: React.FC<Props> = ({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          <span>Generate & attach AI questions</span>
+          <span>Attach Relevant Questions</span>
         </motion.button>
 
         {/* Planned / attached summary – click opens modal */}
@@ -364,7 +364,7 @@ const AssessmentQuestionsSummary: React.FC<Props> = ({
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-600">
                     No questions attached yet. Use{" "}
                     <span className="font-semibold text-[#1B73E8]">
-                      “Generate & attach AI questions”
+                      “Attach Relevant Questions”
                     </span>{" "}
                     to populate this assessment.
                   </div>
