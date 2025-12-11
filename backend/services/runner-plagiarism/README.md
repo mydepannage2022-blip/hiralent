@@ -12,10 +12,10 @@ Usage (from project root):
 ```powershell
 cd backend/services/runner-plagiarism
 python -m pip install -r requirements.txt
-uvicorn app:app --host 127.0.0.1 --port 8001
+uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
-Set `RUNNER_HTTP_URL` to `http://127.0.0.1:8001` in the backend env to use this stub.
+Set `RUNNER_HTTP_URL` to `http://127.0.0.1:8000` in the backend env to use this stub.
 
 This is intentionally minimal. Later improvements will add sandboxing, time and
 memory limits, output truncation, network blocking, and real plagiarism checks.

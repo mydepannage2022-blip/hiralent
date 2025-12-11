@@ -38,7 +38,7 @@ import { useAuth } from "../../../../context/AuthContext";
 
 import JDParsingModal from "../assessmentManagement/JDParsingModal";
 import ChatbotAssessmentModal from "../assessmentManagement/ChatbotAssessmentModal";
-
+import JobApplicantsModal from "./JobApplicantsModal";
 /* =============================
    Types
 ============================= */
@@ -1359,6 +1359,16 @@ const JobsManagement: React.FC = () => {
   const [assessmentMethodModal, setAssessmentMethodModal] = useState(false);
   const [showJDParsingModal, setShowJDParsingModal] = useState(false);
   const [showChatbotModal, setShowChatbotModal] = useState(false);
+    const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [jobForApplicants, setJobForApplicants] = useState<CompanyJob | null>(
+    null
+  );
+
+  const handleOpenApplicants = (job: CompanyJob) => {
+    setJobForApplicants(job);
+    setShowApplicantsModal(true);
+  };
+
 
   // Success toast after AI builds an assessment
   const [assessmentSuccessMessage, setAssessmentSuccessMessage] = useState<
@@ -1645,6 +1655,17 @@ const JobsManagement: React.FC = () => {
         }}
       />
 
+      {/* Applicants modal */}
+      <JobApplicantsModal
+        open={showApplicantsModal}
+        job={jobForApplicants}
+        token={token}
+        onClose={() => {
+          setShowApplicantsModal(false);
+          setJobForApplicants(null);
+        }}
+      />
+
       {/* HEADER */}
       <div className="relative border-b border-gray-200/70 bg-white overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1898,49 +1919,68 @@ const JobsManagement: React.FC = () => {
                         : "border-transparent hover:border-blue-200 hover:shadow-lg"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <motion.span
-                          whileHover={{ scale: 1.1 }}
-                          className={`${pill} ${
-                            job.status === "ACTIVE"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : job.status === "DRAFT"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : job.status === "PAUSED"
-                              ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                              : job.status === "CLOSED"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : job.status === "CANCELLED"
-                              ? "bg-gray-50 text-gray-700 border-gray-300"
-                              : "bg-slate-50 text-slate-700 border-slate-200"
-                          }`}
-                        >
-                          {job.status}
-                        </motion.span>
-                        <motion.span
-                          whileHover={{ scale: 1.1 }}
-                          className={`${pill} ${
-                            job.job_type === "full_time"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : job.job_type === "part_time"
-                              ? "bg-purple-50 text-purple-700 border-purple-200"
-                              : job.job_type === "contract"
-                              ? "bg-orange-50 text-orange-700 border-orange-200"
-                              : "bg-gray-50 text-gray-700 border-gray-200"
-                          }`}
-                        >
-                          {job.job_type?.replace("_", " ").toUpperCase() || "—"}
-                        </motion.span>
-                      </div>
+<div className="flex items-center justify-between mb-3 gap-3">
+  {/* LEFT: status + job type */}
+  <div className="flex items-center gap-2 flex-wrap">
+    <motion.span
+      whileHover={{ scale: 1.1 }}
+      className={`${pill} ${
+        job.status === "ACTIVE"
+          ? "bg-green-50 text-green-700 border-green-200"
+          : job.status === "DRAFT"
+          ? "bg-amber-50 text-amber-700 border-amber-200"
+          : job.status === "PAUSED"
+          ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+          : job.status === "CLOSED"
+          ? "bg-red-50 text-red-700 border-red-200"
+          : job.status === "CANCELLED"
+          ? "bg-gray-50 text-gray-700 border-gray-300"
+          : "bg-slate-50 text-slate-700 border-slate-200"
+      }`}
+    >
+      {job.status}
+    </motion.span>
 
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
-                        <span>
-                          {new Date(job.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
+    <motion.span
+      whileHover={{ scale: 1.1 }}
+      className={`${pill} ${
+        job.job_type === "full_time"
+          ? "bg-blue-50 text-blue-700 border-blue-200"
+          : job.job_type === "part_time"
+          ? "bg-purple-50 text-purple-700 border-purple-200"
+          : job.job_type === "contract"
+          ? "bg-orange-50 text-orange-700 border-orange-200"
+          : "bg-gray-50 text-gray-700 border-gray-200"
+      }`}
+    >
+      {job.job_type?.replace("_", " ").toUpperCase() || "—"}
+    </motion.span>
+  </div>
+
+  {/* RIGHT: applicants button + created date */}
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();          // don't change selected card
+        handleOpenApplicants(job);    // <-- uses the new handler you added
+      }}
+      className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+    >
+      <Users className="w-3 h-3" />
+      <span>
+        {job.applications_count ?? 0}{" "}
+        {(job.applications_count ?? 0) === 1 ? "applicant" : "applicants"}
+      </span>
+    </button>
+
+    <div className="flex items-center gap-1 text-xs text-gray-500">
+      <Calendar className="w-3 h-3" />
+      <span>{new Date(job.created_at).toLocaleDateString()}</span>
+    </div>
+  </div>
+</div>
+
 
                     <motion.h3
                       className="text-[15.5px] font-extrabold text-[#142c52] leading-snug mb-2"
