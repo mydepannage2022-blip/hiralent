@@ -657,6 +657,7 @@ model CandidateDocument {
   file_path         String
   file_type         String
   file_size         Int
+  file_name         String
   upload_status     String
   extraction_status String?
   processed_text    String?
@@ -670,6 +671,7 @@ model CandidateDocument {
 model CandidateSkill {
   skill_id           String             @id @default(uuid())
   candidate_id       String
+  is_verified        Boolean  @default(false) 
   skill_name         String
   skill_category     String?
   proficiency        String?
