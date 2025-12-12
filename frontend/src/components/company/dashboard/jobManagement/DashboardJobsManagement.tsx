@@ -39,6 +39,8 @@ import { useAuth } from "../../../../context/AuthContext";
 import JDParsingModal from "../assessmentManagement/JDParsingModal";
 import ChatbotAssessmentModal from "../assessmentManagement/ChatbotAssessmentModal";
 import JobApplicantsModal from "./JobApplicantsModal";
+import CreateJobWizardModal from "./CreateJobWizardModal";
+
 /* =============================
    Types
 ============================= */
@@ -1348,6 +1350,9 @@ const JobsManagement: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<CompanyJob | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
+
+
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -1422,10 +1427,12 @@ const JobsManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [assessmentSuccessMessage]);
 
-  const handleCreateJob = () => {
-    setEditingJob(null);
-    setModalMode("create");
-  };
+const handleCreateJob = () => {
+  setModalMode(null);
+  setEditingJob(null);
+  setCreateWizardOpen(true);
+};
+
 
   const handleEditJob = (job: CompanyJob) => {
     setEditingJob(job);
@@ -1602,18 +1609,31 @@ const JobsManagement: React.FC = () => {
       `}</style>
 
       {/* Modals */}
-      <AnimatePresence>
-        {modalMode && (
-          <JobFormModal
-            key={`job-form-${modalMode}-${editingJob?.job_id || "new"}`}
-            visible={!!modalMode}
-            mode={modalMode}
-            job={editingJob}
-            onClose={closeModal}
-            onSubmit={submitJob}
-          />
-        )}
-      </AnimatePresence>
+{/* CREATE (Wizard) */}
+<AnimatePresence>
+  {createWizardOpen && (
+    <CreateJobWizardModal
+      open={createWizardOpen}
+      onClose={() => setCreateWizardOpen(false)}
+      onSubmit={submitJob}
+    />
+  )}
+</AnimatePresence>
+
+
+{/* EDIT (keep your old modal) */}
+<AnimatePresence>
+  {modalMode === "edit" && (
+    <JobFormModal
+      key={`job-form-edit-${editingJob?.job_id || "none"}`}
+      visible={modalMode === "edit"}
+      mode="edit"
+      job={editingJob}
+      onClose={closeModal}
+      onSubmit={submitJob}
+    />
+  )}
+</AnimatePresence>
 
       {/* Assessment method selection */}
       {selectedJob && (
@@ -1666,131 +1686,139 @@ const JobsManagement: React.FC = () => {
         }}
       />
 
-      {/* HEADER */}
-      <div className="relative border-b border-gray-200/70 bg-white overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute -top-20 -right-20 w-96 h-96 bg-[#1B73E8]/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.2, 1],
-              x: [0, 30, 0],
-            }}
-            transition={{ duration: 8, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute -bottom-20 -left-20 w-96 h-96 bg-[#0D47A1]/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.3, 1],
-              x: [0, -30, 0],
-            }}
-            transition={{ duration: 10, repeat: Infinity }}
-          />
-        </div>
+{/* HEADER (compact) */}
+<div className="relative border-b border-gray-200/70 bg-white overflow-hidden">
+  {/* smaller animated blobs */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <motion.div
+      className="absolute -top-28 -right-28 w-64 h-64 bg-[#1B73E8]/10 rounded-full blur-3xl"
+      animate={{ scale: [1, 1.15, 1], x: [0, 20, 0] }}
+      transition={{ duration: 8, repeat: Infinity }}
+    />
+    <motion.div
+      className="absolute -bottom-28 -left-28 w-64 h-64 bg-[#0D47A1]/10 rounded-full blur-3xl"
+      animate={{ scale: [1, 1.2, 1], x: [0, -20, 0] }}
+      transition={{ duration: 10, repeat: Infinity }}
+    />
+  </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${panel} px-6 py-5`}
-          >
-            <div className="flex items-start gap-3">
-              <motion.div className="w-12 h-12 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-lg">
-                <Building className="w-6 h-6 text-white" />
-              </motion.div>
-              <div className="flex-1">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[#0D2A5B]">
-                  Job Management
-                </h1>
-                <p className="text-sm md:text-[15px] text-[#2c477b]/80 mt-1 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Manage your job postings and candidate pipeline
-                </p>
-              </div>
-              <motion.div
-                className="flex items-center gap-2 bg.white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm bg-white"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <motion.div
-                  className="w-2 h-2 bg-green-500 rounded-full"
-                  animate={{ opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-                <span className="text-xs font-bold text-[#0D2A5B]">LIVE</span>
-              </motion.div>
-            </div>
-          </motion.div>
+  <div className="relative max-w-7xl mx-auto px-6 py-4">
+    {/* compact top bar */}
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`${panel} px-4 py-3`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-lg">
+            <Building className="w-4 h-4 text-white" />
+          </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6">
-            {[
-              {
-                key: "total",
-                label: "Total Jobs",
-                value: stats.total,
-                icon: FileText,
-                card: "bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border-blue-300/40",
-                badge: "bg-blue-600",
-              },
-              {
-                key: "active",
-                label: "Active Jobs",
-                value: stats.active,
-                icon: Target,
-                card: "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-emerald-300/40",
-                badge: "bg-emerald-600",
-              },
-              {
-                key: "draft",
-                label: "Draft Jobs",
-                value: stats.draft,
-                icon: Clock,
-                card: "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-amber-300/40",
-                badge: "bg-amber-600",
-              },
-              {
-                key: "applications",
-                label: "Total Applications",
-                value: stats.applications,
-                icon: Users,
-                card: "bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-300/40",
-                badge: "bg-purple-600",
-              },
-            ].map((s, i) => (
-              <motion.div
-                key={s.key}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -5, scale: 1.02 }}
-                className={`rounded-2xl border ${s.card} p-5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
-              >
-                <div className="flex items-center justify-between">
-                  <motion.div
-                    className={`w-10 h-10 rounded-xl ${s.badge} text-white flex items-center justify-center shadow-lg`}
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    <s.icon className="w-5 h-5" />
-                  </motion.div>
-                  <TrendingUp className="w-4 h-4 text-[#0D2A5B]/50" />
-                </div>
-                <motion.div
-                  className="mt-3 text-3xl font-black text-[#0D2A5B]"
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: i * 0.1 + 0.2, type: "spring" }}
-                >
-                  {s.value}
-                </motion.div>
-                <div className="text-xs text-[#0D2A5B]/70 mt-1">
-                  {s.label}
-                </div>
-              </motion.div>
-            ))}
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-[#0D2A5B] truncate">
+              Job Management
+            </h1>
+            <p className="text-xs md:text-sm text-[#2c477b]/80 mt-0.5 flex items-center gap-2 truncate">
+              <Shield className="w-3.5 h-3.5" />
+              Manage your job postings and candidate pipeline
+            </p>
           </div>
         </div>
+
+        {/* LIVE pill smaller */}
+        <motion.div
+          className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-200 shadow-sm bg-white"
+          animate={{ scale: [1, 1.04, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <motion.div
+            className="w-2 h-2 bg-green-500 rounded-full"
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+          <span className="text-[11px] font-bold text-[#0D2A5B]">LIVE</span>
+        </motion.div>
       </div>
+    </motion.div>
+
+    {/* Stats (smaller) */}
+    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4">
+      {[
+        {
+          key: "total",
+          label: "Total Jobs",
+          value: stats.total,
+          icon: FileText,
+          card:
+            "bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border-blue-300/40",
+          badge: "bg-blue-600",
+        },
+        {
+          key: "active",
+          label: "Active Jobs",
+          value: stats.active,
+          icon: Target,
+          card:
+            "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-emerald-300/40",
+          badge: "bg-emerald-600",
+        },
+        {
+          key: "draft",
+          label: "Draft Jobs",
+          value: stats.draft,
+          icon: Clock,
+          card:
+            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-amber-300/40",
+          badge: "bg-amber-600",
+        },
+        {
+          key: "applications",
+          label: "Total Applications",
+          value: stats.applications,
+          icon: Users,
+          card:
+            "bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-300/40",
+          badge: "bg-purple-600",
+        },
+      ].map((s, i) => (
+        <motion.div
+          key={s.key}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.08 }}
+          whileHover={{ y: -3, scale: 1.01 }}
+          className={`rounded-2xl border ${s.card} p-3.5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
+        >
+          <div className="flex items-center justify-between">
+            <motion.div
+              className={`w-8 h-8 rounded-xl ${s.badge} text-white flex items-center justify-center shadow-lg`}
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.6 }}
+            >
+              <s.icon className="w-4 h-4" />
+            </motion.div>
+            <TrendingUp className="w-4 h-4 text-[#0D2A5B]/50" />
+          </div>
+
+          <motion.div
+            className="mt-2 text-2xl font-black text-[#0D2A5B]"
+            initial={{ scale: 0.7 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: i * 0.08 + 0.15, type: "spring" }}
+          >
+            {s.value}
+          </motion.div>
+
+          <div className="text-[11px] text-[#0D2A5B]/70 mt-0.5">
+            {s.label}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  </div>
+</div>
+
 
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-6 py-8">
