@@ -390,6 +390,9 @@ model SkillAssessment {
   recommendations    String[]
   ai_analysis        Json?
   confidence_score   Float?
+  employer_assessment_id String?
+  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id])
+
   summary            AssessmentSummary?
   assessmentResults  AssessmentResult[] @relation("AssessmentResults")
   candidate          User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
@@ -1465,6 +1468,7 @@ model EmployerAssessment {
 
   company User       @relation("CompanyAssessments", fields: [company_id], references: [user_id], onDelete: Cascade)
   job     CompanyJob @relation("JobAssessments", fields: [job_id], references: [job_id], onDelete: Cascade)
+  candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
 
   // Removed candidateAssessments (invalid inverse; SkillAssessment has no employer link)
   competeChallenges CompeteChallenge[]
