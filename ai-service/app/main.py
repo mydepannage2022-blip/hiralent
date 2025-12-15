@@ -2489,11 +2489,15 @@ def health_check():
     })
 
 
-# Initialiser le service de vetting
+# Initialiser le service de vetting (avec variables d'environnement)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+SANDBOX_URL = os.getenv("SANDBOX_SERVICE_URL", "localhost:50054")
+
 vetting_service = VettingPipelineService(
-    redis_url="redis://localhost:6379/1",
-    sandbox_url="localhost:50054"  # Port de Youssra
+    redis_url=REDIS_URL,
+    sandbox_url=SANDBOX_URL
 )
+
 
 # Ajouter les routes
 @app.post("/vetting/process")

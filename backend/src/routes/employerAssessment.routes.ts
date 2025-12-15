@@ -13,6 +13,7 @@ import {
   updateStatus,
   remove,
   generateQuestionsForAssessment,
+  listAssessmentQuestions,
 } from '../controller/company/employerAssessment.controller';
 
 const router = Router();
@@ -31,6 +32,7 @@ router.post('/with-chatbot', createWithChatbot);        // start chatbot-guided 
 router.post('/chatbot/message', sendChatbotMessage);
 
 // ---- Question generation (Wafaa link) ----
+router.get('/:assessment_id/questions', listAssessmentQuestions);
 router.post('/:assessment_id/generate-questions', generateQuestionsForAssessment);
 
 // ---- Read ----

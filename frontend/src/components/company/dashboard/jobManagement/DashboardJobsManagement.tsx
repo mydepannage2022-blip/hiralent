@@ -36,8 +36,8 @@ import {
 
 import { useAuth } from "../../../../context/AuthContext";
 
-import JDParsingModal from "./JDParsingModal";
-import ChatbotAssessmentModal from "./ChatbotAssessmentModal";
+import JDParsingModal from "../assessmentManagement/JDParsingModal";
+import ChatbotAssessmentModal from "../assessmentManagement/ChatbotAssessmentModal";
 
 /* =============================
    Types
