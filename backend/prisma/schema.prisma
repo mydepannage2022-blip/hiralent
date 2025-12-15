@@ -1455,7 +1455,6 @@ model EmployerAssessment {
   passing_score   Int?                     @default(70)
   question_ids    String[]
   settings        Json?
-
   creation_method  AssessmentCreationMethod
   extracted_skills String[]
   enhanced_data    Json?
