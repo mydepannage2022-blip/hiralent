@@ -1,5 +1,6 @@
 import "express";
 import { AuthenticatedUser, SessionInfo } from './session.types';
+import { UserSubscription } from './subscription.types';
 
 
 // ✅ AuthUser interface with all required properties
@@ -34,5 +35,16 @@ declare global {
     }
   }
 }
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+      sessionInfo?: SessionInfo;
+      subscription?: UserSubscription | null;
+    }
+  }
+}
+
 
 export {};
