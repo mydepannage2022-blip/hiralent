@@ -1,198 +1,275 @@
-'use client'
-import React, { use } from "react";
-import CompanyDetailsCard from '@/src/components/job/jobdetails/CompanyDetailsCard';
-import { ChevronRight } from 'lucide-react';
-import JobCard from '@/src/components/company/public-profile/JobCard';
+'use client';
+
+import React, { use } from 'react';
+import { useJob } from '@/src/lib/jobs/jobs.queries';
+import { MapPin, Briefcase, Clock, DollarSign, Building2, Globe, Loader2, ArrowLeft, Share2, Bookmark } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 interface JobDetailsPageProps {
-    params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
+
 const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
-    const { id } = use(params);
-    // Mock data (replace with API fetch using id later)
-    const companyData = {
-        name: 'Figma',
-        logo: '/images/companyicon.png',
-        role: 'UI/UX Designer',
-        shortDescription:
-            'A Senior UX Designer is a pivotal member of product development teams, responsible for ensuring that digital',
-        employmentType: 'Full-Time',
-        experienceLevel: '2-3 Years',
-        location: 'Los Angeles, CA',
-        salary: '$500',
-        profileImage: '/images/candidate.png',
-        resumeProgress: '5%',
-        resumeMessage:
-            'Almost there! Just a little more effort to make it perfect.',
-    };
+  const { id } = use(params);
+  const router = useRouter();
+
+  const { data: job, isLoading, error } = useJob(id);
+
+  if (isLoading) {
     return (
-        <div className="sm:mt-40 mt-30 mb-20">
-            <div className="mx-4 sm:mx-10 md:mx-13 lg:mx-32 xl:mx-20">
-                <CompanyDetailsCard {...companyData} />
-                <div className="w-full mx-auto bg-white space-y-6 mt-12">
-                    {/* Overview */}
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">Overview</h2>
-                        <p className="text-gray-700 text-sm leading-relaxed">
-                            A Senior UX Designer is a pivotal member of product development teams,
-                            responsible for ensuring that digital products and applications
-                            provide users with intuitive, efficient, and enjoyable interactions.
-                            They use a combination of research, thinking, and user empathy to
-                            inform their decisions, with the ultimate goal of delivering a
-                            seamless and satisfying user experience.
-                        </p>
-                    </div>
-                    {/* Job Description */}
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">Job Description</h2>
-                        <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
-                            <li>Develop precise user flows and wireframes.</li>
-                            <li>
-                                Create prototypes and conduct usability tests to address user
-                                challenges.
-                            </li>
-                            <li>Adhere to design system guidelines.</li>
-                            <li>
-                                Investigate optimal methods for generating thorough documentation.
-                            </li>
-                            <li>
-                                Offer guidance and mentorship to junior team members for optimal
-                                design execution.
-                            </li>
-                            <li>
-                                Act as a consultant for fellow UX Designers within at least 3
-                                different groups or teams.
-                            </li>
-                        </ul>
-                    </div>
-                    {/* What we offer */}
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">What we offer</h2>
-                        <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
-                            <li>Competitive compensation package</li>
-                            <li>Convenient office location in the Copenhagen Area</li>
-                            <li>Significant responsibilities and autonomy</li>
-                            <li>
-                                Participation in a well-funded startup poised for international
-                                growth
-                            </li>
-                            <li>
-                                Collaborative work environment with an experienced team for learning
-                                and development
-                            </li>
-                            <li>
-                                Joining a tight-knit, personable, and friendly team
-                            </li>
-                            <li>
-                                Prospects for increased responsibilities in tandem with the
-                                company's expansion
-                            </li>
-                        </ul>
-                    </div>
-                    {/* Bottom Tags */}
-                    <div className="flex flex-wrap gap-2 pt-4">
-                        {[
-                            "Contract",
-                            "Remote",
-                            "Full-time",
-                            "Entry level",
-                            "0-1 years experience",
-                        ].map((tag, idx) => (
-                            <span
-                                key={idx}
-                                className="px-3 py-1 text-xs rounded-md border border-gray-300 bg-gray-100 text-gray-600"
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                    <div className="flex justify-between items-center mb-8">
-                        <h2 className="text-xl font-bold">
-                            About Company
-                        </h2>
-                        <a href="#" className="text-[#005DDC] font-semibold inline-flex items-center gap-3">
-                            More
-                            <ChevronRight
-                                className="w-4 h-4 text-[#005DDC] relative top-[1px]"
-                            />
-                        </a>
-                    </div>
-                    <p className="text-gray-700">
-                        Slack Technologies, Inc. is a prominent software company headquartered in San Francisco, California. Founded in 2009 by Stewart Butterfield, Eric Costello, Cal Henderson, and Serguei Mourachov, the company has revolutionized team communication and collaboration with its innovative platform, Slack.
-                        Slack offers various subscription plans to cater to the needs of different businesses, from small startups to large enterprises. These plans include free, standard, plus, and enterprise versions, each with its own set of features and capabilities. Since its official launch in 2013, Slack has experienced remarkable growth and adoption across various industries...
-                    </p>
-                    {/* Jobs Section */}
-                    <div className="pt-6 sm:pt-8">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-bold">
-                                Similar jobs
-                            </h2>
-                            <a href="#" className="text-[#005DDC] font-semibold inline-flex items-center gap-3">
-                                More
-                                <ChevronRight
-                                    className="w-4 h-4 text-[#005DDC] relative top-[1px]"
-                                />
-                            </a>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                            <JobCard
-                                logo="/images/jobco16.png"
-                                company="UI/UX Designer"
-                                title="Conn Group"
-                                types={["Full-Time", "Part-Time"]}
-                                location="Tamil Nadu"
-                                salary="25 $ / Month"
-                                postedTime="1 hour ago"
-                            />
-                            <JobCard
-                                logo="/images/jobco7.png"
-                                company="UI/UX Designer"
-                                title="Schumm and Sons"
-                                types={["Full-Time", "Part-Time"]}
-                                location="Andra Pradesh"
-                                salary="25 $ / Month"
-                                postedTime="1 hours ago"
-                            />
-                            <JobCard
-                                logo="/images/jobco13.png"
-                                company="Marvin and Sons"
-                                title="UI/UX Designer"
-                                types={["Mid-Level", "Part-Time"]}
-                                location="Tamil Nadu"
-                                salary="25 $ / Month"
-                                postedTime="1 hour ago"
-                            />
-                            <JobCard
-                                logo="/images/jobco9.png"
-                                company="Schumm-Cormier"
-                                title="UI/UX Designer"
-                                types={["Full-Time", "Senior"]}
-                                location="Kerala"
-                                salary="25 $ / Month"
-                                postedTime="1 hour ago"
-                            />
-                            <JobCard
-                                logo="/images/jobco8.png"
-                                company="Ritchie LLC"
-                                title="UI/UX Designer"
-                                types={["Full-Time", "Part-Time"]}
-                                location="Kerala"
-                                salary="25 55$ / Month"
-                                postedTime="1 hours ago"
-                            />
-                            <JobCard
-                                logo="/images/jobco17.png"
-                                company="Runte, Flatley and Miller"
-                                title="UI/UX Designer"
-                                types={["Full-Time", "Part-Time"]}
-                                location="Andra Pradesh"
-                                salary="25 35$ / Month"
-                                postedTime="1 hours ago"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
     );
-}
+  }
+
+  if (error || !job) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Job not found</h2>
+          <p className="text-gray-600 mb-4">
+            The job you're looking for doesn't exist or has been removed.
+          </p>
+          <a
+            href="/candidate/dashboard/jobs"
+            className="text-blue-600 hover:text-blue-700 underline font-medium"
+          >
+            Browse all jobs
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      {/* Max Width Container - Same as Header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Back to jobs</span>
+        </button>
+
+        {/* Header Card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            {/* Company Logo */}
+            <div className="w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200">
+              {job.companyProfile?.logo_url ? (
+                <img
+                  src={job.companyProfile.logo_url}
+                  alt={job.companyProfile.company_name || 'Company'}
+                  className="w-20 h-20 object-contain rounded"
+                />
+              ) : (
+                <Building2 className="w-12 h-12 text-gray-400" />
+              )}
+            </div>
+
+            {/* Job Info */}
+            <div className="flex-1">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{job.title}</h1>
+                  <p className="text-lg text-gray-700 font-medium">
+                    {job.companyProfile?.company_name || job.company?.full_name || 'Company'}
+                  </p>
+                </div>
+
+                {/* Action Buttons (Desktop) */}
+                <div className="hidden lg:flex items-center gap-3">
+                  <button
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Save job"
+                  >
+                    <Bookmark className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Share job"
+                  >
+                    <Share2 className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Details */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
+                {job.location && (
+                  <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <MapPin className="w-4 h-4" />
+                    <span className="font-medium">{job.location}</span>
+                  </div>
+                )}
+
+                {job.job_type && (
+                  <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <Briefcase className="w-4 h-4" />
+                    <span className="font-medium">{job.job_type}</span>
+                  </div>
+                )}
+
+                {job.experience_level && (
+                  <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-medium">{job.experience_level}</span>
+                  </div>
+                )}
+
+                {job.salary_range && (
+                  <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <span className="font-semibold text-green-700">{job.salary_range}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-2">
+                {job.remote_option && (
+                  <span className="px-3 py-1.5 bg-purple-50 text-purple-700 text-sm font-semibold rounded-full border border-purple-200">
+                    {job.remote_option}
+                  </span>
+                )}
+                {job.visa_sponsored && (
+                  <span className="px-3 py-1.5 bg-green-50 text-green-700 text-sm font-semibold rounded-full border border-green-200">
+                    ✓ Visa Sponsored
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Apply Button (Desktop) */}
+            <div className="hidden lg:block">
+              <button
+                disabled
+                className="px-8 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold cursor-not-allowed transition-all"
+                title="Application feature coming soon"
+              >
+                Apply Now
+              </button>
+              <p className="text-xs text-gray-500 mt-2 text-center">Coming soon</p>
+            </div>
+          </div>
+
+          {/* Apply Button (Mobile) */}
+          <div className="lg:hidden mt-6 pt-6 border-t border-gray-200">
+            <button
+              disabled
+              className="w-full px-8 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold cursor-not-allowed"
+              title="Application feature coming soon"
+            >
+              Apply Now
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">Coming soon</p>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Left Column - Job Details */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Job Description */}
+            {job.description && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-blue-600" />
+                  Job Description
+                </h2>
+                <div
+                  className="text-gray-700 prose prose-blue max-w-none leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: job.description }}
+                />
+              </div>
+            )}
+
+            {/* Required Skills */}
+            {job.required_skills && job.required_skills.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Required Skills</h2>
+                <div className="flex flex-wrap gap-2">
+                  {job.required_skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold border border-blue-200 hover:bg-blue-100 transition-colors"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Company Info */}
+          <div className="lg:col-span-1">
+            {job.companyProfile && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                  About the Company
+                </h2>
+                
+                <div className="space-y-4">
+                  {job.companyProfile.company_name && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Company Name</p>
+                      <p className="font-semibold text-gray-900">{job.companyProfile.company_name}</p>
+                    </div>
+                  )}
+
+                  {job.companyProfile.industry && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Industry</p>
+                      <p className="font-semibold text-gray-900">{job.companyProfile.industry}</p>
+                    </div>
+                  )}
+
+                  {job.companyProfile.website && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Website</p>
+                      <a
+                        href={job.companyProfile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-blue-600 hover:text-blue-700 hover:underline break-all"
+                      >
+                        {job.companyProfile.website}
+                      </a>
+                    </div>
+                  )}
+
+                  {job.location && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Location</p>
+                      <p className="font-semibold text-gray-900">{job.location}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* View Company Profile Button */}
+                <button
+                  onClick={() => router.push(`/company/public-profile/${job.company_id}`)}
+                  className="w-full mt-6 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition-colors"
+                >
+                  View Company Profile
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 export default JobDetailsPage;

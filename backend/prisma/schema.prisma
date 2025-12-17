@@ -141,6 +141,8 @@ model User {
   conversationsParticipant2 Conversation[]    @relation("ConversationP2")
   messagesSent              Message[]         @relation("UserMessages")
   hiringAnalytics           HiringAnalytics[] @relation("CompanyAnalytics")
+  subscriptions     UserSubscription[]  @relation("UserSubscriptions")
+  payments          PaymentTransaction[] @relation("UserPayments")
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -390,6 +392,9 @@ model SkillAssessment {
   recommendations    String[]
   ai_analysis        Json?
   confidence_score   Float?
+  employer_assessment_id String?
+  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id])
+
   summary            AssessmentSummary?
   assessmentResults  AssessmentResult[] @relation("AssessmentResults")
   candidate          User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
@@ -624,6 +629,7 @@ model SubscriptionPlan {
   created_at               DateTime             @default(now())
   updated_at               DateTime             @updatedAt
   agencySubscriptions      AgencySubscription[]
+  userSubscriptions UserSubscription[] @relation("SubscriptionPlanToUser")
 }
 
 model AgencySubscription {
@@ -662,6 +668,7 @@ model CandidateDocument {
   file_path         String
   file_type         String
   file_size         Int
+  file_name         String
   upload_status     String
   extraction_status String?
   processed_text    String?
@@ -675,6 +682,7 @@ model CandidateDocument {
 model CandidateSkill {
   skill_id           String             @id @default(uuid())
   candidate_id       String
+  is_verified        Boolean  @default(false) 
   skill_name         String
   skill_category     String?
   proficiency        String?
@@ -1453,7 +1461,6 @@ model EmployerAssessment {
   passing_score   Int?                     @default(70)
   question_ids    String[]
   settings        Json?
-
   creation_method  AssessmentCreationMethod
   extracted_skills String[]
   enhanced_data    Json?
@@ -1464,6 +1471,7 @@ model EmployerAssessment {
 
   company User       @relation("CompanyAssessments", fields: [company_id], references: [user_id], onDelete: Cascade)
   job     CompanyJob @relation("JobAssessments", fields: [job_id], references: [job_id], onDelete: Cascade)
+  candidateAssessments SkillAssessment[] @relation("EmployerToCandidateAssessments")
 
   // Removed candidateAssessments (invalid inverse; SkillAssessment has no employer link)
   competeChallenges CompeteChallenge[]
@@ -1578,3 +1586,60 @@ model Message {
 
 // Code submissions table mapping for run results and worker updates
 // (Duplicate/old model removed — the canonical `CodeSubmission` model appears earlier in this file.)
+
+
+// ============================================
+// PAYMENT & SUBSCRIPTION MODELS (NEW)
+// ============================================
+
+model UserSubscription {
+  subscription_id          String   @id @default(uuid())
+  user_id                  String   @unique
+  plan_id                  String
+  payment_gateway          String   // stripe, paypal, manual
+  gateway_subscription_id  String?  // External subscription ID
+  status                   String   @default("active") // active, canceled, expired, past_due, trialing
+  billing_cycle            String   // monthly, yearly
+  current_period_start     DateTime
+  current_period_end       DateTime
+  trial_ends_at            DateTime?
+  cancel_at_period_end     Boolean  @default(false)
+  canceled_at              DateTime?
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+
+  // Relations
+  user         User                  @relation("UserSubscriptions", fields: [user_id], references: [user_id], onDelete: Cascade)
+  plan         SubscriptionPlan      @relation("SubscriptionPlanToUser", fields: [plan_id], references: [plan_id])
+  transactions PaymentTransaction[]  @relation("SubscriptionTransactions")
+
+  @@index([user_id])
+  @@index([status])
+  @@index([current_period_end])
+}
+
+model PaymentTransaction {
+  transaction_id       String    @id @default(uuid())
+  user_id              String
+  subscription_id      String?
+  amount               Decimal   @db.Decimal(10, 2)
+  currency             String    @default("USD") // USD, AED, SAR, etc.
+  payment_gateway      String    // stripe, paypal, razorpay, paytabs, manual
+  gateway_payment_id   String?   // External payment ID
+  gateway_customer_id  String?   // External customer ID
+  status               String    @default("pending") // pending, processing, succeeded, failed, canceled, refunded
+  payment_method       String?   // card, paypal, bank_transfer, etc.
+  failure_reason       String?
+  metadata             Json?     // Additional data
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  // Relations
+  user         User              @relation("UserPayments", fields: [user_id], references: [user_id], onDelete: Cascade)
+  subscription UserSubscription? @relation("SubscriptionTransactions", fields: [subscription_id], references: [subscription_id])
+
+  @@index([user_id])
+  @@index([subscription_id])
+  @@index([status])
+  @@index([gateway_payment_id])
+}

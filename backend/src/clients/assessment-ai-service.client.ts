@@ -5,7 +5,7 @@ import type {
 
 // ---------------- BASE URL ----------------
 const AI_BASE_URL =
-  process.env.AI_SERVICE_BASE_URL || "http://localhost:8000";
+  process.env.AI_SERVICE_BASE_URL || "http://localhost:8001";
 
 const BASE = `${AI_BASE_URL}/api/v1`;
 

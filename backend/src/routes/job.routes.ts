@@ -11,6 +11,7 @@ import {
   patchJobStatus,
   getMyCompanyJobs,
   getCompanyJobsById,
+  getJobApplicantsForJob,
 } from '../controller/company/job.controller';
 
 const router = Router();
@@ -27,11 +28,12 @@ router.get('/jobs/:id', getJobById);
 router.put('/jobs/:id', updateJob);
 router.delete('/jobs/:id', deleteJob);
 router.patch('/jobs/:id/status', patchJobStatus);
-
+router.get('/jobs/:id/applicants', getJobApplicantsForJob);
 // ============================
 // 🔹 Company-specific Routes
 // ============================
 router.get('/jobs/company/my-jobs', getMyCompanyJobs);
 router.get('/jobs/company/:companyId/jobs', getCompanyJobsById);
+
 
 export default router;

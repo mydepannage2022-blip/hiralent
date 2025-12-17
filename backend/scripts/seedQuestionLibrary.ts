@@ -309,7 +309,7 @@ function sleep(ms: number) {
    GENERATION CODING (via service AI TS)
 ===================================== */
 async function generateCodingQuestion(topic: string, difficulty: Difficulty) {
-  console.log(`🤖 CODING "${topic}" (${difficulty})`);
+  console.log(` CODING "${topic}" (${difficulty})`);
 
   try {
     const aiResp = await aiQuestionGenerationService.generateQuestion({
@@ -318,7 +318,7 @@ async function generateCodingQuestion(topic: string, difficulty: Difficulty) {
     });
 
     if (!aiResp.success || !aiResp.question) {
-      console.error('❌ AI generation failed for', topic, aiResp.error);
+      console.error(' AI generation failed for', topic, aiResp.error);
       return null;
     }
 
@@ -350,13 +350,13 @@ async function generateCodingQuestion(topic: string, difficulty: Difficulty) {
         });
       }
     } catch (e) {
-      console.warn('⚠️ Vector store failed for', saved.id);
+      console.warn('Vector store failed for', saved.id);
     }
 
-    console.log(`✅ SAVED CODING: ${saved.id} - ${saved.title}`);
+    console.log(`SAVED CODING: ${saved.id} - ${saved.title}`);
     return saved;
   } catch (err: any) {
-    console.error(`❌ ERROR generating CODING for "${topic}":`, err.message);
+    console.error(` ERROR generating CODING for "${topic}":`, err.message);
     return null;
   }
 }
@@ -365,7 +365,7 @@ async function generateCodingQuestion(topic: string, difficulty: Difficulty) {
    GENERATION MCQ (appel direct Python)
 ===================================== */
 async function generateMCQQuestion(topic: string, difficulty: Difficulty) {
-  console.log(`🎯 MCQ "${topic}" (${difficulty})`);
+  console.log(` MCQ "${topic}" (${difficulty})`);
 
   try {
     const resp = await fetch(`${AI_SERVICE_URL}/generate/mcq-only`, {
@@ -375,7 +375,7 @@ async function generateMCQQuestion(topic: string, difficulty: Difficulty) {
     });
 
     if (!resp.ok) {
-      console.error('❌ MCQ AI service error:', resp.status);
+      console.error(' MCQ AI service error:', resp.status);
       return null;
     }
 
@@ -386,7 +386,7 @@ async function generateMCQQuestion(topic: string, difficulty: Difficulty) {
     };
 
     if (!data.success || !data.question) {
-      console.error('❌ MCQ generation failed for', topic, data.error);
+      console.error(' MCQ generation failed for', topic, data.error);
       return null;
     }
 
@@ -443,7 +443,7 @@ async function run() {
   let mcqSuccess = 0;
   let failures = 0;
 
-  console.log('📝 PHASE 1: CODING QUESTIONS\n');
+  console.log(' PHASE 1: CODING QUESTIONS\n');
   for (const topic of CODING_TOPICS) {
     const diff = randomDifficulty();
     const res = await generateCodingQuestion(topic, diff);
@@ -452,7 +452,7 @@ async function run() {
     await sleep(1500);
   }
 
-  console.log('\n🎯 PHASE 2: MCQ QUESTIONS\n');
+  console.log('\n PHASE 2: MCQ QUESTIONS\n');
   for (const topic of MCQ_TOPICS) {
     const diff = randomDifficulty();
     const res = await generateMCQQuestion(topic, diff);
