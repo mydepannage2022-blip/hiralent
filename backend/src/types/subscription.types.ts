@@ -1,5 +1,7 @@
 // Subscription related types
 
+import { Decimal } from "../generated/prisma/runtime/index-browser";
+
 export enum SubscriptionStatus {
   ACTIVE = 'active',
   CANCELED = 'canceled',
@@ -22,8 +24,8 @@ export enum PlanType {
 export interface SubscriptionPlan {
   plan_id: string;
   name: string;
-  price_monthly_usd: number;
-  price_annually_usd: number;
+  price_monthly_usd: Decimal;
+  price_annually_usd: Decimal;
   job_post_limit: number;
   ai_interview_limit: number;
   features_included: string; // JSON string

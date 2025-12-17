@@ -3,6 +3,7 @@ import { AuthenticatedUser, SessionInfo } from './session.types';
 import { UserSubscription } from './subscription.types';
 
 
+
 // ✅ AuthUser interface with all required properties
 export interface AuthUser {
   user_id: string;
@@ -23,16 +24,6 @@ declare module "express-serve-static-core" {
     file?: Express.Multer.File;
 
     files?: Express.Multer.File[];
-  }
-}
-
-// ✅ Re-export for easy importing
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-      sessionInfo?: SessionInfo;
-    }
   }
 }
 
