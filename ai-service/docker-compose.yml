@@ -20,7 +20,7 @@ services:
     image: redis:7
     container_name: ai-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     networks:
       - ai-net
 
