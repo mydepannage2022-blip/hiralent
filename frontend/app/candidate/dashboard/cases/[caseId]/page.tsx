@@ -22,6 +22,7 @@ import {
   Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DOCUMENT_TYPES } from "@/src/constants/documentTypes";
 
 interface Agency {
   agency_id: string;
@@ -59,6 +60,22 @@ interface Case {
   created_at: string;
   agency: Agency;
   documents: Document[];
+  embassy_submission?: EmbassySubmission;
+}
+
+interface EmbassySubmission {
+  submission_id: string;
+  embassy_name: string;
+  embassy_location: string;
+  submission_date: string;
+  tracking_number?: string;
+  expected_response?: string;
+  status: string;
+  interview_date?: string;
+  interview_location?: string;
+  interview_notes?: string;
+  decision_date?: string;
+  decision_notes?: string;
 }
 
 export default function CaseDetailPage() {
@@ -86,15 +103,6 @@ export default function CaseDetailPage() {
     status: string;
   } | null>(null);
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
-
-  const documentTypes = [
-    { value: "passport", label: "Passport Copy" },
-    { value: "visa_application", label: "Visa Application Form" },
-    { value: "bank_statement", label: "Bank Statement" },
-    { value: "employment_letter", label: "Employment Letter" },
-    { value: "proof_of_accommodation", label: "Proof of Accommodation" },
-    { value: "other", label: "Other Document" },
-  ];
 
   const fetchCase = async () => {
     try {
@@ -638,7 +646,7 @@ export default function CaseDetailPage() {
               Required Documents
             </h3>
             <ul className="space-y-2">
-              {documentTypes.map((type) => {
+              {DOCUMENT_TYPES.map((type) => {
                 const hasDoc = caseData.documents.some(
                   (d) =>
                     d.document_type === type.value &&
@@ -665,6 +673,135 @@ export default function CaseDetailPage() {
               })}
             </ul>
           </div>
+          {caseData.embassy_submission && (
+            <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
+              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-green-600" />
+                Embassy Status
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Current Status</p>
+                  <span
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                      caseData.embassy_submission.status
+                    )}`}
+                  >
+                    {getStatusIcon(caseData.embassy_submission.status)}
+                    {caseData.embassy_submission.status.replace("_", " ")}
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Embassy</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {caseData.embassy_submission.embassy_name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {caseData.embassy_submission.embassy_location}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Submitted On</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {formatDate(caseData.embassy_submission.submission_date)}
+                  </p>
+                </div>
+
+                {caseData.embassy_submission.tracking_number && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">
+                      Tracking Number
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.embassy_submission.tracking_number}
+                    </p>
+                  </div>
+                )}
+
+                {/* Interview Alert */}
+                {caseData.embassy_submission.interview_date && (
+                  <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Calendar className="w-5 h-5 text-orange-600 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-orange-900 mb-2">
+                          📅 Interview Scheduled
+                        </p>
+                        <p className="text-sm font-medium text-slate-700 mb-1">
+                          {new Date(
+                            caseData.embassy_submission.interview_date
+                          ).toLocaleString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        {caseData.embassy_submission.interview_location && (
+                          <p className="text-xs text-slate-600">
+                            📍 {caseData.embassy_submission.interview_location}
+                          </p>
+                        )}
+                        {caseData.embassy_submission.interview_notes && (
+                          <p className="text-xs text-slate-600 mt-2 italic">
+                            {caseData.embassy_submission.interview_notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Decision */}
+                {caseData.embassy_submission.decision_date && (
+                  <div
+                    className={`mt-4 p-4 rounded-lg border ${
+                      caseData.embassy_submission.status === "approved"
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {caseData.embassy_submission.status === "approved" ? (
+                        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p
+                          className={`text-xs font-bold mb-2 ${
+                            caseData.embassy_submission.status === "approved"
+                              ? "text-green-900"
+                              : "text-red-900"
+                          }`}
+                        >
+                          {caseData.embassy_submission.status === "approved"
+                            ? "🎉 Application Approved!"
+                            : "Application Decision"}
+                        </p>
+                        <p className="text-xs text-slate-600 mb-1">
+                          Decision Date:{" "}
+                          {formatDate(
+                            caseData.embassy_submission.decision_date
+                          )}
+                        </p>
+                        {caseData.embassy_submission.decision_notes && (
+                          <p className="text-xs text-slate-600 mt-2 italic">
+                            {caseData.embassy_submission.decision_notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -704,7 +841,7 @@ export default function CaseDetailPage() {
                     disabled={uploading}
                   >
                     <option value="">Select document type</option>
-                    {documentTypes.map((type) => (
+                    {DOCUMENT_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>

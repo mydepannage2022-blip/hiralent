@@ -13,6 +13,12 @@ import {
   getSettings 
 } from "../controller/agency/agency.settings.controller";
 import { reviewDocument, getCaseDocuments } from "../controller/agency/agency.document.controller";
+import {
+  submitToEmbassy,
+  updateEmbassyStatus,
+  scheduleInterview,
+  getEmbassySubmission,
+} from "../controller/agency/agency.embassy.controller";
 
 const router = Router();
 
@@ -47,5 +53,15 @@ router.get("/settings/export-data", checkAuth, exportData);
 // Document Review Routes
 router.get("/cases/:id/documents", checkAuth, getCaseDocuments);
 router.put("/cases/:id/documents/:documentId/review", checkAuth, reviewDocument);
+
+// ==================== EMBASSY SUBMISSION ROUTES ====================
+// Submit case to embassy
+router.post("/cases/:id/embassy/submit", checkAuth, submitToEmbassy);
+// Get embassy submission details
+router.get("/cases/:id/embassy", checkAuth, getEmbassySubmission);
+// Update embassy status
+router.put("/cases/:id/embassy/status", checkAuth, updateEmbassyStatus);
+// Schedule interview
+router.post("/cases/:id/embassy/interview", checkAuth, scheduleInterview);
 
 export default router;

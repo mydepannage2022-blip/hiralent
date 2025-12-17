@@ -180,151 +180,48 @@ export const createCase = async (req: Request, res: Response) => {
       candidate.full_name || candidateEmail.split("@")[0];
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-    console.log("\n🔍 === EMAIL CONFIGURATION CHECK ===");
-    console.log("SMTP_HOST:", process.env.SMTP_HOST);
-    console.log("SMTP_PORT:", process.env.SMTP_PORT);
-    console.log("SMTP_USER:", process.env.SMTP_USER ? "✅ Set" : "❌ Missing");
-    console.log("SMTP_PASS:", process.env.SMTP_PASS ? "✅ Set" : "❌ Missing");
-    console.log("SMTP_FROM:", process.env.SMTP_FROM);
-    console.log("FRONTEND_URL:", frontendUrl);
-    console.log("================================\n");
+    console.log("📧 Queuing emails for:", candidateEmail);
 
-    try {
-      if (isNewCandidate) {
-        console.log("📧 Sending welcome email to:", candidateEmail);
-
-        const welcomeEmailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-              .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-              .credentials { background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0; }
-              .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-              .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>Welcome to Hiralent! 🎉</h1>
-              </div>
-              <div class="content">
-                <p>Hi <strong>${candidateName_display}</strong>,</p>
-                
-                <p>Welcome to Hiralent! Your account has been created by <strong>${agencyName}</strong> to manage your relocation process.</p>
-                
-                <div class="credentials">
-                  <h3>Your Login Credentials:</h3>
-                  <p><strong>Email:</strong> ${candidateEmail}</p>
-                  <p><strong>Temporary Password:</strong> <code style="background: #fee; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
-                </div>
-                
-                <p><strong>⚠️ Important:</strong> Please change your password after your first login for security.</p>
-                
-                <a href="${frontendUrl}/candidate/cases" class="button">Access Your Dashboard</a>
-                
-                <p>You can now log in to view your relocation case and upload required documents.</p>
-                
-                <div class="footer">
-                  <p>This is an automated message from Hiralent.</p>
-                  <p>If you did not expect this email, please contact support.</p>
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
-
-        await sendEmail({
-          to: candidateEmail,
-          subject: "Welcome to Hiralent - Your Account is Ready! 🎉",
-          html: welcomeEmailHtml,
-        });
-
-        console.log(`✅ Welcome email sent to: ${candidateEmail}`);
-      }
-
-      console.log("📧 Sending case notification to:", candidateEmail);
-
-      const caseEmailHtml = `
+    if (isNewCandidate) {
+      const welcomeEmailHtml = `
         <!DOCTYPE html>
         <html>
         <head>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .case-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; }
-            .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-            .info-label { font-weight: bold; width: 150px; color: #6b7280; }
-            .info-value { flex: 1; }
-            .docs-section { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-            .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+            .credentials { background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
             .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <h1>New Relocation Case Created 📋</h1>
+              <h1>Welcome to Hiralent! 🎉</h1>
             </div>
             <div class="content">
               <p>Hi <strong>${candidateName_display}</strong>,</p>
               
-              <p>A new relocation case has been created for you by <strong>${agencyName}</strong>.</p>
+              <p>Welcome to Hiralent! Your account has been created by <strong>${agencyName}</strong> to manage your relocation process.</p>
               
-              <div class="case-info">
-                <h3>Case Details:</h3>
-                <div class="info-row">
-                  <span class="info-label">Case Number:</span>
-                  <span class="info-value"><strong>${caseNumber}</strong></span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Service Type:</span>
-                  <span class="info-value">${serviceType}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">From:</span>
-                  <span class="info-value">${originCountry}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">To:</span>
-                  <span class="info-value">${destinationCountry}${
-        destinationCity ? `, ${destinationCity}` : ""
-      }</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Status:</span>
-                  <span class="info-value" style="color: #10b981; font-weight: bold;">Initiated</span>
-                </div>
+              <div class="credentials">
+                <h3>Your Login Credentials:</h3>
+                <p><strong>Email:</strong> ${candidateEmail}</p>
+                <p><strong>Temporary Password:</strong> <code style="background: #fee; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
               </div>
               
-              <div class="docs-section">
-                <h3>📄 Action Required: Upload Documents</h3>
-                <p>To proceed with your visa application, please upload the following documents:</p>
-                <ul>
-                  <li>Passport copy (all pages)</li>
-                  <li>Visa application form</li>
-                  <li>Recent bank statements (last 3 months)</li>
-                  <li>Employment letter</li>
-                  <li>Proof of accommodation</li>
-                </ul>
-              </div>
+              <p><strong>⚠️ Important:</strong> Please change your password after your first login for security.</p>
               
-              <a href="${frontendUrl}/candidate/cases/${
-        newCase.case_id
-      }" class="button">Upload Documents Now</a>
+              <a href="${frontendUrl}/candidate/cases" class="button">Access Your Dashboard</a>
               
-              <p>If you have any questions, please contact your case manager at ${agencyName}.</p>
+              <p>You can now log in to view your relocation case and upload required documents.</p>
               
               <div class="footer">
-                <p>This is an automated notification from Hiralent.</p>
-                <p>Case created on ${new Date().toLocaleDateString()}</p>
+                <p>This is an automated message from Hiralent.</p>
+                <p>If you did not expect this email, please contact support.</p>
               </div>
             </div>
           </div>
@@ -332,20 +229,111 @@ export const createCase = async (req: Request, res: Response) => {
         </html>
       `;
 
-      await sendEmail({
+      // Fire-and-forget (non-blocking)
+      sendEmail({
+        to: candidateEmail,
+        subject: "Welcome to Hiralent - Your Account is Ready! 🎉",
+        html: welcomeEmailHtml,
+      })
+        .then(() => console.log(`✅ Welcome email sent to: ${candidateEmail}`))
+        .catch((err) => console.error("❌ Welcome email error:", err.message));
+    }
+
+    // Case notification email
+    const caseEmailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .case-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; }
+          .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+          .info-label { font-weight: bold; width: 150px; color: #6b7280; }
+          .info-value { flex: 1; }
+          .docs-section { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+          .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>New Relocation Case Created 📋</h1>
+          </div>
+          <div class="content">
+            <p>Hi <strong>${candidateName_display}</strong>,</p>
+            
+            <p>A new relocation case has been created for you by <strong>${agencyName}</strong>.</p>
+            
+            <div class="case-info">
+              <h3>Case Details:</h3>
+              <div class="info-row">
+                <span class="info-label">Case Number:</span>
+                <span class="info-value"><strong>${caseNumber}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Service Type:</span>
+                <span class="info-value">${serviceType}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">From:</span>
+                <span class="info-value">${originCountry}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">To:</span>
+                <span class="info-value">${destinationCountry}${
+      destinationCity ? `, ${destinationCity}` : ""
+    }</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="info-value" style="color: #10b981; font-weight: bold;">Initiated</span>
+              </div>
+            </div>
+            
+            <div class="docs-section">
+              <h3>📄 Action Required: Upload Documents</h3>
+              <p>To proceed with your visa application, please upload the following documents:</p>
+              <ul>
+                <li>Passport copy (all pages)</li>
+                <li>Visa application form</li>
+                <li>Recent bank statements (last 3 months)</li>
+                <li>Employment letter</li>
+                <li>Proof of accommodation</li>
+              </ul>
+            </div>
+            
+            <a href="${frontendUrl}/candidate/cases/${
+      newCase.case_id
+    }" class="button">Upload Documents Now</a>
+            
+            <p>If you have any questions, please contact your case manager at ${agencyName}.</p>
+            
+            <div class="footer">
+              <p>This is an automated notification from Hiralent.</p>
+              <p>Case created on ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Fire-and-forget (non-blocking)
+    setTimeout(() => {
+      sendEmail({
         to: candidateEmail,
         subject: `New Relocation Case Created - ${caseNumber}`,
         html: caseEmailHtml,
-      });
-
-      console.log(`✅ Case notification sent to: ${candidateEmail}`);
-    } catch (emailError) {
-      console.error("\n❌ ========== EMAIL ERROR ==========");
-      console.error("Error:", emailError);
-      console.error("Message:", (emailError as Error).message);
-      console.error("====================================\n");
-      // Don't fail the request just because email failed
-    }
+      })
+        .then(() =>
+          console.log(`✅ Case notification sent to: ${candidateEmail}`)
+        )
+        .catch((err) => console.error("❌ Case email error:", err.message));
+    }, 2000);
 
     return res.status(201).json({
       success: true,
@@ -492,6 +480,7 @@ export const getCaseById = async (req: Request, res: Response) => {
             created_at: "desc",
           },
         },
+        embassy_submission: true,
       },
     });
 
