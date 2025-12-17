@@ -98,6 +98,81 @@ class ChatbotEngine:
     def _history_as_dicts(self, session: ChatbotSession) -> List[Dict[str, str]]:
         return [{"type": m.type, "content": m.content} for m in session.messages]
 
+    def _build_quick_replies_for_step(self, step: str) -> List[Dict[str, Any]]:
+        """
+        Deterministic quick-reply options per step.
+        These will be sent in message.metadata['quick_replies'].
+        """
+        qr: List[Dict[str, Any]] = []
+
+        if step == "assessment_type":
+            qr = [
+                {"label": "Quick check", "value": "QUICK_CHECK"},
+                {"label": "Comprehensive", "value": "COMPREHENSIVE"},
+                {"label": "Certification", "value": "CERTIFICATION"},
+                {"label": "Company-specific", "value": "COMPANY_SPECIFIC"},
+            ]
+
+        elif step == "difficulty_level":
+            qr = [
+                {"label": "Beginner", "value": "BEGINNER"},
+                {"label": "Intermediate", "value": "INTERMEDIATE"},
+                {"label": "Advanced", "value": "ADVANCED"},
+                {"label": "Expert", "value": "EXPERT"},
+            ]
+
+        elif step == "time_settings":
+            qr = [
+                {
+                    "label": "30 min · 10 questions",
+                    "value": "30 minutes, 10 questions",
+                },
+                {
+                    "label": "45 min · 15 questions",
+                    "value": "45 minutes, 15 questions",
+                },
+                {
+                    "label": "60 min · 20 questions",
+                    "value": "60 minutes, 20 questions",
+                },
+            ]
+
+        elif step == "scoring_settings":
+            qr = [
+                {"label": "60% (lenient)", "value": "60"},
+                {"label": "70% (default)", "value": "70"},
+                {"label": "80% (strict)", "value": "80"},
+            ]
+
+        elif step == "review":
+            qr = [
+                {"label": " Confirm", "value": "confirm"},
+                {"label": " Back", "value": "back"},
+            ]
+
+        elif step == "completed":
+            qr = [
+                {"label": " Start another", "value": "restart"},
+            ]
+
+        return qr
+
+    def _build_message_metadata(self, session: ChatbotSession) -> Dict[str, Any]:
+        """
+        Metadata attached to each assistant reply.
+
+        - current_step: helps the frontend if needed
+        - quick_replies: array of {label, value} objects used to render buttons
+        """
+        step = session.current_step
+        metadata: Dict[str, Any] = {"current_step": step}
+        quick_replies = self._build_quick_replies_for_step(step)
+
+        if quick_replies:
+            metadata["quick_replies"] = quick_replies
+
+        return metadata
+
     async def _llm_reply(
         self,
         instruction: str,
@@ -477,6 +552,9 @@ class ChatbotEngine:
             method="chatbot_guided",
         )
 
+        # Attach basic metadata to the first assistant message
+        session.messages[0].metadata = self._build_message_metadata(session)
+
         await self._save_session(session)
         return session
 
@@ -498,20 +576,27 @@ class ChatbotEngine:
         # Global commands (deterministic)
         if norm in {"restart", "/restart", "reset", "start over"}:
             reply = await self._handle_restart(session)
-            session.messages.append(self._create_message(reply, "assistant"))
+            assistant_msg = self._create_message(reply, "assistant")
+            assistant_msg.metadata = self._build_message_metadata(session)
+            session.messages.append(assistant_msg)
             await self._save_session(session)
             return ChatbotResponse(session=session, reply=reply, is_completed=False)
 
         if norm in {"back", "/back"}:
             reply = await self._handle_back(session)
-            session.messages.append(self._create_message(reply, "assistant"))
+            assistant_msg = self._create_message(reply, "assistant")
+            assistant_msg.metadata = self._build_message_metadata(session)
+            session.messages.append(assistant_msg)
             await self._save_session(session)
             return ChatbotResponse(session=session, reply=reply, is_completed=False)
 
         # Normal step-based handling
         reply, is_completed = await self._handle_step(session, user_message)
 
-        session.messages.append(self._create_message(reply, "assistant"))
+        assistant_msg = self._create_message(reply, "assistant")
+        assistant_msg.metadata = self._build_message_metadata(session)
+        session.messages.append(assistant_msg)
+
         await self._save_session(session)
 
         return ChatbotResponse(session=session, reply=reply, is_completed=is_completed)
@@ -559,8 +644,8 @@ class ChatbotEngine:
             )
         if prev_step == "question_types":
             return (
-                "Specify what question types you want (e.g. coding, mcq, debugging, "
-                "system_design) and their importance."
+                "Specify what question types you want. On this platform there are only two styles: "
+                "coding questions and MCQ. For example: '70% coding, 30% MCQ'."
             )
         if prev_step == "time_settings":
             return (
@@ -608,9 +693,10 @@ class ChatbotEngine:
             session.current_step = "skills_identification"
 
             instruction = (
-                "Based on the role context so far, ask the user to list the key skills/topics "
-                "they want to evaluate. Encourage specific focus like '80% Python (functions, lists), "
-                "20% SQL', 'API design', 'problem solving', etc."
+                        "Based on the role context so far, ask the user to list the key skills/topics "
+                        "they want to evaluate. Ask them to simply list skills separated by commas, "
+                        "for example: 'Python, FastAPI, SQL, API design, testing'. "
+                        "Do NOT mention weights or percentages; just plain comma-separated skills."
             )
             reply = await self._llm_reply(instruction, session)
             return reply, False
@@ -756,11 +842,14 @@ class ChatbotEngine:
             data.assessment_type = selected
             session.current_step = "difficulty_level"
 
+            # 🔵 Updated: explicitly map difficulty to years of experience
             instruction = (
                 f"The user chose {selected}. "
                 "Now ask which difficulty level to target: "
                 "BEGINNER, INTERMEDIATE, ADVANCED, or EXPERT. "
-                "Explain each in one line."
+                "Explain each in one line and explicitly map to experience ranges, for example: "
+                "BEGINNER = junior (0–2 years), INTERMEDIATE = mid-level (2–5 years), "
+                "ADVANCED = senior (5+ years), EXPERT = senior/lead (5+ years with deep specialization)."
             )
             reply = await self._llm_reply(instruction, session)
             return reply, False
@@ -792,10 +881,12 @@ class ChatbotEngine:
             data.difficulty = selected
             session.current_step = "question_types"
 
+            # 🔵 Updated: only two question styles (coding + MCQ)
             instruction = (
                 "Now ask the user which question types they want to include and in what proportion. "
-                "Options: coding, mcq, debugging, system_design, architecture, etc. "
-                "Encourage answers like '50% coding, 25% system design, 15% debugging, 10% MCQ'."
+                "On this platform there are only two question styles: coding questions and MCQ. "
+                "Encourage answers like '70% coding, 30% MCQ' or 'mostly MCQ with a few coding questions'. "
+                "Do NOT mention other category names such as debugging or system design."
             )
             reply = await self._llm_reply(instruction, session)
             return reply, False

@@ -8,7 +8,7 @@ class Settings:
     SERVICE_NAME = os.getenv("SERVICE_NAME", "ai-assessment")
     SERVICE_ENV = os.getenv("SERVICE_ENV", "dev")
     HOST = "0.0.0.0"
-    PORT = int(os.getenv("SERVICE_PORT", 8000))
+    PORT = int(os.getenv("SERVICE_PORT", 8001))
 
     # Security
     INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "super-secret-internal-token")

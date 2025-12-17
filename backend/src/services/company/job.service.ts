@@ -132,13 +132,24 @@ export async function patchJobStatus(
  * Liste les jobs d’une company (dashboard interne)
  */
 export async function getCompanyJobs(companyId: string): Promise<Job[]> {
-  const jobs = await prisma.companyJob.findMany({
+  const rows = await prisma.companyJob.findMany({
     where: { company_id: companyId },
     orderBy: { created_at: 'desc' },
+    include: {
+      _count: {
+        select: { applications: true },
+      },
+    },
   });
+
+  const jobs = rows.map((j) => ({
+    ...j,
+    applications_count: j._count.applications,
+  }));
 
   return jobs as unknown as Job[];
 }
+
 
 /**
  * Listing public / company-specific par companyId
@@ -147,16 +158,27 @@ export async function getCompanyJobsById(
   companyId: string,
   onlyActive = false,
 ): Promise<Job[]> {
-  const jobs = await prisma.companyJob.findMany({
+  const rows = await prisma.companyJob.findMany({
     where: {
       company_id: companyId,
       ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
     },
     orderBy: { created_at: 'desc' },
+    include: {
+      _count: {
+        select: { applications: true },
+      },
+    },
   });
+
+  const jobs = rows.map((j) => ({
+    ...j,
+    applications_count: j._count.applications,
+  }));
 
   return jobs as unknown as Job[];
 }
+
 
 /**
  * Listing filtré + pagination
@@ -249,6 +271,57 @@ export async function listJobs(
   };
 }
 
+// NEW: fetch applicants for a given job
+export async function getJobApplicantsForJob(jobId: string) {
+  const applications = await prisma.jobApplication.findMany({
+    where: { job_id: jobId },
+    orderBy: { applied_at: 'desc' },
+    include: {
+      candidate: {
+        select: {
+          user_id: true,
+          full_name: true,
+          email: true,
+          candidateProfile: {
+            select: {
+              headline: true,
+              location: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Shape that fits your frontend (JobApplicantsModal)
+  return applications.map((a) => {
+    const fullName = (a.candidate.full_name ?? '').trim();
+
+    return {
+      application_id: a.application_id,
+      candidate_id: a.candidate_id,
+      job_id: a.job_id,
+
+      // status / stage
+      status: a.status,
+      stage: a.status ?? 'RECEIVED',
+
+      // scores (you can adapt later)
+      score: a.assessment_score ?? null,
+      match_score: null,
+
+      applied_at: a.applied_at,
+      created_at: a.applied_at,
+
+      candidate_name:
+        fullName || 'Unnamed candidate',
+      candidate_email: a.candidate.email ?? '',
+      headline: a.candidate.candidateProfile?.headline ?? null,
+      location: a.candidate.candidateProfile?.location ?? null,
+    };
+  });
+}
+
 /**
  * Optionnel : pour garder la même ergonomie qu’avant (`jobService.method`)
  */
@@ -261,6 +334,7 @@ export const jobService = {
   getCompanyJobs,
   getCompanyJobsById,
   listJobs,
+  getJobApplicantsForJob,
 };
 
 export default jobService;

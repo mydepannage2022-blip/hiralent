@@ -49,6 +49,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
     { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
+    { name: 'My Cases', icon: Briefcase, href: '/candidate/dashboard/cases' },
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
@@ -164,7 +165,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                             : 'text-[#353535] hover:bg-gray-50'
                           }`}
                       >
-                        <Icon size={22} className="flex-shrink-0 text-[#353535] text-sm" />
+                        <Icon size={22} className="shrink-0 text-[#353535] text-sm" />
                         {((isOpen && !isMobile) || isMobile) && (
                           <span className="font-normal text-base">{item.name}</span>
                         )}
@@ -185,7 +186,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : 'px-3 py-3 justify-center'
                 } rounded-lg transition-all duration-200 hover:bg-gray-50`}
             >
-              <LogOut size={22} className='flex-shrink-0 text-red-600' />
+              <LogOut size={22} className='shrink-0 text-red-600' />
               {((isOpen && !isMobile) || isMobile) && (
                 <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>
               )}

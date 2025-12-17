@@ -13,6 +13,10 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  SlidersHorizontal,
+  Lightbulb,
+  CheckSquare,
+  Target,
 } from "lucide-react";
 
 import { useAuth } from "../../../../context/AuthContext";
@@ -58,11 +62,17 @@ export interface CompanyJob {
 
 type ChatRole = "user" | "assistant";
 
+interface QuickReply {
+  label: string;
+  value: string;
+}
+
 interface ChatMessage {
   id: string;
   role: ChatRole;
   text: string;
   ts: number;
+  quickReplies?: QuickReply[];
 }
 
 /**
@@ -160,6 +170,33 @@ const formatCategoryLabel = (cat: string): string => {
   return titleCase(cat.replace(/-/g, " "));
 };
 
+/**
+ * Config for cute icon + gradient per quick reply
+ * (similar to your screenshot: blue sparkles, purple bulb, etc.)
+ */
+const quickReplyConfigs = [
+  {
+    gradient: "from-blue-500 to-cyan-500",
+    icon: Sparkles,
+    iconColor: "text-blue-600",
+  },
+  {
+    gradient: "from-purple-500 to-pink-500",
+    icon: Lightbulb,
+    iconColor: "text-yellow-500",
+  },
+  {
+    gradient: "from-emerald-500 to-teal-500",
+    icon: CheckSquare,
+    iconColor: "text-emerald-600",
+  },
+  {
+    gradient: "from-amber-500 to-orange-500",
+    icon: Target,
+    iconColor: "text-red-500",
+  },
+];
+
 /* =============================
    Component
 ============================= */
@@ -197,12 +234,33 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
 
   const mapBackendMessages = (backendMessages: any[]): ChatMessage[] => {
     if (!backendMessages) return [];
-    return backendMessages.map((m) => ({
-      id: m.id || `${m.type}-${m.timestamp}`,
-      role: m.type === "assistant" ? "assistant" : "user",
-      text: m.content,
-      ts: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
-    }));
+    return backendMessages.map((m) => {
+      let quickReplies: QuickReply[] | undefined;
+
+      const rawQR = m.quick_replies || m.metadata?.quick_replies;
+      if (Array.isArray(rawQR) && rawQR.length > 0) {
+        quickReplies = rawQR
+          .map((qr: any): QuickReply | null => {
+            if (!qr) return null;
+            if (typeof qr === "string") {
+              return { label: qr, value: qr };
+            }
+            const value = qr.value ?? qr.label;
+            const label = qr.label ?? qr.value;
+            if (!value) return null;
+            return { label: label || value, value };
+          })
+          .filter(Boolean) as QuickReply[];
+      }
+
+      return {
+        id: m.id || `${m.type}-${m.timestamp}`,
+        role: m.type === "assistant" ? "assistant" : "user",
+        text: m.content,
+        ts: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+        quickReplies,
+      };
+    });
   };
 
   const syncAssessmentConfigFromSession = (session: any | undefined) => {
@@ -330,7 +388,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
   }, [open, job?.job_id]);
 
   /* =============================
-     Auto-scroll (always to latest)
+     Auto-scroll (keep your logic)
   ============================= */
   useEffect(() => {
     if (!chatEndRef.current) return;
@@ -355,14 +413,12 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
   };
 
   /* =============================
-     Send message
+     Core send logic (shared)
   ============================= */
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const content = input.trim();
+  const sendMessage = async (rawContent: string) => {
+    const content = rawContent.trim();
     if (!content || isSending || !sessionId || isCompleted) return;
 
-    setInput("");
     setIsSending(true);
     setError(null);
     pushMessage("user", content);
@@ -422,6 +478,24 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
     }
   };
 
+  /* =============================
+     Send from textarea
+  ============================= */
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const content = input.trim();
+    if (!content) return;
+    setInput("");
+    await sendMessage(content);
+  };
+
+  /* =============================
+     Send from quick-reply button
+  ============================= */
+  const handleQuickReply = async (value: string) => {
+    await sendMessage(value);
+  };
+
   const handleCloseAndReview = () => {
     onAssessmentCreated?.();
     onClose();
@@ -448,6 +522,21 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
       ? assessmentConfig.extracted_skills
       : [];
 
+  // Last assistant message with quick replies (so suggestions appear only once)
+  const lastAssistantWithQuickRepliesId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (
+        m.role === "assistant" &&
+        m.quickReplies &&
+        m.quickReplies.length > 0
+      ) {
+        return m.id;
+      }
+    }
+    return null;
+  })();
+
   /* =============================
      UI
   ============================= */
@@ -462,58 +551,97 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Modal */}
+          {/* Modal card */}
           <motion.div
             initial={{ scale: 0.95, y: 12, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-gradient-to-br from-slate-50 via-sky-50 to-indigo-50/40 rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
           >
-            {/* Top accent border */}
-            <div className="h-1 w-full bg-gradient-to-r from-[#1B73E8] via-[#4F46E5] to-[#1B73E8]" />
-
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 bg-white/80 backdrop-blur-sm border-b border-slate-100">
-              <div>
-                <h2 className="text-lg md:text-xl font-semibold text-slate-900">
-                  Chat with AI assessment designer
-                </h2>
-                <p className="mt-1 text-xs md:text-sm text-slate-500">
-                  Create a quick skills test for{" "}
-                  <span className="font-medium text-[#1B73E8]">
-                    {job.title}
-                  </span>
-                  . Just tell the AI the level, skills (comma-separated) and
-                  duration.
-                </p>
+            {/* Gradient header */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
+              <div className="absolute inset-0 opacity-10">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 90 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onClose}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
-              >
-                <X className="w-4 h-4" />
-              </motion.button>
+              <div className="relative px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                    >
+                      <Bot className="w-5 h-5 text-white" />
+                    </motion.div>
+                    <div>
+                      <h2 className="text-lg font-black tracking-tight">
+                        AI Assessment Designer
+                      </h2>
+                      <p className="text-blue-100 text-xs">
+                        Chat with the assistant to design an assessment draft
+                        you can edit later.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    {assessmentConfig?.status === "ready_for_generation" && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-50 text-[11px] font-semibold border border-emerald-200/70">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                        Draft ready to generate
+                      </span>
+                    )}
+                    <motion.button
+                      onClick={onClose}
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Wave bottom */}
+              <div className="absolute bottom-0 left-0 right-0">
+                <svg
+                  viewBox="0 0 1440 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full"
+                >
+                  <path
+                    d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="px-6 pb-4 flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+            {/* Body content */}
+            <div className="flex-1 flex flex-col md:flex-row gap-6 px-6 pb-4 pt-2 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50">
               {/* LEFT: guidance + live config */}
               <div className="hidden md:flex flex-col w-full md:w-72 gap-3 flex-shrink-0">
                 {/* How to talk to it */}
                 <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.04)]">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B73E8]/10 text-[#1B73E8]">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/60 text-[#1B73E8] shadow-sm">
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <p className="text-sm font-semibold text-slate-900">
@@ -521,15 +649,18 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                     </p>
                   </div>
                   <ul className="space-y-1.5 text-[11px] text-slate-600">
-  <li>• Describe the role briefly.</li>
-  <li>• The assistant guides each step.</li>
-  <li>• List skills simply (Power BI, SQL, DAX).</li>
-  <li>• Use % for question mix.</li>
-  <li>• Keep answers short and clear — the assistant handles the flow.</li>
+                    <li>• Describe the role briefly.</li>
+                    <li>• The assistant guides each step.</li>
+                    <li>• List skills simply (Power BI, SQL, DAX).</li>
+                    <li>• Use % for question mix if you want.</li>
+                    <li>
+                      • Keep answers short and clear — the assistant handles the
+                      flow.
+                    </li>
                   </ul>
                   <p className="mt-3 text-[11px] text-slate-400">
-                    The assistant builds the assessment draft. You can edit everything
-                    afterwards.
+                    The assistant builds the assessment draft. You can edit
+                    everything afterwards.
                   </p>
                 </div>
 
@@ -549,6 +680,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                       </p>
                       {assessmentConfig.status === "ready_for_generation" && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
                           Ready
                         </span>
                       )}
@@ -677,7 +809,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                   </div>
                 )}
 
-                {/* messages */}
+                {/* messages (scrolling area) */}
                 <div
                   ref={chatContainerRef}
                   className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-50 px-4 py-3 space-y-3 custom-scrollbar"
@@ -685,6 +817,13 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                   {messages.map((m) => {
                     const isAssistant = m.role === "assistant";
                     const html = formatMessageHtml(m.text);
+
+                    const showQuickReplies =
+                      isAssistant &&
+                      !isCompleted &&
+                      m.id === lastAssistantWithQuickRepliesId &&
+                      m.quickReplies &&
+                      m.quickReplies.length > 0;
 
                     return (
                       <div
@@ -711,20 +850,69 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                               <User className="w-3.5 h-3.5" />
                             )}
                           </div>
-                          <motion.div
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`rounded-2xl px-3 py-2 text-xs whitespace-pre-wrap leading-relaxed break-words shadow-sm ${
-                              isAssistant
-                                ? "bg-white/90 border border-slate-200 text-slate-800"
-                                : "bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white"
-                            }`}
-                          >
-                            <div
-                              className="prose prose-xs max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0"
-                              dangerouslySetInnerHTML={{ __html: html }}
-                            />
-                          </motion.div>
+                          <div className="flex flex-col gap-1 max-w-full">
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`rounded-2xl px-3 py-2 text-xs whitespace-pre-wrap leading-relaxed break-words shadow-sm ${
+                                isAssistant
+                                  ? "bg-white/90 border border-slate-200 text-slate-800"
+                                  : "bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white"
+                              }`}
+                            >
+                              <div
+                                className="prose prose-xs max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0"
+                                dangerouslySetInnerHTML={{ __html: html }}
+                              />
+                            </motion.div>
+
+                            {/* colorful quick replies with icon element */}
+                            {showQuickReplies && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col gap-1 mt-1.5"
+                              >
+                                <span className="text-[10px] uppercase tracking-wide text-slate-400 flex items-center gap-1">
+                                  <SlidersHorizontal className="w-3 h-3" />
+                                  Suggested replies
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  {m.quickReplies!.map((qr, qrIdx) => {
+                                    const cfg =
+                                      quickReplyConfigs[
+                                        qrIdx % quickReplyConfigs.length
+                                      ];
+                                    const Icon = cfg.icon;
+
+                                    return (
+                                      <motion.button
+                                        key={qr.value}
+                                        type="button"
+                                        onClick={() =>
+                                          handleQuickReply(qr.value)
+                                        }
+                                        disabled={isSending || isCompleted}
+                                        whileHover={{
+                                          scale: 1.03,
+                                          translateY: -1,
+                                        }}
+                                        whileTap={{ scale: 0.97 }}
+                                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white shadow-md bg-gradient-to-r ${cfg.gradient} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                      >
+                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm">
+                                          <Icon
+                                            className={`w-3 h-3 ${cfg.iconColor}`}
+                                          />
+                                        </span>
+                                        <span>{qr.label}</span>
+                                      </motion.button>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -774,7 +962,10 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         disabled={
-                          isSending || isInitializing || isCompleted || !sessionId
+                          isSending ||
+                          isInitializing ||
+                          isCompleted ||
+                          !sessionId
                         }
                       />
                     </div>
@@ -808,7 +999,6 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                   </div>
 
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[11px] text-slate-400">
-
                     {isCompleted && (
                       <button
                         type="button"
