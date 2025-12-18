@@ -77,6 +77,17 @@ import {
 } from '../validation/candidate.schema';
 import { startAssessmentSchema } from '../validation/assessment.validation';
 
+import {
+  getCandidateCases,
+  getCaseById,
+  uploadCaseDocument,
+  getCaseDocuments,
+  deleteCaseDocument,
+  confirmDocumentReplacement,  
+  cancelDocumentReplacement,
+} from '../controller/candidate/candidate.case.controller';
+import { uploadDocumentMiddleware, handleDocumentUploadError } from '../middlewares/upload.middleware';
+
 const router = Router();
 
 router.get('/health', healthCheckController);
@@ -265,6 +276,39 @@ router.post(
   uploadApplicationResumeController
 );
 
+// View all cases for candidate
+router.get('/cases', checkAuth, getCandidateCases);
+
+// View single case details
+router.get('/cases/:caseId', checkAuth, getCaseById);
+
+// Upload document for a case
+router.post(
+  '/cases/:caseId/documents',
+  checkAuth,
+  uploadDocumentMiddleware,
+  handleDocumentUploadError,
+  uploadCaseDocument
+);
+
+// Get all documents for a case
+router.get('/cases/:caseId/documents', checkAuth, getCaseDocuments);
+
+// Delete a document
+router.delete('/cases/:caseId/documents/:documentId', checkAuth, deleteCaseDocument);
+
+router.post(
+  '/cases/:caseId/documents/confirm-replacement',
+  checkAuth,
+  confirmDocumentReplacement
+);
+
+// Cancel document replacement (delete new document)
+router.delete(
+  '/cases/:caseId/documents/:documentId/cancel',
+  checkAuth,
+  cancelDocumentReplacement
+);
 
 export default router;
 

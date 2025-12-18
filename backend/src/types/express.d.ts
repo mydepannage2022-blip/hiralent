@@ -1,5 +1,7 @@
 import "express";
 import { AuthenticatedUser, SessionInfo } from './session.types';
+import { UserSubscription } from './subscription.types';
+
 
 
 // ✅ AuthUser interface with all required properties
@@ -25,14 +27,15 @@ declare module "express-serve-static-core" {
   }
 }
 
-// ✅ Re-export for easy importing
 declare global {
   namespace Express {
     interface Request {
       user?: AuthenticatedUser;
       sessionInfo?: SessionInfo;
+      subscription?: UserSubscription | null;
     }
   }
 }
+
 
 export {};

@@ -1,43 +1,38 @@
-FROM python:3.11-alpine
+FROM python:3.11-slim
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=on
 
+# Workdir *inside* the container
 WORKDIR /app
 
-# Install system dependencies for spaCy and building
-RUN apk add --no-cache \
-    build-base \
+# System deps for scipy / scikit-learn / spacy, etc.
+RUN apt-get update && apt-get install -y \
+    build-essential \
     curl \
-    libffi-dev \
-    openssl-dev \
-    musl-dev \
-    linux-headers
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first
+# Copy requirements first (better layer caching)
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python deps
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
+# If the spaCy model is NOT installed via requirements.txt, uncomment:
+# RUN python -m spacy download en_core_web_sm
 
-# Remove build dependencies to keep image small
-RUN apk del build-base linux-headers
-
-# Copy application code
+# Copy the rest of the project
 COPY . .
 
 # Create non-root user
-RUN adduser -D app && chown -R app:app /app
-USER app
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
-EXPOSE 8000
+EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8001/health || exit 1
 
+# run.py is at the project root, so this works:
 CMD ["python", "run.py"]

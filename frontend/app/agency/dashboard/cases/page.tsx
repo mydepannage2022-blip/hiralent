@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Country, City } from "country-state-city";
+import { useRouter } from "next/navigation";
 import {
   Search,
   RefreshCw,
@@ -14,7 +15,16 @@ import {
   User,
   X,
   Edit2,
+  ExternalLink,
 } from "lucide-react";
+
+interface Document {
+  document_id: string;
+  file_name: string;
+  document_type: string;
+  status: string;
+  created_at: string;
+}
 
 interface Case {
   case_id: string;
@@ -37,11 +47,13 @@ interface Case {
     full_name: string;
     phone_number: string | null;
   };
+  documents?: Document[];
 }
 
 type FilterTab = "all" | "active" | "completed" | "pending_documents";
 
 export default function CasesPage() {
+  const router = useRouter();
   const [cases, setCases] = useState<Case[]>([]);
   const [filteredCases, setFilteredCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,10 +122,33 @@ export default function CasesPage() {
     setFilteredCases(filtered);
   }, [activeTab, searchQuery, cases]);
 
-  const handleOpenModal = (caseItem: Case) => {
-    setSelectedCase(caseItem);
-    setEditedCase(caseItem);
-    setShowDetailModal(true);
+  const handleOpenModal = async (caseItem: Case) => {
+    // Fetch full case details including documents
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseItem.case_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedCase(data.data);
+        setEditedCase(data.data);
+        setShowDetailModal(true);
+      }
+    } catch (error) {
+      console.error("Fetch case details error:", error);
+      // Fallback to basic case data
+      setSelectedCase(caseItem);
+      setEditedCase(caseItem);
+      setShowDetailModal(true);
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -125,50 +160,35 @@ export default function CasesPage() {
 
       const updates: any = {};
 
-      // Add debug logs
-      console.log("Original case:", selectedCase);
-      console.log("Edited case:", editedCase);
-
       if (editedCase.status !== selectedCase.status) {
         updates.status = editedCase.status;
-        console.log("Status changed:", editedCase.status);
       }
 
       if (editedCase.priority_level !== selectedCase.priority_level) {
         updates.priority_level = editedCase.priority_level;
-        console.log("Priority changed:", editedCase.priority_level);
       }
 
-      // Fix for city - handle empty string vs null
       const newCity = editedCase.destination_city || null;
       const oldCity = selectedCase.destination_city || null;
       if (newCity !== oldCity) {
         updates.destination_city = newCity;
-        console.log("City changed from", oldCity, "to", newCity);
       }
 
       if (editedCase.estimated_cost !== selectedCase.estimated_cost) {
         updates.estimated_cost = editedCase.estimated_cost;
-        console.log("Cost changed:", editedCase.estimated_cost);
       }
 
       if (
         editedCase.estimated_completion !== selectedCase.estimated_completion
       ) {
         updates.estimated_completion = editedCase.estimated_completion;
-        console.log("Completion changed:", editedCase.estimated_completion);
       }
 
       if (editedCase.notes !== selectedCase.notes) {
         updates.notes = editedCase.notes;
-        console.log("Notes changed:", editedCase.notes);
       }
 
-      console.log("Updates to send:", updates);
-
-      // If no changes, just close modal
       if (Object.keys(updates).length === 0) {
-        console.log("No changes detected");
         setShowDetailModal(false);
         return;
       }
@@ -185,11 +205,8 @@ export default function CasesPage() {
         }
       );
 
-      console.log("Response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Response data:", data);
 
         const updatedCase = {
           ...editedCase,
@@ -204,9 +221,6 @@ export default function CasesPage() {
 
         setSelectedCase(updatedCase);
         setShowDetailModal(false);
-      } else {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
       }
     } catch (error) {
       console.error("Save changes error:", error);
@@ -393,12 +407,26 @@ export default function CasesPage() {
                       {caseItem.service_type.replace(/_/g, " ").toUpperCase()}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleOpenModal(caseItem)}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <Eye className="w-5 h-5 text-slate-600" />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleOpenModal(caseItem)}
+                      className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                      title="Quick View"
+                    >
+                      <Eye className="w-5 h-5 text-slate-600" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/agency/dashboard/cases/${caseItem.case_id}`
+                        )
+                      }
+                      className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                      title="View Documents & Review"
+                    >
+                      <ExternalLink className="w-5 h-5 text-blue-600" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -505,6 +533,78 @@ export default function CasesPage() {
               </div>
 
               <div className="p-6 space-y-6">
+                {/* DOCUMENTS SECTION - ADDED HERE */}
+                <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                      Documents ({selectedCase.documents?.length || 0})
+                    </h4>
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/agency/dashboard/cases/${selectedCase.case_id}`
+                        )
+                      }
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Review Documents
+                    </button>
+                  </div>
+
+                  {selectedCase.documents &&
+                  selectedCase.documents.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedCase.documents
+                        .slice(0, 3)
+                        .map((doc: Document) => (
+                          <div
+                            key={doc.document_id}
+                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-700 truncate">
+                                {doc.file_name}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {doc.document_type.replace(/_/g, " ")}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ml-3 ${
+                                doc.status === "approved"
+                                  ? "bg-green-100 text-green-700 border border-green-200"
+                                  : doc.status === "rejected"
+                                  ? "bg-red-100 text-red-700 border border-red-200"
+                                  : doc.status === "needs_revision"
+                                  ? "bg-orange-100 text-orange-700 border border-orange-200"
+                                  : "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                              }`}
+                            >
+                              {doc.status.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                        ))}
+                      {selectedCase.documents.length > 3 && (
+                        <p className="text-xs text-slate-500 text-center pt-2">
+                          +{selectedCase.documents.length - 3} more documents
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-white rounded-lg border-2 border-dashed border-blue-200">
+                      <FileText className="w-12 h-12 text-blue-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500">
+                        No documents uploaded yet
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Waiting for candidate to upload documents
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
