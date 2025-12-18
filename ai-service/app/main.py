@@ -26,6 +26,8 @@ from typing import List, Dict, Optional, Any
 import re
 from datetime import datetime
 from app.vetting_pipeline.service import VettingPipelineService
+from app.crawler.github_spider import GitHubSpider
+from app.crawler.hackerrank_spider import HackerRankSpider
 
 
 # Configure logging
@@ -171,6 +173,43 @@ class BaseSpider(abc.ABC):
                 "error": str(e),
                 "base_url": self.base_url
             }
+
+class GitHubSpiderAdapter(BaseSpider):
+    def __init__(self):
+        super().__init__("github", "https://github.com")
+        self._impl = GitHubSpider()
+        self.session = self._impl.session  # ✅ overwrite the session created by BaseSpider
+
+    def extract_problems(self, html: str) -> List[Dict]:
+        return self._impl.extract_problems(html)
+
+    def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
+        return None
+
+    def crawl(self, max_pages: int = 3) -> List[Dict]:
+        return self._impl.crawl(max_pages=max_pages)
+
+    def health_check(self) -> Dict[str, Any]:
+        return self._impl.health_check()
+
+
+class HackerRankSpiderAdapter(BaseSpider):
+    def __init__(self):
+        super().__init__("hackerrank", "https://www.hackerrank.com")
+        self._impl = HackerRankSpider()
+        self.session = self._impl.session  # ✅ overwrite
+
+    def extract_problems(self, html: str) -> List[Dict]:
+        return self._impl.extract_problems(html)
+
+    def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
+        return None
+
+    def crawl(self, max_pages: int = 3) -> List[Dict]:
+        return self._impl.crawl(max_pages=max_pages)
+
+    def health_check(self) -> Dict[str, Any]:
+        return self._impl.health_check()
 
 # =============================================================================
 # STACKOVERFLOW SPIDER (Integrated to avoid import issues)
@@ -814,7 +853,7 @@ class WebScrapingService:
         """Initialize web scraping components"""
         try:
             # Initialize real components - now they're in the same file
-            self.spiders = [StackOverflowSpider(),LeetCodeSpider()]
+            self.spiders = [StackOverflowSpider(),LeetCodeSpider(),GitHubSpiderAdapter(), HackerRankSpiderAdapter()]
             self.processor = ContentProcessor()
             self.corpus_manager = CorpusManager()
             
@@ -1846,6 +1885,85 @@ async def debug_scraping():
         "timestamp": datetime.now().isoformat(),
         "scraping_available": SCRAPING_AVAILABLE
     }
+
+
+# ADD NEW ROUTE TO TEST THE SCRAPERS:
+
+@app.get("/scraping/test-github")
+async def test_github_scraping():
+    try:
+        github_spider = GitHubSpiderAdapter()
+
+        test_url = "https://api.github.com/repos/TheAlgorithms/Python/contents/sorts"
+        response = github_spider.session.get(test_url, timeout=10)
+
+        if response.status_code != 200:
+            return {"success": False, "error": f"HTTP {response.status_code}", "message": "GitHub API request failed"}
+
+        patterns = github_spider.extract_problems(response.text)
+
+        return {
+            "success": True,
+            "message": f"Successfully extracted {len(patterns)} patterns from GitHub",
+            "patterns_sample": patterns[:3],
+            "total_patterns": len(patterns),
+            "spider_status": github_spider.health_check(),
+        }
+    except Exception as e:
+        logger.error(f"GitHub test failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/scraping/test-hackerrank")
+async def test_hackerrank_scraping():
+    try:
+        hackerrank_spider = HackerRankSpiderAdapter()
+
+        test_url = "https://www.hackerrank.com/rest/contests/master/tracks/algorithms/challenges?limit=20"
+        response = hackerrank_spider.session.get(test_url, timeout=10)
+
+        if response.status_code != 200:
+            return {"success": False, "error": f"HTTP {response.status_code}", "message": "HackerRank API request failed"}
+
+        patterns = hackerrank_spider.extract_problems(response.text)
+
+        return {
+            "success": True,
+            "message": f"Successfully extracted {len(patterns)} patterns from HackerRank",
+            "patterns_sample": patterns[:3],
+            "total_patterns": len(patterns),
+            "spider_status": hackerrank_spider.health_check(),
+        }
+    except Exception as e:
+        logger.error(f"HackerRank test failed: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/scraping/start-enhanced")
+async def start_scraping_job_enhanced(request: dict = None):
+    """
+    Enhanced scraping job with GitHub and HackerRank support
+    
+    Body:
+        {
+            "sources": ["stackoverflow", "leetcode", "github", "hackerrank"],
+            "max_pages": 3
+        }
+    """
+    if not SCRAPING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Web scraping module not available")
+    
+    sources = request.get("sources", ["stackoverflow", "leetcode"]) if request else ["stackoverflow"]
+    max_pages = request.get("max_pages", 3) if request else 3
+    
+    print(f"🚀 Starting enhanced scraping job with sources: {sources}")
+    
+    result = await web_scraping_service.run_scraping_job(sources=sources, max_pages=max_pages)
+    
+    # Add summary
+    result["available_sources"] = ["stackoverflow", "leetcode", "github", "hackerrank"]
+    result["requested_sources"] = sources
+    
+    return result
 # =============================================================================
 # MCQ GENERATION ROUTES (FIXED - ACCEPTS JSON BODY)
 # =============================================================================
