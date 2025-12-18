@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export type BillingCycle = "monthly" | "yearly";
 
@@ -14,6 +15,7 @@ export interface PricingCardProps {
     popular?: boolean;
     onClick?: () => void;
     className?: string;
+    planId?: string; // ✅ NEW - Plan ID from backend
 }
 
 const PricingCard = ({
@@ -26,9 +28,35 @@ const PricingCard = ({
     popular,
     onClick,
     className,
+    planId,
 }: PricingCardProps) => {
+    const router = useRouter();
     const price = billingCycle === "monthly" ? priceMonthly : priceYearly;
     const formatted = new Intl.NumberFormat("en-US").format(price);
+
+    // ✅ Handle Get Started click
+    const handleGetStarted = () => {
+        if (onClick) {
+            onClick();
+        } else if (planId) {
+            // Navigate to checkout with plan details
+            const params = new URLSearchParams({
+                plan_id: planId,
+                plan_name: name,
+                billing_cycle: billingCycle,
+                price: price.toString(),
+            });
+            router.push(`/company/checkout?${params.toString()}`);
+        } else {
+            // Fallback: navigate without plan_id
+            const params = new URLSearchParams({
+                plan_name: name,
+                billing_cycle: billingCycle,
+                price: price.toString(),
+            });
+            router.push(`/company/checkout?${params.toString()}`);
+        }
+    };
 
     return (
         <div
@@ -46,7 +74,10 @@ const PricingCard = ({
 
             {/* ✅ Price updates with billing cycle */}
             <div className="mb-6 text-4xl font-semibold tracking-tight flex items-center gap-1">
-                <div className="flex items-center gap-1"><span className="text-lg text-[#757575] font-medium">$</span>{formatted}</div>
+                <div className="flex items-center gap-1">
+                    <span className="text-lg text-[#757575] font-medium">$</span>
+                    {formatted}
+                </div>
                 <span className="align-middle text-base font-medium text-[#757575]">
                     {billingCycle === "monthly" ? "/ per month" : "/ per year"}
                 </span>
@@ -66,7 +97,7 @@ const PricingCard = ({
 
             {/* 👇 mt-auto pushes button to bottom */}
             <button
-                onClick={onClick}
+                onClick={handleGetStarted}
                 className={`mt-auto w-full rounded-md border px-4 py-2 text-lg transition font-medium cursor-pointer
           ${popular
                         ? "border-[#282828] bg-[#282828] text-white hover:bg-white hover:text-[#282828]"

@@ -20,7 +20,8 @@ const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
     '/agency/dashboard',
     '/admin/dashboard',
     '/admin/login',
-    '/auth/'
+    '/auth/',
+    '/job/findjob'
   ];
 
   const shouldHideLayout = pathname ? excludeLayoutRoutes.some(route => pathname.startsWith(route)) : false;

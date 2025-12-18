@@ -16,6 +16,9 @@
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
     "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\""
   },
+   "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "module": "CommonJS",
   "type": "commonjs",
   "keywords": [],
