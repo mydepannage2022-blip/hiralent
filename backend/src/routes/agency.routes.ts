@@ -19,6 +19,12 @@ import {
   scheduleInterview,
   getEmbassySubmission,
 } from "../controller/agency/agency.embassy.controller";
+import {
+  updateHousingDetails,
+  updateUtilityStatus,
+  updateArrivalDetails,
+  markReadyForArrival,
+} from "../controller/agency/agency.housing.controller";
 
 const router = Router();
 
@@ -63,5 +69,11 @@ router.get("/cases/:id/embassy", checkAuth, getEmbassySubmission);
 router.put("/cases/:id/embassy/status", checkAuth, updateEmbassyStatus);
 // Schedule interview
 router.post("/cases/:id/embassy/interview", checkAuth, scheduleInterview);
+
+// Housing management routes
+router.put("/cases/:caseId/housing", checkAuth, updateHousingDetails);
+router.put("/cases/:caseId/utilities", checkAuth, updateUtilityStatus);
+router.put("/cases/:caseId/arrival", checkAuth, updateArrivalDetails);
+router.put("/cases/:caseId/ready-for-arrival", checkAuth, markReadyForArrival);
 
 export default router;

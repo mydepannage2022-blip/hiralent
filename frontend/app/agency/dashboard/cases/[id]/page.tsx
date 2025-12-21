@@ -22,6 +22,8 @@ import {
   Building2,
   X,
   Upload,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { REQUIRED_DOCUMENT_TYPES } from "@/src/constants/documentTypes";
@@ -63,6 +65,26 @@ interface Case {
   candidate: Candidate;
   documents: Document[];
   embassy_submission?: EmbassySubmission;
+  agency?: {
+    agency_id: string;
+    name: string;
+    type: "VISA" | "RELOCATION" | "INTEGRATION";
+  };
+  viewing_agency_type?: "VISA" | "RELOCATION" | "INTEGRATION" | null;
+  housing_type?: string;
+  housing_address?: string;
+  monthly_rent_mad?: number;
+  agency_fee_amount?: number;
+  lease_start_date?: string;
+  lease_end_date?: string;
+  housing_contract_url?: string;
+  utility_water?: string;
+  utility_electricity?: string;
+  utility_internet?: string;
+  arrival_date?: string;
+  flight_number?: string;
+  airport_pickup_required?: boolean;
+  arrival_notes?: string;
 }
 
 interface EmbassySubmission {
@@ -104,6 +126,36 @@ export default function AgencyCaseDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
 
+  // Housing form state
+  const [housingData, setHousingData] = useState({
+    housing_type: "",
+    housing_address: "",
+    monthly_rent_mad: "",
+    agency_fee_amount: "",
+    lease_start_date: "",
+    lease_end_date: "",
+    housing_notes: "",
+  });
+
+  // Utility state
+  const [utilityStatus, setUtilityStatus] = useState({
+    utility_water: "pending",
+    utility_electricity: "pending",
+    utility_internet: "pending",
+  });
+
+  // Arrival state
+  const [arrivalData, setArrivalData] = useState({
+    arrival_date: "",
+    flight_number: "",
+    airport_pickup_required: false,
+    arrival_notes: "",
+  });
+
+  const [savingHousing, setSavingHousing] = useState(false);
+  const [savingUtilities, setSavingUtilities] = useState(false);
+  const [savingArrival, setSavingArrival] = useState(false);
+
   const fetchCase = async () => {
     try {
       setLoading(true);
@@ -140,6 +192,40 @@ export default function AgencyCaseDetailPage() {
       fetchCase();
     }
   }, [caseId, token]);
+
+  // Populate form data when caseData loads
+  useEffect(() => {
+    if (caseData) {
+      setHousingData({
+        housing_type: caseData.housing_type || "",
+        housing_address: caseData.housing_address || "",
+        monthly_rent_mad: caseData.monthly_rent_mad?.toString() || "",
+        agency_fee_amount: caseData.agency_fee_amount?.toString() || "",
+        lease_start_date: caseData.lease_start_date
+          ? new Date(caseData.lease_start_date).toISOString().split("T")[0]
+          : "",
+        lease_end_date: caseData.lease_end_date
+          ? new Date(caseData.lease_end_date).toISOString().split("T")[0]
+          : "",
+        housing_notes: caseData.notes || "",
+      });
+
+      setUtilityStatus({
+        utility_water: caseData.utility_water || "pending",
+        utility_electricity: caseData.utility_electricity || "pending",
+        utility_internet: caseData.utility_internet || "pending",
+      });
+
+      setArrivalData({
+        arrival_date: caseData.arrival_date
+          ? new Date(caseData.arrival_date).toISOString().split("T")[0]
+          : "",
+        flight_number: caseData.flight_number || "",
+        airport_pickup_required: caseData.airport_pickup_required || false,
+        arrival_notes: caseData.arrival_notes || "",
+      });
+    }
+  }, [caseData]);
 
   const handleReviewDocument = async () => {
     if (!selectedDocument) return;
@@ -238,6 +324,131 @@ export default function AgencyCaseDetailPage() {
     }
   };
 
+  // Handle housing form submission
+  const handleSaveHousing = async () => {
+    try {
+      setSavingHousing(true);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/housing`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            housing_type: housingData.housing_type || null,
+            housing_address: housingData.housing_address || null,
+            monthly_rent_mad: housingData.monthly_rent_mad
+              ? parseFloat(housingData.monthly_rent_mad)
+              : null,
+            agency_fee_amount: housingData.agency_fee_amount
+              ? parseFloat(housingData.agency_fee_amount)
+              : null,
+            lease_start_date: housingData.lease_start_date || null,
+            lease_end_date: housingData.lease_end_date || null,
+            housing_notes: housingData.housing_notes || null,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save housing details");
+      }
+
+      toast.success("Housing details saved successfully!");
+      fetchCase(); // Refresh case data
+    } catch (err) {
+      console.error("Save housing error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save housing details"
+      );
+    } finally {
+      setSavingHousing(false);
+    }
+  };
+
+  // Handle utility status change
+  const handleUtilityChange = async (utility: string, status: string) => {
+    try {
+      setSavingUtilities(true);
+
+      const updatedUtilities = {
+        ...utilityStatus,
+        [utility]: status,
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/utilities`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedUtilities),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update utility status");
+      }
+
+      setUtilityStatus(updatedUtilities);
+      toast.success("Utility status updated!");
+      fetchCase();
+    } catch (err) {
+      console.error("Update utility error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update utility status"
+      );
+    } finally {
+      setSavingUtilities(false);
+    }
+  };
+
+  // Handle arrival details submission
+  const handleSaveArrival = async () => {
+    try {
+      setSavingArrival(true);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/arrival`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            arrival_date: arrivalData.arrival_date || null,
+            flight_number: arrivalData.flight_number || null,
+            airport_pickup_required: arrivalData.airport_pickup_required,
+            arrival_notes: arrivalData.arrival_notes || null,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save arrival details");
+      }
+
+      toast.success("Arrival details saved successfully!");
+      fetchCase();
+    } catch (err) {
+      console.error("Save arrival error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save arrival details"
+      );
+    } finally {
+      setSavingArrival(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -261,6 +472,758 @@ export default function AgencyCaseDetailPage() {
           >
             Back to Cases
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Conditional UI based on which agency is viewing
+  const viewingAgencyType = caseData.viewing_agency_type;
+
+  // RELOCATION Agency UI
+  if (viewingAgencyType === "RELOCATION") {
+    // ============================================
+    // DYNAMIC CALCULATIONS FOR RELOCATION SIDEBAR
+    // ============================================
+
+    // Calculate progress steps for RELOCATION cases
+    const calculateRelocationProgress = () => {
+      if (!caseData || viewingAgencyType !== "RELOCATION")
+        return { steps: [], percentage: 0 };
+
+      const steps = [
+        {
+          id: 1,
+          name: "Visa Approved",
+          description: "Candidate ready for relocation",
+          completed: caseData.embassy_submission?.status === "approved",
+          icon: CheckCircle,
+          color: "green",
+        },
+        {
+          id: 2,
+          name: "Agency Assigned",
+          description: "You've been selected",
+          completed: true, // Always true if viewing this page
+          icon: CheckCircle,
+          color: "green",
+        },
+        {
+          id: 3,
+          name: "Housing Secured",
+          description: "Accommodation arranged",
+          completed: !!(
+            caseData.housing_type &&
+            caseData.housing_address &&
+            caseData.monthly_rent_mad &&
+            caseData.lease_start_date
+          ),
+          icon: caseData.housing_type ? CheckCircle : Clock,
+          color: caseData.housing_type ? "green" : "yellow",
+        },
+        {
+          id: 4,
+          name: "Utilities Setup",
+          description: "Essential services connected",
+          completed:
+            caseData.utility_water === "completed" &&
+            caseData.utility_electricity === "completed" &&
+            caseData.utility_internet === "completed",
+          icon:
+            caseData.utility_water === "completed" &&
+            caseData.utility_electricity === "completed" &&
+            caseData.utility_internet === "completed"
+              ? CheckCircle
+              : caseData.utility_water === "in_progress" ||
+                caseData.utility_electricity === "in_progress" ||
+                caseData.utility_internet === "in_progress"
+              ? Clock
+              : Clock,
+          color:
+            caseData.utility_water === "completed" &&
+            caseData.utility_electricity === "completed" &&
+            caseData.utility_internet === "completed"
+              ? "green"
+              : caseData.utility_water === "in_progress" ||
+                caseData.utility_electricity === "in_progress" ||
+                caseData.utility_internet === "in_progress"
+              ? "yellow"
+              : "gray",
+        },
+        {
+          id: 5,
+          name: "Ready for Arrival",
+          description: "All preparations complete",
+          completed: !!(caseData.arrival_date && caseData.flight_number),
+          icon: caseData.arrival_date ? CheckCircle : Clock,
+          color: caseData.arrival_date ? "green" : "gray",
+        },
+      ];
+
+      const completedSteps = steps.filter((step) => step.completed).length;
+      const percentage = Math.round((completedSteps / steps.length) * 100);
+
+      return { steps, percentage, completedSteps, totalSteps: steps.length };
+    };
+
+    // Check if ready to mark as "Ready for Arrival"
+    const isReadyForArrival = () => {
+      if (!caseData || viewingAgencyType !== "RELOCATION") return false;
+
+      return !!(
+        // Housing is complete
+        (
+          caseData.housing_type &&
+          caseData.housing_address &&
+          caseData.monthly_rent_mad &&
+          caseData.lease_start_date &&
+          // All utilities are completed
+          caseData.utility_water === "completed" &&
+          caseData.utility_electricity === "completed" &&
+          caseData.utility_internet === "completed" &&
+          // Arrival details are set
+          caseData.arrival_date &&
+          caseData.flight_number
+        )
+      );
+    };
+
+    const relocationProgress = calculateRelocationProgress();
+    const canMarkReady = isReadyForArrival();
+    return (
+      <div className="w-full">
+        <div className="mb-6">
+          <button
+            onClick={() => router.push("/agency/dashboard/cases")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Cases
+          </button>
+
+          <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                  {caseData.case_number}
+                </h1>
+                <p className="text-slate-600">Housing & Relocation Case</p>
+                <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  {caseData.status.replace("_", " ")}
+                </span>
+              </div>
+              <button
+                onClick={fetchCase}
+                className="p-3 bg-white hover:bg-green-50 rounded-xl transition-colors border border-slate-200 hover:border-green-300 shadow-sm"
+              >
+                <RefreshCw className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content - Left Side */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Candidate Information */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800 mb-4">
+                Candidate Information
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-500">Name</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.candidate.full_name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-500">Email</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.candidate.email}
+                    </p>
+                  </div>
+                </div>
+                {caseData.candidate.phone_number && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-slate-400" />
+                    <div>
+                      <p className="text-sm text-slate-500">Phone</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        {caseData.candidate.phone_number}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-500">Destination</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.destination_country}
+                      {caseData.destination_city
+                        ? `, ${caseData.destination_city}`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Housing Details Form */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Housing Details
+                </h2>
+                <button
+                  onClick={handleSaveHousing}
+                  disabled={savingHousing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {savingHousing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Housing Type */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Housing Type *
+                  </label>
+                  <select
+                    value={housingData.housing_type}
+                    onChange={(e) =>
+                      setHousingData({
+                        ...housingData,
+                        housing_type: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select housing type</option>
+                    <option value="temporary">Temporary (Hotel/Airbnb)</option>
+                    <option value="1_year_lease">1-Year Lease</option>
+                    <option value="permanent">Permanent</option>
+                  </select>
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Address *
+                  </label>
+                  <input
+                    type="text"
+                    value={housingData.housing_address}
+                    onChange={(e) =>
+                      setHousingData({
+                        ...housingData,
+                        housing_address: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 123 Main St, Apartment 4B"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                {/* Rent & Agency Fee */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Monthly Rent (MAD) *
+                    </label>
+                    <input
+                      type="number"
+                      value={housingData.monthly_rent_mad}
+                      onChange={(e) =>
+                        setHousingData({
+                          ...housingData,
+                          monthly_rent_mad: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 5000"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Agency Fee (MAD)
+                    </label>
+                    <input
+                      type="number"
+                      value={housingData.agency_fee_amount}
+                      onChange={(e) =>
+                        setHousingData({
+                          ...housingData,
+                          agency_fee_amount: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 1500"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Lease Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Lease Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={housingData.lease_start_date}
+                      onChange={(e) =>
+                        setHousingData({
+                          ...housingData,
+                          lease_start_date: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Lease End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={housingData.lease_end_date}
+                      onChange={(e) =>
+                        setHousingData({
+                          ...housingData,
+                          lease_end_date: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Contract Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Lease Contract (PDF)
+                  </label>
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors cursor-pointer">
+                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-600">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      PDF up to 10MB
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={housingData.housing_notes}
+                    onChange={(e) =>
+                      setHousingData({
+                        ...housingData,
+                        housing_notes: e.target.value,
+                      })
+                    }
+                    placeholder="Any special notes about the housing arrangement..."
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Utility Setup Tracker */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800 mb-4">
+                Utility Setup
+              </h2>
+
+              <div className="space-y-3">
+                {/* Water */}
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-600">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.5 3A2.5 2.5 0 003 5.5v9A2.5 2.5 0 005.5 17h9a2.5 2.5 0 002.5-2.5v-9A2.5 2.5 0 0014.5 3h-9zm0 2a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h9a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <span className="font-medium text-slate-700">Water</span>
+                  </div>
+                  <select
+                    value={utilityStatus.utility_water}
+                    onChange={(e) =>
+                      handleUtilityChange("utility_water", e.target.value)
+                    }
+                    disabled={savingUtilities}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:opacity-50"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                {/* Electricity */}
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-600">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <span className="font-medium text-slate-700">
+                      Electricity
+                    </span>
+                  </div>
+                  <select
+                    value={utilityStatus.utility_electricity}
+                    onChange={(e) =>
+                      handleUtilityChange("utility_electricity", e.target.value)
+                    }
+                    disabled={savingUtilities}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:opacity-50"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                {/* Internet */}
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-600">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM9 16a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <span className="font-medium text-slate-700">Internet</span>
+                  </div>
+                  <select
+                    value={utilityStatus.utility_internet}
+                    onChange={(e) =>
+                      handleUtilityChange("utility_internet", e.target.value)
+                    }
+                    disabled={savingUtilities}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:opacity-50"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            {/* Travel & Arrival */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Travel & Arrival
+                </h2>
+                <button
+                  onClick={handleSaveArrival}
+                  disabled={savingArrival}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {savingArrival ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Arrival Details"
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Expected Arrival Date
+                    </label>
+                    <input
+                      type="date"
+                      value={arrivalData.arrival_date}
+                      onChange={(e) =>
+                        setArrivalData({
+                          ...arrivalData,
+                          arrival_date: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Flight Number
+                    </label>
+                    <input
+                      type="text"
+                      value={arrivalData.flight_number}
+                      onChange={(e) =>
+                        setArrivalData({
+                          ...arrivalData,
+                          flight_number: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., AT123"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Airport Pickup Required?
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="pickup"
+                        checked={arrivalData.airport_pickup_required === true}
+                        onChange={() =>
+                          setArrivalData({
+                            ...arrivalData,
+                            airport_pickup_required: true,
+                          })
+                        }
+                        className="w-4 h-4 text-green-600"
+                      />
+                      <span className="text-sm text-slate-700">Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="pickup"
+                        checked={arrivalData.airport_pickup_required === false}
+                        onChange={() =>
+                          setArrivalData({
+                            ...arrivalData,
+                            airport_pickup_required: false,
+                          })
+                        }
+                        className="w-4 h-4 text-green-600"
+                      />
+                      <span className="text-sm text-slate-700">No</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Arrival Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={arrivalData.arrival_notes}
+                    onChange={(e) =>
+                      setArrivalData({
+                        ...arrivalData,
+                        arrival_notes: e.target.value,
+                      })
+                    }
+                    placeholder="Any special arrangements or notes..."
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar - Right Side */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-4">
+                Quick Actions
+              </h3>
+              <div className="space-y-3">
+                {canMarkReady ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/ready-for-arrival`,
+                          {
+                            method: "PUT",
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              "Content-Type": "application/json",
+                            },
+                          }
+                        );
+
+                        if (!response.ok) {
+                          throw new Error("Failed to mark as ready");
+                        }
+
+                        toast.success("Case marked as Ready for Arrival!");
+                        fetchCase();
+                      } catch (err) {
+                        toast.error("Failed to update status");
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-linear-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all text-sm font-medium shadow-md hover:shadow-lg"
+                  >
+                    Mark Ready for Arrival
+                  </button>
+                ) : (
+                  <div className="w-full px-4 py-3 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium text-center cursor-not-allowed">
+                    Complete all steps to mark ready
+                  </div>
+                )}
+                <button className="w-full px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                  Generate Housing Report
+                </button>
+              </div>
+            </div>
+
+            {/* Progress Tracker */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-4">
+                Progress Tracker
+              </h3>
+              <div className="space-y-4">
+                {relocationProgress.steps.map((step) => {
+                  const IconComponent = step.icon;
+                  const iconColorClass =
+                    step.color === "green"
+                      ? "text-green-600"
+                      : step.color === "yellow"
+                      ? "text-yellow-600"
+                      : "text-slate-400";
+                  const textColorClass = step.completed
+                    ? "text-slate-700"
+                    : "text-slate-400";
+
+                  return (
+                    <div key={step.id} className="flex items-start gap-3">
+                      <IconComponent
+                        className={`w-5 h-5 ${iconColorClass} mt-0.5 shrink-0`}
+                      />
+                      <div className="flex-1">
+                        <p className={`font-medium text-sm ${textColorClass}`}>
+                          {step.name}
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            step.completed ? "text-slate-500" : "text-slate-400"
+                          }`}
+                        >
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Completion Percentage */}
+            <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-3">
+                Completion
+              </h3>
+              <div className="mb-2">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600">Overall Progress</span>
+                  <span className="font-bold text-green-700">
+                    {relocationProgress.percentage}%
+                  </span>
+                </div>
+                <div className="w-full bg-green-200 rounded-full h-3">
+                  <div
+                    className="bg-green-600 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${relocationProgress.percentage}%` }}
+                  ></div>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 mt-3">
+                {relocationProgress.completedSteps} of{" "}
+                {relocationProgress.totalSteps} steps completed
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // INTEGRATION Agency UI
+  if (viewingAgencyType === "INTEGRATION") {
+    return (
+      <div className="w-full">
+        <div className="mb-6">
+          <button
+            onClick={() => router.push("/agency/dashboard/cases")}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Cases
+          </button>
+
+          <div className="bg-linear-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">
+              {caseData.case_number}
+            </h1>
+            <p className="text-slate-600">Integration Case</p>
+          </div>
+        </div>
+
+        <div className="text-center py-20">
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-purple-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+            Integration UI Coming Soon
+          </h2>
+          <p className="text-slate-600">
+            This interface will help you manage integration services
+          </p>
         </div>
       </div>
     );

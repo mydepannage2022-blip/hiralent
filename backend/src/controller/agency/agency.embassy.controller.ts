@@ -310,105 +310,196 @@ export const updateEmbassyStatus = async (req: Request, res: Response) => {
       data: { status: newCaseStatus },
     });
 
-    // Send email to candidate
-    const statusMessages: {
-      [key: string]: { title: string; message: string; color: string };
-    } = {
-      under_review: {
-        title: "Embassy is Reviewing Your Application",
-        message:
-          "Your application is currently under review by the embassy. We'll notify you of any updates.",
-        color: "#3b82f6",
-      },
-      interview_scheduled: {
-        title: "Interview Scheduled",
-        message:
-          "The embassy has scheduled an interview. Check your case details for more information.",
-        color: "#f59e0b",
-      },
-      approved: {
-        title: "🎉 Embassy Approved Your Application!",
-        message:
-          "Congratulations! Your visa application has been approved by the embassy.",
-        color: "#10b981",
-      },
-      rejected: {
-        title: "Embassy Decision",
-        message:
-          "Unfortunately, your application was not approved. Please contact your agency for next steps.",
-        color: "#ef4444",
-      },
-    };
-
-    const statusInfo = statusMessages[status] || statusMessages.under_review;
-
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: ${
-              statusInfo.color
-            }; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${
-              statusInfo.color
-            }; }
-            .button { display: inline-block; padding: 12px 30px; background: ${
-              statusInfo.color
-            }; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>${statusInfo.title}</h1>
+    // Send email to candidate based on status
+    if (status === "approved") {
+      // SPECIAL EMAIL FOR VISA APPROVAL - Includes housing agency CTA
+      const approvedEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+          .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+          .next-step-box { background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+          .button-primary { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; font-weight: bold; }
+          .button-secondary { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Visa Approved!</h1>
+            <p style="font-size: 18px; margin-top: 10px;">Congratulations ${
+              caseData.candidate.full_name
+            }!</p>
+          </div>
+          <div class="content">
+            <div class="success-box">
+              <h2 style="margin-top: 0; color: #059669;">Your Visa Has Been Approved</h2>
+              <p>Great news! The embassy has approved your visa application for <strong>${
+                caseData.destination_country
+              }</strong>.</p>
+              <p><strong>Case Number:</strong> ${caseData.case_number}</p>
+              <p><strong>Embassy:</strong> ${
+                caseData.embassy_submission.embassy_name
+              }</p>
+              ${
+                decision_notes
+                  ? `<p><strong>Notes:</strong> ${decision_notes}</p>`
+                  : ""
+              }
             </div>
-            <div class="content">
-              <p>Hi <strong>${caseData.candidate.full_name}</strong>,</p>
-              <p>${statusInfo.message}</p>
-             
-              <div class="info-box">
-                <h3 style="margin-top: 0; color: ${
-                  statusInfo.color
-                };">Case Update</h3>
-                <p><strong>Case Number:</strong> ${caseData.case_number}</p>
-                <p><strong>Embassy:</strong> ${
-                  caseData.embassy_submission.embassy_name
-                }</p>
-                <p><strong>Status:</strong> ${status
-                  .replace("_", " ")
-                  .toUpperCase()}</p>
-                ${
-                  decision_notes
-                    ? `<p><strong>Notes:</strong> ${decision_notes}</p>`
-                    : ""
-                }
+
+            <div class="next-step-box">
+              <h2 style="margin-top: 0; color: #1e40af;">Next Step: Choose Your Housing Agency</h2>
+              <p>Now that your visa is approved, it's time to find accommodation in ${
+                caseData.destination_country
+              }!</p>
+              
+              <p><strong>What happens next:</strong></p>
+              <ul style="margin: 15px 0; padding-left: 20px;">
+                <li>Browse approved housing agencies in ${
+                  caseData.destination_country
+                }</li>
+                <li>Select an agency that fits your needs</li>
+                <li>They will help you find accommodation</li>
+                <li>Get settled before your arrival</li>
+              </ul>
+
+              <div style="text-align: center; margin-top: 25px;">
+                <a href="${
+                  process.env.FRONTEND_URL
+                }/candidate/dashboard/cases/${caseId}" class="button-primary">
+                  Choose Housing Agency
+                </a>
               </div>
+            </div>
 
+            <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+              <strong>Important:</strong> You need to select a housing agency to continue your relocation process. 
+              Visit your case dashboard to browse available agencies.
+            </p>
 
+            <div style="text-align: center; margin-top: 20px;">
               <a href="${
                 process.env.FRONTEND_URL
-              }/candidate/dashboard/cases/${caseId}" class="button">
-                View Case Details
+              }/candidate/dashboard/cases/${caseId}" class="button-secondary">
+                View Full Case Details
               </a>
             </div>
-            <div class="footer">
-              <p>This is an automated message. Please do not reply to this email.</p>
-            </div>
           </div>
-        </body>
-      </html>
-    `;
+          <div class="footer">
+            <p>Congratulations on your approved visa! 🎉</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
 
-    await sendEmail({
-      to: caseData.candidate.email,
-      subject: `Embassy Status Update - Case ${caseData.case_number}`,
-      html: emailHtml,
-    });
+      await sendEmail({
+        to: caseData.candidate.email,
+        subject: `🎉 Visa Approved - Choose Your Housing Agency - Case ${caseData.case_number}`,
+        html: approvedEmailHtml,
+      });
+    } else {
+      // FOR OTHER STATUSES: Keep existing email
+      const statusMessages: {
+        [key: string]: { title: string; message: string; color: string };
+      } = {
+        under_review: {
+          title: "Embassy is Reviewing Your Application",
+          message:
+            "Your application is currently under review by the embassy. We'll notify you of any updates.",
+          color: "#3b82f6",
+        },
+        interview_scheduled: {
+          title: "Interview Scheduled",
+          message:
+            "The embassy has scheduled an interview. Check your case details for more information.",
+          color: "#f59e0b",
+        },
+        rejected: {
+          title: "Embassy Decision",
+          message:
+            "Unfortunately, your application was not approved. Please contact your agency for next steps.",
+          color: "#ef4444",
+        },
+      };
+
+      const statusInfo = statusMessages[status] || statusMessages.under_review;
+
+      const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: ${
+            statusInfo.color
+          }; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${
+            statusInfo.color
+          }; }
+          .button { display: inline-block; padding: 12px 30px; background: ${
+            statusInfo.color
+          }; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${statusInfo.title}</h1>
+          </div>
+          <div class="content">
+            <p>Hi <strong>${caseData.candidate.full_name}</strong>,</p>
+            <p>${statusInfo.message}</p>
+           
+            <div class="info-box">
+              <h3 style="margin-top: 0; color: ${
+                statusInfo.color
+              };">Case Update</h3>
+              <p><strong>Case Number:</strong> ${caseData.case_number}</p>
+              <p><strong>Embassy:</strong> ${
+                caseData.embassy_submission.embassy_name
+              }</p>
+              <p><strong>Status:</strong> ${status
+                .replace("_", " ")
+                .toUpperCase()}</p>
+              ${
+                decision_notes
+                  ? `<p><strong>Notes:</strong> ${decision_notes}</p>`
+                  : ""
+              }
+            </div>
+
+            <a href="${
+              process.env.FRONTEND_URL
+            }/candidate/dashboard/cases/${caseId}" class="button">
+              View Case Details
+            </a>
+          </div>
+          <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+      await sendEmail({
+        to: caseData.candidate.email,
+        subject: `Embassy Status Update - Case ${caseData.case_number}`,
+        html: emailHtml,
+      });
+    }
 
     return res.status(200).json({
       success: true,

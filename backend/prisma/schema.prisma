@@ -445,6 +445,26 @@ model RelocationCase {
 
   embassy_submission  EmbassySubmission?
 
+  // Housing Details
+  housing_type         String?
+  housing_address      String?
+  monthly_rent_mad     Float?
+  agency_fee_amount    Float?
+  lease_start_date     DateTime?
+  lease_end_date       DateTime?
+  housing_contract_url String?
+
+  // Utility Setup
+  utility_water        String? @default("pending")
+  utility_electricity  String? @default("pending")
+  utility_internet     String? @default("pending")
+
+  // Travel & Arrival
+  arrival_date            DateTime?
+  flight_number           String?
+  airport_pickup_required Boolean? @default(false)
+  arrival_notes           String?
+
   @@map("relocation_cases")
 }
 

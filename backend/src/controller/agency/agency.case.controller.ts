@@ -364,7 +364,14 @@ export const listCases = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
-      select: { agency_id: true },
+      select: {
+        agency_id: true,
+        agency: {
+          select: {
+            type: true,
+          },
+        },
+      },
     });
 
     if (!user?.agency_id) {
@@ -376,46 +383,116 @@ export const listCases = async (req: Request, res: Response) => {
 
     const { status, search } = req.query;
 
-    const where: any = {
-      agency_id: user.agency_id,
-    };
+    let cases;
 
-    if (status && status !== "all") {
-      where.status = status;
-    }
+    // VISA agencies: Show cases they created
+    if (user.agency?.type === "VISA") {
+      const where: any = {
+        agency_id: user.agency_id,
+      };
 
-    if (search) {
-      where.OR = [
-        { case_number: { contains: search as string, mode: "insensitive" } },
-        {
+      if (status && status !== "all") {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { case_number: { contains: search as string, mode: "insensitive" } },
+          {
+            candidate: {
+              full_name: { contains: search as string, mode: "insensitive" },
+            },
+          },
+          {
+            candidate: {
+              email: { contains: search as string, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      cases = await prisma.relocationCase.findMany({
+        where,
+        include: {
           candidate: {
-            full_name: { contains: search as string, mode: "insensitive" },
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+            },
           },
         },
-        {
-          candidate: {
-            email: { contains: search as string, mode: "insensitive" },
-          },
+        orderBy: {
+          created_at: "desc",
         },
-      ];
+      });
     }
+    // RELOCATION/INTEGRATION agencies: Show cases assigned to them
+    else if (
+      user.agency?.type === "RELOCATION" ||
+      user.agency?.type === "INTEGRATION"
+    ) {
+      // Get case IDs from assignments
+      const assignments = await prisma.caseAssignment.findMany({
+        where: {
+          agency_id: user.agency_id,
+          status: "active",
+        },
+        select: {
+          case_id: true,
+        },
+      });
 
-    const cases = await prisma.relocationCase.findMany({
-      where,
-      include: {
-        candidate: {
-          select: {
-            user_id: true,
-            email: true,
-            full_name: true,
-            phone_number: true,
+      const caseIds = assignments.map((a) => a.case_id);
+
+      const where: any = {
+        case_id: {
+          in: caseIds,
+        },
+      };
+
+      if (status && status !== "all") {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { case_number: { contains: search as string, mode: "insensitive" } },
+          {
+            candidate: {
+              full_name: { contains: search as string, mode: "insensitive" },
+            },
+          },
+          {
+            candidate: {
+              email: { contains: search as string, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      cases = await prisma.relocationCase.findMany({
+        where,
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+            },
           },
         },
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    });
+        orderBy: {
+          created_at: "desc",
+        },
+      });
+    }
+    // Fallback: No agency type set
+    else {
+      cases = [];
+    }
 
     return res.status(200).json({
       success: true,
@@ -445,7 +522,7 @@ export const getCaseById = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
-      select: { agency_id: true },
+      select: { agency_id: true, agency: { select: { type: true } } },
     });
 
     if (!user?.agency_id) {
@@ -455,11 +532,35 @@ export const getCaseById = async (req: Request, res: Response) => {
       });
     }
 
+    let whereClause: any = { case_id: id };
+
+    // VISA agencies: Check direct agency_id
+    if (user.agency?.type === "VISA") {
+      whereClause.agency_id = user.agency_id;
+    }
+    // RELOCATION/INTEGRATION agencies: Check caseAssignment
+    else if (
+      user.agency?.type === "RELOCATION" ||
+      user.agency?.type === "INTEGRATION"
+    ) {
+      const assignment = await prisma.caseAssignment.findFirst({
+        where: {
+          case_id: id,
+          agency_id: user.agency_id,
+          status: "active",
+        },
+      });
+
+      if (!assignment) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to your agency",
+        });
+      }
+    }
+
     const caseData = await prisma.relocationCase.findFirst({
-      where: {
-        case_id: id,
-        agency_id: user.agency_id,
-      },
+      where: whereClause,
       include: {
         candidate: {
           select: {
@@ -481,6 +582,13 @@ export const getCaseById = async (req: Request, res: Response) => {
           },
         },
         embassy_submission: true,
+        agency: {
+          select: {
+            agency_id: true,
+            name: true,
+            type: true,
+          },
+        },
       },
     });
 
@@ -491,9 +599,14 @@ export const getCaseById = async (req: Request, res: Response) => {
       });
     }
 
+    const viewingAgencyType = user.agency?.type || null;
+
     return res.status(200).json({
       success: true,
-      data: caseData,
+      data: {
+        ...caseData,
+        viewing_agency_type: viewingAgencyType,
+      },
     });
   } catch (error) {
     console.error("Get case error:", error);

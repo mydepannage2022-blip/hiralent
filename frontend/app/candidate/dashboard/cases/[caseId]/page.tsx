@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOCUMENT_TYPES } from "@/src/constants/documentTypes";
+import AgencyBrowserModal from "./components/AgencyBrowserModal";
 
 interface Agency {
   agency_id: string;
@@ -103,6 +104,7 @@ export default function CaseDetailPage() {
     status: string;
   } | null>(null);
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
+  const [showAgencyBrowser, setShowAgencyBrowser] = useState(false);
 
   const fetchCase = async () => {
     try {
@@ -619,6 +621,36 @@ export default function CaseDetailPage() {
         </div>
 
         <div className="lg:col-span-1 space-y-6">
+          {/* 🎉 VISA APPROVED - CHOOSE HOUSING AGENCY */}
+          {caseData.embassy_submission?.status === "approved" &&
+            caseData.status !== "housing_assigned" &&
+            caseData.status !== "housing_in_progress" &&
+            caseData.status !== "housing_complete" && (
+              <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-300 shadow-sm">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="p-2 bg-green-100 rounded-lg shrink-0">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-green-900 mb-1">
+                      🎉 Visa Approved!
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      Select a housing agency to help you find accommodation in{" "}
+                      {caseData.destination_country}.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowAgencyBrowser(true)}
+                  className="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Choose Housing Agency
+                </button>
+              </div>
+            )}
           <div className="bg-white rounded-2xl p-6 border border-slate-200">
             <h3 className="text-lg font-bold text-slate-800 mb-4">Status</h3>
             <div className="space-y-3">
@@ -1091,6 +1123,14 @@ export default function CaseDetailPage() {
           </div>
         )}
       </AnimatePresence>
+      {/* Agency Browser Modal */}
+      <AgencyBrowserModal
+        isOpen={showAgencyBrowser}
+        onClose={() => setShowAgencyBrowser(false)}
+        caseId={caseId}
+        destinationCountry={caseData?.destination_country || ""}
+        onSuccess={fetchCase}
+      />
     </div>
   );
 }

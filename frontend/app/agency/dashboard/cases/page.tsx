@@ -369,7 +369,7 @@ export default function CasesPage() {
           <p className="text-slate-500">
             {searchQuery
               ? "Try adjusting your search or filters"
-              : "Cases will appear here once you create them"}
+              : "Cases will appear here once you create or are assigned them"}
           </p>
         </div>
       ) : (
@@ -421,7 +421,7 @@ export default function CasesPage() {
                           `/agency/dashboard/cases/${caseItem.case_id}`
                         )
                       }
-                      className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                      className="p-2 Ihover:bg-blue-100 rounded-lg transition-colors"
                       title="View Documents & Review"
                     >
                       <ExternalLink className="w-5 h-5 text-blue-600" />
