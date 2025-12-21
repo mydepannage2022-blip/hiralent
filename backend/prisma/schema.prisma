@@ -238,6 +238,32 @@ model Question {
   @@map("questions")
 }
 
+model AlgorithmPattern {
+  id            String   @id @default(cuid())
+  source        String
+  sourceId      String
+  difficulty    String
+  pattern       String
+  domain        String
+  tags          String[]
+  constraints   Json
+  inputStructure Json
+  extractedAt   DateTime
+  createdAt     DateTime @default(now())
+
+  @@unique([source, sourceId])
+}
+
+model ScrapingJobLog {
+  id        String   @id @default(cuid())
+  source    String
+  status    String
+  count     Int
+  durationMs Int
+  error     String?
+  executedAt DateTime @default(now())
+}
+
 // Enhanced Agency Admin Profile
 model AgencyAdminProfile {
   admin_id       String  @id
@@ -1650,3 +1676,5 @@ model PaymentTransaction {
   @@index([status])
   @@index([gateway_payment_id])
 }
+
+
