@@ -21,9 +21,35 @@ export interface JobResult {
 export interface SourceConfig {
   enabled: boolean;
   schedule: string;        // Cron expression
-  maxItems: number;        // Max patterns to scrape
-  maxPages?: number;       // For GitHub/HackerRank
-  rateLimit: number;       // Seconds between requests
+
+  /**
+   * Chunk size for AI-service call.
+   * In auto mode, AI-service may loop internally until it stops finding new items,
+   * but it will request in chunks of maxItems.
+   */
+  maxItems: number;
+
+  /**
+   * For GitHub / StackOverflow / HackerRank pagination (pages per track / pages per query)
+   */
+  maxPages?: number;
+
+  /**
+   * Enable AI-service "auto" mode: scrape until no new items (with safety caps).
+   */
+  auto?: boolean;
+
+  /**
+   * Safety cap to prevent infinite scraping loops on AI-service side.
+   */
+  hardCap?: number;
+
+  /**
+   * Stop auto mode after N consecutive empty batches/pages.
+   */
+  stopAfterEmptyPages?: number;
+
+  rateLimit: number;       // Seconds between requests (scheduler-side pacing)
 }
 
 /**
@@ -40,12 +66,17 @@ export interface SchedulerConfig {
 }
 
 /**
- * Job execution options
+ * Job execution options (what executeJob receives)
  */
 export interface JobOptions {
   source: Source;
   maxItems: number;
+
+  // optional knobs
   maxPages?: number;
+  auto?: boolean;
+  hardCap?: number;
+  stopAfterEmptyPages?: number;
 }
 
 /**

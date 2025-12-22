@@ -18,16 +18,32 @@ export class ScrapingOrchestrator {
 
   async executeJob(options: JobOptions): Promise<JobResult> {
     const startTime = Date.now();
-    const { source, maxItems } = options;
 
-    console.log(`🚀 [ORCHESTRATOR] Starting job: ${source} (max_items=${maxItems})`);
+    // ✅ allow new optional params (keep backward compatible)
+    const {
+      source,
+      maxItems,
+      maxPages,                 // new: pages per track (hackerrank/so/github)
+      auto = true,              // new: let AI-service loop until it stops finding new
+      hardCap = 5000,           // new: safety
+      stopAfterEmptyPages = 3,  // new: stop condition
+    } = options as any;
+
+    console.log(
+      `🚀 [ORCHESTRATOR] Starting job: ${source} (max_items=${maxItems}, auto=${auto}, max_pages=${maxPages ?? "default"})`
+    );
 
     try {
-      // ✅ Use the correct endpoint that returns patterns[]
       console.log(`📡 [ORCHESTRATOR] Calling AI service for ${source}...`);
+
+      // ✅ send extra knobs to AI-service (it can ignore if not supported)
       const scrapeResult = await this.aiClient.scrapeViaSourceEndpoint({
         source,
         max_items: maxItems,
+        max_pages: maxPages, // important for hackerrank / stackoverflow / github
+        auto,
+        hard_cap: hardCap,
+        stop_after_empty_pages: stopAfterEmptyPages,
       });
 
       if (!scrapeResult.success) {
@@ -53,13 +69,12 @@ export class ScrapingOrchestrator {
         };
       }
 
-      // ✅ Normalize patterns safely (prevents "undefined")
+      // ✅ Normalize patterns safely
       const patterns = Array.isArray(scrapeResult.patterns) ? scrapeResult.patterns : [];
       const patternsScraped =
         typeof scrapeResult.count === "number" ? scrapeResult.count : patterns.length;
 
       console.log(`✅ [ORCHESTRATOR] Scraped ${patternsScraped} patterns from ${source}`);
-
       console.log(`💾 [ORCHESTRATOR] Saving patterns to database...`);
 
       let patternsSaved = 0;
@@ -68,29 +83,32 @@ export class ScrapingOrchestrator {
         patternsSaved = saveResult.upserted;
         console.log(`✅ [ORCHESTRATOR] Saved ${patternsSaved} patterns to database`);
       } else {
-        console.warn(`⚠️ [ORCHESTRATOR] No patterns to save for ${source}`);
+        console.warn(`⚠️ [ORCHESTRATOR] No patterns returned from AI-service for ${source}`);
       }
 
       const durationMs = Date.now() - startTime;
 
+      // ✅ IMPORTANT: 0 saved is not necessarily a failure (it can mean "no new")
+      const status = "success";
+      const errorMsg = null;
+
       await this.logService.createLog({
         source,
-        status: patternsSaved > 0 ? "success" : "failed", // ✅ optional but recommended
+        status,
         count: patternsSaved,
         durationMs,
-        error: patternsSaved > 0 ? null : "No patterns returned from AI-service",
+        error: errorMsg,
       });
 
       console.log(`🎉 [ORCHESTRATOR] Job completed: ${source} (${durationMs}ms)`);
 
       return {
-        success: patternsSaved > 0,
+        success: true,
         source,
         patternsScraped,
         patternsSaved,
         durationMs,
         executedAt: new Date(),
-        ...(patternsSaved > 0 ? {} : { error: "No patterns returned from AI-service" }),
       };
     } catch (error: any) {
       const durationMs = Date.now() - startTime;

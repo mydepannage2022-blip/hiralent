@@ -2745,7 +2745,7 @@ scraping_orchestrator = get_orchestrator()
 # =============================================================================
 
 @app.post("/scraping/leetcode/run")
-async def run_leetcode_scraping(max_items: int = 50):
+async def run_leetcode_scraping(max_items: int = 500):
     """
     Run LeetCode scraping job.
     Routes just trigger - NO business logic here.
@@ -2754,14 +2754,23 @@ async def run_leetcode_scraping(max_items: int = 50):
 
 
 @app.post("/scraping/github/run")
-async def run_github_scraping(max_items: int = 100, max_pages: int = 3):
-    """Run GitHub scraping job"""
+async def run_github_scraping(
+    max_items: int = 200,
+    max_pages: int = 5,              # interpreted as max_repos
+    max_depth: int = 2,
+    per_repo_max_files: int = 60,
+    use_search: bool = True,
+    search_pages: int = 2,
+):
     return await scraping_orchestrator.run_scraping(
         "github",
         max_items,
-        max_pages=max_pages
+        max_pages=max_pages,
+        max_depth=max_depth,
+        per_repo_max_files=per_repo_max_files,
+        use_search=use_search,
+        search_pages=search_pages,
     )
-
 
 @app.post("/scraping/stackoverflow/run")
 async def run_stackoverflow_scraping(max_items: int = 30, max_pages: int = 2):
@@ -2774,14 +2783,21 @@ async def run_stackoverflow_scraping(max_items: int = 30, max_pages: int = 2):
 
 
 @app.post("/scraping/hackerrank/run")
-async def run_hackerrank_scraping(max_items: int = 50, max_pages: int = 3):
-    """Run HackerRank scraping job"""
+async def run_hackerrank_scraping(
+    max_items: int = 500,
+    pages_per_track: int = 10,
+):
+    """
+    Run HackerRank scraping job.
+
+    - pages_per_track: how many offset pages to fetch FOR EACH track
+    - max_items: global cap in orchestrator (if it enforces it)
+    """
     return await scraping_orchestrator.run_scraping(
         "hackerrank",
         max_items,
-        max_pages=max_pages
+        max_pages=pages_per_track,  # keep orchestrator arg name unchanged
     )
-
 
 # =============================================================================
 # BATCH SCRAPING ROUTE
@@ -2810,34 +2826,24 @@ async def run_batch_scraping(request: Dict[str, Any]):
 
 @app.post("/scrape")
 async def scheduler_scrape_endpoint(request: Dict[str, Any]):
-    """
-    Main endpoint for Node-Cron scheduler.
-    
-    This is what the TypeScript scheduler will call via HTTP.
-    
-    Body:
-        {
-            "source": "leetcode",
-            "max_problems": 50,
-            "max_pages": 3
-        }
-    """
     source = request.get("source")
     max_problems = request.get("max_problems", 50)
     max_pages = request.get("max_pages", 3)
-    
+
     if not source:
         raise HTTPException(status_code=400, detail="Source is required")
-    
-    # Execute scraping job
-    result = await scraping_orchestrator.execute_scheduled_job(source, max_problems)
-    
-    # Return in format expected by Node.js scheduler
+
+    result = await scraping_orchestrator.execute_scheduled_job(
+        source,
+        max_problems,
+        max_pages=max_pages
+    )
+
     return {
         "success": result["status"] == "completed",
         "patterns": result.get("patterns_scraped", 0),
         "count": result.get("patterns_scraped", 0),
-        "job_log": result  # Full job log for database storage
+        "job_log": result
     }
 
 

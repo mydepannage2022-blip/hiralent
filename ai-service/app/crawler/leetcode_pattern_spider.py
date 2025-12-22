@@ -73,10 +73,58 @@ class LeetCodePatternSpider:
 
     # ----------------------------- Public API -----------------------------
 
-    def crawl(self, max_problems: int = 20) -> List[Dict[str, Any]]:
+    def crawl(self, max_problems: int = 200) -> List[Dict[str, Any]]:
         logger.info("🚀 Starting LeetCode pattern crawl (limit=%s)", max_problems)
 
-        problems = self._get_problem_list(limit=max_problems)
+        # ✅ pick tags that map well to your extractor
+        tag_slugs = [
+            "array", "string", "hash-table", "two-pointers", "sliding-window",
+            "binary-search", "stack", "queue", "heap-priority-queue",
+            "greedy", "dynamic-programming", "graph", "tree", "backtracking",
+        ]
+        difficulties = ["EASY", "MEDIUM", "HARD"]
+
+        # distribute budget
+        buckets = []
+        per_bucket = max(10, max_problems // (len(difficulties) + 3))
+
+        # 1) global (no filters) for baseline
+        buckets.append(({}, per_bucket))
+
+        # 2) by difficulty
+        for d in difficulties:
+            buckets.append(({"difficulty": d}, per_bucket))
+
+        # 3) by tags (rotate tags; keep it bounded)
+        for t in tag_slugs[:10]:
+            buckets.append(({"tags": [t]}, per_bucket))
+
+        collected_slugs: set[str] = set()
+        problems: List[Dict[str, Any]] = []
+
+        for filters, want in buckets:
+            if len(problems) >= max_problems:
+                break
+
+            need = min(want, max_problems - len(problems))
+            page = self._get_problem_list(
+                limit=need * 2,          # overfetch a bit (dedupe + paid filtering)
+                filters=filters,
+                page_size=50,
+                max_skip_pages=400       # go deeper
+            )
+
+            for p in page:
+                slug = p.get("titleSlug")
+                if not slug or slug in collected_slugs:
+                    continue
+                collected_slugs.add(slug)
+                problems.append(p)
+                if len(problems) >= max_problems:
+                    break
+
+            logger.info("📦 Bucket done filters=%s → total=%s", filters, len(problems))
+
         if not problems:
             logger.error("❌ No problems returned from LeetCode API")
             return []
@@ -86,7 +134,6 @@ class LeetCodePatternSpider:
         for i, problem in enumerate(problems):
             slug = problem.get("titleSlug")
             if not slug:
-                logger.warning("⚠️ Problem %s missing titleSlug, skipping", i + 1)
                 continue
 
             logger.info("📥 [%s/%s] Processing: %s", i + 1, len(problems), slug)
@@ -97,12 +144,9 @@ class LeetCodePatternSpider:
                 continue
 
             pattern = self._extract_pattern(meta)
-            self._assert_safe(pattern)
             patterns.append(pattern)
 
-            time.sleep(1.5)
-
-        logger.info("🎉 LeetCode spider finished: %s patterns collected", len(patterns))
+        logger.info("✅ Extracted %s patterns", len(patterns))
         return patterns
 
     # ----------------------------- Robust HTTP -----------------------------
@@ -178,67 +222,126 @@ class LeetCodePatternSpider:
 
     # ----------------------------- LeetCode GraphQL -----------------------------
 
-    def _get_problem_list(self, limit: int) -> List[Dict[str, Any]]:
+    def _fetch_meta(self, slug: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch SAFE metadata only for a single problem.
+        Needed because _get_problem_list returns only titleSlug/isPaidOnly,
+        while _extract_pattern needs topicTags + difficulty.
+        """
+        query = """
+        query questionMeta($titleSlug: String!) {
+        question(titleSlug: $titleSlug) {
+            titleSlug
+            difficulty
+            isPaidOnly
+            topicTags {
+            slug
+            }
+        }
+        }
+        """
+
+        variables = {"titleSlug": slug}
+        data = self._post_graphql(query=query, variables=variables, timeout=20)
+        if not data or "errors" in data:
+            if data and "errors" in data:
+                logger.error("❌ GraphQL errors (meta) for %s: %s", slug, data["errors"])
+            return None
+
+        q = (data.get("data") or {}).get("question")
+        if not q:
+            return None
+
+        # extra safety: ensure we didn't accidentally fetch unsafe fields
+        self._assert_safe(q)
+
+        return q
+
+    
+
+    def _get_problem_list(
+        self,
+        limit: int,
+        filters: Optional[Dict[str, Any]] = None,
+        *,
+        page_size: int = 50,
+        max_skip_pages: int = 200,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get up to `limit` FREE problems using pagination via skip/limit,
+        with optional filters (tags/difficulty/etc).
+        """
         query = """
         query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
-          problemsetQuestionList: questionList(
+        problemsetQuestionList: questionList(
             categorySlug: $categorySlug
             limit: $limit
             skip: $skip
             filters: $filters
-          ) {
+        ) {
             questions: data {
-              titleSlug
-              isPaidOnly
-            }
-          }
-        }
-        """
-        variables = {"categorySlug": "", "limit": limit, "skip": 0, "filters": {}}
-
-        logger.info("📡 Fetching problem list (limit=%s)...", limit)
-
-        data = self._post_graphql(query=query, variables=variables, timeout=20)
-        if not data:
-            return []
-
-        if "errors" in data:
-            logger.error("❌ GraphQL errors: %s", data["errors"])
-            return []
-
-        questions = data.get("data", {}).get("problemsetQuestionList", {}).get("questions", []) or []
-        free_questions = [q for q in questions if not q.get("isPaidOnly", False)]
-
-        logger.info("✅ Found %s free problems (filtered from %s total)", len(free_questions), len(questions))
-        return free_questions
-
-    def _fetch_meta(self, slug: str) -> Optional[Dict[str, Any]]:
-        query = """
-        query questionMeta($titleSlug: String!) {
-          question(titleSlug: $titleSlug) {
             titleSlug
-            difficulty
-            topicTags {
-              slug
-              name
+            isPaidOnly
             }
-            stats
-          }
+        }
         }
         """
-        data = self._post_graphql(query=query, variables={"titleSlug": slug}, timeout=15)
-        if not data:
-            return None
 
-        if "errors" in data:
-            logger.error("❌ GraphQL errors for %s: %s", slug, data["errors"])
-            return None
+        filters = filters or {}
+        page_size = min(50, max(1, page_size))
 
-        q = data.get("data", {}).get("question")
-        if not q:
-            logger.warning("⚠️ No question data for %s", slug)
-            return None
-        return q
+        collected: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+
+        skip = 0
+        pages = 0
+
+        logger.info(
+            "📡 Fetching problem list (target=%s, page_size=%s, filters=%s)",
+            limit, page_size, filters
+        )
+
+        while len(collected) < limit and pages < max_skip_pages:
+            variables = {
+                "categorySlug": "",
+                "limit": page_size,
+                "skip": skip,
+                "filters": filters
+            }
+
+            data = self._post_graphql(query=query, variables=variables, timeout=20)
+            if not data:
+                break
+            if "errors" in data:
+                logger.error("❌ GraphQL errors: %s", data["errors"])
+                break
+
+            questions = data.get("data", {}).get("problemsetQuestionList", {}).get("questions", []) or []
+            if not questions:
+                break
+
+            # keep only free + dedupe
+            for q in questions:
+                if q.get("isPaidOnly", False):
+                    continue
+                slug = q.get("titleSlug")
+                if not slug or slug in seen:
+                    continue
+                seen.add(slug)
+                collected.append(q)
+                if len(collected) >= limit:
+                    break
+
+            skip += page_size
+            pages += 1
+
+            # no more pages
+            if len(questions) < page_size:
+                break
+
+        logger.info("✅ Collected %s free problems total (filters=%s)", len(collected), filters)
+        return collected[:limit]
+
 
     # ----------------------------- Pattern extraction -----------------------------
 
