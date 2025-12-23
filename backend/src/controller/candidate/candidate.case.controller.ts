@@ -122,6 +122,7 @@ export const getCaseById = async (req: Request, res: Response) => {
           orderBy: { created_at: "desc" },
           take: 10,
         },
+        embassy_submission: true,
       },
     });
 

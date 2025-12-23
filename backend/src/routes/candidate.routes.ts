@@ -88,6 +88,11 @@ import {
 } from '../controller/candidate/candidate.case.controller';
 import { uploadDocumentMiddleware, handleDocumentUploadError } from '../middlewares/upload.middleware';
 
+import {
+  browseAgenciesController,
+  assignAgencyToCase
+} from '../controller/candidate/candidate.agency.controller';
+
 const router = Router();
 
 router.get('/health', healthCheckController);
@@ -308,6 +313,20 @@ router.delete(
   '/cases/:caseId/documents/:documentId/cancel',
   checkAuth,
   cancelDocumentReplacement
+);
+
+// Browse available agencies for selection
+router.get(
+  '/agencies/browse',
+  checkAuth,
+  browseAgenciesController
+);
+
+// Assign housing agency to case (candidate selection)
+router.post(
+  '/cases/:caseId/assign-agency',
+  checkAuth,
+  assignAgencyToCase
 );
 
 export default router;

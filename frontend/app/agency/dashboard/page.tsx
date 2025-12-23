@@ -24,6 +24,7 @@ import {
   MapPin,
   Calendar,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface BaseStats {
   agencyType: "VISA" | "RELOCATION" | "INTEGRATION";
@@ -73,6 +74,7 @@ interface Activity {
 type ViewMode = "dashboard" | "clients" | "reports";
 
 export default function AgencyDashboard() {
+  const router = useRouter();
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -180,19 +182,9 @@ export default function AgencyDashboard() {
     const allServices = [
       { value: "visa_processing", label: "Visa Processing", types: ["VISA"] },
       {
-        value: "housing_assistance",
-        label: "Housing Assistance",
-        types: ["RELOCATION"],
-      },
-      {
-        value: "documentation",
-        label: "Documentation",
-        types: ["INTEGRATION"],
-      },
-      {
         value: "full_relocation",
-        label: "Full Relocation Package",
-        types: ["VISA", "RELOCATION", "INTEGRATION"],
+        label: "Full Relocation Package (Visa + Housing + Integration)",
+        types: ["VISA"],
       },
     ];
 
@@ -618,29 +610,60 @@ export default function AgencyDashboard() {
               Quick Actions
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => setShowNewCaseModal(true)}
-                className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200"
-              >
-                <div className="flex flex-col items-start gap-3">
-                  <div className="p-3 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
-                    <Plus className="w-7 h-7 text-white" />
+              {/* ONLY SHOW FOR VISA AGENCIES */}
+              {stats?.agencyType === "VISA" && (
+                <button
+                  onClick={() => setShowNewCaseModal(true)}
+                  className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200"
+                >
+                  <div className="flex flex-col items-start gap-3">
+                    <div className="p-3 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
+                      <Plus className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-lg font-bold text-slate-800 mb-1">
+                        New Case
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        Create a new visa case
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-lg font-bold text-slate-800 mb-1">
-                      New Case
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Create a new relocation case
-                    </p>
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </div>
                   </div>
-                </div>
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <ArrowRight className="w-4 h-4 text-white" />
+                </button>
+              )}
+
+              {/* NEW: Show "Assigned Cases" for RELOCATION/INTEGRATION */}
+              {(stats?.agencyType === "RELOCATION" ||
+                stats?.agencyType === "INTEGRATION") && (
+                <button
+                  onClick={() => router.push("/agency/dashboard/cases")}
+                  className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200"
+                >
+                  <div className="flex flex-col items-start gap-3">
+                    <div className="p-3 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
+                      <FileText className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-lg font-bold text-slate-800 mb-1">
+                        View Assigned Cases
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        See cases assigned to you
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </button>
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                </button>
+              )}
 
               <button
                 onClick={() => {
