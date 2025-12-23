@@ -22,5 +22,5 @@ COPY . .
 # FastAPI port
 EXPOSE 8000
 
-# 🔥 EXACTLY what you run locally:
+#  EXACTLY what you run locally:
 CMD ["python", "-m", "app.main"]
