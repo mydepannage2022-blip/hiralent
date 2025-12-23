@@ -97,8 +97,22 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         />
       </SmartLink>
     );
-
+  const pathnameSafe = pathname ?? "";
   const getPageInfo = () => {
+      // ✅ dynamic details route
+  if (pathnameSafe.startsWith("/company/dashboard/assessmentManagement/")) {
+    return {
+      title: "Assessment Details",
+      description: "Configure and manage questions",
+    };
+  }
+    // ✅ dynamic details route (Job Details)
+  if (pathnameSafe.startsWith("/company/dashboard/jobManagement/")) {
+    return {
+      title: "Job Details",
+      description: "View, edit, and manage this job posting",
+    };
+  }
     switch (pathname) {
       case '/company/dashboard/employer-profile':
         return { title: 'Profile', description: 'Updating your information will offer you the most relevent content' };
