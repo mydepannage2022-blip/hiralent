@@ -15,8 +15,17 @@ if (redisUrl) {
   // persistent publisher/subscriber clients; otherwise we skip creating them
   // and silently fall back to the in-process emitter.
   (async () => {
-    const probeOpts: any = { connectTimeout: 1000, maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null };
+    const probeOpts: any = {
+      connectTimeout: 1000,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: true,
+      retryStrategy: (times: number) => Math.min(times * 100, 2000),
+    };
     const probe = new Redis(redisUrl, probeOpts);
+    // attach a minimal error handler immediately to avoid unhandled 'error' events
+    probe.on('error', (err) => {
+      try { console.warn('Redis probe error (submissionEmitter):', err && err.message ? err.message : err); } catch {}
+    });
     try {
       await probe.ping();
     } catch (e) {
@@ -27,7 +36,11 @@ if (redisUrl) {
     try {
       try { probe.disconnect(); } catch {}
 
-      const redisOpts: any = { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null };
+      const redisOpts: any = {
+        maxRetriesPerRequest: 3,
+        enableOfflineQueue: true,
+        retryStrategy: (times: number) => Math.min(times * 100, 2000),
+      };
       publisher = new Redis(redisUrl, redisOpts);
       subscriber = new Redis(redisUrl, redisOpts);
 

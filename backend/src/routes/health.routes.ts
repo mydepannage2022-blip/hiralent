@@ -26,7 +26,9 @@ r.get('/health', async (_req: Request, res: Response) => {
       out.services.redis = { ok: false, error: 'REDIS_URL not configured' };
       out.ok = false;
     } else {
-      const rc = new Redis(redisUrl, { connectTimeout: 1000, maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null });
+      const rc = new Redis(redisUrl, { connectTimeout: 1000, maxRetriesPerRequest: 1, enableOfflineQueue: true, retryStrategy: () => null });
+      // avoid unhandled error events from Redis client during health check
+      rc.on('error', (err) => { try { console.warn('Redis health check client error', err && err.message ? err.message : err); } catch {} });
       try {
         const p = await rc.ping();
         out.services.redis = { ok: p === 'PONG' };

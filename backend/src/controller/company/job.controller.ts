@@ -9,6 +9,7 @@ import {
   patchJobStatus as patchJobStatusService,
   getCompanyJobs as getCompanyJobsService,
   getCompanyJobsById as getCompanyJobsByIdService,
+  getJobApplicantsForJob as getJobApplicantsForJobService,
 } from '../../services/company/job.service';
 
 import {
@@ -328,6 +329,46 @@ export async function getCompanyJobsById(
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch company jobs',
+      error: err?.message ?? String(err),
+    });
+  }
+}
+
+// GET /jobs/:id/applicants
+export async function getJobApplicantsForJob(
+  req: Request<IdParam>,
+  res: Response,
+) {
+  try {
+    const user = getAuthUser(req);
+    const jobId = req.params.id;
+
+    const job = await getJobByIdService(jobId);
+    if (!job) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Job not found' });
+    }
+
+    // Only company that owns the job (or superadmin) can see applicants
+    if (!isSuperadmin(user)) {
+      if (!isCompanyUser(user) || job.company_id !== getCompanyId(req)) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Forbidden' });
+      }
+    }
+
+    const applicants = await getJobApplicantsForJobService(jobId);
+
+    return res.json({
+      success: true,
+      data: applicants,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch applicants for this job',
       error: err?.message ?? String(err),
     });
   }

@@ -1,14 +1,13 @@
 "use client";
 import React from 'react';
-import CodeEditor from '../../src/components/Code-Runner-Frontend/CodeEditor';
+import CodeRunner from '../../src/components/Code-Runner-Frontend/CodeRunner';
 
 export default function Page() {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Code Runner</h1>
-      <div style={{ height: '80vh' }}>
-        <CodeEditor />
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1 p-6 pt-24">
+        <CodeRunner />
+      </main>
     </div>
   );
 }

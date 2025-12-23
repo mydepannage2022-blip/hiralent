@@ -4,6 +4,7 @@ import {
   DifficultyLevel as PrismaDifficultyLevel,
   EmployerAssessmentStatus as PrismaEmployerAssessmentStatus,
   AssessmentCreationMethod as PrismaCreationMethod,
+  Question,
 } from '@prisma/client';
 
 import {
@@ -222,6 +223,24 @@ function getAlignedDifficulty(
 }
 
 function mapPrismaAssessment(a: any): EmployerAssessment {
+  // If `questions` are included in the Prisma query, they look like:
+  // a.questions: { order, points, isReserve, question: Question }[]
+  let questions;
+  if (Array.isArray(a.questions)) {
+    questions = a.questions.map((aq: { order: number | null; points: number; isReserve: boolean; question: Question }) => ({
+      id: aq.question.id,
+      title: aq.question.title,
+      description: aq.question.description,
+      problemStatement: aq.question.problemStatement,
+      difficulty: aq.question.difficulty,
+      type: aq.question.type,
+      skillTags: aq.question.skillTags,
+      order: aq.order ?? undefined,
+      points: aq.points,
+      isReserve: aq.isReserve,
+    }));
+  }
+
   return {
     assessment_id: a.assessment_id,
     company_id: a.company_id,
@@ -242,6 +261,8 @@ function mapPrismaAssessment(a: any): EmployerAssessment {
     auto_generated: a.auto_generated ?? undefined,
     creation_method: toTsCreation(a.creation_method),
     extracted_skills: a.extracted_skills ?? [],
+    questions, // 👈 NEW
+
     job: a.job
       ? {
           title: a.job.title,
@@ -475,7 +496,7 @@ export async function createEmployerAssessmentFromJobDescription(
       creation_method: PrismaCreationMethod.JOB_DESCRIPTION_PARSE,
       extracted_skills: uniqueSkills,
       enhanced_data: enhanced as any,
-      auto_generated: Boolean(args.auto_generate),
+      auto_generated: true,
     },
     include: { job: true, _count: { select: { candidateAssessments: true } } },
   });
@@ -806,13 +827,24 @@ export async function getEmployerAssessmentById(
   assessment_id: string,
 ): Promise<EmployerAssessment> {
   await assertCompanyExists(company_id);
+
   const found = await prisma.employerAssessment.findFirst({
     where: { assessment_id, company_id },
-    include: { job: true, _count: { select: { candidateAssessments: true } } },
+    include: {
+      job: true,
+      _count: { select: { candidateAssessments: true } },
+      // 👇 include attached questions + underlying Question row
+      questions: {
+        orderBy: { order: 'asc' },
+        include: { question: true },
+      },
+    },
   });
+
   if (!found) throw new Error('Assessment not found');
   return mapPrismaAssessment(found);
 }
+
 
 export async function listEmployerAssessments(
   company_id: string,
