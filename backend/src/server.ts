@@ -1,11 +1,14 @@
-import http from 'http';
-import app from './app';
-import { connectDB } from './lib/mongo';
-import { loadDevStubs } from './bootstrap/devStubs';
-import { setupSocketIO } from './realtime/Socket.messaging';
+import dotenv from "dotenv";
+import http from "http";
+import app from "./app";
+import { connectDB } from "./lib/mongo";
+import { loadDevStubs } from "./bootstrap/devStubs";
+import { setupSocketIO } from "./realtime/Socket.messaging";
+import { getScheduler } from "./services/scraping/scraping-scheduler";
 
-// Load dev stubs if we're in local/dev mode
-if (process.env.NODE_ENV !== 'production') {
+dotenv.config();
+
+if (process.env.NODE_ENV !== "production") {
   loadDevStubs();
 }
 
@@ -14,17 +17,27 @@ if (process.env.NODE_ENV !== 'production') {
     const mongo = await connectDB();
     app.locals.mongo = mongo;
 
+    //  Initialize scheduler once
+    const scheduler = getScheduler();
+
+    //  Start cron only if enabled
+    if (process.env.SCRAPING_SCHEDULER_ENABLED === "true") {
+      scheduler.start();
+      console.log("⏰ Scraping scheduler ENABLED");
+    } else {
+      console.log("⏸️ Scraping scheduler DISABLED (set SCRAPING_SCHEDULER_ENABLED=true)");
+    }
+
     const server = http.createServer(app);
-    
+
     const io = setupSocketIO(server);
-    app.set('socketio', io);
+    app.set("socketio", io);
 
     const PORT = process.env.PORT || 5000;
-    
+
     server.listen(PORT, () => {
       console.log(`🚀 Server listening on port ${PORT}`);
     });
-    
   } catch (err) {
     console.error("Failed to start server:", err);
     process.exit(1);

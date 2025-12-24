@@ -10,6 +10,7 @@ router.get('/health', (req, res) => {
     res.json({ message: 'Company routes working', timestamp: new Date().toISOString() });
 });
 router.use(checkAuth_middleware_1.checkAuth);
+router.get('/profile', profile_controller_1.getProfileController); // <-- Celle-ci manque !
 router.post('/create-profile', checkAuth_middleware_1.checkAuth, (0, validateBody_middleware_1.validateBody)(company_schema_1.createCompanyProfileSchema), profile_controller_1.createProfileController);
 router.patch('/profile', (0, validateBody_middleware_1.validateBody)(company_schema_1.updateCompanyProfileSchema), profile_controller_1.updateProfileController);
 router.get('/stats', profile_controller_1.getCompanyStatsController);

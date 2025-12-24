@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "relocation_cases" ADD COLUMN     "agency_fee_amount" DOUBLE PRECISION,
+ADD COLUMN     "airport_pickup_required" BOOLEAN DEFAULT false,
+ADD COLUMN     "arrival_date" TIMESTAMP(3),
+ADD COLUMN     "arrival_notes" TEXT,
+ADD COLUMN     "flight_number" TEXT,
+ADD COLUMN     "housing_address" TEXT,
+ADD COLUMN     "housing_contract_url" TEXT,
+ADD COLUMN     "housing_type" TEXT,
+ADD COLUMN     "lease_end_date" TIMESTAMP(3),
+ADD COLUMN     "lease_start_date" TIMESTAMP(3),
+ADD COLUMN     "monthly_rent_mad" DOUBLE PRECISION,
+ADD COLUMN     "utility_electricity" TEXT DEFAULT 'pending',
+ADD COLUMN     "utility_internet" TEXT DEFAULT 'pending',
+ADD COLUMN     "utility_water" TEXT DEFAULT 'pending';

@@ -14,45 +14,67 @@ class StaticValidator:
     
     def validate_question_structure(self, question: Dict) -> ValidationResult:
         """Static validation of question structure and clarity"""
-        issues = []
+        issues: List[str] = []
+        blocking_issues: List[str] = []
         
-        # Check required fields
+        # 1) Check required fields  BLOQUANT
         required_fields = ['problem_statement', 'test_cases', 'language', 'canonical_solution']
         for field in required_fields:
             if not question.get(field):
-                issues.append(f"Missing required field: {field}")
+                msg = f"Missing required field: {field}"
+                issues.append(msg)
+                blocking_issues.append(msg)
         
-        # Validate problem statement clarity
+        # 2) Validate problem statement clarity   WARNING (non bloquant)
         problem_stmt = question.get('problem_statement', '')
         if len(problem_stmt.split()) < 20:
-            issues.append("Problem statement too short - may lack clarity")
+            msg = "Problem statement too short - may lack clarity"
+            issues.append(msg)
+            #  volontairement PAS dans blocking_issues
         
-        # Check test cases
+        # 3) Check test cases  👉 BLOQUANT
         test_cases = question.get('test_cases', [])
         if len(test_cases) < 3:
-            issues.append("Insufficient test cases (minimum 3 required)")
+            msg = "Insufficient test cases (minimum 3 required)"
+            issues.append(msg)
+            blocking_issues.append(msg)
         
-        # Validate canonical solution
+        # 4) Validate canonical solution  👉 BLOQUANT
         canonical_solution = question.get('canonical_solution', '')
         if len(canonical_solution.strip()) < 10:
-            issues.append("Canonical solution appears incomplete")
+            msg = "Canonical solution appears incomplete"
+            issues.append(msg)
+            blocking_issues.append(msg)
         
         # Calculate quality score
-        quality_score = self._calculate_quality_score(issues, question)
+        quality_score = self._calculate_quality_score(issues, blocking_issues, question)
         difficulty = self._estimate_difficulty(question)
         
         return ValidationResult(
-            is_valid=len(issues) == 0,
-            issues=issues,
+            is_valid=len(blocking_issues) == 0,  #  seuls les blocking_issues comptent
+            issues=issues,                        # on retourne tout (warnings + bloquants)
             quality_score=quality_score,
             difficulty_level=difficulty
         )
     
-    def _calculate_quality_score(self, issues: List[str], question: Dict) -> float:
-        """Calculate a quality score from 0-1"""
-        base_score = 0.8
-        penalty = len(issues) * 0.1
-        return max(0, base_score - penalty)
+    def _calculate_quality_score(
+        self, 
+        issues: List[str], 
+        blocking_issues: List[str], 
+        question: Dict
+    ) -> float:
+        """
+        Calculate a quality score from 0-1.
+        - Bloquant  : pénalité forte
+        - Warning   : pénalité légère
+        """
+        base_score = 0.9
+        
+        nb_blocking = len(blocking_issues)
+        nb_warnings = max(0, len(issues) - nb_blocking)
+        
+        penalty = nb_blocking * 0.15 + nb_warnings * 0.05
+        return max(0.0, min(1.0, base_score - penalty))
     
     def _estimate_difficulty(self, question: Dict) -> str:
         """Estimate question difficulty"""

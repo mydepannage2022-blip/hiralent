@@ -14,6 +14,12 @@ app.use(cors({
   origin: function (origin, callback) {
     // allow requests like Postman or server-to-server without origin
     if (!origin) return callback(null, true);
+
+
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -37,14 +43,18 @@ import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
 import questionRoutes from './routes/questions/question.routes';
-import sessionRoutes from './routes/auth/session.routes'
+import messageRoutes from './routes/message.routes';
+import submissionsRoutes from './routes/submissions';
+import executionRoutes from './routes/execution.routes';
 import insightsRoutes from './routes/insights.routes';
 import jobRoutes from './routes/job.routes';
 import employerAssessmentRoutes from './routes/employerAssessment.routes';
-import messageRoutes from './routes/message.routes'
 import skillRadarRoutes from "./routes/skillRadar.routes";
 import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
+import subscriptionRoutes from './routes/subscription.routes';
+import schedulerRoutes from "./routes/scraping/scraping.routes";
+
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -55,7 +65,7 @@ app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/v1/verification/run', verificationRunRoutes);
-app.use('/api/v1/auth/sessions', sessionRoutes);
+app.use('/api/v1/auth/sessions', authRoutes);
 
 
 app.use('/api/v1/messages', messageRoutes);
@@ -63,6 +73,12 @@ app.use('/api/v1/messages', messageRoutes);
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
+
+// Submission endpoints (create, fetch)
+app.use('/api/v1/submissions', submissionsRoutes);
+
+// Execution-related endpoints (SSE stream, convenience fetch)
+app.use('/api/v1', executionRoutes);
 
 // Mount dev routes only in non-production to avoid touching production behavior
 if (process.env.NODE_ENV !== 'production') {
@@ -75,6 +91,9 @@ if (process.env.NODE_ENV !== 'production') {
     console.warn('Dev routes not available:', (e as Error).message);
   }
 }
+//scraping route
+app.use("/api/v1/scraping/scheduler", schedulerRoutes);
+
 
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
@@ -82,12 +101,14 @@ app.use('/api/v1/admin', adminAuthRoutes);
 app.use('/api/v1/admin', adminVerificationRoutes);
 
 app.use('/api/v1', insightsRoutes);
+app.use('/api/v1', insightsRoutes);
 
 app.use('/api/v1', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
+app.use('/api/v1/subscription', subscriptionRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

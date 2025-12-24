@@ -6,6 +6,7 @@ import json
 from typing import List, Dict, Optional
 import logging
 from datetime import datetime
+from app.scraping.orchestrator import get_orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -248,7 +249,10 @@ class RealCorpusManager:
         return results
 
 # Force real instance
-web_scraping_service = WebScrapingService()
+#web_scraping_service = WebScrapingService()
+
+#the new orchestrater for all source
+web_scraping_service = get_orchestrator()
 
 # Test real scraping
 if __name__ == "__main__":
