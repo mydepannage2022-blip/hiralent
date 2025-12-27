@@ -102,6 +102,14 @@ async createQuestion(data: any): Promise<Question> {
       aiGenerated: data.aiGenerated || false,
       source: data.source || 'manual',
       isLibraryQuestion: data.isLibraryQuestion === true,
+      //  ADD THESE 
+      metadata: data.metadata ?? undefined,
+      parameters: data.parameters ?? undefined,
+
+      generatedFromPattern: data.generatedFromPattern === true,
+
+      patternKey: data.patternKey ?? undefined,
+      patternDifficultyVariant: data.patternDifficultyVariant ?? undefined,
 
     };
 

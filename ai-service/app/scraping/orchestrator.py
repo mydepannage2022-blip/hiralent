@@ -87,6 +87,9 @@ class ScrapingOrchestrator:
                 }
 
             spider = self.spiders[source]
+            logger.info("🧩 Using spider: %s.%s", spider.__class__.__module__, spider.__class__.__name__)
+            logger.info("🧩 crawl signature vars: %s", spider.crawl.__code__.co_varnames)
+
 
             # 2. Scrape raw data (auto loop or single run)
             logger.info(f"🕷️ Scraping {source}...")
@@ -181,6 +184,8 @@ class ScrapingOrchestrator:
 
         empty_rounds = 0
         round_idx = 0
+        cursor_page = 1
+
 
         while len(all_items) < hard_cap:
             round_idx += 1
@@ -191,8 +196,13 @@ class ScrapingOrchestrator:
                 chunk_size,
                 len(all_items),
             )
+            call_kwargs = dict(kwargs)
+            if source == "stackoverflow":
+                call_kwargs["start_page"] = cursor_page
 
-            batch = self._execute_spider(spider, source, chunk_size, **kwargs) or []
+
+            batch = self._execute_spider(spider, source, chunk_size, **call_kwargs) or []
+
             if not batch:
                 empty_rounds += 1
                 logger.info("⛔ Empty batch (empty_rounds=%s/%s)", empty_rounds, stop_after_empty_pages)
@@ -217,6 +227,11 @@ class ScrapingOrchestrator:
             else:
                 empty_rounds = 0
                 all_items.extend(new_items)
+                if source == "stackoverflow":
+                    # each round fetches max_pages pages starting at cursor_page
+                    # so we jump forward by that many pages
+                    cursor_page += int(call_kwargs.get("max_pages", 2))
+
                 logger.info("✅ +%s new items (total=%s)", len(new_items), len(all_items))
 
             # safety
@@ -249,10 +264,20 @@ class ScrapingOrchestrator:
                     sleep_s=kwargs.get("sleep_s", 1.2),
                 )
 
-
             elif source == "stackoverflow":
                 max_pages = kwargs.get("max_pages", 2)
-                return spider.crawl(max_pages=max_pages)
+                start_page = kwargs.get("start_page", 1)
+
+                # pagesize should match requested chunk size (max_items)
+                pagesize = min(100, int(max_items))
+
+                return spider.crawl(
+                    max_pages=max_pages,
+                    start_page=start_page,
+                    pagesize=pagesize,
+                )
+
+
 
             elif source == "hackerrank":
                 max_pages = kwargs.get("max_pages", 3)

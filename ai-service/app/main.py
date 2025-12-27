@@ -33,6 +33,8 @@ from app.crawler.stackoverflow_spider import StackOverflowAPISpider
 #Scraping Orchestrator
 from app.scraping.orchestrator import get_orchestrator
 from app.pattern_extraction.extractor import UnifiedPatternExtractor
+from app.routes.questions_from_pattern import router as questions_from_pattern_router
+
 from dotenv import load_dotenv
 load_dotenv() 
 
@@ -1765,7 +1767,7 @@ async def run_so(max_pages: int = 1, pagesize: int = 30):
         "health": health,
     }
 @app.get("/scraping/stackoverflow/raw")
-async def so_raw(page: int = 1, pagesize: int = 10):
+async def so_raw(page: int = 1, pagesize: int = 10, tagged: str = "python"):
     url = "https://api.stackexchange.com/2.3/questions"
     params = {
         "site": "stackoverflow",
@@ -1774,18 +1776,34 @@ async def so_raw(page: int = 1, pagesize: int = 10):
         "order": "desc",
         "sort": "votes",
         "filter": "default",
+        "tagged": tagged,
+        # optionally add key if you have it
+        # "key": os.getenv("STACKEXCHANGE_KEY"),
     }
+
     r = requests.get(url, params=params, timeout=20)
-    data = r.json()
+
+    # Try parse JSON even on 400
+    try:
+        data = r.json()
+    except Exception:
+        data = {"non_json_body_preview": (r.text or "")[:800]}
+
     return {
         "status_code": r.status_code,
-        "items_len": len(data.get("items", [])),
+        "final_url": str(r.url),
+        "error_name": data.get("error_name"),
+        "error_message": data.get("error_message"),
+        "backoff": data.get("backoff"),
         "quota_remaining": data.get("quota_remaining"),
+        "items_len": len(data.get("items", []) or []),
         "sample": [
-            {"title": q["title"], "link": q["link"], "score": q["score"]}
-            for q in (data.get("items", [])[:5])
+            {"title": q.get("title"), "link": q.get("link"), "score": q.get("score")}
+            for q in (data.get("items", [])[:5] if isinstance(data.get("items", []), list) else [])
         ],
+        "raw": data,  # keep this while debugging
     }
+
 
 def clean_html_content(html_content: str) -> str:
     """
@@ -2773,13 +2791,23 @@ async def run_github_scraping(
     )
 
 @app.post("/scraping/stackoverflow/run")
-async def run_stackoverflow_scraping(max_items: int = 30, max_pages: int = 2):
+async def run_stackoverflow_scraping(
+    max_items: int = 30,
+    max_pages: int = 2,
+    auto: bool = True,
+    hard_cap: int = 5000,
+    stop_after_empty_pages: int = 3,
+):
     """Run StackOverflow scraping job"""
     return await scraping_orchestrator.run_scraping(
         "stackoverflow",
         max_items,
-        max_pages=max_pages
+        max_pages=max_pages,
+        auto=auto,
+        hard_cap=hard_cap,
+        stop_after_empty_pages=stop_after_empty_pages,
     )
+
 
 
 @app.post("/scraping/hackerrank/run")
@@ -2941,6 +2969,10 @@ async def vetting_health():
             "status": "unhealthy",
             "error": str(e)
         }
+    
+#added a router of from pattern to questions 
+app.include_router(questions_from_pattern_router, tags=["questions"])
+
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
