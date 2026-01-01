@@ -443,6 +443,28 @@ model RelocationCase {
   updates     CaseProgressUpdate[]
   documents   CaseDocument[]
 
+  embassy_submission  EmbassySubmission?
+
+  // Housing Details
+  housing_type         String?
+  housing_address      String?
+  monthly_rent_mad     Float?
+  agency_fee_amount    Float?
+  lease_start_date     DateTime?
+  lease_end_date       DateTime?
+  housing_contract_url String?
+
+  // Utility Setup
+  utility_water        String? @default("pending")
+  utility_electricity  String? @default("pending")
+  utility_internet     String? @default("pending")
+
+  // Travel & Arrival
+  arrival_date            DateTime?
+  flight_number           String?
+  airport_pickup_required Boolean? @default(false)
+  arrival_notes           String?
+
   @@map("relocation_cases")
 }
 
@@ -1642,4 +1664,27 @@ model PaymentTransaction {
   @@index([subscription_id])
   @@index([status])
   @@index([gateway_payment_id])
+}
+
+model EmbassySubmission {
+  submission_id       String    @id @default(uuid())
+  case_id             String    @unique
+  embassy_name        String
+  embassy_location    String
+  submission_date     DateTime
+  tracking_number     String?
+  expected_response   DateTime?
+  receipt_url         String?
+  status              String    @default("submitted")
+  interview_date      DateTime?
+  interview_location  String?
+  interview_notes     String?
+  decision_date       DateTime?
+  decision_notes      String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  
+  case                RelocationCase @relation(fields: [case_id], references: [case_id])
+
+  @@map("embassy_submissions")
 }

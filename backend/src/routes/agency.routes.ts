@@ -13,6 +13,18 @@ import {
   getSettings 
 } from "../controller/agency/agency.settings.controller";
 import { reviewDocument, getCaseDocuments } from "../controller/agency/agency.document.controller";
+import {
+  submitToEmbassy,
+  updateEmbassyStatus,
+  scheduleInterview,
+  getEmbassySubmission,
+} from "../controller/agency/agency.embassy.controller";
+import {
+  updateHousingDetails,
+  updateUtilityStatus,
+  updateArrivalDetails,
+  markReadyForArrival,
+} from "../controller/agency/agency.housing.controller";
 
 const router = Router();
 
@@ -47,5 +59,21 @@ router.get("/settings/export-data", checkAuth, exportData);
 // Document Review Routes
 router.get("/cases/:id/documents", checkAuth, getCaseDocuments);
 router.put("/cases/:id/documents/:documentId/review", checkAuth, reviewDocument);
+
+// ==================== EMBASSY SUBMISSION ROUTES ====================
+// Submit case to embassy
+router.post("/cases/:id/embassy/submit", checkAuth, submitToEmbassy);
+// Get embassy submission details
+router.get("/cases/:id/embassy", checkAuth, getEmbassySubmission);
+// Update embassy status
+router.put("/cases/:id/embassy/status", checkAuth, updateEmbassyStatus);
+// Schedule interview
+router.post("/cases/:id/embassy/interview", checkAuth, scheduleInterview);
+
+// Housing management routes
+router.put("/cases/:caseId/housing", checkAuth, updateHousingDetails);
+router.put("/cases/:caseId/utilities", checkAuth, updateUtilityStatus);
+router.put("/cases/:caseId/arrival", checkAuth, updateArrivalDetails);
+router.put("/cases/:caseId/ready-for-arrival", checkAuth, markReadyForArrival);
 
 export default router;

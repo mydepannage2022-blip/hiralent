@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -20,8 +20,16 @@ import {
   XCircle,
   AlertTriangle,
   Eye,
+  Droplets,
+  Zap,
+  Wifi,
+  Plane,
+  Home,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DOCUMENT_TYPES } from "@/src/constants/documentTypes";
+import AgencyBrowserModal from "./components/AgencyBrowserModal";
+import { JSX } from "react/jsx-runtime";
 
 interface Agency {
   agency_id: string;
@@ -59,7 +67,45 @@ interface Case {
   created_at: string;
   agency: Agency;
   documents: Document[];
+  embassy_submission?: EmbassySubmission;
+
+  // Housing fields
+  housing_type?: string;
+  housing_address?: string;
+  monthly_rent_mad?: number;
+  agency_fee_amount?: number;
+  lease_start_date?: string;
+  lease_end_date?: string;
+  housing_contract_url?: string;
+
+  // Utility fields
+  utility_water?: string;
+  utility_electricity?: string;
+  utility_internet?: string;
+
+  // Arrival fields
+  arrival_date?: string;
+  flight_number?: string;
+  airport_pickup_required?: boolean;
+  arrival_notes?: string;
 }
+
+interface EmbassySubmission {
+  submission_id: string;
+  embassy_name: string;
+  embassy_location: string;
+  submission_date: string;
+  tracking_number?: string;
+  expected_response?: string;
+  status: string;
+  interview_date?: string;
+  interview_location?: string;
+  interview_notes?: string;
+  decision_date?: string;
+  decision_notes?: string;
+}
+
+type TabType = "overview" | "visa" | "housing";
 
 export default function CaseDetailPage() {
   const { token } = useAuth();
@@ -86,15 +132,10 @@ export default function CaseDetailPage() {
     status: string;
   } | null>(null);
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
+  const [showAgencyBrowser, setShowAgencyBrowser] = useState(false);
 
-  const documentTypes = [
-    { value: "passport", label: "Passport Copy" },
-    { value: "visa_application", label: "Visa Application Form" },
-    { value: "bank_statement", label: "Bank Statement" },
-    { value: "employment_letter", label: "Employment Letter" },
-    { value: "proof_of_accommodation", label: "Proof of Accommodation" },
-    { value: "other", label: "Other Document" },
-  ];
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   const fetchCase = async () => {
     try {
@@ -195,7 +236,6 @@ export default function CaseDetailPage() {
 
       const data = await response.json();
 
-      // Check if replacement confirmation is required
       if (data.requiresConfirmation && data.existingDocument) {
         setExistingDocument(data.existingDocument);
         setNewDocumentId(data.data.document_id);
@@ -222,7 +262,6 @@ export default function CaseDetailPage() {
     }
   };
 
-  // ✅ NEW: Confirm replacement
   const handleConfirmReplacement = async () => {
     if (!existingDocument || !newDocumentId) return;
 
@@ -250,7 +289,6 @@ export default function CaseDetailPage() {
 
       toast.success("Document replaced successfully!");
 
-      // Reset states
       setShowDuplicateWarning(false);
       setExistingDocument(null);
       setNewDocumentId(null);
@@ -268,7 +306,6 @@ export default function CaseDetailPage() {
     }
   };
 
-  // ✅ NEW: Cancel replacement
   const handleCancelReplacement = async () => {
     if (!newDocumentId) return;
 
@@ -291,13 +328,9 @@ export default function CaseDetailPage() {
 
       toast.success("Upload cancelled");
 
-      // Reset states
       setShowDuplicateWarning(false);
       setExistingDocument(null);
       setNewDocumentId(null);
-
-      // Keep the upload modal open with file selected
-      // so user can try again with different type
     } catch (err) {
       console.error("Cancel replacement error:", err);
       toast.error("Failed to cancel upload");
@@ -379,6 +412,13 @@ export default function CaseDetailPage() {
     }
   };
 
+  // Calculate which tabs to show
+  // Housing tab only shows after visa is approved
+  const visaApproved = caseData?.embassy_submission?.status === "approved";
+  const showHousingTab =
+    (caseData?.service_type === "housing" && visaApproved) ||
+    Boolean(caseData?.housing_address);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -418,14 +458,14 @@ export default function CaseDetailPage() {
           Back to Cases
         </button>
 
-        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-800 mb-2">
                 {caseData.case_number}
               </h1>
-              <p className="text-slate-600">
-                {caseData.service_type.replace("_", " ")}
+              <p className="text-slate-600 capitalize">
+                {caseData.service_type.replace("_", " ")} Service
               </p>
             </div>
             <button
@@ -438,235 +478,98 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200">
-            <h2 className="text-xl font-bold text-slate-800 mb-4">
-              Case Information
-            </h2>
+      {/* Tab Navigation */}
+      <div className="border-b border-slate-200 mb-6 bg-white rounded-t-xl">
+        <div className="flex gap-1 px-2">
+          {/* Overview Tab */}
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-6 py-3 font-medium text-sm transition-all relative rounded-t-lg ${
+              activeTab === "overview"
+                ? "bg-linear-to-b from-blue-50 to-transparent text-blue-600 border-b-2 border-blue-600"
+                : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+            }`}
+          >
+            Overview
+          </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Route</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {caseData.origin_country} to {caseData.destination_country}
-                    {caseData.destination_city &&
-                      ` (${caseData.destination_city})`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Agency</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {caseData.agency.name}
-                  </p>
-                  {caseData.agency.email && (
-                    <p className="text-xs text-slate-500">
-                      {caseData.agency.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Created</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {formatDate(caseData.created_at)}
-                  </p>
-                </div>
-              </div>
-
-              {caseData.estimated_completion && (
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">
-                      Est. Completion
-                    </p>
-                    <p className="text-sm font-medium text-slate-700">
-                      {formatDate(caseData.estimated_completion)}
-                    </p>
-                  </div>
-                </div>
+          {/* Visa Tab */}
+          <button
+            onClick={() => setActiveTab("visa")}
+            className={`px-6 py-3 font-medium text-sm transition-all relative rounded-t-lg ${
+              activeTab === "visa"
+                ? "bg-linear-to-b from-blue-50 to-transparent text-blue-600 border-b-2 border-blue-600"
+                : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              Visa
+              {caseData.embassy_submission?.status === "approved" && (
+                <CheckCircle className="w-4 h-4 text-green-600" />
               )}
             </div>
+          </button>
 
-            {caseData.notes && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-lg">
-                <p className="text-xs text-slate-500 mb-1">Notes</p>
-                <p className="text-sm text-slate-700">{caseData.notes}</p>
+          {/* Housing Tab - Conditional */}
+          {showHousingTab && (
+            <button
+              onClick={() => setActiveTab("housing")}
+              className={`px-6 py-3 font-medium text-sm transition-all relative rounded-t-lg ${
+                activeTab === "housing"
+                  ? "bg-linear-to-b from-green-50 to-transparent text-green-600 border-b-2 border-green-600"
+                  : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                Housing
+                {caseData.status === "ready_for_arrival" && (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                )}
               </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-800">Documents</h2>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg font-medium text-sm"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Upload</span>
-              </button>
-            </div>
-
-            {caseData.documents.length === 0 ? (
-              <div className="text-center py-12 bg-slate-50 rounded-xl">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-600 mb-1">No documents uploaded yet</p>
-                <p className="text-sm text-slate-500">
-                  Click "Upload Document" to add files
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {caseData.documents.map((doc) => (
-                  <div
-                    key={doc.document_id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <FileText className="w-5 h-5 text-slate-400" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">
-                          {doc.file_name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500">
-                            {doc.document_type.replace("_", " ")}
-                          </span>
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">
-                            {formatFileSize(doc.file_size)}
-                          </span>
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">
-                            {formatDate(doc.created_at)}
-                          </span>
-                        </div>
-                        {doc.review_feedback && (
-                          <p className="text-xs text-orange-600 mt-1 font-medium italic">
-                            Agency feedback: {doc.review_feedback}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
-                          !doc.is_active
-                            ? "bg-gray-100 text-gray-600 border-gray-300" // Inactive style
-                            : getStatusColor(doc.status) // Normal style
-                        }`}
-                      >
-                        {!doc.is_active ? (
-                          <>
-                            <XCircle className="w-4 h-4" />
-                            inactive
-                          </>
-                        ) : (
-                          <>
-                            {getStatusIcon(doc.status)}
-                            {doc.status.replace("_", " ")}
-                          </>
-                        )}
-                      </span>
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                        title="View/Download"
-                      >
-                        <Eye className="w-4 h-4 text-slate-600" />
-                      </a>
-
-                      {doc.status === "pending" && (
-                        <button
-                          onClick={() => {
-                            setDocumentToDelete(doc.document_id);
-                            setShowDeleteModal(true);
-                          }}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Status</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Current Status</p>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
-                    caseData.status
-                  )}`}
-                >
-                  {caseData.status.replace("_", " ")}
-                </span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Priority</p>
-                <span className="text-sm font-medium text-slate-700 capitalize">
-                  {caseData.priority_level}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
-            <h3 className="text-lg font-bold text-slate-800 mb-3">
-              Required Documents
-            </h3>
-            <ul className="space-y-2">
-              {documentTypes.map((type) => {
-                const hasDoc = caseData.documents.some(
-                  (d) =>
-                    d.document_type === type.value &&
-                    d.status === "approved" &&
-                    d.is_active === true
-                );
-                return (
-                  <li
-                    key={type.value}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    {hasDoc ? (
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
-                    )}
-                    <span
-                      className={hasDoc ? "text-slate-700" : "text-slate-500"}
-                    >
-                      {type.label}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === "overview" && (
+            <OverviewTabContent
+              caseData={caseData}
+              showHousingTab={showHousingTab}
+              formatDate={formatDate}
+              getStatusColor={getStatusColor}
+            />
+          )}
+
+          {activeTab === "visa" && (
+            <VisaTabContent
+              caseData={caseData}
+              formatDate={formatDate}
+              getStatusColor={getStatusColor}
+              getStatusIcon={getStatusIcon}
+              formatFileSize={formatFileSize}
+              setShowUploadModal={setShowUploadModal}
+              setDocumentToDelete={setDocumentToDelete}
+              setShowDeleteModal={setShowDeleteModal}
+              showAgencyBrowser={showAgencyBrowser}
+              setShowAgencyBrowser={setShowAgencyBrowser}
+              fetchCase={fetchCase}
+            />
+          )}
+
+          {activeTab === "housing" && showHousingTab && (
+            <HousingTabContent caseData={caseData} formatDate={formatDate} />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Upload Modal */}
       <AnimatePresence>
@@ -704,7 +607,7 @@ export default function CaseDetailPage() {
                     disabled={uploading}
                   >
                     <option value="">Select document type</option>
-                    {documentTypes.map((type) => (
+                    {DOCUMENT_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
@@ -823,6 +726,7 @@ export default function CaseDetailPage() {
           </div>
         )}
       </AnimatePresence>
+
       {/* Duplicate Warning Modal */}
       <AnimatePresence>
         {showDuplicateWarning && existingDocument && (
@@ -908,6 +812,7 @@ export default function CaseDetailPage() {
           </div>
         )}
       </AnimatePresence>
+
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {showDeleteModal && (
@@ -954,6 +859,1097 @@ export default function CaseDetailPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Agency Browser Modal */}
+      <AgencyBrowserModal
+        isOpen={showAgencyBrowser}
+        onClose={() => setShowAgencyBrowser(false)}
+        caseId={caseId}
+        destinationCountry={caseData?.destination_country || ""}
+        onSuccess={fetchCase}
+      />
+    </div>
+  );
+}
+
+// ==========================================
+// OVERVIEW TAB COMPONENT
+// ==========================================
+function OverviewTabContent({
+  caseData,
+  showHousingTab,
+  formatDate,
+  getStatusColor,
+}: {
+  caseData: Case;
+  showHousingTab: boolean;
+  formatDate: (date: string) => string;
+  getStatusColor: (status: string) => string;
+}) {
+  const visaComplete = caseData.embassy_submission?.status === "approved";
+  const housingComplete = caseData.status === "ready_for_arrival";
+  const housingInProgress = Boolean(caseData.housing_address);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left Column */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Case Information Card */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-blue-600" />
+            Case Information
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <MapPin className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Route</p>
+                <p className="text-sm font-medium text-slate-700">
+                  {caseData.origin_country} to {caseData.destination_country}
+                  {caseData.destination_city &&
+                    ` (${caseData.destination_city})`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Building2 className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">
+                  {caseData.service_type === "housing"
+                    ? "Housing Agency"
+                    : "Primary Agency"}
+                </p>
+                <p className="text-sm font-medium text-slate-700">
+                  {caseData.agency.name}
+                </p>
+                {caseData.agency.email && (
+                  <p className="text-xs text-slate-500">
+                    {caseData.agency.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Created</p>
+                <p className="text-sm font-medium text-slate-700">
+                  {formatDate(caseData.created_at)}
+                </p>
+              </div>
+            </div>
+
+            {caseData.estimated_completion && (
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Est. Completion</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {formatDate(caseData.estimated_completion)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {caseData.notes && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <p className="text-xs text-slate-500 mb-1 font-medium">Notes</p>
+              <p className="text-sm text-slate-700">{caseData.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Progress Timeline */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-800 mb-4">
+            Your Journey
+          </h2>
+
+          <div className="space-y-4">
+            {/* Visa Step */}
+            <div
+              className={`flex items-start gap-4 p-4 rounded-xl border-l-4 ${
+                visaComplete
+                  ? "bg-linear-to-r from-blue-50 to-transparent border-blue-500"
+                  : "bg-linear-to-r from-yellow-50 to-transparent border-yellow-500"
+              }`}
+            >
+              <div
+                className={`p-2 rounded-lg ${
+                  visaComplete ? "bg-green-100" : "bg-yellow-100"
+                }`}
+              >
+                {visaComplete ? (
+                  <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                ) : (
+                  <Clock className="w-6 h-6 text-yellow-600 shrink-0" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-800 mb-1">
+                  Visa Processing
+                </p>
+                <p className="text-sm text-slate-600">
+                  {visaComplete
+                    ? "Visa approved - Ready for next steps"
+                    : caseData.embassy_submission
+                    ? `In progress - ${caseData.embassy_submission.status.replace(
+                        "_",
+                        " "
+                      )}`
+                    : "Documents being reviewed"}
+                </p>
+                {caseData.embassy_submission?.decision_date && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Decided on{" "}
+                    {formatDate(caseData.embassy_submission.decision_date)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Housing Step - Conditional */}
+            {showHousingTab && (
+              <div
+                className={`flex items-start gap-4 p-4 rounded-xl border-l-4 ${
+                  housingComplete
+                    ? "bg-linear-to-r from-green-50 to-transparent border-green-500"
+                    : housingInProgress
+                    ? "bg-linear-to-r from-yellow-50 to-transparent border-yellow-500"
+                    : "bg-linear-to-r from-slate-50 to-transparent border-slate-300"
+                }`}
+              >
+                <div
+                  className={`p-2 rounded-lg ${
+                    housingComplete
+                      ? "bg-green-100"
+                      : housingInProgress
+                      ? "bg-yellow-100"
+                      : "bg-slate-100"
+                  }`}
+                >
+                  {housingComplete ? (
+                    <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                  ) : housingInProgress ? (
+                    <Clock className="w-6 h-6 text-yellow-600 shrink-0" />
+                  ) : (
+                    <Home className="w-6 h-6 text-slate-400 shrink-0" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-semibold mb-1 ${
+                      housingComplete || housingInProgress
+                        ? "text-slate-800"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    Housing Arrangement
+                  </p>
+                  <p
+                    className={`text-sm ${
+                      housingComplete || housingInProgress
+                        ? "text-slate-600"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {housingComplete
+                      ? "All set - Your housing is ready for arrival"
+                      : housingInProgress
+                      ? "Housing being arranged by agency"
+                      : "Waiting for visa approval"}
+                  </p>
+                  {caseData.arrival_date && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Expected arrival: {formatDate(caseData.arrival_date)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Status Card */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">Status</h3>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-slate-500 mb-2 font-medium">
+                Current Status
+              </p>
+              <span
+                className={`inline-block px-4 py-2 rounded-lg text-sm font-medium border ${getStatusColor(
+                  caseData.status
+                )}`}
+              >
+                {caseData.status.replace("_", " ")}
+              </span>
+            </div>
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs text-slate-500 mb-1 font-medium">
+                Priority
+              </p>
+              <span className="text-sm font-semibold text-slate-700 capitalize">
+                {caseData.priority_level}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Summary */}
+        <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">
+            Progress Summary
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+              <span className="text-sm font-medium text-slate-700">Visa</span>
+              <span
+                className={`text-sm font-bold ${
+                  visaComplete ? "text-green-600" : "text-yellow-600"
+                }`}
+              >
+                {visaComplete ? "Complete" : "In Progress"}
+              </span>
+            </div>
+            {showHousingTab && (
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                <span className="text-sm font-medium text-slate-700">
+                  Housing
+                </span>
+                <span
+                  className={`text-sm font-bold ${
+                    housingComplete
+                      ? "text-green-600"
+                      : housingInProgress
+                      ? "text-yellow-600"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {housingComplete
+                    ? "Complete"
+                    : housingInProgress
+                    ? "In Progress"
+                    : "Pending"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// VISA TAB COMPONENT
+// ==========================================
+function VisaTabContent({
+  caseData,
+  formatDate,
+  getStatusColor,
+  getStatusIcon,
+  formatFileSize,
+  setShowUploadModal,
+  setDocumentToDelete,
+  setShowDeleteModal,
+  showAgencyBrowser,
+  setShowAgencyBrowser,
+  fetchCase,
+}: {
+  caseData: Case;
+  formatDate: (date: string) => string;
+  getStatusColor: (status: string) => string;
+  getStatusIcon: (status: string) => JSX.Element;
+  formatFileSize: (bytes: number) => string;
+  setShowUploadModal: (show: boolean) => void;
+  setDocumentToDelete: (id: string | null) => void;
+  setShowDeleteModal: (show: boolean) => void;
+  showAgencyBrowser: boolean;
+  setShowAgencyBrowser: (show: boolean) => void;
+  fetchCase: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left Column */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Documents Card */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Documents
+            </h2>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg font-medium text-sm"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload</span>
+            </button>
+          </div>
+
+          {caseData.documents.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-xl">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-600 mb-1">No documents uploaded yet</p>
+              <p className="text-sm text-slate-500">
+                Click "Upload" to add files
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {caseData.documents.map((doc) => (
+                <div
+                  key={doc.document_id}
+                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <FileText className="w-5 h-5 text-slate-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">
+                        {doc.file_name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500">
+                          {doc.document_type.replace("_", " ")}
+                        </span>
+                        <span className="text-xs text-slate-400">•</span>
+                        <span className="text-xs text-slate-500">
+                          {formatFileSize(doc.file_size)}
+                        </span>
+                        <span className="text-xs text-slate-400">•</span>
+                        <span className="text-xs text-slate-500">
+                          {formatDate(doc.created_at)}
+                        </span>
+                      </div>
+                      {doc.review_feedback && (
+                        <p className="text-xs text-orange-600 mt-1 font-medium italic">
+                          Agency feedback: {doc.review_feedback}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
+                        !doc.is_active
+                          ? "bg-gray-100 text-gray-600 border-gray-300"
+                          : getStatusColor(doc.status)
+                      }`}
+                    >
+                      {!doc.is_active ? (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          inactive
+                        </>
+                      ) : (
+                        <>
+                          {getStatusIcon(doc.status)}
+                          {doc.status.replace("_", " ")}
+                        </>
+                      )}
+                    </span>
+
+                    <a
+                      href={doc.file_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="View/Download"
+                    >
+                      <Eye className="w-4 h-4 text-slate-600" />
+                    </a>
+
+                    {doc.status === "pending" && (
+                      <button
+                        onClick={() => {
+                          setDocumentToDelete(doc.document_id);
+                          setShowDeleteModal(true);
+                        }}
+                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Column */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Visa Approved - Housing Agency Selection */}
+        {caseData.embassy_submission?.status === "approved" && (
+          <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-300 shadow-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg shrink-0">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                {caseData.status === "ready_for_arrival" ? (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Housing Complete!
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      Your housing is all set and ready. Check the Housing tab
+                      for full details!
+                    </p>
+                  </>
+                ) : caseData.status === "housing_assigned" ||
+                  caseData.status === "housing_in_progress" ||
+                  caseData.status === "housing_complete" ? (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Housing Agency Working
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      {caseData.agency.name} is arranging your accommodation.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Visa Approved!
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      Select a housing agency to help you find accommodation in{" "}
+                      {caseData.destination_country}.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Button - Always visible but disabled when housing already chosen */}
+            <button
+              onClick={() => setShowAgencyBrowser(true)}
+              disabled={
+                caseData.status === "housing_assigned" ||
+                caseData.status === "housing_in_progress" ||
+                caseData.status === "housing_complete" ||
+                caseData.status === "ready_for_arrival"
+              }
+              className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                caseData.status === "housing_assigned" ||
+                caseData.status === "housing_in_progress" ||
+                caseData.status === "housing_complete" ||
+                caseData.status === "ready_for_arrival"
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              {caseData.status === "housing_assigned" ||
+              caseData.status === "housing_in_progress" ||
+              caseData.status === "housing_complete" ||
+              caseData.status === "ready_for_arrival"
+                ? "Housing Agency Already Selected"
+                : "Choose Housing Agency"}
+            </button>
+          </div>
+        )}
+
+        {/* Required Documents Checklist */}
+        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-3">
+            Required Documents
+          </h3>
+          <ul className="space-y-2">
+            {DOCUMENT_TYPES.map((type) => {
+              const hasDoc = caseData.documents.some(
+                (d) =>
+                  d.document_type === type.value &&
+                  d.status === "approved" &&
+                  d.is_active === true
+              );
+              return (
+                <li
+                  key={type.value}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  {hasDoc ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
+                  )}
+                  <span
+                    className={
+                      hasDoc ? "text-slate-700 font-medium" : "text-slate-500"
+                    }
+                  >
+                    {type.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Embassy Status */}
+        {caseData.embassy_submission && (
+          <div className="bg-green-50 rounded-2xl p-6 border border-green-100 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-green-600" />
+              Embassy Status
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-slate-500 mb-1 font-medium">
+                  Current Status
+                </p>
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                    caseData.embassy_submission.status
+                  )}`}
+                >
+                  {getStatusIcon(caseData.embassy_submission.status)}
+                  {caseData.embassy_submission.status.replace("_", " ")}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-500 mb-1 font-medium">
+                  Embassy
+                </p>
+                <p className="text-sm font-medium text-slate-700">
+                  {caseData.embassy_submission.embassy_name}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {caseData.embassy_submission.embassy_location}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-500 mb-1 font-medium">
+                  Submitted On
+                </p>
+                <p className="text-sm font-medium text-slate-700">
+                  {formatDate(caseData.embassy_submission.submission_date)}
+                </p>
+              </div>
+
+              {caseData.embassy_submission.tracking_number && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Tracking Number
+                  </p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {caseData.embassy_submission.tracking_number}
+                  </p>
+                </div>
+              )}
+
+              {/* Interview Alert */}
+              {caseData.embassy_submission.interview_date && (
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-orange-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-orange-900 mb-2 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        Interview Scheduled
+                      </p>
+                      <p className="text-sm font-medium text-slate-700 mb-1">
+                        {new Date(
+                          caseData.embassy_submission.interview_date
+                        ).toLocaleString("en-US", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      {caseData.embassy_submission.interview_location && (
+                        <p className="text-xs text-slate-600 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {caseData.embassy_submission.interview_location}
+                        </p>
+                      )}
+                      {caseData.embassy_submission.interview_notes && (
+                        <p className="text-xs text-slate-600 mt-2 italic">
+                          {caseData.embassy_submission.interview_notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Decision */}
+              {caseData.embassy_submission.decision_date && (
+                <div
+                  className={`mt-4 p-4 rounded-lg border ${
+                    caseData.embassy_submission.status === "approved"
+                      ? "bg-green-50 border-green-200"
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {caseData.embassy_submission.status === "approved" ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <p
+                        className={`text-xs font-bold mb-2 flex items-center gap-1 ${
+                          caseData.embassy_submission.status === "approved"
+                            ? "text-green-900"
+                            : "text-red-900"
+                        }`}
+                      >
+                        {caseData.embassy_submission.status === "approved" ? (
+                          <>
+                            <CheckCircle className="w-3 h-3" />
+                            Application Approved!
+                          </>
+                        ) : (
+                          "Application Decision"
+                        )}
+                      </p>
+                      <p className="text-xs text-slate-600 mb-1">
+                        Decision Date:{" "}
+                        {formatDate(caseData.embassy_submission.decision_date)}
+                      </p>
+                      {caseData.embassy_submission.decision_notes && (
+                        <p className="text-xs text-slate-600 mt-2 italic">
+                          {caseData.embassy_submission.decision_notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// HOUSING TAB COMPONENT
+// ==========================================
+function HousingTabContent({
+  caseData,
+  formatDate,
+}: {
+  caseData: Case;
+  formatDate: (date: string) => string;
+}) {
+  const hasHousingData = Boolean(caseData.housing_address);
+
+  if (!hasHousingData) {
+    return (
+      <div className="text-center py-20 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Home className="w-10 h-10 text-green-600" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2">
+          Housing Arrangement in Progress
+        </h3>
+        <p className="text-slate-600 mb-1">
+          Your housing agency is working on finding accommodation for you.
+        </p>
+        <p className="text-sm text-slate-500 mt-2">
+          You'll be notified once details are available.
+        </p>
+      </div>
+    );
+  }
+
+  const allUtilitiesConnected =
+    caseData.utility_water === "completed" &&
+    caseData.utility_electricity === "completed" &&
+    caseData.utility_internet === "completed";
+
+  const arrivalPlanned = Boolean(
+    caseData.arrival_date && caseData.flight_number
+  );
+
+  const getUtilityStatus = (status?: string) => {
+    if (status === "completed") {
+      return {
+        label: "Completed",
+        color: "bg-green-100 text-green-700",
+        icon: <CheckCircle className="w-4 h-4" />,
+      };
+    } else if (status === "in_progress") {
+      return {
+        label: "In Progress",
+        color: "bg-yellow-100 text-yellow-700",
+        icon: <Clock className="w-4 h-4" />,
+      };
+    } else {
+      return {
+        label: "Pending",
+        color: "bg-slate-100 text-slate-600",
+        icon: <Clock className="w-4 h-4" />,
+      };
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left Column */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Housing Details Card */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Home className="w-5 h-5 text-green-600" />
+            </div>
+            Your Housing
+          </h2>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-xs text-green-700 font-medium mb-1">Address</p>
+              <p className="text-sm font-semibold text-green-900">
+                {caseData.housing_address}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {caseData.housing_type && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Housing Type
+                  </p>
+                  <p className="text-sm font-semibold text-slate-700 capitalize">
+                    {caseData.housing_type.replace("_", " ")}
+                  </p>
+                </div>
+              )}
+
+              {caseData.monthly_rent_mad && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Monthly Rent
+                  </p>
+                  <p className="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                    {caseData.monthly_rent_mad} MAD
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {caseData.lease_start_date && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Move-in Date
+                  </p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {formatDate(caseData.lease_start_date)}
+                  </p>
+                </div>
+              )}
+
+              {caseData.lease_end_date && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Lease End Date
+                  </p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {formatDate(caseData.lease_end_date)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {caseData.agency_fee_amount && (
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-500 font-medium">
+                    Agency Fee
+                  </p>
+                  <p className="text-sm font-bold text-slate-700 flex items-center gap-1">
+                    {caseData.agency_fee_amount} MAD
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {caseData.housing_contract_url && (
+              <div className="pt-4 border-t border-slate-200">
+                <a
+                  href={caseData.housing_contract_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Lease Contract
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Utilities Status Card */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Zap className="w-5 h-5 text-green-600" />
+            </div>
+            Utilities Status
+          </h2>
+
+          <div className="space-y-3">
+            {/* Water */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Droplets className="w-5 h-5 text-slate-600" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700">
+                  Water
+                </span>
+              </div>
+              <span
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                  getUtilityStatus(caseData.utility_water).color
+                }`}
+              >
+                {getUtilityStatus(caseData.utility_water).icon}
+                {getUtilityStatus(caseData.utility_water).label}
+              </span>
+            </div>
+
+            {/* Electricity */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Zap className="w-5 h-5 text-slate-600" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700">
+                  Electricity
+                </span>
+              </div>
+              <span
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                  getUtilityStatus(caseData.utility_electricity).color
+                }`}
+              >
+                {getUtilityStatus(caseData.utility_electricity).icon}
+                {getUtilityStatus(caseData.utility_electricity).label}
+              </span>
+            </div>
+
+            {/* Internet */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Wifi className="w-5 h-5 text-slate-600" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700">
+                  Internet
+                </span>
+              </div>
+              <span
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                  getUtilityStatus(caseData.utility_internet).color
+                }`}
+              >
+                {getUtilityStatus(caseData.utility_internet).icon}
+                {getUtilityStatus(caseData.utility_internet).label}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Arrival Details Card */}
+        {(caseData.arrival_date || caseData.flight_number) && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Plane className="w-5 h-5 text-green-600" />
+              </div>
+              Your Arrival
+            </h2>
+
+            <div className="space-y-4">
+              {caseData.arrival_date && (
+                <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
+                  <p className="text-xs text-sky-700 mb-1 font-medium">
+                    Arrival Date
+                  </p>
+                  <p className="text-sm font-semibold text-sky-900">
+                    {new Date(caseData.arrival_date).toLocaleDateString(
+                      "en-US",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      }
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {caseData.flight_number && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">
+                    Flight Number
+                  </p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {caseData.flight_number}
+                  </p>
+                </div>
+              )}
+
+              {caseData.airport_pickup_required !== undefined && (
+                <div
+                  className={`p-4 rounded-lg border ${
+                    caseData.airport_pickup_required
+                      ? "bg-green-50 border-green-200"
+                      : "bg-slate-50 border-slate-200"
+                  }`}
+                >
+                  <p
+                    className="text-xs mb-1 font-medium"
+                    style={{
+                      color: caseData.airport_pickup_required
+                        ? "#15803d"
+                        : "#64748b",
+                    }}
+                  >
+                    Airport Pickup
+                  </p>
+                  <p
+                    className="text-sm font-semibold flex items-center gap-2"
+                    style={{
+                      color: caseData.airport_pickup_required
+                        ? "#166534"
+                        : "#475569",
+                    }}
+                  >
+                    {caseData.airport_pickup_required ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Arranged - We'll meet you at the airport
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4" />
+                        Not included
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {caseData.arrival_notes && (
+                <div className="pt-4 border-t border-slate-200">
+                  <p className="text-xs text-slate-500 mb-2 font-medium">
+                    Additional Notes
+                  </p>
+                  <p className="text-sm text-slate-700 italic p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    {caseData.arrival_notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right Column - Checklist */}
+      <div className="lg:col-span-1">
+        <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 shadow-sm sticky top-6">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">
+            Housing Checklist
+          </h3>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
+              <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+              <span className="text-sm font-medium text-slate-700">
+                Housing secured
+              </span>
+            </div>
+
+            <div
+              className={`flex items-center gap-3 p-3 rounded-lg shadow-sm ${
+                allUtilitiesConnected ? "bg-white" : "bg-yellow-50"
+              }`}
+            >
+              {allUtilitiesConnected ? (
+                <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <Clock className="w-5 h-5 text-yellow-600 shrink-0" />
+              )}
+              <span className="text-sm font-medium text-slate-700">
+                Utilities connected
+              </span>
+            </div>
+
+            <div
+              className={`flex items-center gap-3 p-3 rounded-lg shadow-sm ${
+                arrivalPlanned ? "bg-white" : "bg-yellow-50"
+              }`}
+            >
+              {arrivalPlanned ? (
+                <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <Clock className="w-5 h-5 text-yellow-600 shrink-0" />
+              )}
+              <span className="text-sm font-medium text-slate-700">
+                Arrival planned
+              </span>
+            </div>
+          </div>
+
+          {caseData.status === "ready_for_arrival" && (
+            <div className="mt-6 p-4 bg-white rounded-xl border-2 border-green-400 shadow-md">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-green-800 mb-1">
+                    You're Ready to Go!
+                  </p>
+                  <p className="text-xs text-green-700">
+                    All housing arrangements are complete. Safe travels!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
