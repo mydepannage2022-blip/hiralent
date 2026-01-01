@@ -53,6 +53,7 @@ import skillRadarRoutes from "./routes/skillRadar.routes";
 import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
+import schedulerRoutes from "./routes/scraping/scraping.routes";
 
 
 // Mount routes
@@ -90,6 +91,9 @@ if (process.env.NODE_ENV !== 'production') {
     console.warn('Dev routes not available:', (e as Error).message);
   }
 }
+//scraping route
+app.use("/api/v1/scraping/scheduler", schedulerRoutes);
+
 
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
