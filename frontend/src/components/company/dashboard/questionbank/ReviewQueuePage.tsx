@@ -81,7 +81,7 @@ interface Question {
    Helpers
 ============================= */
 const panel =
-  "rounded-2xl border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
+  "rounded-lg border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
 const pill =
   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border";
 
@@ -494,7 +494,7 @@ const ReviewQueuePage: React.FC = () => {
           className={`${panel} p-10 text-center max-w-lg`}
         >
           <motion.div
-            className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] flex items-center justify-center shadow-lg"
+            className="w-16 h-16 mx-auto mb-4 rounded-lg bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] flex items-center justify-center shadow-lg"
             animate={{ rotate: [0, 5, 0, -5, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -572,7 +572,7 @@ const ReviewQueuePage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className={`rounded-2xl border p-5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
+                className={`rounded-lg border p-5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
               >
                 <div className="flex items-center justify-between">
                 <motion.div
@@ -632,7 +632,7 @@ const ReviewQueuePage: React.FC = () => {
             className={`${panel} p-14 text-center`}
           >
             <motion.div
-              className="w-12 h-12 bg-[#005EDC] rounded-xl flex items-center justify-center mx-auto mb-4"
+              className="w-12 h-12 bg-[#005EDC] rounded-sm flex items-center justify-center mx-auto mb-4"
             >
               <CheckCircle2 className="w-8 h-8 text-white" />
             </motion.div>
@@ -1203,7 +1203,7 @@ const ReviewQueuePage: React.FC = () => {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 20 }}
-              className="relative z-[61] w-[95vw] max-w-5xl max-h-[85vh] bg-[#0b1220] rounded-2xl border border-gray-700 shadow-2xl flex flex-col"
+              className="relative z-[61] w-[95vw] max-w-5xl max-h-[85vh] bg-[#0b1220] rounded-lg border border-gray-700 shadow-2xl flex flex-col"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
                 <div className="text-white/80 text-sm font-semibold flex items-center gap-2">

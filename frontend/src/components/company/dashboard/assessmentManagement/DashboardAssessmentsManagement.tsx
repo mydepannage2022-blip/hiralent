@@ -514,7 +514,7 @@ const AssessmentsManagement: React.FC = () => {
         onSubmit={submitAssessment}
       />
 
-      <div className="w-full px-4 sm:px-6 py-6">
+      <div className="w-full mt-4">
         {/* Analytics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[

@@ -71,10 +71,9 @@ interface Question {
   vectorId?: string;
 }
 
-const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border";
-const panel = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
+const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px]  tracking-wide border";
+const panel = "rounded-sm border border-gray-200/70 bg-white shadow-sm";
 
-// MODAL COMPONENTS (Keep all your existing modals exactly as they were)
 const StatusSelect: React.FC<{
   value: "pending_review" | "approved" | "rejected";
   onChange: (next: "pending_review" | "approved" | "rejected") => void;
@@ -85,7 +84,7 @@ const StatusSelect: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value as any)}
       className={`${
-        compact ? "px-1.5 py-0.5 text-[10px] rounded-md" : "px-2.5 py-1.5 rounded-lg text-[11px]"
+        compact ? "px-1.5 py-0.5 text-[10px] rounded-sm" : "px-2.5 py-1.5 rounded-sm text-[11px]"
       } border border-gray-200 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-[#1B73E8] transition-all`}
       title="Change status"
     >
@@ -150,7 +149,7 @@ const AiGenerateModal: React.FC<{
         } text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-white/20 rounded-sm flex items-center justify-center">
                 {type === "mcq" ? (
                   <FileText className="w-3.5 h-3.5 text-white" />
                 ) : (
@@ -166,7 +165,7 @@ const AiGenerateModal: React.FC<{
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close">
+            <button onClick={onClose} className="p-1 rounded-sm hover:bg-white/10 transition-colors" aria-label="Close">
               <X className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -174,21 +173,21 @@ const AiGenerateModal: React.FC<{
 
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
           <div>
-            <label className="text-[10px] font-semibold text-gray-800">Topic *</label>
+            <label className="text-[10px]  text-gray-800">Topic *</label>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder={type === "mcq" ? "e.g., accounting, marketing..." : "e.g., Java loops, React hooks..."}
-              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-800 mb-1 block">Question Type *</label>
+            <label className="text-[10px]  text-gray-800 mb-1 block">Question Type *</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setType("coding")}
-                className={`px-3 py-2 rounded-lg border-2 font-semibold text-[11px] transition-all ${
+                className={`px-3 py-2 rounded-sm border-2  text-[11px] transition-all ${
                   type === "coding"
                     ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8] shadow-sm"
                     : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -201,7 +200,7 @@ const AiGenerateModal: React.FC<{
               </button>
               <button
                 onClick={() => setType("mcq")}
-                className={`px-3 py-2 rounded-lg border-2 font-semibold text-[11px] transition-all ${
+                className={`px-3 py-2 rounded-sm border-2  text-[11px] transition-all ${
                   type === "mcq"
                     ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm"
                     : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -216,11 +215,11 @@ const AiGenerateModal: React.FC<{
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-800">Difficulty</label>
+            <label className="text-[10px]  text-gray-800">Difficulty</label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as any)}
-              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             >
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
@@ -229,14 +228,14 @@ const AiGenerateModal: React.FC<{
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-800">
+            <label className="text-[10px]  text-gray-800">
               Tags {type === "mcq" && <span className="text-gray-500 font-normal">(optional)</span>}
             </label>
             <input
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder={type === "mcq" ? "e.g., finance, business" : "e.g., java, arrays"}
-              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
@@ -249,20 +248,20 @@ const AiGenerateModal: React.FC<{
 
           {type === "coding" && (
             <div>
-              <label className="text-[10px] font-semibold text-gray-800">Test cases</label>
+              <label className="text-[10px]  text-gray-800">Test cases</label>
               <input
                 type="number"
                 min={2}
                 max={8}
                 value={testCaseCount}
                 onChange={(e) => setTestCaseCount(Math.max(2, Math.min(8, +e.target.value || 2)))}
-                className="mt-1 w-20 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                className="mt-1 w-20 rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
               />
               <p className="text-[9px] text-gray-500 mt-0.5">Number of sample test cases</p>
             </div>
           )}
 
-          <div className={`p-2 rounded-lg border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
+          <div className={`p-2 rounded-sm border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
             <div className="flex items-start gap-1.5">
               <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
               <div className={`text-[9px] leading-relaxed ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}>
@@ -273,11 +272,11 @@ const AiGenerateModal: React.FC<{
         </div>
 
         <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-3 py-1.5 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || generating}
             onClick={() => onGenerate({ topic, difficulty, type, tags, testCaseCount })}
-            className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] text-white transition-all ${
+            className={`px-4 py-1.5 rounded-sm  text-[11px] text-white transition-all ${
               generating || !canSubmit
                 ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
                 : type === "mcq"
@@ -339,34 +338,34 @@ const AiBatchModal: React.FC<{
         <div className={`px-4 py-3 ${type === "mcq" ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600" : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"} text-white transition-all duration-300 flex-shrink-0`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center"><Sparkles className="w-3.5 h-3.5 text-white" /></div>
+              <div className="w-7 h-7 bg-white/20 rounded-sm flex items-center justify-center"><Sparkles className="w-3.5 h-3.5 text-white" /></div>
               <div><h3 className="text-sm font-bold">Generate Batch {type === "mcq" ? "MCQs" : "Coding"}</h3><p className="text-[9px] text-blue-100">Multiple topics, bulk generation</p></div>
             </div>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
+            <button onClick={onClose} className="p-1 rounded-sm hover:bg-white/10" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
           </div>
         </div>
 
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
           <div>
-            <label className="text-[10px] font-semibold text-gray-800 mb-1 block">Question Type *</label>
+            <label className="text-[10px]  text-gray-800 mb-1 block">Question Type *</label>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setType("coding")} className={`px-3 py-1.5 rounded-lg border-2 font-semibold text-[11px] transition-all ${type === "coding" ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+              <button onClick={() => setType("coding")} className={`px-3 py-1.5 rounded-sm border-2  text-[11px] transition-all ${type === "coding" ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
                 <div className="flex items-center justify-center gap-1"><Code2 className="w-4 h-4" />Coding</div>
               </button>
-              <button onClick={() => setType("mcq")} className={`px-3 py-1.5 rounded-lg border-2 font-semibold text-[11px] transition-all ${type === "mcq" ? "border-purple-600 bg-purple-50 text-purple-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+              <button onClick={() => setType("mcq")} className={`px-3 py-1.5 rounded-sm border-2  text-[11px] transition-all ${type === "mcq" ? "border-purple-600 bg-purple-50 text-purple-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
                 <div className="flex items-center justify-center gap-1"><FileText className="w-4 h-4" />MCQ</div>
               </button>
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-800">Topics * <span className="font-normal text-gray-500">(comma or newline)</span></label>
+            <label className="text-[10px]  text-gray-800">Topics * <span className="font-normal text-gray-500">(comma or newline)</span></label>
             <textarea
               value={topicsInput}
               onChange={(e) => setTopicsInput(e.target.value)}
               placeholder={type === "mcq" ? `accounting, marketing, nursing` : `python, javascript, java`}
               rows={3}
-              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
             />
             {topics.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
@@ -379,20 +378,20 @@ const AiBatchModal: React.FC<{
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] font-semibold text-gray-800">Difficulty</label>
-              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]">
+              <label className="text-[10px]  text-gray-800">Difficulty</label>
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)} className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]">
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-800">Per topic</label>
-              <input type="number" min={1} max={20} value={countPerTopic} onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]" />
+              <label className="text-[10px]  text-gray-800">Per topic</label>
+              <input type="number" min={1} max={20} value={countPerTopic} onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))} className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]" />
             </div>
           </div>
 
-          <div className={`p-2 rounded-lg border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
+          <div className={`p-2 rounded-sm border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
             <div className="flex items-start gap-1.5">
               <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
               <div className={`text-[9px] leading-relaxed ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}><span className="font-bold">Total:</span> {countPerTopic} × {topics.length} = {topics.length * countPerTopic} questions</div>
@@ -401,11 +400,11 @@ const AiBatchModal: React.FC<{
         </div>
 
         <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-3 py-1.5 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || generating}
             onClick={() => onGenerate({ topics, difficulty, countPerTopic, type })}
-            className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] text-white transition-all ${
+            className={`px-4 py-1.5 rounded-sm  text-[11px] text-white transition-all ${
               generating || !canSubmit
                 ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
                 : type === "mcq"
@@ -465,22 +464,22 @@ const Pagination: React.FC<{
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50/30">
       <div className="text-[11px] text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{startItem}</span> to <span className="font-semibold text-gray-900">{endItem}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> questions
+        Showing <span className=" text-gray-900">{startItem}</span> to <span className=" text-gray-900">{endItem}</span> of <span className=" text-gray-900">{totalItems}</span> questions
       </div>
       <div className="flex items-center gap-1.5">
-        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="First page"><ChevronsLeft className="w-3.5 h-3.5 text-gray-600" /></button>
-        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Previous page"><ChevronLeft className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className="p-1.5 rounded-sm border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="First page"><ChevronsLeft className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="p-1.5 rounded-sm border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Previous page"><ChevronLeft className="w-3.5 h-3.5 text-gray-600" /></button>
         {getPageNumbers().map((page, idx) => (
           <React.Fragment key={idx}>
             {page === "..." ? (
               <span className="px-2 py-1.5 text-gray-400 text-[11px]">...</span>
             ) : (
-              <button onClick={() => onPageChange(page as number)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${currentPage === page ? "bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white shadow-md shadow-blue-200" : "border border-gray-200 bg-white hover:bg-blue-50 text-gray-700"}`}>{page}</button>
+              <button onClick={() => onPageChange(page as number)} className={`px-2.5 py-1.5 rounded-sm text-[11px]  transition-all ${currentPage === page ? "bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white shadow-md shadow-blue-200" : "border border-gray-200 bg-white hover:bg-blue-50 text-gray-700"}`}>{page}</button>
             )}
           </React.Fragment>
         ))}
-        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Next page"><ChevronRight className="w-3.5 h-3.5 text-gray-600" /></button>
-        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Last page"><ChevronsRight className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-1.5 rounded-sm border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Next page"><ChevronRight className="w-3.5 h-3.5 text-gray-600" /></button>
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className="p-1.5 rounded-sm border border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all" title="Last page"><ChevronsRight className="w-3.5 h-3.5 text-gray-600" /></button>
       </div>
     </div>
   );
@@ -567,21 +566,21 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner"><LinkIcon className="w-4 h-4 text-white" /></div>
               <div><h3 className="text-base font-bold">Import from Custom URLs</h3><p className="text-[10px] text-pink-100">Paste specific question URLs to scrape</p></div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
+            <button onClick={onClose} className="p-1.5 rounded-sm hover:bg-white/10 transition-colors" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
           </div>
         </div>
 
         <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
           <div>
-            <label className="text-[11px] font-semibold text-gray-800 mb-1.5 block">Select Platform</label>
+            <label className="text-[11px]  text-gray-800 mb-1.5 block">Select Platform</label>
             <div className="flex flex-col sm:flex-row gap-2">
-              <button onClick={() => { setPlatform("leetcode"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "leetcode" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+              <button onClick={() => { setPlatform("leetcode"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2  text-[11px] transition-all ${platform === "leetcode" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
                 <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />LeetCode</div>
               </button>
-              <button onClick={() => { setPlatform("stackoverflow"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "stackoverflow" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+              <button onClick={() => { setPlatform("stackoverflow"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2  text-[11px] transition-all ${platform === "stackoverflow" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
                 <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />StackOverflow</div>
               </button>
-              <button onClick={() => { setPlatform("hackerrank"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2 font-semibold text-[11px] transition-all ${platform === "hackerrank" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+              <button onClick={() => { setPlatform("hackerrank"); setTestResult(null); }} className={`flex-1 px-3 py-2.5 rounded-xl border-2  text-[11px] transition-all ${platform === "hackerrank" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
                 <div className="flex items-center justify-center gap-1.5"><Code2 className="w-4 h-4" />HackerRank</div>
               </button>
             </div>
@@ -589,13 +588,13 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-semibold text-gray-800">Question URLs <span className="text-gray-500 font-normal">(one per line)</span></label>
+              <label className="text-[11px]  text-gray-800">Question URLs <span className="text-gray-500 font-normal">(one per line)</span></label>
               <div className="flex items-center gap-2">
                 {platform === "leetcode" && urls.length > 0 && (
                   <button
                     onClick={handleTestFirstUrl}
                     disabled={testing}
-                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-all disabled:opacity-50"
+                    className="text-[10px]  text-blue-600 hover:text-blue-700 flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-sm border border-blue-200 hover:bg-blue-100 transition-all disabled:opacity-50"
                   >
                     {testing ? (
                       <><span className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />Testing...</>
@@ -604,7 +603,7 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
                     )}
                   </button>
                 )}
-                <button onClick={handleAddSampleUrls} className="text-[10px] font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"><Copy className="w-3 h-3" />Add Sample URLs</button>
+                <button onClick={handleAddSampleUrls} className="text-[10px]  text-purple-600 hover:text-purple-700 flex items-center gap-1"><Copy className="w-3 h-3" />Add Sample URLs</button>
               </div>
             </div>
             <textarea
@@ -615,8 +614,8 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
               className="w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2.5 text-[11px] font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
             />
             {urls.length > 0 && (
-              <div className="mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-1.5 text-[11px]"><CheckCircle2 className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-900">{urls.length} valid URL{urls.length > 1 ? "s" : ""} detected</span></div>
+              <div className="mt-2 p-2 bg-green-50 rounded-sm border border-green-200">
+                <div className="flex items-center gap-1.5 text-[11px]"><CheckCircle2 className="w-3.5 h-3.5 text-green-600" /><span className=" text-green-900">{urls.length} valid URL{urls.length > 1 ? "s" : ""} detected</span></div>
                 <div className="mt-1.5 max-h-24 overflow-y-auto space-y-0.5">
                   {urls.map((url, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 text-[10px] text-green-700"><div className="w-1 h-1 bg-green-500 rounded-full" /><span className="truncate">{url}</span></div>
@@ -637,23 +636,23 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="font-bold text-green-800 text-[11px]">Test Successful!</span>
+                    <span className="text-green-800 text-[11px]">Test Successful!</span>
                   </div>
                   <div className="space-y-1.5 text-[10px]">
                     <div className="flex items-start gap-2">
-                      <span className="font-semibold text-gray-700 w-16">Title:</span>
+                      <span className=" text-gray-700 w-16">Title:</span>
                       <span className="text-gray-900 font-medium">{testResult.data?.title}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="font-semibold text-gray-700 w-16">Difficulty:</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                      <span className=" text-gray-700 w-16">Difficulty:</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] ${
                         testResult.data?.difficulty === "Easy" ? "bg-green-100 text-green-700" :
                         testResult.data?.difficulty === "Medium" ? "bg-amber-100 text-amber-700" :
                         "bg-red-100 text-red-700"
                       }`}>{testResult.data?.difficulty}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="font-semibold text-gray-700 w-16">Topics:</span>
+                      <span className=" text-gray-700 w-16">Topics:</span>
                       <div className="flex flex-wrap gap-1">
                         {testResult.data?.topics?.slice(0, 5).map((topic: string) => (
                           <span key={topic} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-medium">{topic}</span>
@@ -669,7 +668,7 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
               ) : (
                 <div className="flex items-center gap-2 text-red-700">
                   <XCircle className="w-4 h-4" />
-                  <span className="font-bold text-[11px]">Test Failed: {testResult.error || "Unknown error"}</span>
+                  <span className="text-[11px]">Test Failed: {testResult.error || "Unknown error"}</span>
                 </div>
               )}
             </motion.div>
@@ -703,7 +702,7 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
           <button
             disabled={!canSubmit || scraping}
             onClick={() => onScrape(urls, platform)}
-            className={`px-4 py-1.5 rounded-xl font-semibold text-[11px] text-white transition-all ${scraping || !canSubmit ? "bg-purple-400 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"}`}
+            className={`px-4 py-1.5 rounded-xl  text-[11px] text-white transition-all ${scraping || !canSubmit ? "bg-purple-400 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow"}`}
           >
             {scraping ? (
               <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />Scraping...</span>
@@ -767,7 +766,7 @@ const VettingConfirmModal: React.FC<{
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-sm hover:bg-white/10 transition-colors">
               <X className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -788,7 +787,7 @@ const VettingConfirmModal: React.FC<{
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-2 p-2 rounded-lg bg-gray-50"
+                    className="flex items-center gap-2 p-2 rounded-sm bg-gray-50"
                   >
                     <IconComponent className={`w-4 h-4 ${item.color}`} />
                     <span className="text-[11px] font-medium text-gray-700">{item.label}</span>
@@ -798,7 +797,7 @@ const VettingConfirmModal: React.FC<{
             </div>
           </div>
 
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="p-3 bg-blue-50 rounded-sm border border-blue-200">
             <div className="flex items-start gap-2">
               <Clock className="w-4 h-4 text-[#1B73E8] mt-0.5 flex-shrink-0" />
               <div className="text-[10px] text-blue-900 leading-relaxed">
@@ -811,7 +810,7 @@ const VettingConfirmModal: React.FC<{
         <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] font-semibold transition-colors"
+            className="px-4 py-2 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px]  transition-colors"
           >
             Cancel
           </button>
@@ -820,7 +819,7 @@ const VettingConfirmModal: React.FC<{
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white text-[11px] font-semibold shadow transition-all"
+            className="px-4 py-2 rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white text-[11px]  shadow transition-all"
           >
             Start Vetting
           </button>
@@ -926,7 +925,7 @@ const VettingResultsModal: React.FC<{
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-sm hover:bg-white/10 transition-colors">
               <X className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -938,21 +937,21 @@ const VettingResultsModal: React.FC<{
             // Batch results
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-black text-[#1B73E8]">{result?.total || 0}</div>
+                <div className="text-center p-3 bg-blue-50 rounded-sm border border-blue-200">
+                  <div className="text-2xl text-[#1B73E8]">{result?.total || 0}</div>
                   <div className="text-[9px] text-gray-600 mt-1">Total</div>
                 </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-2xl font-black text-green-600">{result?.vetted_count || 0}</div>
+                <div className="text-center p-3 bg-green-50 rounded-sm border border-green-200">
+                  <div className="text-2xl text-green-600">{result?.vetted_count || 0}</div>
                   <div className="text-[9px] text-gray-600 mt-1">Passed</div>
                 </div>
-                <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="text-2xl font-black text-red-600">{result?.errors?.length || 0}</div>
+                <div className="text-center p-3 bg-red-50 rounded-sm border border-red-200">
+                  <div className="text-2xl text-red-600">{result?.errors?.length || 0}</div>
                   <div className="text-[9px] text-gray-600 mt-1">Failed</div>
                 </div>
               </div>
               
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-3 bg-blue-50 rounded-sm border border-blue-200">
                 <p className="text-[11px] text-blue-900">
                   All questions have been updated with vetting results.
                 </p>
@@ -964,27 +963,27 @@ const VettingResultsModal: React.FC<{
               {/* Overall Score */}
               <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-[#1B73E8]">
                 <div>
-                  <div className="text-[10px] text-gray-600 font-semibold mb-1">Quality Score</div>
-                  <div className="text-3xl font-black text-[#1B73E8]">{score}/100</div>
+                  <div className="text-[10px] text-gray-600  mb-1">Quality Score</div>
+                  <div className="text-3xl text-[#1B73E8]">{score}/100</div>
                   <div className="text-[9px] text-gray-500 mt-1">
                     Difficulty: {vettingData.difficulty || 'N/A'}
                   </div>
                 </div>
-                <div className={`px-4 py-2 rounded-lg ${isSuccess ? 'bg-green-500' : 'bg-red-500'} text-white font-bold text-sm shadow-lg`}>
+                <div className={`px-4 py-2 rounded-sm ${isSuccess ? 'bg-green-500' : 'bg-red-500'} text-white text-sm shadow-lg`}>
                   {status}
                 </div>
               </div>
 
               {/* Recommendation Badge */}
               {recommendation && (
-                <div className={`p-3 rounded-lg border-2 ${
+                <div className={`p-3 rounded-sm border-2 ${
                   recommendation === 'APPROVE' 
                     ? 'bg-green-50 border-green-300' 
                     : 'bg-red-50 border-red-300'
                 }`}>
                   <div className="flex items-center gap-2">
                     <Award className={`w-4 h-4 ${recommendation === 'APPROVE' ? 'text-green-600' : 'text-red-600'}`} />
-                    <span className={`text-xs font-bold ${recommendation === 'APPROVE' ? 'text-green-900' : 'text-red-900'}`}>
+                    <span className={`text-xs ${recommendation === 'APPROVE' ? 'text-green-900' : 'text-red-900'}`}>
                       Recommendation: {recommendation}
                     </span>
                   </div>
@@ -993,19 +992,19 @@ const VettingResultsModal: React.FC<{
 
               {/* Individual Checks */}
               <div className="space-y-2">
-                <div className="text-xs font-bold text-gray-700 mb-2">Detailed Analysis:</div>
+                <div className="text-xs text-gray-700 mb-2">Detailed Analysis:</div>
                 {checkItems.map((check) => {
                   const isPassed = check.status === 'PASSED';
                   const IconComponent = check.Icon;
                   
                   return (
-                    <div key={check.key} className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">
+                    <div key={check.key} className="p-2.5 rounded-sm bg-gray-50 border border-gray-200">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <IconComponent className={`w-4 h-4 ${isPassed ? 'text-green-600' : 'text-red-600'}`} />
                           <span className="text-[11px] font-medium text-gray-700">{check.label}</span>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] ${
                           isPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                         }`}>
                           {check.status}
@@ -1027,10 +1026,10 @@ const VettingResultsModal: React.FC<{
 
               {/* Test Results Details (if failed) */}
               {!sandboxResult.all_passed && sandboxResult.test_results && (
-                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="p-3 bg-red-50 rounded-sm border border-red-200">
                   <div className="flex items-center gap-2 mb-2">
                     <XCircle className="w-4 h-4 text-red-600" />
-                    <span className="text-xs font-bold text-red-900">Failed Test Cases</span>
+                    <span className="text-xs text-red-900">Failed Test Cases</span>
                   </div>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto">
                     {sandboxResult.test_results
@@ -1050,10 +1049,10 @@ const VettingResultsModal: React.FC<{
 
               {/* Issues List */}
               {issues.length > 0 && (
-                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="p-3 bg-amber-50 rounded-sm border border-amber-200">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    <span className="text-xs font-bold text-amber-900">
+                    <span className="text-xs text-amber-900">
                       {issues.length} Issue{issues.length > 1 ? 's' : ''} Found
                     </span>
                   </div>
@@ -1072,17 +1071,17 @@ const VettingResultsModal: React.FC<{
 
               {/* Metadata Info */}
               {vettingData.metadata && (
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="p-3 bg-gray-50 rounded-sm border border-gray-200">
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
                     <div>
                       <span className="text-gray-600">Cached:</span>
-                      <span className="ml-1 font-semibold text-gray-900">
+                      <span className="ml-1  text-gray-900">
                         {vettingData.metadata.cached ? 'Yes' : 'No'}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Sandbox:</span>
-                      <span className="ml-1 font-semibold text-gray-900">
+                      <span className="ml-1  text-gray-900">
                         {vettingData.metadata.sandbox_tested ? 'Yes' : 'No'}
                       </span>
                     </div>
@@ -1097,10 +1096,10 @@ const VettingResultsModal: React.FC<{
 
               {/* Success Message */}
               {isSuccess && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="p-3 bg-green-50 rounded-sm border border-green-200">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="text-[11px] font-bold text-green-900">
+                    <span className="text-[11px] text-green-900">
                       Question approved and ready for use!
                     </span>
                   </div>
@@ -1114,11 +1113,11 @@ const VettingResultsModal: React.FC<{
         <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-end">
           <button
             onClick={onClose}
-            className={`px-4 py-2 rounded-lg ${
+            className={`px-4 py-2 rounded-sm ${
               isSuccess 
                 ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700' 
                 : 'bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1]'
-            } text-white text-[11px] font-semibold shadow-md transition-all`}
+            } text-white text-[11px]  shadow-md transition-all`}
           >
             {isSuccess ? '✓ Close' : 'Close'}
           </button>
@@ -1143,7 +1142,7 @@ const ActionsMenu: React.FC<{
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white rounded-lg text-xs font-semibold shadow-md transition-all"
+        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] hover:from-[#1557B0] hover:to-[#0D47A1] text-white rounded-sm text-xs  shadow-md transition-all"
       >
         <Menu className="w-4 h-4" />
         Quick Actions
@@ -1163,11 +1162,11 @@ const ActionsMenu: React.FC<{
               disabled={generating}
               className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 disabled:opacity-50"
             >
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-emerald-100 rounded-sm flex items-center justify-center">
                 <Zap className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">AI Generate</div>
+                <div className="text-xs text-gray-900">AI Generate</div>
                 <div className="text-[10px] text-gray-500">Single question</div>
               </div>
             </button>
@@ -1177,11 +1176,11 @@ const ActionsMenu: React.FC<{
               disabled={generating}
               className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 disabled:opacity-50"
             >
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-blue-100 rounded-sm flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-[#1B73E8]" />
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">AI Batch</div>
+                <div className="text-xs text-gray-900">AI Batch</div>
                 <div className="text-[10px] text-gray-500">Multiple topics</div>
               </div>
             </button>
@@ -1193,11 +1192,11 @@ const ActionsMenu: React.FC<{
               disabled={importing}
               className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-3 disabled:opacity-50"
             >
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-orange-100 rounded-sm flex items-center justify-center">
                 <Network className="w-4 h-4 text-orange-600" />
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">Import from Web</div>
+                <div className="text-xs text-gray-900">Import from Web</div>
                 <div className="text-[10px] text-gray-500">Auto scrape platforms</div>
               </div>
             </button>
@@ -1207,11 +1206,11 @@ const ActionsMenu: React.FC<{
               disabled={importing}
               className="w-full px-4 py-2.5 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 disabled:opacity-50"
             >
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-purple-100 rounded-sm flex items-center justify-center">
                 <LinkIcon className="w-4 h-4 text-purple-600" />
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">Import from URL</div>
+                <div className="text-xs text-gray-900">Import from URL</div>
                 <div className="text-[10px] text-gray-500">Custom URLs</div>
               </div>
             </button>
@@ -1817,30 +1816,47 @@ const QuestionBankPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div className="bg-gray-50 h-full">
+      <div className="">
+
+
+        <div className="flex w-full gap-4 justify-between items-center mt-4">
         
-        {/* NEW HEADER DESIGN */}
-        <div className={`${panel} px-5 py-4 mb-5`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1B73E8] rounded-lg flex items-center justify-center">
-                <Database className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Question Bank</h1>
-                <p className="text-xs text-gray-600">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5 w-3/5">
+          {[
+            { label: "Total", value: stats.total, icon: Database, color: "blue" },
+            { label: "Approved", value: stats.approved, icon: CheckCircle2, color: "green" },
+            { label: "Pending", value: stats.pending, icon: Clock, color: "amber" },
+            { label: "Draft", value: stats.draft, icon: FileText, color: "gray" },
+            { label: "Rejected", value: stats.rejected, icon: XCircle, color: "red" },
+            { label: "Coding", value: stats.coding, icon: Code2, color: "indigo" },
+            { label: "MCQ", value: stats.mcq, icon: Award, color: "purple" },
+          ].map((stat) => {
+            const IconComponent = stat.icon;
+            return (
+              <motion.div 
+                key={stat.label} 
+                whileHover={{ scale: 1.03 }}
+                className={`${panel} px-2 hover:shadow-md transition-all flex items-center justify-between`}
+              >
+                <div className={`text-lg`}>{stat.value}</div>
+                  <div className="text-[9px] text-gray-500 uppercase  tracking-wide">{stat.label}</div>
+              </motion.div>
+            );
+          })}
+        </div>
+        
+        
+        <div className="flex flex-col justify-between items-center gap-2">
+           <p className="text-xs text-gray-600">
                   {stats.total} questions • {stats.coding} coding • {stats.mcq} MCQ
                 </p>
-              </div>
-            </div>
 
-            {/* Source Toggle */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+
+              <div className="flex items-center bg-gray-100 rounded-sm p-1">
                 <button
                   onClick={() => setQuestionSource("mine")}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
                     questionSource === "mine"
                       ? "bg-white text-[#1B73E8] shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
@@ -1851,7 +1867,7 @@ const QuestionBankPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setQuestionSource("library")}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
                     questionSource === "library"
                       ? "bg-white text-[#1B73E8] shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
@@ -1861,51 +1877,11 @@ const QuestionBankPage: React.FC = () => {
                   Library
                 </button>
               </div>
-
-              {/* Health Indicators */}
-              <div className="flex items-center gap-2 text-[10px]">
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${vectorHealth ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  <Database className="w-3 h-3" />
-                  Vector
-                </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${vettingHealth ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  <Sparkles className="w-3 h-3" />
-                  Vetting
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* STATS PILLS (NEW DESIGN) */}
-{/* STATS PILLS WITH ICONS - COMPACT VERSION */}
-<div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-5">
-  {[
-    { label: "Total", value: stats.total, icon: Database, color: "blue" },
-    { label: "Approved", value: stats.approved, icon: CheckCircle2, color: "green" },
-    { label: "Pending", value: stats.pending, icon: Clock, color: "amber" },
-    { label: "Draft", value: stats.draft, icon: FileText, color: "gray" },
-    { label: "Rejected", value: stats.rejected, icon: XCircle, color: "red" },
-    { label: "Coding", value: stats.coding, icon: Code2, color: "indigo" },
-    { label: "MCQ", value: stats.mcq, icon: Award, color: "purple" },
-  ].map((stat) => {
-    const IconComponent = stat.icon;
-    return (
-      <motion.div 
-        key={stat.label} 
-        whileHover={{ scale: 1.03 }}
-        className={`${panel} p-3 hover:shadow-md transition-all`}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <IconComponent className={`w-4 h-4 text-${stat.color}-600`} />
-          <div className="text-[9px] text-gray-500 uppercase font-semibold tracking-wide">{stat.label}</div>
-        </div>
-        <div className={`text-2xl font-black text-${stat.color}-600`}>{stat.value}</div>
-      </motion.div>
-    );
-  })}
-</div>
 
+
+        </div>
         {/* SEARCH & CONTROLS (NEW DESIGN) */}
         <div className={`${panel} p-4 mb-4`}>
           <div className="flex flex-col lg:flex-row gap-3">
@@ -1917,17 +1893,17 @@ const QuestionBankPage: React.FC = () => {
                 placeholder="Search by title, skills, or description..."
                 value={filters.search}
                 onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-sm border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
               />
             </div>
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-2">
               {/* View Mode */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <div className="flex items-center bg-gray-100 rounded-sm p-0.5">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`px-3 py-2 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-2 rounded-sm text-xs  transition-all ${
                     viewMode === "grid" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600"
                   }`}
                 >
@@ -1935,7 +1911,7 @@ const QuestionBankPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setViewMode("table")}
-                  className={`px-3 py-2 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-2 rounded-sm text-xs  transition-all ${
                     viewMode === "table" ? "bg-white text-[#1B73E8] shadow-sm" : "text-gray-600"
                   }`}
                 >
@@ -1946,7 +1922,7 @@ const QuestionBankPage: React.FC = () => {
               {/* Filters Button */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-sm text-xs  hover:bg-gray-50 transition-all"
               >
                 <Filter className="w-4 h-4" />
                 Filters
@@ -1960,7 +1936,7 @@ const QuestionBankPage: React.FC = () => {
                 <>
                   <button
                     onClick={handleCreateQuestion}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-sm text-xs  shadow-sm transition-all"
                   >
                     <Plus className="w-4 h-4" />
                     Create
@@ -1980,23 +1956,23 @@ const QuestionBankPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={selectAllVisibleQuestions}
-                        className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 text-[10px] font-semibold text-gray-700 transition-all"
+                        className="px-3 py-2 rounded-sm border border-gray-200 bg-white hover:bg-blue-50 text-[10px]  text-gray-700 transition-all"
                       >
                         {selectedQuestions.size === paginatedQuestions.length ? 'Deselect All' : 'Select All'}
                       </button>
                       
                       {selectedQuestions.size > 0 && (
                         <>
-                          <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 rounded-sm border border-blue-200">
                             <CheckCircle2 className="w-3.5 h-3.5 text-[#1B73E8]" />
-                            <span className="text-[10px] font-bold text-[#1B73E8]">
+                            <span className="text-[10px] text-[#1B73E8]">
                               {selectedQuestions.size} selected
                             </span>
                           </div>
                           
                           <button
                             onClick={clearSelection}
-                            className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-all"
+                            className="p-2 rounded-sm hover:bg-red-50 text-red-600 transition-all"
                             title="Clear selection"
                           >
                             <XCircle className="w-3.5 h-3.5" />
@@ -2016,7 +1992,7 @@ const QuestionBankPage: React.FC = () => {
                         disabled={vetting || !vettingHealth}
                         whileHover={{ scale: 1.02 }} 
                         whileTap={{ scale: 0.98 }} 
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] hover:from-[#1557B0] hover:via-[#0D47A1] hover:to-[#0A3A8C] text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-60"
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] hover:from-[#1557B0] hover:via-[#0D47A1] hover:to-[#0A3A8C] text-white rounded-sm text-xs  shadow-sm transition-all disabled:opacity-60"
                       >
                         <Sparkles className="w-4 h-4" />
                         Vet ({selectedQuestions.size})
@@ -2024,7 +2000,7 @@ const QuestionBankPage: React.FC = () => {
                       
                       <button
                         onClick={handleBatchDelete}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-sm text-xs  shadow-sm transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete ({selectedQuestions.size})
@@ -2035,7 +2011,7 @@ const QuestionBankPage: React.FC = () => {
                   {/* Library Link */}
                   <NextLink
                     href="questions/library"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-semibold text-[#1B73E8] hover:bg-blue-50"
+                    className="flex items-center gap-2 px-4 py-2 rounded-sm border border-gray-200 bg-white text-[10px]  text-[#1B73E8] hover:bg-blue-50"
                   >
                     <Library className="w-4 h-4" />
                     Browse Library
@@ -2058,7 +2034,7 @@ const QuestionBankPage: React.FC = () => {
                   <select
                     value={filters.difficulty}
                     onChange={(e) => setFilters((f) => ({ ...f, difficulty: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                    className="px-3 py-2 rounded-sm border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
                   >
                     <option value="">All Difficulty</option>
                     <option value="easy">Easy</option>
@@ -2069,7 +2045,7 @@ const QuestionBankPage: React.FC = () => {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                    className="px-3 py-2 rounded-sm border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
                   >
                     <option value="">All Status</option>
                     <option value="draft">Draft</option>
@@ -2081,7 +2057,7 @@ const QuestionBankPage: React.FC = () => {
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                    className="px-3 py-2 rounded-sm border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
                   >
                     <option value="">All Types</option>
                     <option value="coding">Coding</option>
@@ -2091,7 +2067,7 @@ const QuestionBankPage: React.FC = () => {
                   <select
                     value={filters.source}
                     onChange={(e) => setFilters((f) => ({ ...f, source: e.target.value as any }))}
-                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
+                    className="px-3 py-2 rounded-sm border border-gray-200 bg-white text-xs focus:ring-2 focus:ring-[#1B73E8]"
                   >
                     <option value="all">All Sources</option>
                     <option value="ai">AI Generated</option>
@@ -2102,7 +2078,7 @@ const QuestionBankPage: React.FC = () => {
                 {(filters.difficulty || filters.status || filters.type || filters.source !== "all") && (
                   <button
                     onClick={() => setFilters({ difficulty: "", status: "", search: filters.search, source: "all", type: "" })}
-                    className="mt-3 text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1"
+                    className="mt-3 text-xs text-red-600 hover:text-red-700  flex items-center gap-1"
                   >
                     <X className="w-3 h-3" />
                     Clear Filters
@@ -2139,10 +2115,8 @@ const QuestionBankPage: React.FC = () => {
 
                 return (
                   <motion.div key={question.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ delay: idx * 0.03 }} whileHover={{ y: -4 }} className={`${panel} overflow-hidden group relative`}>
-                    {/* Difficulty Strip */}
                     <div className={`h-1 ${question.difficulty === "easy" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : question.difficulty === "medium" ? "bg-gradient-to-r from-amber-400 to-amber-600" : "bg-gradient-to-r from-rose-400 to-rose-600"}`} />
                     
-                    {/* Checkbox (only for "mine") */}
                     {questionSource === "mine" && (
                       <div className="absolute top-3 left-3 z-10">
                         <input
@@ -2185,19 +2159,19 @@ const QuestionBankPage: React.FC = () => {
 
                       {question.type && (
                         <div className="mb-2.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-semibold border ${isMCQ ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}>{isMCQ ? "MULTIPLE CHOICE" : "CODING"}</span>
+                          <span className={`px-2 py-0.5 rounded-sm text-[9px]  border ${isMCQ ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}>{isMCQ ? "MULTIPLE CHOICE" : "CODING"}</span>
                         </div>
                       )}
 
                       <p className="text-[11px] text-[#2b3952]/80 mb-3 line-clamp-2">{question.description}</p>
 
                       {isMCQ && question.options && (
-                        <div className="mb-3 p-2 bg-purple-50 border border-purple-200 rounded-lg">
-                          <div className="flex items-center gap-1.5 mb-1.5"><FileText className="w-3 h-3 text-purple-600" /><span className="text-[10px] font-semibold text-purple-700">Options Preview</span></div>
+                        <div className="mb-3 p-2 bg-purple-50 border border-purple-200 rounded-sm">
+                          <div className="flex items-center gap-1.5 mb-1.5"><FileText className="w-3 h-3 text-purple-600" /><span className="text-[10px]  text-purple-700">Options Preview</span></div>
                           <div className="grid grid-cols-2 gap-1 text-[10px]">
                             {Object.entries(question.options).slice(0, 4).map(([key, value]) => (
                               <div key={key} className="flex items-center gap-1">
-                                <span className={`w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded ${question.correctAnswer?.includes(key) ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"}`}>{key}</span>
+                                <span className={`w-4 h-4 flex items-center justify-center text-[9px] rounded ${question.correctAnswer?.includes(key) ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"}`}>{key}</span>
                                 <span className="text-gray-600 truncate">{value as string}</span>
                               </div>
                             ))}
@@ -2207,14 +2181,14 @@ const QuestionBankPage: React.FC = () => {
                       )}
 
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {question.skillTags && question.skillTags.slice(0, 4).map((tag) => (<span key={tag} className="px-2 py-0.5 bg-blue-50 text-[#1B73E8] rounded-md text-[9px] font-medium border border-blue-100">{tag}</span>))}
-                        {question.skillTags && question.skillTags.length > 4 && (<span className="px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded-md text-[9px] font-medium border border-gray-200">+{question.skillTags.length - 4}</span>)}
+                        {question.skillTags && question.skillTags.slice(0, 4).map((tag) => (<span key={tag} className="px-2 py-0.5 bg-blue-50 text-[#1B73E8] rounded-sm text-[9px] font-medium border border-blue-100">{tag}</span>))}
+                        {question.skillTags && question.skillTags.length > 4 && (<span className="px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded-sm text-[9px] font-medium border border-gray-200">+{question.skillTags.length - 4}</span>)}
                       </div>
 
                       <div className="flex items-center gap-2.5 text-[11px] text-gray-600 border-t border-gray-100 pt-3">
                         <div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /><span>{question.views || 0}</span></div>
                         <div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /><span>{question.submissions || 0}</span></div>
-                        {question.successRate != null && (<div className="flex items-center gap-1 ml-auto"><Award className="w-3.5 h-3.5 text-emerald-600" /><span className="font-bold text-emerald-600">{question.successRate}%</span></div>)}
+                        {question.successRate != null && (<div className="flex items-center gap-1 ml-auto"><Award className="w-3.5 h-3.5 text-emerald-600" /><span className="text-emerald-600">{question.successRate}%</span></div>)}
                       </div>
 
                       {/* Actions (only for "mine") */}
@@ -2227,13 +2201,13 @@ const QuestionBankPage: React.FC = () => {
                               handleVetQuestion(question.id); 
                             }} 
                             disabled={vetting || !vettingHealth}
-                            className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                            className="p-1.5 bg-purple-50 text-purple-600 rounded-sm hover:bg-purple-100 transition-colors border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
                             title="AI Vetting"
                           >
                             <Sparkles className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleEditQuestion(question); }} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-sm hover:bg-blue-100 transition-colors border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(question.id); }} className="p-1.5 bg-rose-50 text-rose-600 rounded-sm hover:bg-rose-100 transition-colors border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       )}
                     </div>
@@ -2247,8 +2221,7 @@ const QuestionBankPage: React.FC = () => {
           <div className={`${panel} overflow-hidden shadow-xl`}>
             <div className="px-4 py-3 bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] flex items-center justify-between">
               <div className="flex items-center gap-2 text-white">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"><List className="w-4 h-4" /></div>
-                <div><h3 className="text-sm font-bold">Question Database</h3><p className="text-[10px] text-blue-100">Showing {paginatedQuestions.length} of {filteredQuestions.length} results</p></div>
+                <div><h3 className="text-sm">Question Database</h3><p className="text-[10px] text-blue-100">Showing {paginatedQuestions.length} of {filteredQuestions.length} results</p></div>
               </div>
               <div className="flex items-center gap-1.5 text-white/90"><SlidersHorizontal className="w-3.5 h-3.5" /><span className="text-[10px] font-medium">{filteredQuestions.length} Total</span></div>
             </div>
@@ -2268,16 +2241,16 @@ const QuestionBankPage: React.FC = () => {
                         />
                       </th>
                     )}
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#1B73E8]" />Question</div></th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Skills</th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Type</th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Source</th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Difficulty</th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Status</th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-[#1B73E8]" />Views</div></th>
-                    <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-[#1B73E8]" />Subs</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#1B73E8]" />Question</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Skills</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Type</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Source</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Status</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-[#1B73E8]" />Views</div></th>
+                    <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider"><div className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-[#1B73E8]" />Subs</div></th>
                     {questionSource === "mine" && (
-                      <th className="px-3 py-2 text-left text-[10px] font-black text-gray-800 uppercase tracking-wider">Actions</th>
+                      <th className="px-3 py-2 text-left text-[10px] text-gray-800 uppercase tracking-wider">Actions</th>
                     )}
                   </tr>
                 </thead>
@@ -2304,7 +2277,7 @@ const QuestionBankPage: React.FC = () => {
                           <div className="flex items-start gap-2">
                             <div className={`w-1 h-full rounded-full ${q.difficulty === "easy" ? "bg-emerald-500" : q.difficulty === "medium" ? "bg-amber-500" : "bg-rose-500"}`} />
                             <div className="flex-1 min-w-0">
-                              <div className="font-bold text-[11px] text-gray-900 group-hover:text-[#1B73E8] cursor-pointer transition-colors">{q.title}</div>
+                              <div className="text-[11px] text-gray-900 group-hover:text-[#1B73E8] cursor-pointer transition-colors">{q.title}</div>
                               <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{q.description}</div>
                             </div>
                           </div>
@@ -2319,12 +2292,12 @@ const QuestionBankPage: React.FC = () => {
                             ) : (<span className="text-[10px] text-gray-400">—</span>)}
                           </div>
                         </td>
-                        <td className="px-3 py-3"><span className="px-2 py-1 rounded-md text-[9px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm">{(q.type || "coding").toUpperCase()}</span></td>
+                        <td className="px-3 py-3"><span className="px-2 py-1 rounded-sm text-[9px] border bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm">{(q.type || "coding").toUpperCase()}</span></td>
                         <td className="px-3 py-3"><span className={`${pill} shadow-sm ${isAI ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>{isAI ? (<><Zap className="w-3 h-3" /> AI</>) : (<><FileText className="w-3 h-3" /> MANUAL</>)}</span></td>
-                        <td className="px-3 py-3"><span className={`${pill} shadow-sm font-bold ${q.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : q.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>{q.difficulty.toUpperCase()}</span></td>
+                        <td className="px-3 py-3"><span className={`${pill} shadow-sm ${q.difficulty === "easy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : q.difficulty === "medium" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>{q.difficulty.toUpperCase()}</span></td>
                         <td className="px-3 py-3"><span className={`${pill} shadow-sm ${statusPill}`}>{q.status === "approved" && <CheckCircle2 className="w-3 h-3" />}{q.status === "pending_review" && <Clock className="w-3 h-3" />}{q.status === "rejected" && <XCircle className="w-3 h-3" />}{q.status.replace("_", " ").toUpperCase()}</span></td>
-                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><Eye className="w-3.5 h-3.5 text-gray-400" />{q.views || 0}</div></td>
-                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 font-semibold"><BarChart3 className="w-3.5 h-3.5 text-gray-400" />{q.submissions || 0}</div></td>
+                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 "><Eye className="w-3.5 h-3.5 text-gray-400" />{q.views || 0}</div></td>
+                        <td className="px-3 py-3"><div className="flex items-center gap-1.5 text-[11px] text-gray-700 "><BarChart3 className="w-3.5 h-3.5 text-gray-400" />{q.submissions || 0}</div></td>
                         {questionSource === "mine" && (
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1.5">
@@ -2332,13 +2305,13 @@ const QuestionBankPage: React.FC = () => {
                               <button 
                                 onClick={() => handleVetQuestion(q.id)} 
                                 disabled={vetting || !vettingHealth}
-                                className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 hover:shadow-md transition-all border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
+                                className="p-1.5 bg-purple-50 text-purple-600 rounded-sm hover:bg-purple-100 hover:shadow-md transition-all border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed" 
                                 title="AI Vetting"
                               >
                                 <Sparkles className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-lg hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleEditQuestion(q)} className="p-1.5 bg-blue-50 text-[#1B73E8] rounded-sm hover:bg-blue-100 hover:shadow-md transition-all border border-blue-100" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteQuestion(q.id)} className="p-1.5 bg-rose-50 text-rose-600 rounded-sm hover:bg-rose-100 hover:shadow-md transition-all border border-rose-100" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           </td>
                         )}
@@ -2350,8 +2323,7 @@ const QuestionBankPage: React.FC = () => {
 
               {paginatedQuestions.length === 0 && (
                 <div className="py-12 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 flex items-center justify-center mx-auto mb-3 shadow-lg"><FileText className="w-10 h-10 text-[#1B73E8]" /></div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1">No questions match your filters</h3>
+                  <h3 className="text-base text-gray-900 mb-1">No questions match your filters</h3>
                   <p className="text-[11px] text-gray-600 mb-4">Try changing source, difficulty, status or search.</p>
                 </div>
               )}
@@ -2366,8 +2338,7 @@ const QuestionBankPage: React.FC = () => {
         {/* Empty State */}
         {!loading && filteredQuestions.length === 0 && (
           <div className={`${panel} p-12 text-center`}>
-            <Database className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-900 mb-2">No questions found</h3>
+            <h3 className="text-lg text-gray-900 mb-2">No questions found</h3>
             <p className="text-sm text-gray-600 mb-4">
               {questionSource === "library" 
                 ? "The library is empty or no questions match your filters"
@@ -2376,7 +2347,7 @@ const QuestionBankPage: React.FC = () => {
             {questionSource === "mine" && (
               <button
                 onClick={handleCreateQuestion}
-                className="px-6 py-3 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-sm font-semibold shadow-sm transition-all"
+                className="px-6 py-3 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-sm text-sm  shadow-sm transition-all"
               >
                 Create Question
               </button>
@@ -2399,7 +2370,7 @@ const QuestionBankPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-[#0D47A1]/10 backdrop-blur-[1px] flex items-center justify-center">
             <div className={`${panel} px-5 py-4 flex items-center gap-2`}>
               <div className="w-7 h-7 border-3 border-blue-200 border-t-[#1B73E8] rounded-full animate-spin" />
-              <div className="text-[12px] text-gray-700 font-semibold">Generating AI question…</div>
+              <div className="text-[12px] text-gray-700 ">Generating AI question…</div>
             </div>
           </motion.div>
         )}
@@ -2447,7 +2418,7 @@ const QuestionBankPage: React.FC = () => {
                   <Sparkles className="absolute inset-0 m-auto w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <div className="text-gray-900 font-bold text-sm">AI Vetting in Progress...</div>
+                  <div className="text-gray-900 text-sm">AI Vetting in Progress...</div>
                   <div className="text-gray-600 text-[10px] mt-0.5">Analyzing code quality & correctness</div>
                 </div>
               </div>
@@ -2471,7 +2442,7 @@ const QuestionBankPage: React.FC = () => {
                   <Network className="absolute inset-0 m-auto w-4 h-4 text-orange-600" />
                 </div>
                 <div>
-                  <div className="text-gray-900 font-bold text-sm">Scraping Real Questions...</div>
+                  <div className="text-gray-900 text-sm">Scraping Real Questions...</div>
                   <div className="text-gray-600 text-[10px] mt-0.5">Collecting questions from platform</div>
                 </div>
               </div>
