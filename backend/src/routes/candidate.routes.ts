@@ -90,7 +90,10 @@ import { uploadDocumentMiddleware, handleDocumentUploadError } from '../middlewa
 
 import {
   browseAgenciesController,
-  assignAgencyToCase
+  assignAgencyToCase,
+  browseIntegrationAgenciesController,      
+  assignIntegrationAgencyToCase,             
+  getIntegrationServicesController
 } from '../controller/candidate/candidate.agency.controller';
 
 const router = Router();
@@ -327,6 +330,20 @@ router.post(
   '/cases/:caseId/assign-agency',
   checkAuth,
   assignAgencyToCase
+);
+
+// Assign integration agency to case
+router.post(
+  '/cases/:caseId/assign-integration-agency',
+  checkAuth,
+  assignIntegrationAgencyToCase
+);
+
+// Get integration services for a case
+router.get(
+  '/cases/:caseId/integration-services',
+  checkAuth,
+  getIntegrationServicesController
 );
 
 export default router;
