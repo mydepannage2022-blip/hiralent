@@ -165,10 +165,10 @@ const emptyAssessmentForm: AssessmentFormData = {
 const LOGO_BLUE = "#1B73E8";
 
 const panel =
-  "rounded-2xl border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
+  "rounded-sm border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
 
 const pill =
-  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border";
+  "inline-flex items-center gap-1 px-3 py-1.5 rounded-sm text-[11px] font-semibold tracking-wide border";
 
 const ScrollShadow: React.FC<{
   className?: string;
@@ -478,20 +478,20 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
         transition={{ type: "spring", damping: 25 }}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl"
+        className="relative w-full max-w-2xl overflow-hidden bg-white rounded-sm shadow-2xl"
       >
         <div className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <motion.div
-                className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 bg-white/20 rounded-sm flex items-center justify-center"
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.6 }}
               >
                 <Edit className="w-5 h-5" />
               </motion.div>
               <div>
-                <h2 className="text-xl font-bold">Edit Assessment</h2>
+                <h2 className="text-xl">Edit Assessment</h2>
                 <p className="text-blue-100 text-sm">Update assessment settings and skills to evaluate</p>
               </div>
             </div>
@@ -515,7 +515,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 <select
                   value={formData.job_id}
                   onChange={(e) => setFormData((p) => ({ ...p, job_id: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select job to attach</option>
@@ -534,7 +534,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Frontend Technical Assessment"
                   required
                 />
@@ -547,7 +547,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 value={formData.description}
                 onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
                 rows={5}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 required
               />
             </div>
@@ -563,7 +563,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                       assessment_type: e.target.value as AssessmentType,
                     }))
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="QUICK_CHECK">Quick check</option>
                   <option value="COMPREHENSIVE">Comprehensive</option>
@@ -582,7 +582,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                       difficulty: e.target.value as DifficultyLevel,
                     }))
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="BEGINNER">Beginner</option>
                   <option value="INTERMEDIATE">Intermediate</option>
@@ -601,7 +601,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                       status: e.target.value as EmployerAssessmentStatus,
                     }))
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="DRAFT">Draft</option>
                   <option value="ACTIVE">Active</option>
@@ -620,7 +620,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                   type="text"
                   value={formData.skill_category}
                   onChange={(e) => setFormData((p) => ({ ...p, skill_category: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Frontend, Backend..."
                 />
               </div>
@@ -632,7 +632,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                   min={5}
                   value={formData.time_limit}
                   onChange={(e) => setFormData((p) => ({ ...p, time_limit: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -643,7 +643,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                   min={1}
                   value={formData.total_questions}
                   onChange={(e) => setFormData((p) => ({ ...p, total_questions: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -657,7 +657,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                   max={100}
                   value={formData.passing_score}
                   onChange={(e) => setFormData((p) => ({ ...p, passing_score: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -669,7 +669,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     onKeyDown={handleSkillKeyPress}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Add skill (React, Node.js...)"
                   />
                   <motion.button
@@ -677,10 +677,10 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={addSkill}
-                    className="px-4 py-3 text-white rounded-xl font-semibold flex items-center gap-2"
+                    className="px-4 py-3 text-white rounded-sm font-semibold flex items-center gap-2"
                     style={{ background: LOGO_BLUE }}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3" />
                     Add
                   </motion.button>
                 </div>
@@ -713,7 +713,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onClose}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100"
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-sm font-semibold hover:bg-gray-100"
             >
               Cancel
             </motion.button>
@@ -724,14 +724,14 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={loading}
-              className="px-6 py-3 text-white rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-3 text-white rounded-sm font-semibold flex items-center gap-2 disabled:opacity-50"
               style={{ background: LOGO_BLUE }}
             >
               {loading ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-sm"
                 />
               ) : (
                 <Save className="w-5 h-5" />
@@ -943,12 +943,12 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
       <div className="min-h-screen grid place-items-center">
         <div className={`${panel} p-10 text-center max-w-lg`}>
           <div
-            className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
+            className="w-16 h-16 mx-auto mb-4 rounded-sm flex items-center justify-center shadow-lg"
             style={{ background: LOGO_BLUE }}
           >
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-[#0D2A5B]">Login required</h2>
+          <h2 className="text-2xl text-[#0D2A5B]">Login required</h2>
           <p className="text-[#334b7a] mt-2">Please sign in to view assessment details.</p>
         </div>
       </div>
@@ -956,7 +956,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="">
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -978,34 +978,34 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
         )}
       </AnimatePresence>
 
-      <div className="max-w-7xl mx-auto px-6 py-5">
+      <div className="py-4">
         <button
           onClick={() => router.push("/company/dashboard/assessmentManagement")}
-          className="inline-flex items-center gap-2 text-sm font-bold text-[#0D2A5B] hover:text-[#1B73E8]"
+          className="inline-flex items-center gap-2 text-sm text-[#0D2A5B] hover:text-[#1B73E8]"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3 h-3" />
           Back to assessments
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pb-10">
+      <div className="pb-4 pt-1">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <motion.div
-              className="w-20 h-20 border-4 border-blue-200 rounded-full"
+              className="w-20 h-20 border-4 border-blue-200 rounded-sm"
               style={{ borderTopColor: LOGO_BLUE }}
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             />
             <div className="ml-6">
-              <p className="text-gray-900 font-bold text-lg">Loading assessment...</p>
+              <p className="text-gray-900 text-lg">Loading assessment...</p>
               <p className="text-gray-600 text-sm">Fetching assessment details</p>
             </div>
           </div>
         ) : error ? (
           <div className={`${panel} p-8 text-center`}>
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Error</h3>
+            <h3 className="text-xl text-gray-900 mb-2">Error</h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <button onClick={loadOne} className="text-white px-6 py-2 rounded-lg" style={{ background: LOGO_BLUE }}>
               Try Again
@@ -1013,13 +1013,13 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
           </div>
         ) : !assessment ? (
           <div className={`${panel} p-8 text-center`}>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Assessment not found</h3>
+            <h3 className="text-xl text-gray-900 mb-2">Assessment not found</h3>
           </div>
         ) : (
           <>
             {/* Header */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={`${panel} overflow-hidden`}>
-              <div className="h-1" style={{ background: LOGO_BLUE }} />
+              <div className="h-1" />
 
               <div className="p-6">
                 <div className="flex items-center justify-between gap-4">
@@ -1050,26 +1050,26 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   <div className="flex gap-2 flex-wrap justify-end">
                     <button
                       onClick={() => setShowEditModal(true)}
-                      className="px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-bold flex items-center gap-2"
+                      className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center gap-2"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-3 h-3" />
                       Edit
                     </button>
 
                     <button
                       onClick={() => setShowAnalyticsModal(true)}
-                      className="px-4 py-2 rounded-xl text-white text-sm font-bold flex items-center gap-2"
+                      className="px-4 py-2 rounded-sm text-white text-sm flex items-center gap-2"
                       style={{ background: LOGO_BLUE }}
                     >
-                      <BarChart3 className="w-4 h-4" />
+                      <BarChart3 className="w-3 h-3" />
                       Analytics
                     </button>
 
                     <button
                       onClick={onDelete}
-                      className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold flex items-center gap-2"
+                      className="px-4 py-2 rounded-sm border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm flex items-center gap-2"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                       Delete
                     </button>
                   </div>
@@ -1078,7 +1078,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                 {/* Pills + meta */}
 
 
-                <h3 className="mt-3 text-xl font-black text-[#0D2A5B]">{assessment.title}</h3>
+                <h3 className="mt-3 text-xl text-[#0D2A5B]">{assessment.title}</h3>
 
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
                   {assessment.job?.title && (
@@ -1107,13 +1107,10 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
               <div className={`lg:col-span-2 ${panel} p-5`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <FileText className="w-5 h-5" style={{ color: LOGO_BLUE }} />
-                  </div>
-                  <h4 className="font-black text-[#0D2A5B]">Description</h4>
+                  <h4 className="text-[#0D2A5B]">Description</h4>
                 </div>
 
-                <div className="rounded-xl p-4 border border-gray-200 bg-white">
+                <div className="rounded-sm p-4 border border-gray-200 bg-white">
                   <ScrollShadow className="max-h-48 overflow-auto custom-scrollbar">
                     <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
                       {assessment.description}
@@ -1124,17 +1121,14 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
 
               <div className={`${panel} p-5`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                    <Target className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <h4 className="font-black text-[#0D2A5B]">Skills</h4>
-                  <span className="ml-auto px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                  <h4 className="text-[#0D2A5B]">Skills</h4>
+                  <span className="ml-auto px-2 py-1 rounded-sm text-xs bg-emerald-100 text-emerald-700">
                     {(assessment.extracted_skills || []).length}
                   </span>
                 </div>
 
                 {!assessment.extracted_skills?.length ? (
-                  <div className="rounded-xl p-4 border border-dashed border-gray-300 bg-white text-center">
+                  <div className="rounded-sm p-4 border border-dashed border-gray-300 bg-white text-center">
                     <p className="text-sm text-gray-600">No skills yet. Use Edit to add skills.</p>
                   </div>
                 ) : (
@@ -1142,7 +1136,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                     {assessment.extracted_skills.map((skill) => (
                       <span
                         key={skill}
-                        className="px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold border border-blue-100"
+                        className="px-2 py-1 bg-blue-50 text-blue-700 rounded-sm text-sm border border-blue-100"
                       >
                         {skill}
                       </span>
@@ -1156,13 +1150,10 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                QUESTIONS (HackerRank-like inline UI)
             ============================== */}
             <div className={`${panel} mt-5 overflow-hidden`}>
-              {/* top blue bar */}
-              <div className="h-1" style={{ background: LOGO_BLUE }} />
-
               <div className="p-5">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div>
-                    <div className="text-lg font-black text-[#0D2A5B]">Questions</div>
+                    <div className="text-lg text-[#0D2A5B]">Questions</div>
                     <div className="text-sm text-gray-600">
                       Planned: <b>{plannedCount}</b> · Attached now: <b>{attachedCount}</b>
                     </div>
@@ -1172,33 +1163,33 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                     <button
                       onClick={attachQuestions}
                       disabled={generating}
-                      className="px-4 py-2.5 rounded-xl text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60"
+                      className="px-4 py-2.5 rounded-sm text-white text-sm flex items-center gap-2 disabled:opacity-60"
                       style={{ background: LOGO_BLUE }}
                     >
                       {generating ? (
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-sm"
                         />
                       ) : (
-                        <Sparkles className="w-4 h-4" />
+                        <Sparkles className="w-3 h-3" />
                       )}
                       Attach questions
                     </button>
 
                     <button
                       onClick={loadQuestions}
-                      className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-bold text-sm flex items-center gap-2"
+                      className="px-4 py-2.5 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center gap-2"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3 h-3" />
                       Refresh
                     </button>
                   </div>
                 </div>
 
                 {questionsError && (
-                  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 flex items-start gap-2">
+                  <div className="mt-3 rounded-sm border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 mt-0.5" />
                     {questionsError}
                   </div>
@@ -1209,8 +1200,8 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   {loadingQuestions ? (
                     <div className="py-10 text-center text-sm text-gray-600">Loading questions…</div>
                   ) : sections.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
-                      <div className="text-sm text-gray-700 font-bold">No questions attached yet</div>
+                    <div className="rounded-sm border border-dashed border-gray-300 bg-white p-6 text-center">
+                      <div className="text-sm text-gray-700">No questions attached yet</div>
                       <div className="text-sm text-gray-600 mt-1">
                         Click <b>Attach questions</b> to auto-fill this assessment.
                       </div>
@@ -1222,7 +1213,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                         section.time !== null ? `${section.time} mins` : "—";
 
                       return (
-                        <div key={section.key} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                        <div key={section.key} className="rounded-sm border border-gray-200 bg-white overflow-hidden">
                           {/* Section header like HackerRank */}
                           <button
                             type="button"
@@ -1232,12 +1223,8 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-                                <Layers className="w-5 h-5 text-blue-700" />
-                              </div>
-
                               <div className="text-left">
-                                <div className="font-black text-[#0D2A5B]">
+                                <div className="text-[#0D2A5B]">
                                   {section.label}{" "}
                                   <span className="text-gray-400 font-black">({section.rows.length})</span>
                                 </div>
@@ -1249,7 +1236,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
 
                             <div className="flex items-center gap-4">
                               <div className="text-sm text-gray-500 flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
+                                <Clock className="w-3 h-3" />
                                 {minutesText}
                               </div>
 
@@ -1258,7 +1245,6 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // future: section settings
                                   }}
                                   className="p-2 rounded-lg hover:bg-gray-100"
                                   title="Section settings"
@@ -1314,7 +1300,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                                             onClick={() => goQuestionDetails(q.id)}
                                             className="text-left"
                                           >
-                                            <div className="font-black text-[#0D2A5B] hover:text-blue-700">
+                                            <div className="text-[#0D2A5B] hover:text-blue-700">
                                               {clampText(q.title, 90)}
                                             </div>
                                             {q.difficulty ? (
@@ -1338,13 +1324,13 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                                             {(q.skills || []).slice(0, 3).map((s) => (
                                               <span
                                                 key={s}
-                                                className="px-2 py-1 rounded-full text-[11px] font-semibold border border-gray-200 bg-white text-gray-600"
+                                                className="px-2 py-1 rounded-sm text-[11px] font-semibold border border-gray-200 bg-white text-gray-600"
                                               >
                                                 {s}
                                               </span>
                                             ))}
                                             {(q.skills || []).length > 3 && (
-                                              <span className="px-2 py-1 rounded-full text-[11px] font-black border border-gray-200 bg-slate-50 text-gray-500">
+                                              <span className="px-2 py-1 rounded-sm text-[11px] font-black border border-gray-200 bg-slate-50 text-gray-500">
                                                 +{(q.skills || []).length - 3}
                                               </span>
                                             )}
@@ -1358,7 +1344,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                                         <div className="md:col-span-1 flex md:justify-end">
                                           <button
                                             onClick={() => goQuestionDetails(q.id)}
-                                            className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-bold text-gray-700"
+                                            className="px-3 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700"
                                           >
                                             Open
                                           </button>

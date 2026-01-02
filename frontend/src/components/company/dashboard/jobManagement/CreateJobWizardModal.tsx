@@ -282,42 +282,23 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Header (Chatbot style) */}
             <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
-              {/* dots overlay */}
-              <div className="absolute inset-0 opacity-10">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                    backgroundSize: "24px 24px",
-                  }}
-                />
-              </div>
-
               <div className="relative px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <motion.div
-                      className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-md"
-                      whileHover={{ scale: 1.05, rotate: 6 }}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </motion.div>
-
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 text-[11px] rounded-full bg-white/15 border border-white/20 uppercase font-semibold tracking-wide">
+                        <span className="px-2 py-0.5 text-[9px] rounded-sm bg-white/15 border border-white/20 uppercase  tracking-wide">
                           Step {stepIndex + 1}/{steps.length}
                         </span>
-                        <span className="px-2 py-0.5 text-[11px] rounded-full bg-emerald-400/20 border border-emerald-200/60 text-emerald-50 font-semibold">
+                        <span className="px-2 py-0.5 text-[9px] rounded-sm bg-emerald-400/20 border border-emerald-200/60 text-emerald-50 ">
                           New Job
                         </span>
                       </div>
-                      <h2 className="text-xl font-black tracking-tight mt-1">{step.title}</h2>
+                      <h2 className="text-lg font-medium font-black mt-1">{step.title}</h2>
                       <p className="text-blue-100 text-sm">{step.subtitle}</p>
                     </div>
                   </div>
@@ -334,9 +315,9 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                 </div>
 
                 {/* Progress */}
-                <div className="relative mt-4 h-2 w-full rounded-full bg-white/20 overflow-hidden">
+                <div className="relative mt-4 h-2 w-full rounded-sm bg-white/20 overflow-hidden">
                   <motion.div
-                    className="absolute left-0 top-0 h-full bg-white/80 rounded-full"
+                    className="absolute left-0 top-0 h-full bg-white/80 rounded-lg"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.35 }}
@@ -352,7 +333,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                         key={s.key}
                         type="button"
                         onClick={() => setStepIndex(i)}
-                        className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                        className={`px-2 py-1/2 rounded-sm text-[11px]  border transition-all ${
                           active
                             ? "bg-white text-[#0D2A5B] border-white"
                             : "bg-white/10 text-white border-white/20 hover:bg-white/15"
@@ -363,21 +344,6 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                     );
                   })}
                 </div>
-              </div>
-
-              {/* wave bottom */}
-              <div className="absolute bottom-0 left-0 right-0">
-                <svg
-                  viewBox="0 0 1440 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-full"
-                >
-                  <path
-                    d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z"
-                    fill="white"
-                  />
-                </svg>
               </div>
             </div>
 
@@ -393,10 +359,10 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2"
+                    className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2"
                   >
                     <AlertTriangle className="w-4 h-4 mt-0.5" />
-                    <div className="font-semibold">{errorMsg}</div>
+                    <div className="">{errorMsg}</div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -409,14 +375,11 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -15 }}
                   transition={{ duration: 0.2 }}
-                  className="rounded-3xl border border-slate-200 bg-white/90 shadow-[0_10px_40px_rgba(15,23,42,0.04)] p-5"
+                  className="rounded-lg border border-slate-200 bg-white/90 shadow-[0_10px_40px_rgba(15,23,42,0.04)] p-5"
                 >
                   <div className="flex items-center gap-2 mb-5">
-                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-                      <StepIcon className="w-5 h-5 text-[#1B73E8]" />
-                    </div>
                     <div>
-                      <div className="font-extrabold text-slate-900">{step.title}</div>
+                      <div className="text-slate-900">{step.title}</div>
                       <div className="text-xs text-slate-500">{step.subtitle}</div>
                     </div>
                   </div>
@@ -425,21 +388,21 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   {step.key === "BASICS" && (
                     <div className="space-y-5">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Job Title *
                         </label>
                         <input
                           type="text"
                           value={formData.title}
                           onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                          className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           placeholder="e.g., Senior Frontend Developer"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Location *
                           </label>
                           <div className="relative">
@@ -450,14 +413,14 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                               onChange={(e) =>
                                 setFormData((p) => ({ ...p, location: e.target.value }))
                               }
-                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                               placeholder="e.g., Casablanca"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Department
                           </label>
                           <div className="relative">
@@ -468,7 +431,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                               onChange={(e) =>
                                 setFormData((p) => ({ ...p, department: e.target.value }))
                               }
-                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                               placeholder="e.g., Engineering"
                             />
                           </div>
@@ -482,7 +445,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Job Type *
                           </label>
                           <select
@@ -490,7 +453,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, job_type: e.target.value as JobType }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
                             <option value="full_time">Full Time</option>
                             <option value="part_time">Part Time</option>
@@ -500,7 +463,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Salary Range
                           </label>
                           <div className="relative">
@@ -511,7 +474,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                               onChange={(e) =>
                                 setFormData((p) => ({ ...p, salary_range: e.target.value }))
                               }
-                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                               placeholder="e.g., 35k–55k MAD / month"
                             />
                           </div>
@@ -519,7 +482,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Job Description *
                         </label>
                         <textarea
@@ -528,7 +491,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             setFormData((p) => ({ ...p, description: e.target.value }))
                           }
                           rows={7}
-                          className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
                           placeholder="Responsibilities, requirements, culture..."
                         />
                       </div>
@@ -539,7 +502,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   {step.key === "REQUIREMENTS" && (
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Required Skills & Technologies
                         </label>
                         <div className="flex gap-2">
@@ -548,7 +511,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             value={newSkill}
                             onChange={(e) => setNewSkill(e.target.value)}
                             onKeyDown={handleSkillKeyPress}
-                            className="flex-1 px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="flex-1 px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             placeholder="Add skill (React, Python...)"
                           />
                           <motion.button
@@ -556,7 +519,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={addSkill}
-                            className="px-4 py-3 rounded-2xl bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white font-semibold flex items-center gap-2 shadow-md"
+                            className="px-4 py-3 rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white  flex items-center gap-2 shadow-md"
                           >
                             <Plus className="w-4 h-4" />
                             Add
@@ -568,10 +531,9 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             {formData.required_skills.map((skill) => (
                               <div
                                 key={skill}
-                                className="flex items-center gap-2 bg-slate-50 text-slate-700 px-3 py-2 rounded-2xl border border-slate-200"
+                                className="flex items-center gap-2 bg-slate-50 text-blue-700 px-2 py-1 rounded-sm border border-slate-200"
                               >
-                                <Tag className="w-3 h-3 text-[#1B73E8]" />
-                                <span className="text-sm font-medium">{skill}</span>
+                                <span className="text-sm">{skill}</span>
                                 <button
                                   type="button"
                                   onClick={() => removeSkill(skill)}
@@ -587,7 +549,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Screening Questions
                         </label>
 
@@ -597,7 +559,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             value={newQuestion}
                             onChange={(e) => setNewQuestion(e.target.value)}
                             onKeyDown={handleQuestionKeyPress}
-                            className="flex-1 px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="flex-1 px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             placeholder="Add screening question"
                           />
                           <motion.button
@@ -605,7 +567,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={addQuestion}
-                            className="px-4 py-3 rounded-2xl bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white font-semibold flex items-center gap-2 shadow-md"
+                            className="px-4 py-3 rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white  flex items-center gap-2 shadow-md"
                           >
                             <Plus className="w-4 h-4" />
                             Add
@@ -617,7 +579,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             {formData.screening_questions.map((q) => (
                               <div
                                 key={q}
-                                className="flex items-start justify-between gap-2 bg-white border border-slate-200 rounded-2xl px-3 py-2"
+                                className="flex items-start justify-between gap-2 bg-white border border-slate-200 rounded-sm px-3 py-2"
                               >
                                 <span className="text-sm text-slate-800">{q}</span>
                                 <button
@@ -640,7 +602,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   {step.key === "SETTINGS" && (
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Initial Status
                         </label>
                         <select
@@ -648,7 +610,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                           onChange={(e) =>
                             setFormData((p) => ({ ...p, status: e.target.value as JobStatus }))
                           }
-                          className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         >
                           <option value="DRAFT">Save as Draft</option>
                           <option value="ACTIVE">Publish Immediately</option>
@@ -661,7 +623,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Application Deadline
                           </label>
                           <input
@@ -670,13 +632,13 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, application_deadline: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             min={new Date().toISOString().split("T")[0]}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Maximum Applications
                           </label>
                           <input
@@ -686,14 +648,14 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, max_applications: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             placeholder="e.g., 100"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label className="block text-sm text-slate-700 mb-2">
                           Auto-Reject After (Days)
                         </label>
                         <input
@@ -703,13 +665,13 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                           onChange={(e) =>
                             setFormData((p) => ({ ...p, auto_reject_after: e.target.value }))
                           }
-                          className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           placeholder="e.g., 30"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <label className="flex items-center gap-2 text-sm  text-slate-700">
                           <input
                             type="checkbox"
                             checked={formData.visa_sponsored}
@@ -721,7 +683,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                           Visa Sponsorship Available
                         </label>
 
-                        <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <label className="flex items-center gap-2 text-sm  text-slate-700">
                           <input
                             type="checkbox"
                             checked={formData.relocation_assistance}
@@ -739,7 +701,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Experience Level
                           </label>
                           <select
@@ -747,7 +709,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, experience_level: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
                             <option value="">Select experience level</option>
                             <option value="entry">Entry (0-2 years)</option>
@@ -758,7 +720,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Education Level
                           </label>
                           <select
@@ -766,7 +728,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, education_level: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
                             <option value="">Select education level</option>
                             <option value="high_school">High School</option>
@@ -779,7 +741,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Remote Work Option
                           </label>
                           <select
@@ -787,7 +749,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, remote_option: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
                             <option value="">Select remote option</option>
                             <option value="fully_remote">Fully Remote</option>
@@ -797,7 +759,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          <label className="block text-sm text-slate-700 mb-2">
                             Hiring Urgency
                           </label>
                           <select
@@ -805,7 +767,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                             onChange={(e) =>
                               setFormData((p) => ({ ...p, urgency_level: e.target.value }))
                             }
-                            className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
                             <option value="">Select urgency</option>
                             <option value="low">Low</option>
@@ -821,12 +783,12 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   {/* REVIEW */}
                   {step.key === "REVIEW" && (
                     <div className="space-y-5">
-                      <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                      <div className="rounded-sm border border-slate-200 bg-white p-4">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="font-extrabold text-slate-900 text-lg">
+                          <div className="text-slate-900 text-base">
                             {formData.title?.trim() || "Untitled job"}
                           </div>
-                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-700">
+                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                             {formData.status}
                           </span>
                         </div>
@@ -860,8 +822,8 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="rounded-3xl border border-slate-200 p-4 bg-white">
-                          <div className="flex items-center gap-2 font-bold text-slate-900">
+                        <div className="rounded-sm border border-slate-200 p-4 bg-white">
+                          <div className="flex items-center gap-2 text-slate-900">
                             <Users className="w-4 h-4 text-slate-400" />
                             Skills ({formData.required_skills.length})
                           </div>
@@ -870,7 +832,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                               formData.required_skills.map((s) => (
                                 <span
                                   key={s}
-                                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-50 text-slate-700"
+                                  className="px-2.5 py-1 rounded-lg text-[11px]  border border-slate-200 bg-slate-50 text-slate-700"
                                 >
                                   {s}
                                 </span>
@@ -881,8 +843,8 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="rounded-3xl border border-slate-200 p-4 bg-white">
-                          <div className="flex items-center gap-2 font-bold text-slate-900">
+                        <div className="rounded-sm border border-slate-200 p-4 bg-white">
+                          <div className="flex items-center gap-2 text-base text-slate-900">
                             <FileText className="w-4 h-4 text-slate-400" />
                             Questions ({formData.screening_questions.length})
                           </div>
@@ -891,7 +853,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                               formData.screening_questions.map((q) => (
                                 <div
                                   key={q}
-                                  className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2"
+                                  className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-sm px-3 py-2"
                                 >
                                   {q}
                                 </div>
@@ -921,7 +883,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={stepIndex === 0 ? onClose : back}
-                  className="px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-800 font-semibold flex items-center gap-2 hover:bg-slate-50"
+                  className="px-5 py-2.5 rounded-sm border border-slate-200 bg-white text-slate-800 flex items-center gap-2 hover:bg-slate-50"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   {stepIndex === 0 ? "Cancel" : "Back"}
@@ -933,7 +895,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={next}
-                    className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white font-semibold flex items-center gap-2 shadow-md"
+                    className="px-5 py-2.5 rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white flex items-center gap-2 shadow-md"
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />
@@ -945,13 +907,13 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
                     whileTap={{ scale: 0.98 }}
                     disabled={loading}
                     onClick={handleCreate}
-                    className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    className="px-5 py-2.5 rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white  flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                   >
                     {loading ? (
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-lg"
                       />
                     ) : (
                       <Save className="w-4 h-4" />

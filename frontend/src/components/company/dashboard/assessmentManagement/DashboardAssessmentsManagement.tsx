@@ -98,13 +98,13 @@ interface CompanyJob {
 const LOGO_BLUE = "#1B73E8";
 
 const panel =
-  "rounded-2xl border border-gray-200 bg-white shadow-[0_10px_30px_rgba(16,24,40,0.06)]";
+  "rounded-sm border border-gray-200 bg-white shadow-[0_10px_30px_rgba(16,24,40,0.06)]";
 
 const softInput =
-  "w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder:text-gray-400";
+  "w-full px-4 py-2.5 border border-gray-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder:text-gray-400";
 
 const softSelect =
-  "px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900";
+  "px-4 py-2.5 border border-gray-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900";
 
 function formatEnumNice(v?: string) {
   if (!v) return "";
@@ -137,48 +137,48 @@ function getCompletedToEvaluateCounts(a: EmployerAssessment) {
 function typeChipStyle(t: AssessmentType) {
   switch (t) {
     case "QUICK_CHECK":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "text-blue-700";
     case "COMPREHENSIVE":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700";
+      return "text-indigo-700";
     case "CERTIFICATION":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "text-emerald-700";
     case "COMPANY_SPECIFIC":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "text-amber-800";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-gray-700";
   }
 }
 
 function difficultyChipStyle(d: DifficultyLevel) {
   switch (d) {
     case "BEGINNER":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "text-emerald-700";
     case "INTERMEDIATE":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "text-blue-700";
     case "ADVANCED":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "text-amber-800";
     case "EXPERT":
-      return "border-rose-200 bg-rose-50 text-rose-700";
+      return "text-rose-700";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-gray-700";
   }
 }
 
 function generatedChipStyle(m: AssessmentCreationMethod) {
   switch (m) {
     case "JOB_DESCRIPTION_PARSE":
-      return "border-violet-200 bg-violet-50 text-violet-700";
+      return "text-violet-700";
     case "CHATBOT_GUIDED":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "text-sky-700";
     case "MANUAL":
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-gray-700";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-gray-700";
   }
 }
 
 const chipBase =
-  "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border";
+  "inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[11px] border";
 
 function truncateWithEllipsis(text: string, maxChars: number) {
   const clean = (text || "").trim();
@@ -232,7 +232,7 @@ const Pagination: React.FC<{
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between mt-6 px-4 py-3 bg-white rounded-2xl border border-gray-200"
+      className="flex items-center justify-between mt-6 px-4 py-3 bg-white rounded-sm border border-gray-200"
     >
       <div className="text-sm text-gray-600">
         Showing <span className="font-semibold text-gray-900">{startItem}</span> to{" "}
@@ -494,10 +494,10 @@ const AssessmentsManagement: React.FC = () => {
           transition={{ duration: 0.5 }}
           className={`${panel} p-10 text-center max-w-lg`}
         >
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600 flex items-center justify-center shadow-sm">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-sm bg-blue-600 flex items-center justify-center shadow-sm">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-gray-900">Login required</h2>
+          <h2 className="text-2xl text-gray-900">Login required</h2>
           <p className="text-gray-600 mt-2">Please sign in to manage your assessments.</p>
         </motion.div>
       </div>
@@ -523,9 +523,9 @@ const AssessmentsManagement: React.FC = () => {
             { label: "Draft", value: stats.draft, color: "text-amber-600" },
             { label: "Candidates", value: stats.candidates, color: "text-indigo-600" },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
-              <div className="text-xs text-gray-500 font-semibold">{s.label}</div>
+            <div key={s.label} className="rounded-sm border border-gray-200 bg-white p-4 flex justify-between items-center ">
+              <div className={`text-2xl`}>{s.value}</div>
+              <div className="text-xs text-gray-500">{s.label}</div>
             </div>
           ))}
         </div>
@@ -615,7 +615,7 @@ const AssessmentsManagement: React.FC = () => {
               <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">Error Loading Assessments</h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <button onClick={loadAll} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold">
+              <button onClick={loadAll} className="bg-blue-600 text-white px-6 py-2.5 rounded-sm font-semibold">
                 Retry
               </button>
             </motion.div>
@@ -636,19 +636,12 @@ const AssessmentsManagement: React.FC = () => {
                       transition={{ delay: idx * 0.04 }}
                       whileHover={{ y: -2 }}
                       onClick={() => router.push(`/company/dashboard/assessmentManagement/${assessment.assessment_id}`)}
-                      className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 cursor-pointer hover:border-blue-200 hover:shadow-[0_12px_30px_rgba(16,24,40,0.08)] transition-all"
+                      className="relative overflow-hidden rounded-sm border border-gray-200 bg-white p-5 cursor-pointer hover:border-blue-200 hover:shadow-[0_12px_30px_rgba(16,24,40,0.08)] transition-all"
                     >
-                      {/* ✅ accent using your logo blue */}
-<div
-  className="absolute inset-x-0 top-0 h-1"
-  style={{ backgroundColor: "#1B73E8" }}
-/>
-
-                      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-3">
                             <span className={`${chipBase} ${typeChipStyle(assessment.assessment_type)}`}>
-                              <Layers className="w-3.5 h-3.5" />
                               {formatEnumNice(assessment.assessment_type)}
                             </span>
 
@@ -662,25 +655,24 @@ const AssessmentsManagement: React.FC = () => {
                             </span>
 
                             <span className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500">
-                              <Calendar className="w-3 h-3" />
                               {new Date(assessment.created_at).toLocaleDateString()}
                             </span>
                           </div>
 
-                          <h3 className="text-[16px] md:text-[17px] font-extrabold text-gray-900 leading-snug truncate" title={assessment.title}>
+                          <h3 className="text-[16px] md:text-[17px] text-gray-900 leading-snug truncate" title={assessment.title}>
                             {assessment.title}
                           </h3>
 
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                             {assessment.job?.title && (
                               <div className="flex items-center gap-1">
-                                <Building className="w-4 h-4" />
+                                <Building className="w-3 h-3" />
                                 <span className="truncate">{assessment.job.title}</span>
                               </div>
                             )}
                             {assessment.skill_category && (
                               <div className="flex items-center gap-1">
-                                <Tag className="w-4 h-4" />
+                                <Tag className="w-3 h-3" />
                                 <span className="truncate">{assessment.skill_category}</span>
                               </div>
                             )}
@@ -720,17 +712,17 @@ const AssessmentsManagement: React.FC = () => {
                         </div>
 
                         <div className="shrink-0 flex gap-2 lg:flex-col lg:items-end">
-                          <div className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-2 min-w-[150px]">
+                          <div className="px-3 py-2 rounded-sm border border-gray-300 flex items-center gap-2 min-w-[150px]">
                             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                            <div className="leading-tight">
+                            <div className="leading-tight flex justify-between items-center w-full">
                               <div className="text-[10px] font-bold text-emerald-700/80">Completed</div>
                               <div className="text-[15px] font-black text-gray-900">{completed}</div>
                             </div>
                           </div>
 
-                          <div className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 flex items-center gap-2 min-w-[150px]">
+                          <div className="px-3 py-2 rounded-sm border border-gray-300 flex items-center gap-2 min-w-[150px]">
                             <ClipboardList className="w-4 h-4 text-amber-700" />
-                            <div className="leading-tight">
+                            <div className="leading-tight flex justify-between items-center w-full">
                               <div className="text-[10px] font-bold text-amber-700/80">To Evaluate</div>
                               <div className="text-[15px] font-black text-gray-900">{toEvaluate}</div>
                             </div>
@@ -759,11 +751,11 @@ const AssessmentsManagement: React.FC = () => {
                   <div className="w-20 h-20 rounded-3xl border flex items-center justify-center mx-auto mb-4" style={{ background: "#EAF2FE", borderColor: "#CFE2FF" }}>
                     <FileText className="w-9 h-9" style={{ color: LOGO_BLUE }} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-2">No assessments found</h3>
+                  <h3 className="text-2xl text-gray-900 mb-2">No assessments found</h3>
                   <p className="text-gray-600 mb-5">Try adjusting filters or create your first assessment.</p>
                   <button
                     onClick={() => setWizardOpen(true)}
-                    className="text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2 shadow-sm"
+                    className="text-white px-6 py-3 rounded-sm font-bold inline-flex items-center gap-2 shadow-sm"
                     style={{ background: LOGO_BLUE }}
                   >
                     <Plus size={20} />
