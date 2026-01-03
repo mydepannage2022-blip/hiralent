@@ -51,6 +51,7 @@ print("🚀 Starting Hiralent AI Service...")
 # =============================================================================
 GEMINI_AVAILABLE = False
 gemini_ai_service = None
+DIAGRAM_GENERATION_AVAILABLE = False  
 
 try:
     # Essayer l'import direct
@@ -1382,6 +1383,69 @@ async def generate_question(request: Dict[str, Any]):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating question: {str(e)}")
+@app.post("/generate-with-diagram")
+async def generate_question_with_diagram_route(request: Dict[str, Any]):
+    """
+    ✨ NOUVEAU: Génère une question avec diagramme automatique si nécessaire
+    
+    Body:
+        {
+            "topic": "database schema for ecommerce",
+            "difficulty": "medium"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "question": {...},
+            "diagram": {
+                "needed": true,
+                "type": "er",
+                "code": "erDiagram...",
+                "imageUrl": "https://cloudinary.com/..."
+            },
+            "metadata": {...}
+        }
+    """
+    try:
+        topic = request.get("topic")
+        difficulty = request.get("difficulty", "medium")
+        
+        if not topic:
+            raise HTTPException(status_code=400, detail="Topic is required")
+        
+        logger.info(f"🎯 Generating question with diagram: {topic} ({difficulty})")
+        
+        # Appeler la nouvelle méthode
+        result = await gemini_ai_service.generate_question_with_diagram(topic, difficulty)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Generation failed")
+            )
+        
+        return {
+            "success": True,
+            "question": result["question"],
+            "diagram": result.get("diagram"),
+            "metadata": {
+                "topic": topic,
+                "difficulty": difficulty,
+                "source": "gemini_ai",
+                "diagram_generation_available": DIAGRAM_GENERATION_AVAILABLE,
+                "diagram_needed": result.get("diagram") is not None
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error in generate-with-diagram route: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Generation failed: {str(e)}"
+        )
 
 @app.post("/generate-batch")
 async def generate_batch(request: Dict[str, Any]):

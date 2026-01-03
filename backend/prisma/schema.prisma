@@ -239,6 +239,13 @@ model Question {
   patternKey               String?  // "stackoverflow:123456"
   patternDifficultyVariant String?  // "easy" | "medium" | "hard"
 
+  //  Diagram
+  hasDiagram       Boolean   @default(false)
+  diagramType      String?   // 'er', 'class', 'sequence', 'tree', 'architecture'
+  diagramCode      String?   @db.Text  // Code Mermaid
+  diagramImageUrl  String?   // URL Cloudinary
+  diagramMetadata  Json?     // Métadonnées supplémentaires
+
   @@unique([patternKey, patternDifficultyVariant])
 
 

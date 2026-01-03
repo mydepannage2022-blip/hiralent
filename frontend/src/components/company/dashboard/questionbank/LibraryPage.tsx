@@ -26,6 +26,8 @@ import {
   AlertCircle,
   Copy,
   Check,
+  List,
+  Info,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 
@@ -69,7 +71,109 @@ const CATEGORIES = [
 const panel = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
 const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold";
 
-// Question Detail Modal Component
+// Professional Text Formatter Component (HackerRank-style)
+function FormattedProblemText({ text }: { text: string }) {
+  const formatText = (rawText: string) => {
+    // Split into lines
+    const lines = rawText.split('\n');
+    const elements: JSX.Element[] = [];
+    let inList = false;
+    let listItems: string[] = [];
+    
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      
+      // Skip empty lines but add spacing
+      if (!trimmed) {
+        if (inList) {
+          elements.push(
+            <ul key={`list-${idx}`} className="ml-6 space-y-1.5 mb-4">
+              {listItems.map((item, i) => (
+                <li key={i} className="text-gray-700 leading-relaxed relative pl-2">
+                  <span className="absolute left-0 top-0 text-[#1B73E8] font-bold">•</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          );
+          inList = false;
+          listItems = [];
+        }
+        return;
+      }
+      
+      // Check if it's a list item (starts with - or •)
+      if (/^[-•]\s/.test(trimmed)) {
+        inList = true;
+        listItems.push(trimmed.replace(/^[-•]\s/, ''));
+        return;
+      }
+      
+      // If we were in a list and now we're not, close it
+      if (inList && !/^[-•]\s/.test(trimmed)) {
+        elements.push(
+          <ul key={`list-${idx}`} className="ml-6 space-y-1.5 mb-4">
+            {listItems.map((item, i) => (
+              <li key={i} className="text-gray-700 leading-relaxed relative pl-2">
+                <span className="absolute left-0 top-0 text-[#1B73E8] font-bold">•</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        );
+        inList = false;
+        listItems = [];
+      }
+      
+      // Format code blocks (text in backticks)
+      const formattedLine = trimmed.split(/(`[^`]+`)/).map((part, i) => {
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return (
+            <code key={i} className="px-2 py-0.5 bg-gray-100 text-[#1B73E8] rounded text-sm font-mono border border-gray-200">
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+        return part;
+      });
+      
+      // Check if it's a heading (ends with :)
+      if (trimmed.endsWith(':') && trimmed.length < 100) {
+        elements.push(
+          <h4 key={idx} className="text-base font-bold text-gray-900 mt-5 mb-2 flex items-center gap-2">
+            <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
+            {formattedLine}
+          </h4>
+        );
+      } else {
+        elements.push(
+          <p key={idx} className="text-sm text-gray-700 leading-relaxed mb-3">
+            {formattedLine}
+          </p>
+        );
+      }
+    });
+    
+    // Close any remaining list
+    if (inList && listItems.length > 0) {
+      elements.push(
+        <ul key="list-final" className="ml-6 space-y-1.5 mb-4">
+          {listItems.map((item, i) => (
+            <li key={i} className="text-gray-700 leading-relaxed relative pl-2">
+              <span className="absolute left-0 top-0 text-[#1B73E8] font-bold">•</span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    
+    return elements;
+  };
+
+  return <div className="space-y-1">{formatText(text)}</div>;
+}
+
 // Question Detail Modal Component
 function QuestionDetailModal({
   question,
@@ -132,7 +236,7 @@ function QuestionDetailModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`${panel} relative w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl`}
+            className={`${panel} relative w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl`}
           >
             {/* Header with Hiralent Blue Gradient */}
             <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1565D8] to-[#1557B0] text-white">
@@ -187,7 +291,7 @@ function QuestionDetailModal({
               </div>
             </div>
 
-            {/* Tabs for Coding Questions with Hiralent Blue */}
+            {/* Tabs for Coding Questions */}
             {isCoding && (
               <div className="px-6 py-3 bg-gradient-to-b from-gray-50 to-white border-b border-gray-200">
                 <div className="flex items-center gap-2">
@@ -241,30 +345,22 @@ function QuestionDetailModal({
               </div>
             )}
 
-            {/* Content */}
+            {/* Content - Professional HackerRank Style */}
             <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
               {/* MCQ Content */}
               {isMCQ && (
                 <div className="space-y-6">
-                  {/* Description */}
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                      <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
-                      Question
-                    </h3>
-                    <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {question.problemStatement || question.description}
-                      </p>
-                    </div>
+                  {/* Description with Professional Formatting */}
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <FormattedProblemText text={question.problemStatement || question.description} />
                   </div>
 
                   {/* Options */}
                   {question.options && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
-                        Options
+                        <List className="w-4 h-4 text-[#1B73E8]" />
+                        Answer Options
                       </h3>
                       <div className="space-y-2.5">
                         {Object.entries(question.options).map(([key, value]) => {
@@ -307,18 +403,11 @@ function QuestionDetailModal({
                   {question.explanation && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
+                        <Info className="w-4 h-4 text-[#1B73E8]" />
                         Explanation
                       </h3>
-                      <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 bg-[#1B73E8] rounded-lg flex items-center justify-center shrink-0">
-                            <Sparkles className="w-4 h-4 text-white" />
-                          </div>
-                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap flex-1">
-                            {question.explanation}
-                          </p>
-                        </div>
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm p-6">
+                        <FormattedProblemText text={question.explanation} />
                       </div>
                     </div>
                   )}
@@ -328,18 +417,10 @@ function QuestionDetailModal({
               {/* Coding Content */}
               {isCoding && (
                 <div className="space-y-6">
-                  {/* Description Tab */}
+                  {/* Description Tab - Professional HackerRank Format */}
                   {activeTab === 'description' && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
-                        Problem Statement
-                      </h3>
-                      <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                          {question.problemStatement || question.description}
-                        </p>
-                      </div>
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                      <FormattedProblemText text={question.problemStatement || question.description} />
                     </div>
                   )}
 
@@ -348,8 +429,8 @@ function QuestionDetailModal({
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                          <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
-                          Solution
+                          <Code2 className="w-4 h-4 text-[#1B73E8]" />
+                          Solution Code
                         </h3>
                         <button
                           onClick={handleCopyCode}
@@ -390,7 +471,7 @@ function QuestionDetailModal({
                   {activeTab === 'test-cases' && testCases.length > 0 && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
+                        <Terminal className="w-4 h-4 text-[#1B73E8]" />
                         Test Cases
                       </h3>
                       <div className="space-y-3">
@@ -427,7 +508,7 @@ function QuestionDetailModal({
               {(question.views || question.submissions || question.successRate) && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
+                    <BarChart3 className="w-4 h-4 text-[#1B73E8]" />
                     Statistics
                   </h3>
                   <div className="grid grid-cols-3 gap-4">
@@ -457,7 +538,7 @@ function QuestionDetailModal({
               )}
             </div>
 
-            {/* Footer with Hiralent Blue */}
+            {/* Footer */}
             <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-gray-600">
                 {question.source && (
@@ -524,7 +605,7 @@ export default function LibraryPage() {
   const fetchLibraryQuestions = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/questions?limit=500&page=1&isLibrary=true&status=approved", {
+      const res = await fetch("http://localhost:5000/api/questions?limit=20000&page=1&isLibrary=true&status=approved", {
         headers: authHeaders()
       });
       const data = await res.json();
@@ -633,7 +714,7 @@ export default function LibraryPage() {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900"> Question Library</h1>
+                <h1 className="text-lg font-bold text-gray-900">Question Library</h1>
                 <p className="text-xs text-gray-600">
                   {stats.total} questions across {categoriesWithCounts.filter(c => c.count > 0 && c.id !== 'all').length} categories
                 </p>

@@ -103,6 +103,25 @@ router.delete('/:id',
   checkAuth,
   controller.deleteQuestion.bind(controller)
 );
+
+// ========== DIAGRAM GENERATION ROUTES (NEW) ==========
+
+// Generate question WITH automatic diagram
+router.post('/generate-with-diagram',
+  checkAuth,
+  checkAIServiceAvailable,
+  controller.generateQuestionWithDiagram.bind(controller)
+);
+
+// Check if diagram generation is available
+router.get('/diagram-service/health',
+  controller.checkDiagramServiceHealth.bind(controller)
+);
+
+// Get diagram for a specific question
+router.get('/:id/diagram',
+  controller.getQuestionDiagram.bind(controller)
+);
 // ========== WEB SCRAPING ROUTES ==========
 router.post('/scrape',
   checkAuth,

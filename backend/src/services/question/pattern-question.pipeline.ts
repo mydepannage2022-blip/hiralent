@@ -2,7 +2,8 @@
 import { PrismaClient } from "@prisma/client";
 import { AIServiceClient } from "../ai/ai-service.client";
 import { QuestionService } from "./Question.service";
-import { vectorEngineService } from "./vectorEngine.service"; 
+import { vectorEngineService } from "./vectorEngine.service";
+import { categorizeQuestion } from "../../utils/categoryMapping";
 
 const prisma = new PrismaClient();
 
@@ -19,12 +20,6 @@ function uniqTags(tags: string[]) {
   return Array.from(new Set(clean));
 }
 
-/**
- * Expand tags so your frontend category routing works better.
- * - "java-fundamentals" -> "java", "fundamentals"
- * - "sql-queries" -> "sql", "queries"
- * - "node_js" -> "node", "js"
- */
 function expandTags(tags: string[]): string[] {
   const out: string[] = [];
   for (const t of tags || []) {
@@ -46,13 +41,6 @@ export class PatternQuestionPipeline {
   private aiClient = new AIServiceClient();
   private questionService = new QuestionService();
 
-  /**
-   * Generate library questions from AlgorithmPattern rows.
-   * - supports difficulty variants
-   * - supports concurrency
-   * - uses vector similarity to skip duplicates
-   * - stores vectors so vectorId is NOT NULL
-   */
   async generateFromPatterns(params: {
     source?: string;
     limit?: number;
@@ -62,7 +50,6 @@ export class PatternQuestionPipeline {
   }) {
     const limit = params.limit ?? 10;
 
-    // ✅ respect caller difficulties
     const difficulties: DifficultyVariant[] =
       params.difficulties && params.difficulties.length
         ? (params.difficulties as DifficultyVariant[])
@@ -71,18 +58,24 @@ export class PatternQuestionPipeline {
     const concurrency = Math.max(1, Math.min(5, Number(params.concurrency ?? 2)));
     const fast = Boolean(params.fast ?? true);
 
-    // 1) Load patterns from DB
+    // ✅ CRITICAL FIX: ONLY load patterns that haven't been generated yet
     const patterns = await prisma.algorithmPattern.findMany({
-      where: params.source ? { source: params.source } : {},
+      where: {
+        ...(params.source ? { source: params.source } : {}),
+        questionsGenerated: false, // ✅ ONLY unprocessed patterns
+      },
       orderBy: { extractedAt: "desc" },
       take: limit,
     });
+
+    console.log(`\n🔍 Loaded ${patterns.length} unprocessed patterns (questionsGenerated=false)`);
 
     let created = 0;
     let skipped = 0;
     let failed = 0;
 
-    // Build jobs queue: (pattern × difficulty)
+    const successfulPatternIds = new Set<string>();
+
     const jobs: Array<() => Promise<void>> = [];
 
     for (const p of patterns) {
@@ -90,24 +83,22 @@ export class PatternQuestionPipeline {
         jobs.push(async () => {
           const patternKey = buildPatternKey(p.source, p.sourceId);
 
-          // 2) Dedupe: if we already generated this pattern+diff, skip
-          // (No schema change needed; metadata key is enough)
+          // Check if question already exists
           const existing = await prisma.question.findFirst({
             where: {
-              AND: [
-                { metadata: { path: ["patternKey"], equals: patternKey } },
-                { metadata: { path: ["patternDifficultyVariant"], equals: diff } },
-              ],
+              patternKey: patternKey,
+              patternDifficultyVariant: diff,
             },
             select: { id: true },
           });
 
           if (existing) {
             skipped++;
+            successfulPatternIds.add(p.id);
             return;
           }
 
-          // 3) Call AI service to generate a question from the pattern
+          // Generate question
           const aiRes = await this.aiClient.generateQuestionFromPattern({
             source: p.source,
             sourceId: p.sourceId,
@@ -127,27 +118,24 @@ export class PatternQuestionPipeline {
 
           const q = aiRes.question;
 
-          // 4) IMPORTANT: Enrich skillTags so frontend categorization is not always DSA
-          // Merge:
-          // - AI tags
-          // - Pattern tags
-          // - Domain
-          // Then EXPAND (split) for better routing: sql-queries -> sql
+          // Categorize
+          const categories = categorizeQuestion(p.domain, p.tags ?? []);
+          const categoryTags = categories.map(c => `category:${c}`);
+
           const mergedSkillTags = uniqTags([
             ...expandTags(q.skillTags ?? []),
             ...expandTags([...(p.tags ?? []), p.domain]),
+            ...categoryTags,
           ]);
 
-          // Optional title dedupe (cheap)
+          // Title dedupe
           const titleDup = await this.questionService.findByTitle(q.title);
           if (titleDup) {
             skipped++;
             return;
           }
 
-          // 5) Vector similarity dedupe (strong)
-          // Use vector engine BEFORE creating the question.
-          // If high duplication risk => skip
+          // Vector similarity
           const sim = await vectorEngineService.checkSimilarityFlexible({
             title: q.title,
             description: q.description ?? "",
@@ -165,7 +153,7 @@ export class PatternQuestionPipeline {
             return;
           }
 
-          // 6) Create question in DB
+          // Create question
           const createdQuestion = await this.questionService.createQuestion({
             title: q.title,
             description: q.description ?? "",
@@ -181,6 +169,10 @@ export class PatternQuestionPipeline {
             correctAnswer: q.correctAnswer ?? undefined,
             explanation: q.explanation ?? "",
 
+            generatedFromPattern: true,
+            patternKey: patternKey,
+            patternDifficultyVariant: diff,
+
             metadata: {
               ...(q.metadata ?? {}),
               patternKey,
@@ -189,24 +181,19 @@ export class PatternQuestionPipeline {
               patternDomain: p.domain,
               patternTags: p.tags ?? [],
               patternDifficultyVariant: diff,
+              categories,
             },
-            generatedFromPattern: true,
-            patternKey,
-            patternDifficultyVariant: diff,
 
-            createdBy: SYSTEM_CREATOR_ID, //  not null
-            status: "approved",           //  appears in library UI (your frontend filters approved)
+            createdBy: SYSTEM_CREATOR_ID,
+            status: "approved",
             aiGenerated: true,
             source: "web_scraped",
             isLibraryQuestion: true,
           });
 
-          // 7) Store in vector DB so vectorId is not null
-          // This calls your AI-service vector endpoint: /vector-search/store-question
+          // Store in vector DB
           const storeRes = await vectorEngineService.storeQuestion(createdQuestion);
 
-          // If vector store succeeded, mark fields (at minimum vectorStored=true)
-          // (If your vector service returns only question_id, keep vectorId = createdQuestion.id or question_id)
           if (storeRes?.success) {
             await prisma.question.update({
               where: { id: createdQuestion.id },
@@ -222,6 +209,7 @@ export class PatternQuestionPipeline {
             });
           }
 
+          successfulPatternIds.add(p.id);
           created++;
         });
       }
@@ -238,12 +226,25 @@ export class PatternQuestionPipeline {
 
     await Promise.all(workers);
 
+    // Mark patterns as generated
+    if (successfulPatternIds.size > 0) {
+      await prisma.algorithmPattern.updateMany({
+        where: {
+          id: { in: Array.from(successfulPatternIds) },
+        },
+        data: {
+          questionsGenerated: true,
+        },
+      });
+    }
+
     return {
       success: true,
       created,
       skipped,
       failed,
       processedPatterns: patterns.length,
+      patternsMarkedGenerated: successfulPatternIds.size,
       difficultyVariants: difficulties,
       concurrency,
       fast,
