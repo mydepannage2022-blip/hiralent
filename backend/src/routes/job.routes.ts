@@ -12,6 +12,9 @@ import {
   getMyCompanyJobs,
   getCompanyJobsById,
   getJobApplicantsForJob,
+  suggestJobBasics,
+  generateJobDescription,
+  improveJobDescription,
 } from '../controller/company/job.controller';
 
 const router = Router();
@@ -34,6 +37,13 @@ router.get('/jobs/:id/applicants', getJobApplicantsForJob);
 // ============================
 router.get('/jobs/company/my-jobs', getMyCompanyJobs);
 router.get('/jobs/company/:companyId/jobs', getCompanyJobsById);
+
+// ============================
+// 🤖 Job AI Routes (Employer only)
+// ============================
+router.post('/jobs/ai/step1-suggest', suggestJobBasics);
+router.post('/jobs/ai/step2-generate', generateJobDescription);
+router.post('/jobs/ai/improve', improveJobDescription);
 
 
 export default router;
