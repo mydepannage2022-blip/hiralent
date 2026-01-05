@@ -50,7 +50,7 @@ const Button: React.FC<ButtonProps> = ({
       <div className={className}>
         <button
           onClick={onClick}
-          className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-1 px-1 lg:py-1.5 lg:px-3 rounded-sm lg:rounded-lg ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
+          className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-1 px-1 lg:py-1.5 lg:px-3 rounded-sm lg:rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
         >
           <span className={variant === 'light' ? 'text-[#005DDC]' : 'text-white'}>
             {text}
@@ -71,7 +71,7 @@ const Button: React.FC<ButtonProps> = ({
     >
       <motion.button
         onClick={onClick}
-        className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-0.5 px-1 lg:py-1.5 lg:px-3 rounded-lg ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
+        className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-0.5 px-1 lg:py-1.5 lg:px-3 rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
         whileHover={{
           scale: 1.05,
           boxShadow: styles.hoverShadow

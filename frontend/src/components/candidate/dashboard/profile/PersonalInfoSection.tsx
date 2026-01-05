@@ -123,21 +123,19 @@ const handleSave = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+      className="bg-white rounded-sm border border-gray-200 p-6 mb-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <User className="w-3 h-3 lg:w-4 lg:h-4 text-blue-600" />
-          </div>
           <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Personal Information</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-sm
+     transition-colors"
           >
             <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" />
             Edit
@@ -147,7 +145,8 @@ const handleSave = () => {
             <button
               onClick={handleCancel}
               disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-sm
+       transition-colors disabled:opacity-50"
             >
               <X className="w-3 h-3 lg:w-4 lg:h-4" />
               Cancel
@@ -155,9 +154,9 @@ const handleSave = () => {
             <button
               onClick={handleSave}
               disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-sm
+       transition-colors disabled:opacity-50"
             >
-              <Check className="w-3 h-3 lg:w-4 lg:h-4" />
               {isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -193,9 +192,6 @@ const handleSave = () => {
           {/* About Me Section */}
           <div className="border-t border-gray-200 pt-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <User className="w-3 h-3 lg:w-4 lg:h-4 text-green-600" />
-              </div>
               <h4 className="text-xs lg:text-lg font-semibold text-gray-900">About me</h4>
             </div>
             
@@ -230,7 +226,8 @@ const handleSave = () => {
                 name="full_name"
                 value={formData.full_name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm
+         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                 placeholder="Enter your full name"
               />
             </div>
@@ -242,7 +239,8 @@ const handleSave = () => {
                 name="phone_number"
                 value={formData.phone_number}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm
+         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                 placeholder="Enter your mobile number"
               />
             </div>
@@ -280,7 +278,8 @@ const handleSave = () => {
               value={formData.about_me}
               onChange={handleInputChange}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-sm
+       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-none"
               placeholder="Tell us about yourself, your experience, and what makes you unique..."
             />
             <p className="text-xs text-gray-500 mt-1">

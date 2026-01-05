@@ -197,6 +197,10 @@ export async function listJobs(
     created_from,
     created_to,
     search_term,
+    location,    
+    salary_min,    
+    salary_max,   
+    skills,     
     page = 1,
     limit = 20,
     sort_by = 'created_at',
@@ -210,6 +214,17 @@ export async function listJobs(
     ...(experience_level ? { experience_level } : {}),
     ...(remote_option ? { remote_option } : {}),
     ...(urgency_level ? { urgency_level } : {}),
+    ...(location ? { 
+      location: { 
+        contains: location, 
+        mode: 'insensitive' 
+      } 
+    } : {}),
+    ...(salary_min || salary_max ? {
+      salary_range: {
+        contains: '',
+      }
+    } : {}),
     ...(status && status !== 'ALL'
       ? Array.isArray(status)
         ? { status: { in: status } }

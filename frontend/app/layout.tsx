@@ -67,7 +67,7 @@ export default function RootLayout({
   return (
     
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F9F9F9]`}>
     
         <Providers>
           {process.env.NODE_ENV !== 'production' && DevTokenSetter ? <DevTokenSetter /> : null}

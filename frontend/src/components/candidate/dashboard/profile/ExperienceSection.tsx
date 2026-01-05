@@ -131,21 +131,18 @@ const ExperienceSection: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+      className="bg-white rounded-sm border border-gray-200 p-6 mb-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-            <Briefcase className="w-2 h-2 lg:w-4 lg:h-4 text-orange-600" />
-          </div>
           <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Work Experience</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
           >
             <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
             Edit
@@ -155,7 +152,7 @@ const ExperienceSection: React.FC = () => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-sm transition-colors disabled:opacity-50"
             >
               <X className="w-2 h-2 lg:w-4 lg:h-4" />
               Cancel
@@ -163,7 +160,7 @@ const ExperienceSection: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-sm transition-colors disabled:opacity-50"
             >
               <Check className="w-2 h-2 lg:w-4 lg:h-4" />
               {isUpdating ? 'Saving...' : 'Save'}
@@ -221,7 +218,7 @@ const ExperienceSection: React.FC = () => {
         <div className="space-y-6">
           {/* Existing Experiences */}
           {experiences.map((exp, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg space-y-4">
+            <div key={index} className="p-4 bg-gray-50 rounded-sm space-y-4">
               <div className="flex justify-between items-start">
                 <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Experience {index + 1}</h4>
                 <button
@@ -239,7 +236,7 @@ const ExperienceSection: React.FC = () => {
                     type="text"
                     value={exp.job_title}
                     onChange={(e) => handleExperienceChange(index, 'job_title', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Senior Developer"
                   />
                 </div>
@@ -250,7 +247,7 @@ const ExperienceSection: React.FC = () => {
                     type="text"
                     value={exp.company}
                     onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Microsoft"
                   />
                 </div>
@@ -261,7 +258,7 @@ const ExperienceSection: React.FC = () => {
                     type="text"
                     value={exp.duration}
                     onChange={(e) => handleExperienceChange(index, 'duration', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. 2023-2024"
                   />
                 </div>
@@ -274,7 +271,7 @@ const ExperienceSection: React.FC = () => {
                     max="50"
                     value={exp.years || 1}
                     onChange={(e) => handleExperienceChange(index, 'years', Number(e.target.value) || 1)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
                 
@@ -284,7 +281,7 @@ const ExperienceSection: React.FC = () => {
                     type="date"
                     value={exp.start_date || ''}
                     onChange={(e) => handleExperienceChange(index, 'start_date', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
                 
@@ -295,7 +292,7 @@ const ExperienceSection: React.FC = () => {
                     value={exp.end_date || ''}
                     onChange={(e) => handleExperienceChange(index, 'end_date', e.target.value)}
                     disabled={exp.currently_working}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
                   />
                 </div>
               </div>
@@ -316,7 +313,7 @@ const ExperienceSection: React.FC = () => {
                   value={exp.description}
                   onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
                   rows={3}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                   placeholder="Describe your role, responsibilities, and achievements..."
                 />
               </div>
@@ -324,7 +321,7 @@ const ExperienceSection: React.FC = () => {
           ))}
 
           {/* Add New Experience */}
-          <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
+          <div className="p-4 border-2 border-dashed border-gray-300 rounded-sm space-y-4">
             <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Add New Experience</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -334,7 +331,7 @@ const ExperienceSection: React.FC = () => {
                   type="text"
                   value={newExperience.job_title}
                   onChange={(e) => setNewExperience({...newExperience, job_title: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. Product Manager"
                 />
               </div>
@@ -345,7 +342,7 @@ const ExperienceSection: React.FC = () => {
                   type="text"
                   value={newExperience.company}
                   onChange={(e) => setNewExperience({...newExperience, company: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. Google"
                 />
               </div>
@@ -356,7 +353,7 @@ const ExperienceSection: React.FC = () => {
                   type="text"
                   value={newExperience.duration}
                   onChange={(e) => setNewExperience({...newExperience, duration: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. 2023-Present"
                 />
               </div>
@@ -369,7 +366,7 @@ const ExperienceSection: React.FC = () => {
                   max="50"
                   value={newExperience.years || 1}
                   onChange={(e) => setNewExperience({...newExperience, years: Number(e.target.value) || 1})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
               
@@ -379,7 +376,7 @@ const ExperienceSection: React.FC = () => {
                   type="date"
                   value={newExperience.start_date || ''}
                   onChange={(e) => setNewExperience({...newExperience, start_date: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
               
@@ -390,7 +387,7 @@ const ExperienceSection: React.FC = () => {
                   value={newExperience.end_date || ''}
                   onChange={(e) => setNewExperience({...newExperience, end_date: e.target.value})}
                   disabled={newExperience.currently_working}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
                 />
               </div>
             </div>
@@ -411,7 +408,7 @@ const ExperienceSection: React.FC = () => {
                 value={newExperience.description}
                 onChange={(e) => setNewExperience({...newExperience, description: e.target.value})}
                 rows={3}
-                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                 placeholder="Describe your role, responsibilities, and achievements..."
               />
             </div>
@@ -419,7 +416,7 @@ const ExperienceSection: React.FC = () => {
             <button
               onClick={handleAddExperience}
               disabled={!newExperience.job_title.trim() || !newExperience.company.trim()}
-              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 text-xs lg:text-sm"
+              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 text-xs lg:text-sm"
             >
               <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
               Add Experience

@@ -81,7 +81,7 @@ interface Question {
    Helpers
 ============================= */
 const panel =
-  "rounded-2xl border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
+  "rounded-lg border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
 const pill =
   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border";
 
@@ -494,7 +494,7 @@ const ReviewQueuePage: React.FC = () => {
           className={`${panel} p-10 text-center max-w-lg`}
         >
           <motion.div
-            className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] flex items-center justify-center shadow-lg"
+            className="w-16 h-16 mx-auto mb-4 rounded-lg bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] flex items-center justify-center shadow-lg"
             animate={{ rotate: [0, 5, 0, -5, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -508,7 +508,7 @@ const ReviewQueuePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6FAFF]">
+    <div className="h-full">
       {/* Custom Scrollbar Styles */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
@@ -534,62 +534,9 @@ const ReviewQueuePage: React.FC = () => {
       `}</style>
 
       {/* ====== HEADER ====== */}
-      <div className="relative border-b border-gray-200/70 bg-white overflow-hidden">
-        {/* Animated background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute -top-20 -right-20 w-96 h-96 bg-[#1B73E8]/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.2, 1],
-              x: [0, 30, 0],
-            }}
-            transition={{ duration: 8, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute -bottom-20 -left-20 w-96 h-96 bg-[#0D47A1]/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.3, 1],
-              x: [0, -30, 0],
-            }}
-            transition={{ duration: 10, repeat: Infinity }}
-          />
-        </div>
+      <div className="relative overflow-hidden">
 
-        <div className="relative max-w-7xl mx-auto px-6 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${panel} px-6 py-5`}
-          >
-            <div className="flex items-start gap-3">
-              <motion.div
-                className="w-12 h-12 bg-gradient-to-br from-[#1B73E8] to-[#0D47A1] rounded-xl flex items-center justify-center shadow-lg"
-              >
-                <Clock className="w-6 h-6 text-white" />
-              </motion.div>
-              <div className="flex-1">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[#0D2A5B]">
-                  Review Queue
-                </h1>
-                <p className="text-sm md:text-[15px] text-[#2c477b]/80 mt-1 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Quality Control & Validation Center
-                </p>
-              </div>
-              <motion.div
-                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <motion.div
-                  className="w-2 h-2 bg-green-500 rounded-full"
-                  animate={{ opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-                <span className="text-xs font-bold text-[#0D2A5B]">LIVE</span>
-              </motion.div>
-            </div>
-          </motion.div>
+        <div className="relative max-w-full mx-auto ">
 
           {/* Enhanced Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -598,32 +545,24 @@ const ReviewQueuePage: React.FC = () => {
                 key: "pending",
                 label: "My Pending",
                 value: stats.total,
-                icon: AlertTriangle,
-                card: "bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border-amber-300/40",
                 badge: "bg-yellow-600",
               },
               {
                 key: "ai",
                 label: "AI in Queue",
                 value: stats.ai,
-                icon: Sparkles,
-                card: "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-emerald-300/40",
                 badge: "bg-emerald-600",
               },
               {
                 key: "coding",
                 label: "Coding Questions",
                 value: stats.coding,
-                icon: Code,
-                card: "bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border-blue-300/40",
-                badge: "bg-blue-600",
+                      badge: "bg-blue-600",
               },
               {
                 key: "mcq",
                 label: "MCQ Questions",
                 value: stats.mcq,
-                icon: Brain,
-                card: "bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-300/40",
                 badge: "bg-purple-600",
               },
             ].map((s, i) => (
@@ -633,27 +572,19 @@ const ReviewQueuePage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className={`rounded-2xl border ${s.card} p-5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
+                className={`rounded-lg border p-5 shadow-[0_10px_35px_rgba(14,34,92,0.06)] cursor-pointer`}
               >
                 <div className="flex items-center justify-between">
-                  <motion.div
-                    className={`w-10 h-10 rounded-xl ${s.badge} text-white flex items-center justify-center shadow-lg`}
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    <s.icon className="w-5 h-5" />
-                  </motion.div>
-                  <TrendingUp className="w-4 h-4 text-[#0D2A5B]/50" />
-                </div>
                 <motion.div
-                  className="mt-3 text-3xl font-black text-[#0D2A5B]"
+                  className="text-3xl font-medium font-black/50 text-[#0D2A5B]"
                   initial={{ scale: 0.5 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: i * 0.1 + 0.2, type: "spring" }}
-                >
+                  >
                   {s.value}
                 </motion.div>
-                <div className="text-xs text-[#0D2A5B]/70 mt-1">{s.label}</div>
+                <div className="text-xs text-black/50 mt-1">{s.label}</div>
+                  </div>
               </motion.div>
             ))}
           </div>
@@ -661,7 +592,7 @@ const ReviewQueuePage: React.FC = () => {
       </div>
 
       {/* ====== MAIN ====== */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="mt-8">
         {loading ? (
           <motion.div
             className="flex items-center justify-center py-20"
@@ -701,13 +632,11 @@ const ReviewQueuePage: React.FC = () => {
             className={`${panel} p-14 text-center`}
           >
             <motion.div
-              className="w-24 h-24 bg-emerald-100 rounded-3xl border border-emerald-200 flex items-center justify-center mx-auto mb-4"
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              className="w-12 h-12 bg-[#005EDC] rounded-sm flex items-center justify-center mx-auto mb-4"
             >
-              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              <CheckCircle2 className="w-8 h-8 text-white" />
             </motion.div>
-            <h3 className="text-2xl font-black text-gray-900 mb-2">All clear!</h3>
+            <h3 className="text-xl font-black font-medium text-gray-900 mb-2">All clear!</h3>
             <p className="text-gray-600">No questions pending review for your account.</p>
           </motion.div>
         ) : (
@@ -1274,7 +1203,7 @@ const ReviewQueuePage: React.FC = () => {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 20 }}
-              className="relative z-[61] w-[95vw] max-w-5xl max-h-[85vh] bg-[#0b1220] rounded-2xl border border-gray-700 shadow-2xl flex flex-col"
+              className="relative z-[61] w-[95vw] max-w-5xl max-h-[85vh] bg-[#0b1220] rounded-lg border border-gray-700 shadow-2xl flex flex-col"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
                 <div className="text-white/80 text-sm font-semibold flex items-center gap-2">

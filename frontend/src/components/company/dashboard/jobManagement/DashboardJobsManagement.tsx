@@ -34,12 +34,12 @@ import CreateJobWizardModal from "./CreateJobWizardModal";
 ============================= */
 
 type JobStatus =
-  | "ACTIVE"
-  | "DRAFT"
-  | "PAUSED"
-  | "CLOSED"
-  | "CANCELLED"
-  | "ARCHIVED";
+  | "Active"
+  | "Draft"
+  | "Paused"
+  | "Closed"
+  | "Cancelled"
+  | "Archived";
 
 type JobType = "full_time" | "part_time" | "contract" | "internship";
 
@@ -112,7 +112,7 @@ const emptyFormData: JobFormData = {
   max_applications: "",
   auto_reject_after: "",
   screening_questions: [],
-  status: "DRAFT",
+  status: "Draft",
 };
 
 /* =============================
@@ -122,16 +122,16 @@ const emptyFormData: JobFormData = {
 const LOGO_BLUE = "#1B73E8";
 
 const panel =
-  "rounded-2xl border border-gray-200 bg-white shadow-[0_10px_30px_rgba(16,24,40,0.06)]";
+  "";
 
 const softInput =
-  "w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder:text-gray-400";
+  "w-full pl-4 pr-4 py-2.5 border border-gray-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder:text-gray-400";
 
 const softSelect =
-  "px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900";
+  "pl-2 pr-4 py-2.5 border border-gray-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900";
 
 const pill =
-  "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border";
+  "inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[11px] font-semibold border";
 
 function formatJobType(t?: JobType | null) {
   if (!t) return "—";
@@ -140,35 +140,35 @@ function formatJobType(t?: JobType | null) {
 
 function statusChipStyle(s: JobStatus) {
   switch (s) {
-    case "ACTIVE":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "DRAFT":
-      return "border-amber-200 bg-amber-50 text-amber-800";
-    case "PAUSED":
-      return "border-yellow-200 bg-yellow-50 text-yellow-800";
-    case "CLOSED":
-      return "border-rose-200 bg-rose-50 text-rose-700";
-    case "CANCELLED":
-      return "border-gray-200 bg-gray-50 text-gray-700";
-    case "ARCHIVED":
-      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "Active":
+      return "text-[#005edc]";
+    case "Draft":
+      return "text-[#005edc]";
+    case "Paused":
+      return "text-[#005edc]";
+    case "Closed":
+      return "text-[#005edc]";
+    case "Cancelled":
+      return "text-[#005edc]";
+    case "Archived":
+      return "text-[#005edc]";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-[#005edc]";
   }
 }
 
 function typeChipStyle(t?: JobType | null) {
   switch (t) {
     case "full_time":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "text-[#005edc]";
     case "part_time":
-      return "border-purple-200 bg-purple-50 text-purple-700";
+      return "text-[#005edc]";
     case "contract":
-      return "border-orange-200 bg-orange-50 text-orange-800";
+      return "text-[#005edc]";
     case "internship":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700";
+      return "text-[#005edc]";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
+      return "text-[#005edc]";
   }
 }
 
@@ -394,7 +394,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
         transition={{ type: "spring", damping: 25 }}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-lg shadow-2xl"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] p-6 text-white">
@@ -1045,8 +1045,8 @@ const JobsManagement: React.FC = () => {
   const stats = useMemo(
     () => ({
       total: jobs.length,
-      active: jobs.filter((j) => j.status === "ACTIVE").length,
-      draft: jobs.filter((j) => j.status === "DRAFT").length,
+      active: jobs.filter((j) => j.status === "Active").length,
+      draft: jobs.filter((j) => j.status === "Draft").length,
       applications: jobs.reduce((acc, job) => acc + (job.applications_count || 0), 0),
     }),
     [jobs]
@@ -1126,32 +1126,33 @@ const JobsManagement: React.FC = () => {
       />
 
       {/* ✅ SAME LAYOUT AS ASSESSMENTS: full width content wrapper */}
-      <div className="w-full px-4 sm:px-6 py-6">
+      <div className="w-full">
         {/* Analytics (same grid behavior as assessments) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total", value: stats.total, color: "text-[#1B73E8]" },
-            { label: "Active", value: stats.active, color: "text-emerald-600" },
-            { label: "Draft", value: stats.draft, color: "text-amber-600" },
-            { label: "Applications", value: stats.applications, color: "text-indigo-600" },
+            { label: "Total", value: stats.total},
+            { label: "Active", value: stats.active},
+            { label: "Draft", value: stats.draft},
+            { label: "Applications", value: stats.applications},
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
-              <div className="text-xs text-gray-500 font-semibold">{s.label}</div>
+            <div key={s.label} className="rounded-lg border border-gray-200 bg-white flex justify-between items-center p-4">
+              <div className={`text-xl font-black`}>{s.value}</div>
+              <div className="text-xs text-black/50 font-semibold">{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Filters toolbar (same as assessments: flex wrap, not stacked) */}
-        <div className={`${panel} p-4 mt-4`}>
+        <div className={`${panel} mt-4`}>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[260px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 text-sm" />
               <input
                 type="text"
                 placeholder="Search by title, location, or department…"
                 className={softInput + " pl-10"}
                 value={searchTerm}
+
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
@@ -1196,6 +1197,21 @@ const JobsManagement: React.FC = () => {
                 <option value="oldest">Oldest</option>
               </select>
             </div>
+
+            {/* Floating create button (same vibe as assessments) */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleCreateJob}
+            className="bottom-6 right-6 text-white px-5 py-3 rounded-sm shadow-2xl z-50 flex items-center gap-2 text-sm"
+            style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Plus className="w-4 h-4" />
+            New Job
+          </motion.button>
           </div>
         </div>
 
@@ -1254,11 +1270,8 @@ const JobsManagement: React.FC = () => {
                       transition={{ delay: idx * 0.04 }}
                       whileHover={{ y: -2 }}
                       onClick={() => router.push(`/company/dashboard/jobManagement/${job.job_id}`)}
-                      className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 cursor-pointer hover:border-blue-200 hover:shadow-[0_12px_30px_rgba(16,24,40,0.08)] transition-all"
+                      className="relative overflow-hidden rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-blue-200 hover:shadow-[0_12px_30px_rgba(16,24,40,0.08)] transition-all"
                     >
-                      {/* accent like assessments */}
-                      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: LOGO_BLUE }} />
-
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -1277,7 +1290,7 @@ const JobsManagement: React.FC = () => {
                           </div>
 
                           <h3
-                            className="text-[16px] md:text-[17px] font-extrabold text-gray-900 leading-snug truncate"
+                            className="text-[16px] md:text-[17px] font-medium text-gray-900 leading-snug truncate"
                             title={job.title}
                           >
                             {job.title}
@@ -1323,7 +1336,7 @@ const JobsManagement: React.FC = () => {
                               {job.required_skills.slice(0, 6).map((skill) => (
                                 <span
                                   key={skill}
-                                  className="px-2.5 py-1 bg-blue-50 text-[#1B73E8] rounded-lg text-[11px] font-medium border border-blue-100"
+                                  className="px-2.5 py-1  text-[#1B73E8] rounded-sm text-[11px] font-medium border border-blue-100"
                                 >
                                   {skill}
                                 </span>
@@ -1345,11 +1358,11 @@ const JobsManagement: React.FC = () => {
                               e.stopPropagation();
                               handleOpenApplicants(job);
                             }}
-                            className="px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 flex items-center gap-2 min-w-[170px] hover:bg-blue-100 transition-colors"
+                            className="px-3 py-2 rounded-sm border border-blue-200 flex items-center gap-2 min-w-[170px] hover:bg-blue-100 transition-colors"
                           >
                             <Users className="w-4 h-4 text-blue-700" />
                             <div className="leading-tight text-left">
-                              <div className="text-[10px] font-bold text-blue-700/80">Applicants</div>
+                              <div className="text-[10px] font-medium text-blue-700/80">Applicants</div>
                               <div className="text-[15px] font-black text-gray-900">
                                 {job.applications_count ?? 0}
                               </div>
@@ -1402,20 +1415,7 @@ const JobsManagement: React.FC = () => {
           )}
         </div>
 
-        {/* Floating create button (same vibe as assessments) */}
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={handleCreateJob}
-          className="fixed bottom-6 right-6 text-white px-5 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 text-sm font-semibold"
-          style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Plus className="w-4 h-4" />
-          New Job
-        </motion.button>
+
       </div>
     </div>
   );
