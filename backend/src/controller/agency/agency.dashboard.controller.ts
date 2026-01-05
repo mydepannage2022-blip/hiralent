@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
 import { PrismaClient, AgencyType } from "@prisma/client";
+import { 
+  isActiveVisaCase, 
+  isActiveRelocationCase, 
+  isCompletedVisaCase, 
+  isCompletedRelocationCase,
+  CASE_STATUSES 
+} from "../../constants/caseStatuses";
 
 const prisma = new PrismaClient();
 
@@ -39,9 +46,12 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const agencyType = user.agency.type;
     const agencyId = user.agency_id;
 
-    // Base stats - common for all types
-    const [allCases, completedCases] = await Promise.all([
-      prisma.relocationCase.findMany({
+    // ============================================
+    // VISA AGENCY
+    // ============================================
+    if (agencyType === AgencyType.VISA) {
+      
+      const allCases = await prisma.relocationCase.findMany({
         where: { agency_id: agencyId },
         select: {
           case_id: true,
@@ -52,105 +62,190 @@ export const getDashboardStats = async (req: Request, res: Response) => {
           actual_cost: true,
           created_at: true,
           updated_at: true,
+          embassy_submission: {
+            select: {
+              status: true,
+            }
+          }
         },
-      }),
-      prisma.relocationCase.count({
-        where: {
-          agency_id: agencyId,
-          status: 'completed',
-        },
-      }),
-    ]);
+      });
 
-    // Calculate common metrics
-    const activeCases = allCases.filter(c => 
-      ['initiated', 'in_progress', 'pending_documents'].includes(c.status)
-    ).length;
-
-    const uniqueClients = new Set(allCases.map(c => c.candidate_id));
-    const totalClients = uniqueClients.size;
-
-    const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
-
-    const pendingActions = allCases.filter(c => c.status === 'pending_documents').length;
-
-    // Type-specific metrics
-    let typeSpecificStats: any = {};
-
-    if (agencyType === AgencyType.VISA) {
-      // VISA-specific metrics
-      const visaCases = allCases.filter(c => 
-        c.service_type === 'visa_processing' || c.service_type === 'full_relocation'
-      );
-
-      const approvedVisas = visaCases.filter(c => c.status === 'completed').length;
-      const pendingVisas = visaCases.filter(c => 
-        ['initiated', 'in_progress', 'pending_documents'].includes(c.status)
+      // Using helper functions
+      const completedCases = allCases.filter(c => 
+        isCompletedVisaCase(c.status, c.embassy_submission?.status)
       ).length;
-      const successRate = visaCases.length > 0 
-        ? Math.round((approvedVisas / visaCases.length) * 100) 
+
+      const activeCases = allCases.filter(c => 
+        isActiveVisaCase(c.status, c.embassy_submission?.status)
+      ).length;
+
+      const uniqueClients = new Set(allCases.map(c => c.candidate_id));
+      const totalClients = uniqueClients.size;
+
+      const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
+
+      // Pending actions: cases waiting for documents
+      const pendingActions = allCases.filter(c => 
+        c.status === CASE_STATUSES.PENDING_DOCUMENTS
+      ).length;
+
+      // VISA-specific metrics
+      const approvedVisas = allCases.filter(c => 
+        c.embassy_submission?.status === 'approved'
+      ).length;
+      
+      const pendingVisas = allCases.filter(c => 
+        c.embassy_submission && 
+        ['submitted', 'under_review', 'interview_scheduled'].includes(c.embassy_submission.status)
+      ).length;
+      
+      const successRate = allCases.length > 0 
+        ? Math.round((approvedVisas / allCases.length) * 100) 
         : 0;
 
-      typeSpecificStats = {
-        totalVisaApplications: visaCases.length,
-        approvedVisas,
-        pendingVisas,
-        successRate,
-        embassySubmissions: pendingVisas,
-      };
+      return res.status(200).json({
+        success: true,
+        data: {
+          agencyType,
+          agencyName: user.agency.name,
+          activeCases,
+          completedCases,
+          totalClients,
+          revenue,
+          pendingActions,
+          totalVisaApplications: allCases.length,
+          approvedVisas,
+          pendingVisas,
+          successRate,
+          embassySubmissions: pendingVisas,
+        },
+      });
+    } 
+    
+    // ============================================
+    // RELOCATION AGENCY
+    // ============================================
+    else if (agencyType === AgencyType.RELOCATION) {
 
-    } else if (agencyType === AgencyType.RELOCATION) {
+      // Getting cases via assignments (not agency_id!)
+      const assignments = await prisma.caseAssignment.findMany({
+        where: { 
+          agency_id: agencyId,
+          status: 'active'
+        },
+        include: {
+          case_details: {  
+            select: {
+              case_id: true,
+              candidate_id: true,
+              status: true,
+              service_type: true,
+              estimated_cost: true,
+              actual_cost: true,
+              created_at: true,
+              updated_at: true,
+              housing_type: true,
+              housing_address: true,
+              utility_water: true,
+              utility_electricity: true,
+              utility_internet: true,
+              arrival_date: true,
+              candidate: {
+                select: {
+                  user_id: true,
+                  full_name: true,
+                  email: true,
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const allCases = assignments.map(a => a.case_details);
+
+      // Using helper functions
+      const completedCases = allCases.filter(c => 
+        isCompletedRelocationCase(c.status)
+      ).length;
+
+      const activeCases = allCases.filter(c => 
+        isActiveRelocationCase(c.status)
+      ).length;
+
+      const uniqueClients = new Set(allCases.map(c => c.candidate_id));
+      const totalClients = uniqueClients.size;
+
+      const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
+
+      // PENDING ACTIONS: Housing info missing OR utilities incomplete
+      const pendingActions = allCases.filter(c => {
+        // Skip if already ready or completed
+        if (c.status === CASE_STATUSES.READY_FOR_ARRIVAL || 
+            c.status === CASE_STATUSES.COMPLETED) {
+          return false;
+        }
+        
+        // Checking if housing details are incomplete
+        const housingIncomplete = !c.housing_address || 
+                                  !c.housing_type || 
+                                  !c.arrival_date;
+        
+        // Checking if utilities are incomplete
+        const utilitiesIncomplete = c.utility_water !== 'completed' ||
+                                   c.utility_electricity !== 'completed' ||
+                                   c.utility_internet !== 'completed';
+        
+        return housingIncomplete || utilitiesIncomplete;
+      }).length;
+
       // RELOCATION-specific metrics
-      const relocationCases = allCases.filter(c => 
-        c.service_type === 'housing_assistance' || c.service_type === 'full_relocation'
-      );
-
-      const housingCompleted = relocationCases.filter(c => c.status === 'completed').length;
-      const housingInProgress = relocationCases.filter(c => 
-        ['initiated', 'in_progress'].includes(c.status)
+      const housingCompleted = allCases.filter(c => 
+        c.status === CASE_STATUSES.READY_FOR_ARRIVAL
+      ).length;
+      
+      const housingInProgress = allCases.filter(c => 
+        c.status === CASE_STATUSES.HOUSING_IN_PROGRESS ||
+        c.status === CASE_STATUSES.HOUSING_ASSIGNED
       ).length;
 
-      typeSpecificStats = {
-        totalRelocationCases: relocationCases.length,
-        housingCompleted,
-        housingInProgress,
-        leasesActive: housingCompleted,
-        propertiesFound: housingCompleted,
-      };
-
-    } else if (agencyType === AgencyType.INTEGRATION) {
-      // INTEGRATION-specific metrics
-      const integrationCases = allCases.filter(c => 
-        c.service_type === 'documentation' || c.service_type === 'full_relocation'
-      );
-
-      const integrationCompleted = integrationCases.filter(c => c.status === 'completed').length;
-      const integrationInProgress = integrationCases.filter(c => 
-        ['initiated', 'in_progress'].includes(c.status)
-      ).length;
-
-      typeSpecificStats = {
-        totalIntegrationCases: integrationCases.length,
-        servicesCompleted: integrationCompleted,
-        servicesInProgress: integrationInProgress,
-        bankAccountsOpened: Math.floor(integrationCompleted * 0.8),
-        healthcareRegistrations: Math.floor(integrationCompleted * 0.7),
-      };
+      return res.status(200).json({
+        success: true,
+        data: {
+          agencyType,
+          agencyName: user.agency.name,
+          activeCases,
+          completedCases,
+          totalClients,
+          revenue,
+          pendingActions,
+          totalRelocationCases: allCases.length,
+          housingCompleted,
+          housingInProgress,
+          leasesActive: housingCompleted,
+          propertiesFound: housingCompleted,
+        },
+      });
+    }
+    
+    // ============================================
+    // INTEGRATION AGENCY (Future - Placeholder)
+    // ============================================
+    else {
+      return res.status(200).json({
+        success: true,
+        data: {
+          agencyType,
+          agencyName: user.agency.name,
+          activeCases: 0,
+          completedCases: 0,
+          totalClients: 0,
+          revenue: 0,
+          pendingActions: 0,
+        },
+      });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        agencyType,
-        agencyName: user.agency.name,
-        activeCases,
-        completedCases,
-        totalClients,
-        revenue,
-        pendingActions,
-        ...typeSpecificStats,
-      },
-    });
   } catch (error) {
     console.error("Get dashboard stats error:", error);
     return res.status(500).json({
@@ -174,59 +269,126 @@ export const getRecentActivities = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
-      select: { agency_id: true },
+      select: { 
+        agency_id: true,
+        agency: {
+          select: {
+            type: true,
+          }
+        }
+      },
     });
 
-    if (!user?.agency_id) {
+    if (!user?.agency_id || !user.agency) {
       return res.status(404).json({
         success: false,
         message: "Agency not found",
       });
     }
 
-    const recentCases = await prisma.relocationCase.findMany({
-      where: { agency_id: user.agency_id },
-      orderBy: { updated_at: 'desc' },
-      take: 10,
-      select: {
-        case_id: true,
-        case_number: true,
-        status: true,
-        service_type: true,
-        updated_at: true,
-        candidate: {
-          select: {
-            full_name: true,
+    const agencyType = user.agency.type;
+    let recentCases: any[] = [];
+
+    // ============================================
+    // VISA AGENCY - Get cases they created
+    // ============================================
+    if (agencyType === AgencyType.VISA) {
+      recentCases = await prisma.relocationCase.findMany({
+        where: { agency_id: user.agency_id },
+        orderBy: { updated_at: 'desc' },
+        take: 10,
+        select: {
+          case_id: true,
+          case_number: true,
+          status: true,
+          service_type: true,
+          updated_at: true,
+          candidate: {
+            select: {
+              full_name: true,
+            },
           },
+          embassy_submission: {
+            select: {
+              status: true,
+            }
+          }
         },
-      },
-    });
-
-    const activities = recentCases.map(c => {
-        let type: 'new_case' | 'completed' | 'pending_document' | 'message' = 'new_case';
-        let title = 'Case update';
-        
-        if (c.status === 'completed') {
-            type = 'completed';
-            title = 'Case completed';
-        } else if (c.status === 'pending_documents') {
-            type = 'pending_document';
-            title = 'Document pending';
-        } else if (c.status === 'initiated') {
-            type = 'new_case';
-            title = 'New case created'; 
-        } else if (c.status === 'in_progress') {
-            title = 'Case in progress';
+      });
+    } 
+    
+    // ============================================
+    // RELOCATION AGENCY - Get assigned cases
+    // ============================================
+    else if (agencyType === AgencyType.RELOCATION) {
+      const assignments = await prisma.caseAssignment.findMany({
+        where: { 
+          agency_id: user.agency_id,
+          status: 'active'
+        },
+        orderBy: { assigned_at: 'desc' },
+        take: 10,
+        include: {
+          case_details: {  
+            select: {
+              case_id: true,
+              case_number: true,
+              status: true,
+              service_type: true,
+              updated_at: true,
+              candidate: {
+                select: {
+                  full_name: true,
+                },
+              },
+            }
+          }
         }
+      });
 
-        return {
-            id: c.case_id,
-            type,
-            title,
-            description: `${c.candidate.full_name} - ${c.service_type.replace(/_/g, ' ')}`,
-            timestamp: c.updated_at.toISOString(),
-            status: type === 'completed' ? 'success' as const : type === 'pending_document' ? 'warning' as const : 'info' as const,
-        };
+      recentCases = assignments.map(a => a.case_details);
+    }
+
+    // Map cases to activities
+    const activities = recentCases.map(c => {
+      let type: 'new_case' | 'completed' | 'pending_document' | 'message' = 'new_case';
+      let title = 'Case update';
+      
+      if (agencyType === AgencyType.VISA) {
+        // VISA agency activity types
+        if (c.embassy_submission?.status === 'approved') {
+          type = 'completed';
+          title = 'Visa approved';
+        } else if (c.status === CASE_STATUSES.PENDING_DOCUMENTS) {
+          type = 'pending_document';
+          title = 'Document pending';
+        } else if (c.status === CASE_STATUSES.INITIATED) {
+          type = 'new_case';
+          title = 'New case created'; 
+        } else if (c.embassy_submission?.status === 'submitted') {
+          title = 'Submitted to embassy';
+        }
+      } else if (agencyType === AgencyType.RELOCATION) {
+        // RELOCATION agency activity types
+        if (c.status === CASE_STATUSES.READY_FOR_ARRIVAL) {
+          type = 'completed';
+          title = 'Housing ready for arrival';
+        } else if (c.status === CASE_STATUSES.HOUSING_ASSIGNED) {
+          type = 'new_case';c
+          title = 'New housing case assigned';
+        } else if (c.status === CASE_STATUSES.HOUSING_IN_PROGRESS) {
+          title = 'Housing arrangement in progress';
+        }
+      }
+
+      return {
+        id: c.case_id,
+        type,
+        title,
+        description: `${c.candidate.full_name} - ${c.service_type.replace(/_/g, ' ')}`,
+        timestamp: c.updated_at.toISOString(),
+        status: type === 'completed' ? 'success' as const : type === 'pending_document' ? 'warning' as const : 'info' as const,
+      };
     });
 
     return res.status(200).json({
@@ -242,7 +404,7 @@ export const getRecentActivities = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/v1/agency/dashboard/analytics - Get analytics/reports data
+// GET /api/v1/agency/dashboard/analytics
 export const getAnalytics = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
@@ -256,27 +418,62 @@ export const getAnalytics = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
-      select: { agency_id: true },
+      select: { 
+        agency_id: true,
+        agency: {
+          select: {
+            type: true,
+          }
+        }
+      },
     });
 
-    if (!user?.agency_id) {
+    if (!user?.agency_id || !user.agency) {
       return res.status(403).json({
         success: false,
         message: "User is not associated with an agency",
       });
     }
 
-    // Get all cases for this agency
-    const allCases = await prisma.relocationCase.findMany({
-      where: { agency_id: user.agency_id },
-      include: {
-        candidate: {
-          select: {
-            user_id: true,
+    const agencyType = user.agency.type;
+    let allCases: any[] = [];
+
+    // Get cases based on agency type
+    if (agencyType === AgencyType.VISA) {
+      // VISA agencies: cases they created
+      allCases = await prisma.relocationCase.findMany({
+        where: { agency_id: user.agency_id },
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+            },
           },
+          embassy_submission: true,
         },
-      },
-    });
+      });
+    } else if (agencyType === AgencyType.RELOCATION) {
+      // RELOCATION: assigned cases
+      const assignments = await prisma.caseAssignment.findMany({
+        where: { 
+          agency_id: user.agency_id,
+          status: 'active'
+        },
+        include: {
+          case_details: {  // ✅ CORRECT
+            include: {
+              candidate: {
+                select: {
+                  user_id: true,
+                },
+              },
+            }
+          }
+        }
+      });
+
+      allCases = assignments.map(a => a.case_details);
+    }
 
     // Get reviews for ratings
     const reviews = await prisma.agencyReview.findMany({
@@ -289,7 +486,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    // 1. REVENUE METRICS
+    // Revenue metrics
     const currentMonthCases = allCases.filter(c => {
       const date = new Date(c.created_at);
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
@@ -307,18 +504,27 @@ export const getAnalytics = async (req: Request, res: Response) => {
       ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
       : 0;
 
-    // 2. COMPLETION RATE
-    const completedCases = allCases.filter(c => c.status === 'completed').length;
+    // ✅ Completion rate (adjusted per agency type using helper functions)
+    let completedCases = 0;
+    if (agencyType === AgencyType.VISA) {
+      completedCases = allCases.filter((c: any) => 
+        isCompletedVisaCase(c.status, c.embassy_submission?.status)
+      ).length;
+    } else if (agencyType === AgencyType.RELOCATION) {
+      completedCases = allCases.filter((c: any) => 
+        isCompletedRelocationCase(c.status)
+      ).length;
+    }
+
     const totalCases = allCases.length;
     const completionRate = totalCases > 0 ? (completedCases / totalCases) * 100 : 0;
 
-    // Industry average is around 85%
     const industryAverage = 85;
     const comparisonToIndustry = completionRate - industryAverage;
 
-    // 3. AVERAGE PROCESSING TIME
-    const completedWithDates = allCases.filter(c => 
-      c.status === 'completed' && c.actual_completion
+    // Average processing time
+    const completedWithDates = allCases.filter((c: any) => 
+      c.status === CASE_STATUSES.COMPLETED && c.actual_completion
     );
 
     let avgProcessingTime = 0;
@@ -332,16 +538,14 @@ export const getAnalytics = async (req: Request, res: Response) => {
       avgProcessingTime = Math.round(totalDays / completedWithDates.length);
     }
 
-    // Industry average is ~26 days
     const industryAvgTime = 26;
     const timeDifference = industryAvgTime - avgProcessingTime;
 
-    // 4. CLIENT SATISFACTION
+    // Client satisfaction
     const avgRating = reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : 0;
 
-    // Calculate analytics data
     const analytics = {
       revenue: {
         monthly: currentMonthRevenue,

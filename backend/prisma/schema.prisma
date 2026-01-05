@@ -74,6 +74,7 @@ model Agency {
   invitations           CompanyAgencyInvitation[]
   relocationAnalytics   RelocationAnalytics[]
   cases                 RelocationCase[]
+  integrationCases      RelocationCase[] @relation("IntegrationAgency") // Integration agency cases
 }
 
 model User {
@@ -478,6 +479,8 @@ model RelocationCase {
 
   embassy_submission  EmbassySubmission?
 
+  integration_agency_id String?
+
   // Housing Details
   housing_type         String?
   housing_address      String?
@@ -498,7 +501,31 @@ model RelocationCase {
   airport_pickup_required Boolean? @default(false)
   arrival_notes           String?
 
+  // Relations
+  integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id])
+
+  integrationServices   IntegrationService[] @relation("IntegrationServices")
+
   @@map("relocation_cases")
+}
+
+model IntegrationService {
+  service_id       String   @id @default(uuid())
+  case_id          String
+  service_type     String   // healthcare, banking, tax_id, telecom, transport, integration_program
+  status           String   @default("pending") // pending, in_progress, completed
+  service_date     DateTime?
+  proof_document   String?  // URL to uploaded proof document
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  case             RelocationCase @relation("IntegrationServices", fields: [case_id], references: [case_id], onDelete: Cascade)
+  
+  @@index([case_id])
+  @@index([service_type])
+  @@index([status])
+  @@map("integration_services")
 }
 
 model CaseAssignment {
