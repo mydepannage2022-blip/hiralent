@@ -43,9 +43,9 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 pt-22 pb-12">
       {/* Max Width Container - Same as Header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
         
         {/* Back Button */}
         <button
@@ -57,10 +57,10 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
         </button>
 
         {/* Header Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-start gap-6">
             {/* Company Logo */}
-            <div className="w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200">
+            <div className="w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-200">
               {job.companyProfile?.logo_url ? (
                 <img
                   src={job.companyProfile.logo_url}
@@ -179,7 +179,7 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
             
             {/* Job Description */}
             {job.description && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-blue-600" />
                   Job Description
@@ -193,7 +193,7 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
 
             {/* Required Skills */}
             {job.required_skills && job.required_skills.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Required Skills</h2>
                 <div className="flex flex-wrap gap-2">
                   {job.required_skills.map((skill, index) => (
@@ -212,7 +212,7 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
           {/* Right Column - Company Info */}
           <div className="lg:col-span-1">
             {job.companyProfile && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
                 <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-blue-600" />
                   About the Company

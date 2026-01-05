@@ -110,7 +110,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
         {/* Show Existing Resume if Available */}
         {existingResumeUrl && !selectedFile && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-sm">
               <FileText className="h-8 w-8 text-green-600 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
@@ -152,7 +152,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
         {selectedFile && selectedFile.name && (
           <div className="space-y-4">
             {/* Selected File Display */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-sm">
               <FileText className="h-8 w-8 text-blue-500 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">

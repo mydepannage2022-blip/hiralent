@@ -164,7 +164,7 @@ const MetaSection: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full flex justify-start items-center gap-4 p-none lg:p-3 ring ring-[#EDEDED] rounded-xl mb-6"
+      className="w-full flex justify-start items-center gap-4 p-none lg:p-3 ring ring-[#EDEDED] rounded-sm mb-6"
     >
       {/* Profile Picture Section */}
       <div className="relative">
@@ -173,11 +173,11 @@ const MetaSection: React.FC = () => {
             <img 
               src={getProfileImage()} 
               alt="User Profile" 
-              className="w-32 h-32 rounded-xl object-cover hidden lg:block"
+              className="w-32 h-32 rounded-sm object-cover hidden lg:block"
             />
             <div 
               onClick={handleStartEdit}
-              className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              className="absolute inset-0 bg-black bg-opacity-50 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             >
               <Camera className="w-6 h-6 text-white" />
             </div>
@@ -186,7 +186,7 @@ const MetaSection: React.FC = () => {
           <div className="w-32 h-32 relative">
             {/* File Upload Area */}
             <motion.div
-              className={`w-full h-full border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ${
+              className={`w-full h-full border-2 border-dashed rounded-sm cursor-pointer transition-colors duration-300 ${
                 isDragOver 
                   ? 'border-blue-500 bg-blue-50' 
                   : 'border-gray-300 hover:border-blue-500'
@@ -208,7 +208,7 @@ const MetaSection: React.FC = () => {
                 <img 
                   src={previewUrl} 
                   alt="Preview" 
-                  className="w-full h-full object-cover rounded-xl"
+                  className="w-full h-full object-cover rounded-sm"
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center">

@@ -80,6 +80,10 @@ export interface JobListFilters {
   created_from?: string;
   created_to?: string;
   search_term?: string;
+  location?: string;   
+  salary_min?: number;
+  salary_max?: number;
+  skills?: string;    
   page?: number;
   limit?: number;
   sort_by?: 'created_at' | 'updated_at' | 'title' | 'status';

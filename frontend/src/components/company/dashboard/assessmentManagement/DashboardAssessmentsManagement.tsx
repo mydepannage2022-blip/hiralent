@@ -506,7 +506,7 @@ const AssessmentsManagement: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      {/* ✅ wizard modal */}
+      {/* wizard modal */}
       <CreateAssessmentWizardModal
         open={wizardOpen}
         jobs={jobs}

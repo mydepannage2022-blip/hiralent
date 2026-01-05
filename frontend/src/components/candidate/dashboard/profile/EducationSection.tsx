@@ -124,12 +124,12 @@ const EducationSection: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+      className="bg-white rounded-sm border border-gray-200 p-6 mb-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-green-100 rounded-sm flex items-center justify-center">
             <GraduationCap className="w-2 h-2 lg:w-4 lg:h-4 text-green-600" />
           </div>
           <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Education</h3>
@@ -138,7 +138,7 @@ const EducationSection: React.FC = () => {
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
           >
             <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
             Edit
@@ -148,7 +148,7 @@ const EducationSection: React.FC = () => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-sm transition-colors disabled:opacity-50"
             >
               <X className="w-2 h-2 lg:w-4 lg:h-4" />
               Cancel
@@ -156,7 +156,7 @@ const EducationSection: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-sm transition-colors disabled:opacity-50"
             >
               <Check className="w-2 h-2 lg:w-4 lg:h-4" />
               {isUpdating ? 'Saving...' : 'Save'}
@@ -217,7 +217,7 @@ const EducationSection: React.FC = () => {
         <div className="space-y-6">
           {/* Existing Education */}
           {educations.map((edu, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg space-y-4">
+            <div key={index} className="p-4 bg-gray-50 rounded-sm space-y-4">
               <div className="flex justify-between items-start">
                 <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Education {index + 1}</h4>
                 <button
@@ -234,7 +234,7 @@ const EducationSection: React.FC = () => {
                   <select
                     value={edu.degree}
                     onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
                     <option value="">Select degree</option>
                     <option value="Bachelor's">Bachelor's</option>
@@ -253,7 +253,7 @@ const EducationSection: React.FC = () => {
                     type="text"
                     value={edu.institution}
                     onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Harvard University"
                   />
                 </div>
@@ -264,7 +264,7 @@ const EducationSection: React.FC = () => {
                     type="text"
                     value={edu.year}
                     onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. 2020-2024 or 2024"
                   />
                 </div>
@@ -275,7 +275,7 @@ const EducationSection: React.FC = () => {
                     type="text"
                     value={edu.field}
                     onChange={(e) => handleEducationChange(index, 'field', e.target.value)}
-                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. Computer Science"
                   />
                 </div>
@@ -302,7 +302,7 @@ const EducationSection: React.FC = () => {
                     }
                   }}
                   maxLength={20}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. 3.8 GPA or First Class"
                 />
                 <span className="text-xs text-gray-400 mt-1">{(edu.grade || '').length}/20 characters</span>
@@ -311,7 +311,7 @@ const EducationSection: React.FC = () => {
           ))}
 
           {/* Add New Education */}
-          <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
+          <div className="p-4 border-2 border-dashed border-gray-300 rounded-sm space-y-4">
             <h4 className="font-medium text-gray-900 text-xs lg:text-sm">Add New Education</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,7 +320,7 @@ const EducationSection: React.FC = () => {
                 <select
                   value={newEducation.degree}
                   onChange={(e) => setNewEducation({...newEducation, degree: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
                   <option value="">Select degree</option>
                   <option value="Bachelor's">Bachelor's</option>
@@ -339,7 +339,7 @@ const EducationSection: React.FC = () => {
                   type="text"
                   value={newEducation.institution}
                   onChange={(e) => setNewEducation({...newEducation, institution: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. MIT"
                 />
               </div>
@@ -350,7 +350,7 @@ const EducationSection: React.FC = () => {
                   type="text"
                   value={newEducation.year}
                   onChange={(e) => setNewEducation({...newEducation, year: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. 2022-2026"
                 />
               </div>
@@ -361,7 +361,7 @@ const EducationSection: React.FC = () => {
                   type="text"
                   value={newEducation.field}
                   onChange={(e) => setNewEducation({...newEducation, field: e.target.value})}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="e.g. Data Science"
                 />
               </div>
@@ -388,7 +388,7 @@ const EducationSection: React.FC = () => {
                   }
                 }}
                 maxLength={20}
-                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 placeholder="e.g. 3.8 GPA or First Class"
               />
               <span className="text-xs text-gray-400 mt-1">{(newEducation.grade || '').length}/20 characters</span>
@@ -397,7 +397,7 @@ const EducationSection: React.FC = () => {
             <button
               onClick={handleAddEducation}
               disabled={!newEducation.degree.trim() || !newEducation.institution.trim()}
-              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 text-xs lg:text-sm"
+              className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 text-xs lg:text-sm"
             >
               <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
               Add Education
