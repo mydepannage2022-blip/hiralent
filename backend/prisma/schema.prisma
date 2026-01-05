@@ -240,6 +240,20 @@ model Question {
   isLibraryQuestion Boolean @default(false)
   assessments AssessmentQuestion[]   //  NEW
 
+  //  NEW (for pattern-generated questions)
+  generatedFromPattern     Boolean @default(false)
+  patternKey               String?  // "stackoverflow:123456"
+  patternDifficultyVariant String?  // "easy" | "medium" | "hard"
+
+  //  Diagram
+  hasDiagram       Boolean   @default(false)
+  diagramType      String?   // 'er', 'class', 'sequence', 'tree', 'architecture'
+  diagramCode      String?   @db.Text  // Code Mermaid
+  diagramImageUrl  String?   // URL Cloudinary
+  diagramMetadata  Json?     // Métadonnées supplémentaires
+
+  @@unique([patternKey, patternDifficultyVariant])
+
 
   @@map("questions")
 }
@@ -256,6 +270,8 @@ model AlgorithmPattern {
   inputStructure Json
   extractedAt   DateTime
   createdAt     DateTime @default(now())
+  //  OPTIONAL
+  questionsGenerated Boolean @default(false)
 
   @@unique([source, sourceId])
 }
