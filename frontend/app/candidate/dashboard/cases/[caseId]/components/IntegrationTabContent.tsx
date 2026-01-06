@@ -13,6 +13,8 @@ import {
   Download,
   Building2,
   Sparkles,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 interface IntegrationService {
@@ -106,285 +108,224 @@ export default function IntegrationTabContent({
       {/* Left Column - Integration Services (2/3 width) */}
       <div className="lg:col-span-2 space-y-6">
         {/* Integration Services Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* Header */}
-          <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">Post-Arrival Integration</h2>
-                <p className="text-blue-100 text-sm">
-                  Essential services to help you settle in
-                </p>
-              </div>
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="w-5 h-5 text-blue-600" />
             </div>
+            Integration Services
+          </h2>
 
-            {/* Progress Bar */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-blue-100">Overall Progress</span>
-                <span className="font-semibold">{completionPercentage}%</span>
-              </div>
-              <div className="w-full bg-blue-900/30 rounded-full h-2.5">
-                <div
-                  className="bg-white h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${completionPercentage}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Services List */}
-<div className="p-6 space-y-3">
-  {services.length === 0 ? (
-    <div className="text-center py-16 px-4">
-      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Users className="w-8 h-8 text-slate-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-2">
-        No Services Available
-      </h3>
-      <p className="text-sm text-slate-600 max-w-sm mx-auto">
-        Integration services will be created automatically when an
-        integration agency is assigned to your case.
-      </p>
-    </div>
-  ) : (
-    services.map((service, index) => {
-      const Icon = serviceIcons[service.service_type] || FileText;
-      const label =
-        serviceLabels[service.service_type] || service.service_type;
-
-      // Service descriptions
-      const descriptions: Record<string, string> = {
-        healthcare: "Register with national health insurance system",
-        banking: "Open local bank account for salary and transactions",
-        tax_id: "Obtain tax identification and social security number",
-        telecom: "Set up mobile phone and internet connection",
-        transport: "Register for public transport and driver's license",
-        integration_program: "Enroll in language and cultural integration program",
-      };
-      const description = descriptions[service.service_type];
-
-      // Status badge
-      const getStatusBadge = (status: string) => {
-        switch (status) {
-          case "completed":
-            return {
-              bg: "bg-green-50",
-              text: "text-green-700",
-              border: "border-green-200",
-              icon: <CheckCircle className="w-4 h-4" />,
-              label: "Completed",
-            };
-          case "in_progress":
-            return {
-              bg: "bg-blue-50",
-              text: "text-blue-700",
-              border: "border-blue-200",
-              icon: <Clock className="w-4 h-4" />,
-              label: "In Progress",
-            };
-          default:
-            return {
-              bg: "bg-slate-50",
-              text: "text-slate-600",
-              border: "border-slate-200",
-              icon: <Clock className="w-4 h-4" />,
-              label: "Pending",
-            };
-        }
-      };
-
-      const statusBadge = getStatusBadge(service.status);
-
-      return (
-        <motion.div
-          key={service.service_id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
-          className="bg-white rounded-xl p-5 border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
-        >
-          {/* Service Header */}
-          <div className="flex items-start gap-4 mb-3">
-            {/* Icon */}
-            <div
-              className={`p-3 rounded-lg shrink-0 ${
-                service.status === "completed"
-                  ? "bg-green-100 text-green-600"
-                  : service.status === "in_progress"
-                  ? "bg-yellow-100 text-yellow-600"
-                  : "bg-slate-200 text-slate-600"
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-            </div>
-
-            {/* Title & Description */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-slate-900 mb-1">
-                {label}
-              </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {description}
+          {services.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-xl">
+              <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-600 mb-1">No services available yet</p>
+              <p className="text-sm text-slate-500">
+                Integration services will be created when an agency is assigned
               </p>
             </div>
+          ) : (
+            <div className="space-y-3">
+              {services.map((service, index) => {
+                const Icon = serviceIcons[service.service_type] || FileText;
+                const label =
+                  serviceLabels[service.service_type] || service.service_type;
 
-            {/* Status Badge */}
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}
-            >
-              {statusBadge.icon}
-              <span className="text-xs font-medium whitespace-nowrap">
-                {statusBadge.label}
-              </span>
-            </div>
-          </div>
+                const descriptions: Record<string, string> = {
+                  healthcare: "Register with national health insurance system",
+                  banking:
+                    "Open local bank account for salary and transactions",
+                  tax_id:
+                    "Obtain tax identification and social security number",
+                  telecom: "Set up mobile phone and internet connection",
+                  transport:
+                    "Register for public transport and driver's license",
+                  integration_program:
+                    "Enroll in language and cultural integration program",
+                };
+                const description = descriptions[service.service_type];
 
-          {/* Service Footer (Date, Notes, Proof) */}
-          {(service.service_date || service.notes || service.proof_document) && (
-            <div className="flex items-center gap-4 pt-3 mt-3 border-t border-slate-100">
-              {/* Completion Date */}
-              {service.service_date && (
-                <div className="text-sm text-slate-600">
-                  <span className="font-medium">Completed:</span>{" "}
-                  {formatDate(service.service_date)}
-                </div>
-              )}
+                const getStatusBadge = (status: string) => {
+                  switch (status) {
+                    case "completed":
+                      return {
+                        color: "bg-green-100 text-green-700 border-green-200",
+                        icon: <CheckCircle className="w-4 h-4" />,
+                        label: "Completed",
+                      };
+                    case "in_progress":
+                      return {
+                        color:
+                          "bg-yellow-100 text-yellow-700 border-yellow-200",
+                        icon: <Clock className="w-4 h-4" />,
+                        label: "In Progress",
+                      };
+                    default:
+                      return {
+                        color: "bg-slate-100 text-slate-600 border-slate-200",
+                        icon: <Clock className="w-4 h-4" />,
+                        label: "Pending",
+                      };
+                  }
+                };
 
-              {/* Notes */}
-              {service.notes && (
-                <div className="flex-1 text-sm text-slate-600 truncate">
-                  <span className="font-medium">Note:</span> {service.notes}
-                </div>
-              )}
+                const statusBadge = getStatusBadge(service.status);
 
-              {/* Proof Document */}
-              {service.proof_document && (
-                <a
-                  href={service.proof_document}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shrink-0"
-                >
-                  <Download className="w-4 h-4" />
-                  Proof
-                </a>
-              )}
+                return (
+                  <div
+                    key={service.service_id}
+                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div
+                        className={`p-2 rounded-lg ${
+                          service.status === "completed"
+                            ? "bg-green-100"
+                            : service.status === "in_progress"
+                            ? "bg-yellow-100"
+                            : "bg-slate-200"
+                        }`}
+                      >
+                        <Icon
+                          className={`w-5 h-5 ${
+                            service.status === "completed"
+                              ? "text-green-600"
+                              : service.status === "in_progress"
+                              ? "text-yellow-600"
+                              : "text-slate-600"
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700">
+                          {label}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {description}
+                        </p>
+                        {service.service_date && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            Completed: {formatDate(service.service_date)}
+                          </p>
+                        )}
+                        {service.notes && (
+                          <p className="text-xs text-slate-600 mt-1 italic">
+                            Note: {service.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${statusBadge.color}`}
+                      >
+                        {statusBadge.icon}
+                        {statusBadge.label}
+                      </span>
+
+                      {service.proof_document && (
+                        <a
+                          href={service.proof_document}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                          title="View Proof"
+                        >
+                          <Download className="w-4 h-4 text-slate-600" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </motion.div>
-      );
-    })
-  )}
-</div>
         </div>
       </div>
 
       {/* Right Column - Agency Selection & Checklist (1/3 width) */}
       <div className="lg:col-span-1 space-y-6">
-        {/* Agency Info Card (show if agency assigned) */}
+        {/* Integration Agency Info Card */}
         {caseData.integrationAgency && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Building2 className="w-5 h-5 text-blue-600" />
               </div>
-              <h3 className="font-bold text-slate-800">Integration Agency</h3>
-            </div>
-
+              Your Integration Agency
+            </h2>
             <div className="space-y-3">
-              <div>
-                <p className="text-sm text-slate-500">Agency Name</p>
-                <p className="font-semibold text-slate-800">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 font-medium mb-1">
+                  Agency Name
+                </p>
+                <p className="text-sm font-semibold text-blue-900">
                   {caseData.integrationAgency.name}
                 </p>
               </div>
-
               {caseData.integrationAgency.email && (
-                <div>
-                  <p className="text-sm text-slate-500">Email</p>
-                  <p className="text-sm text-slate-700">
-                    {caseData.integrationAgency.email}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Mail className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Contact Email
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.integrationAgency.email}
+                    </p>
+                  </div>
                 </div>
               )}
-
               {caseData.integrationAgency.phone && (
-                <div>
-                  <p className="text-sm text-slate-500">Phone</p>
-                  <p className="text-sm text-slate-700">
-                    {caseData.integrationAgency.phone}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Phone Number
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.integrationAgency.phone}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Integration Checklist Card (sticky, always visible) */}
-        <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200 shadow-sm sticky top-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-4">
+        {/* Integration Checklist Card */}
+        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-3">
             Integration Checklist
           </h3>
 
-          {/* Checklist Items */}
-          <div className="space-y-2 mb-4">
+          <ul className="space-y-2">
             {Object.entries(serviceLabels).map(([type, label]) => {
               const service = services.find((s) => s.service_type === type);
               const isCompleted = service?.status === "completed";
 
               return (
-                <div key={type} className="flex items-center gap-3 text-sm">
+                <li key={type} className="flex items-center gap-2 text-sm">
                   {isCompleted ? (
-                    <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                   ) : (
-                    <Clock className="w-5 h-5 text-slate-400 shrink-0" />
+                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
                   )}
                   <span
                     className={
                       isCompleted
-                        ? "text-slate-700 line-through"
-                        : "text-slate-600"
+                        ? "text-slate-700 font-medium"
+                        : "text-slate-500"
                     }
                   >
                     {label}
                   </span>
-                </div>
+                </li>
               );
             })}
-          </div>
-
-          {/* Progress Summary */}
-          <div className="pt-4 border-t border-blue-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-700">
-                Progress
-              </span>
-              <span className="text-sm font-bold text-blue-600">
-                {completedServices.length} / {services.length} completed
-              </span>
-            </div>
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Celebration Banner */}
-          {allServicesComplete && (
-            <div className="mt-4 bg-green-100 border border-green-300 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-green-700">
-                <Sparkles className="w-5 h-5" />
-                <p className="font-semibold text-sm">Fully Integrated! 🎉</p>
-              </div>
-            </div>
-          )}
+          </ul>
         </div>
       </div>
     </motion.div>
