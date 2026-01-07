@@ -321,6 +321,9 @@ model CompanyJob {
   auto_reject_after    Int? // Days after which to auto-reject
   screening_questions  String[] // Custom screening questions
 
+  min_profile_score Float?   // e.g. 70
+  required_fields   String[] @default([]) // e.g. ["resume_url","headline"]
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -335,6 +338,10 @@ model CompanyJob {
   interviewSchedules InterviewSchedule[] // Added relation without fields/references
 
   employerAssessments EmployerAssessment[] @relation("JobAssessments")
+
+  @@index([status])
+  @@index([experience_level])
+  @@index([created_at])
 }
 
 // JOB STATUS enum 
@@ -347,11 +354,22 @@ enum JobStatus {
   ARCHIVED
 }
 
+enum JobApplicationStatus {
+  APPLIED
+  ASSESSMENT_REQUIRED
+  INTERVIEW_REQUIRED
+  SCREENING
+  SHORTLISTED
+  OFFERED
+  HIRED
+  REJECTED
+}
+
 model JobApplication {
   application_id String   @id @default(uuid())
   candidate_id   String
   job_id         String
-  status         String // applied, screening, shortlisted, interviewed, offered, hired, rejected
+  status         JobApplicationStatus @default(APPLIED)
   cover_letter   String?
   applied_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
@@ -373,6 +391,11 @@ model JobApplication {
   job                CompanyJob          @relation(fields: [job_id], references: [job_id]) // Changed relation
   interview          AIInterviewResult?
   interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
+
+  @@unique([candidate_id, job_id])
+  @@index([candidate_id])
+  @@index([job_id])
+  @@index([status])
 }
 
 model CandidateProgressTracker {
@@ -599,12 +622,20 @@ model JobRecommendation {
   location_match    Float?
   experience_match  Float?
   ai_reasoning      String?
+    
+  // Do not touch
+  is_eligible     Boolean  @default(false)
+  reason_codes    String[] @default([])   // ["PROFILE_NOT_READY","MISSING_FIELD:resume_url","MISSING_SKILL:nodejs"]
+  missing_skills  String[] @default([])   // ["nodejs","postgresql"]
+
   is_viewed         Boolean    @default(false)
   is_applied        Boolean    @default(false)
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt
   candidate         User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job               CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+
+  @@unique([candidate_id, job_id]) // IMPORTANT (1 rec per candidate per job)
 }
 
 model JobVector {

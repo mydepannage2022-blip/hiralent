@@ -1,0 +1,6 @@
+services:
+  matching-candidate-job:
+    build: .
+    env_file: .env
+    ports:
+      - "8010:8010"
