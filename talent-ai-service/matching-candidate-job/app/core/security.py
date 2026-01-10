@@ -1,5 +1,5 @@
 from fastapi import Header, HTTPException
-from .config import settings
+from .settings import settings
 
 def require_internal_key(x_service_key: str = Header(default="")):
     if not settings.SERVICE_API_KEY:
