@@ -1851,32 +1851,6 @@ const QuestionBankPage: React.FC = () => {
            <p className="text-xs text-gray-600">
                   {stats.total} questions • {stats.coding} coding • {stats.mcq} MCQ
                 </p>
-
-
-              <div className="flex items-center bg-gray-100 rounded-sm p-1">
-                <button
-                  onClick={() => setQuestionSource("mine")}
-                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
-                    questionSource === "mine"
-                      ? "bg-white text-[#1B73E8] shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  My Questions
-                </button>
-                <button
-                  onClick={() => setQuestionSource("library")}
-                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
-                    questionSource === "library"
-                      ? "bg-white text-[#1B73E8] shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  <Library className="w-3.5 h-3.5" />
-                  Library
-                </button>
-              </div>
         </div>
 
 
@@ -2224,6 +2198,33 @@ const QuestionBankPage: React.FC = () => {
                 <div><h3 className="text-sm">Question Database</h3><p className="text-[10px] text-blue-100">Showing {paginatedQuestions.length} of {filteredQuestions.length} results</p></div>
               </div>
               <div className="flex items-center gap-1.5 text-white/90"><SlidersHorizontal className="w-3.5 h-3.5" /><span className="text-[10px] font-medium">{filteredQuestions.length} Total</span></div>
+
+              <div className="flex items-center rounded-sm p-1 border border-white">
+                <button
+                  onClick={() => setQuestionSource("mine")}
+                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
+                    questionSource === "mine"
+                      ? "bg-white text-[#1B73E8] shadow-sm"
+                      : "text-white"
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  My Questions
+                </button>
+                <button
+                  onClick={() => setQuestionSource("library")}
+                  className={`px-4 py-2 rounded-sm text-xs  transition-all flex items-center gap-2 ${
+                    questionSource === "library"
+                      ? "bg-white text-[#1B73E8] shadow-sm"
+                      : "text-white"
+                  }`}
+                >
+                  <Library className="w-3.5 h-3.5" />
+                  Library
+                </button>
+              </div>
+
+
             </div>
 
             <div className="overflow-x-auto">

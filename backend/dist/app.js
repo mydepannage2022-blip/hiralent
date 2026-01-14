@@ -48,6 +48,12 @@ const execution_routes_1 = __importDefault(require("./routes/execution.routes"))
 const insights_routes_1 = __importDefault(require("./routes/insights.routes"));
 const job_routes_1 = __importDefault(require("./routes/job.routes"));
 const employerAssessment_routes_1 = __importDefault(require("./routes/employerAssessment.routes"));
+const skillRadar_routes_1 = __importDefault(require("./routes/skillRadar.routes"));
+const mockAssessment_routes_1 = __importDefault(require("./routes/mockAssessment.routes"));
+const compete_routes_1 = __importDefault(require("./routes/compete.routes"));
+const subscription_routes_1 = __importDefault(require("./routes/subscription.routes"));
+const scraping_routes_1 = __importDefault(require("./routes/scraping/scraping.routes"));
+const internal_routes_1 = __importDefault(require("./routes/internal.routes"));
 // Mount routes
 app.use("/api/v1/agency", agency_routes_1.default);
 app.use('/api/v1/admin', admin_agency_routes_1.default);
@@ -59,6 +65,10 @@ app.use('/api/ocr', ocr_routes_1.default);
 app.use('/api/v1/verification/run', verification_run_routes_1.default);
 app.use('/api/v1/auth/sessions', auth_routes_1.default);
 app.use('/api/v1/messages', message_routes_1.default);
+app.use((req, res, next) => {
+    console.log(`🌐 ${req.method} ${req.path}`);
+    next();
+});
 //Question Bank
 app.use('/api/questions', question_routes_1.default);
 // Submission endpoints (create, fetch)
@@ -77,6 +87,8 @@ if (process.env.NODE_ENV !== 'production') {
         console.warn('Dev routes not available:', e.message);
     }
 }
+//scraping route
+app.use("/api/v1/scraping/scheduler", scraping_routes_1.default);
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
 app.use('/api/v1/admin', admin_auth_routes_1.default);
 app.use('/api/v1/admin', admin_verification_routes_1.default);
@@ -84,6 +96,12 @@ app.use('/api/v1', insights_routes_1.default);
 app.use('/api/v1', insights_routes_1.default);
 app.use('/api/v1', job_routes_1.default);
 app.use('/api/v1/employer-assessments', employerAssessment_routes_1.default);
+app.use("/api/v1", skillRadar_routes_1.default);
+app.use("/api/v1", mockAssessment_routes_1.default);
+app.use("/api/v1/compete-challenges", compete_routes_1.default);
+app.use('/api/v1/subscription', subscription_routes_1.default);
+//Scraping Candidates
+app.use("/internal", internal_routes_1.default);
 app.get('/', (req, res) => {
     res.send("Backend running successfully");
 });

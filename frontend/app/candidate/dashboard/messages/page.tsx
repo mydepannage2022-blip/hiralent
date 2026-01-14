@@ -22,7 +22,7 @@ const MessagePage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-full">
         <div className="text-gray-500">Please log in to access messages</div>
       </div>
     );

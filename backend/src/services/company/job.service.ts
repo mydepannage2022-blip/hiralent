@@ -266,13 +266,30 @@ export async function listJobs(
 
   const [total_count, rows] = await Promise.all([
     prisma.companyJob.count({ where }),
-    prisma.companyJob.findMany({
-      where,
-      orderBy: { [sort_by]: sort_order },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-  ]);
+      prisma.companyJob.findMany({
+        where,
+        include: {
+          company: {
+            select: {
+              user_id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+          companyProfile: {
+            select: {
+              company_name: true,
+              logo_url: true,
+              industry: true,
+              website: true,
+            },
+          },
+        },
+        orderBy: { [sort_by]: sort_order },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+   ]);
 
   const total_pages = Math.max(1, Math.ceil(total_count / limit));
 
@@ -353,3 +370,5 @@ export const jobService = {
 };
 
 export default jobService;
+
+

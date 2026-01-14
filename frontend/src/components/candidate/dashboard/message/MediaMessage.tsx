@@ -1,6 +1,6 @@
 // src/components/candidate/dashboard/message/MediaMessage.tsx
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect , useMemo } from "react";
 import { Play, Download, Maximize } from "lucide-react";
 import MessageActions from "./MessageActions";
 import EmojiPicker from "emoji-picker-react";
@@ -22,7 +22,7 @@ interface LegacyMessage {
 }
 
 interface MediaMessageProps {
-  msg: LegacyMessage; // Changed from Message to LegacyMessage
+  msg: LegacyMessage;
   onPreview?: (media: { type: "image" | "video"; src: string }) => void;
   reaction?: string;
   onReply?: () => void;
@@ -31,7 +31,7 @@ interface MediaMessageProps {
   onCopy?: () => void;
 }
 
-export default function MediaMessage({
+function MediaMessage({
   msg,
   onPreview,
   reaction,
@@ -43,13 +43,14 @@ export default function MediaMessage({
   const isMine = msg.sender === "me";
   const isVideo = msg.type === "video";
   
+  const imageUrl = useMemo(() => msg.text, [msg.text]);
   const [showReactBar, setShowReactBar] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "➕"];
 
-  // Close picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
@@ -59,6 +60,7 @@ export default function MediaMessage({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  
 
   const handlePreview = () => {
     if (onPreview) {
@@ -78,7 +80,6 @@ export default function MediaMessage({
     document.body.removeChild(link);
   };
 
-  // Reply bubble
   const ReplyBubble = () =>
     msg.replyTo ? (
       <div
@@ -105,20 +106,22 @@ export default function MediaMessage({
     ) : null;
 
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4 px-2 sm:px-0`}>
       <div
-        className={`group rounded-xl max-w-[70%] relative ${
+        className={`rounded-xl max-w-[85%] sm:max-w-[70%] relative isolate ${
           isMine
             ? "bg-[#EFF5FF] rounded-br-none"
             : "bg-[#F9F9F9] rounded-bl-none"
         }`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
-        {/* Action buttons */}
-        <div
-          className={`absolute top-2 ${
-            isMine ? "-left-16" : "-right-16"
-          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-        >
+        {showActions && (
+          <div
+            className={`absolute top-2 ${
+              isMine ? "-left-12 sm:-left-16" : "-right-12 sm:-right-16"
+            } transition-opacity duration-200 z-[9999]`}
+          >
           <MessageActions
             onReply={onReply}
             onDelete={onDelete}
@@ -126,14 +129,14 @@ export default function MediaMessage({
             onCopy={onCopy}
             isMine={isMine}
           />
-        </div>
+          </div>
+        )}
 
-        {/* Reaction picker */}
         {showReactBar && (
           <div
-            className={`absolute ${
-              isMine ? "left-2" : "right-2"
-            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+            className={`fixed ${
+              isMine ? "left-4" : "right-4"
+            } top-1/2 -translate-y-1/2 bg-white shadow-xl rounded-full px-2 py-1 flex gap-1 z-[10000] border border-gray-200`}
           >
             {emojis.map((emoji, idx) => (
               <button
@@ -154,13 +157,12 @@ export default function MediaMessage({
           </div>
         )}
 
-        {/* Emoji picker */}
         {showPicker && (
           <div
             ref={pickerRef}
-            className={`absolute ${
-              isMine ? "left-2" : "right-2"
-            } -top-80 z-20`}
+            className={`fixed ${
+              isMine ? "left-4" : "right-4"
+            } top-1/2 -translate-y-1/2 z-[10001] max-w-[90vw] sm:max-w-none`}
           >
             <EmojiPicker
               onEmojiClick={(emojiObj) => {
@@ -173,14 +175,12 @@ export default function MediaMessage({
         )}
 
         <div className="p-1">
-          {/* Reply bubble */}
           {msg.replyTo && (
             <div className="px-3 pt-2">
               <ReplyBubble />
             </div>
           )}
 
-          {/* Media content */}
           <div className="relative">
             {isVideo ? (
               <video
@@ -199,10 +199,10 @@ export default function MediaMessage({
                 onLoad={() => setIsLoaded(true)}
                 onClick={handlePreview}
                 style={{ maxHeight: "300px" }}
+                loading="lazy"
               />
             )}
 
-            {/* Video play overlay */}
             {isVideo && (
               <div
                 className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg cursor-pointer"
@@ -214,7 +214,6 @@ export default function MediaMessage({
               </div>
             )}
 
-            {/* Media controls */}
             {isLoaded && (
               <div className="absolute top-2 right-2 flex gap-1">
                 <button
@@ -234,7 +233,6 @@ export default function MediaMessage({
               </div>
             )}
 
-            {/* Loading overlay */}
             {!isLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -242,20 +240,17 @@ export default function MediaMessage({
             )}
           </div>
 
-          {/* Caption if exists */}
           {msg.fileName && (
             <div className="px-3 pb-2 pt-1">
               <p className="text-sm text-gray-700">{msg.fileName}</p>
             </div>
           )}
 
-          {/* Timestamp */}
           <div className="px-3 pb-2 flex justify-end">
             <span className="text-xs text-gray-500">{msg.timestamp}</span>
           </div>
         </div>
 
-        {/* Reaction display */}
         {reaction && (
           <div className="absolute -bottom-2 -right-2 bg-white border border-gray-200 rounded-full px-1 text-sm">
             {reaction}
@@ -265,3 +260,11 @@ export default function MediaMessage({
     </div>
   );
 }
+
+export default React.memo(MediaMessage, (prevProps, nextProps) => {
+  return (
+    prevProps.msg.id === nextProps.msg.id &&
+    prevProps.reaction === nextProps.reaction &&
+    prevProps.msg.text === nextProps.msg.text
+  );
+});

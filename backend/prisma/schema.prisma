@@ -133,7 +133,7 @@ model User {
   generatedContents         GeneratedContent[]        @relation("GeneratedContent")
   aiFeedbacks               AIFeedback[]              @relation("AIFeedback")
   uploadedDocuments         UploadedDocument[]        @relation("UserUploadedDocuments")
-
+  reactions            MessageReaction[]   @relation("UserReactions") 
   companyAssessments EmployerAssessment[] @relation("CompanyAssessments")
   // Removed candidateAssessments (invalid inverse)
   // Removed competeChallenges (invalid inverse)
@@ -1658,9 +1658,29 @@ model Message {
   sender       User         @relation("UserMessages", fields: [sender_id], references: [user_id])
   reply_to     Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
   replies      Message[]    @relation("MessageReplies")
+  reactions    MessageReaction[]
 
   @@map("messages")
 }
+
+// Add this after the Message model (around line 1663)
+
+model MessageReaction {
+  reaction_id   String   @id @default(uuid())
+  message_id    String
+  user_id       String
+  emoji         String
+  created_at    DateTime @default(now())
+  
+  message       Message  @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  user          User     @relation("UserReactions", fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@unique([message_id, user_id])
+  @@index([message_id])
+  @@index([user_id])
+  @@map("message_reactions")
+}
+
 
   // Code execution submissions used by the runner and worker
   model CodeSubmission {

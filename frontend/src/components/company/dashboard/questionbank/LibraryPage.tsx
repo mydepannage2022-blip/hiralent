@@ -68,8 +68,8 @@ const CATEGORIES = [
   { id: 'business', label: 'Business', icon: Briefcase },
 ];
 
-const panel = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
-const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold";
+const panel = "rounded-sm border border-gray-200/70 bg-white shadow-sm";
+const pill = "inline-flex items-center gap-1 px-3 py-2 rounded-sm text-[12px] ";
 
 // Professional Text Formatter Component (HackerRank-style)
 function FormattedProblemText({ text }: { text: string }) {
@@ -141,7 +141,7 @@ function FormattedProblemText({ text }: { text: string }) {
       if (trimmed.endsWith(':') && trimmed.length < 100) {
         elements.push(
           <h4 key={idx} className="text-base font-bold text-gray-900 mt-5 mb-2 flex items-center gap-2">
-            <div className="w-1 h-5 bg-[#1B73E8] rounded-full"></div>
+            <div className="w-1 h-5 bg-[#1B73E8] rounded-sm"></div>
             {formattedLine}
           </h4>
         );
@@ -236,7 +236,7 @@ function QuestionDetailModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`${panel} relative w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl`}
+            className={`${panel} relative w-full h-full overflow-hidden flex flex-col shadow-2xl`}
           >
             {/* Header with Hiralent Blue Gradient */}
             <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1565D8] to-[#1557B0] text-white">
@@ -275,7 +275,7 @@ function QuestionDetailModal({
                   </h2>
                   <div className="flex flex-wrap gap-1.5">
                     {question.skillTags?.map(tag => (
-                      <span key={tag} className="px-2.5 py-1 bg-white/20 text-white rounded-md text-[10px] font-semibold border border-white/30 backdrop-blur-sm">
+                      <span key={tag} className="px-2.5 py-1 bg-white/20 text-white rounded-sm text-[10px] font-semibold border border-white/30 backdrop-blur-sm">
                         #{tag}
                       </span>
                     ))}
@@ -284,7 +284,7 @@ function QuestionDetailModal({
 
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
+                  className="p-2 hover:bg-white/20 rounded-sm transition-colors backdrop-blur-sm"
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>
@@ -297,7 +297,7 @@ function QuestionDetailModal({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setActiveTab('description')}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    className={`px-4 py-2 rounded-sm text-xs font-semibold transition-all ${
                       activeTab === 'description'
                         ? 'bg-[#1B73E8] text-white shadow-md'
                         : 'text-gray-600 hover:bg-gray-100'
@@ -311,7 +311,7 @@ function QuestionDetailModal({
                   {question.canonicalSolution && (
                     <button
                       onClick={() => setActiveTab('solution')}
-                      className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      className={`px-4 py-2 rounded-sm text-xs font-semibold transition-all ${
                         activeTab === 'solution'
                           ? 'bg-[#1B73E8] text-white shadow-md'
                           : 'text-gray-600 hover:bg-gray-100'
@@ -326,7 +326,7 @@ function QuestionDetailModal({
                   {testCases.length > 0 && (
                     <button
                       onClick={() => setActiveTab('test-cases')}
-                      className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      className={`px-4 py-2 rounded-sm text-xs font-semibold transition-all ${
                         activeTab === 'test-cases'
                           ? 'bg-[#1B73E8] text-white shadow-md'
                           : 'text-gray-600 hover:bg-gray-100'
@@ -351,7 +351,7 @@ function QuestionDetailModal({
               {isMCQ && (
                 <div className="space-y-6">
                   {/* Description with Professional Formatting */}
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                  <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-6">
                     <FormattedProblemText text={question.problemStatement || question.description} />
                   </div>
 
@@ -368,14 +368,14 @@ function QuestionDetailModal({
                           return (
                             <div
                               key={key}
-                              className={`p-4 rounded-xl border-2 transition-all shadow-sm ${
+                              className={`p-4 rounded-sm border-2 transition-all shadow-sm ${
                                 isCorrect
                                   ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-400'
                                   : 'bg-white border-gray-200 hover:border-gray-300'
                               }`}
                             >
                               <div className="flex items-start gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shadow-sm ${
+                                <div className={`w-8 h-8 rounded-sm flex items-center justify-center text-xs font-bold shadow-sm ${
                                   isCorrect
                                     ? 'bg-emerald-500 text-white'
                                     : 'bg-gray-100 text-gray-700'
@@ -406,7 +406,7 @@ function QuestionDetailModal({
                         <Info className="w-4 h-4 text-[#1B73E8]" />
                         Explanation
                       </h3>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm p-6">
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-sm border border-blue-200 shadow-sm p-6">
                         <FormattedProblemText text={question.explanation} />
                       </div>
                     </div>
@@ -419,7 +419,7 @@ function QuestionDetailModal({
                 <div className="space-y-6">
                   {/* Description Tab - Professional HackerRank Format */}
                   {activeTab === 'description' && (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-6">
                       <FormattedProblemText text={question.problemStatement || question.description} />
                     </div>
                   )}
@@ -434,7 +434,7 @@ function QuestionDetailModal({
                         </h3>
                         <button
                           onClick={handleCopyCode}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-sm text-xs font-semibold transition-all shadow-sm"
                         >
                           {copiedCode ? (
                             <>
@@ -449,12 +449,12 @@ function QuestionDetailModal({
                           )}
                         </button>
                       </div>
-                      <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-300">
+                      <div className="relative rounded-sm overflow-hidden shadow-lg border border-gray-300">
                         <div className="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center gap-2">
                           <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <div className="w-3 h-3 rounded-sm bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-sm bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-sm bg-green-500"></div>
                           </div>
                           <span className="text-xs text-gray-400 ml-2">solution.py</span>
                         </div>
@@ -476,22 +476,22 @@ function QuestionDetailModal({
                       </h3>
                       <div className="space-y-3">
                         {testCases.map((tc: any, index: number) => (
-                          <div key={index} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                          <div key={index} className="p-4 bg-white rounded-sm border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center gap-2 mb-3">
-                              <span className="px-2.5 py-1 bg-[#1B73E8] text-white rounded-lg text-[10px] font-bold shadow-sm">
+                              <span className="px-2.5 py-1 bg-[#1B73E8] text-white rounded-sm text-[10px] font-bold shadow-sm">
                                 Test Case {index + 1}
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <div className="text-[10px] font-bold text-[#1B73E8] mb-2 uppercase tracking-wide">Input:</div>
-                                <pre className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 font-mono overflow-x-auto">
+                                <pre className="p-3 bg-gray-50 rounded-sm border border-gray-200 text-xs text-gray-800 font-mono overflow-x-auto">
                                   {typeof tc.input === 'object' ? JSON.stringify(tc.input, null, 2) : tc.input}
                                 </pre>
                               </div>
                               <div>
                                 <div className="text-[10px] font-bold text-[#1B73E8] mb-2 uppercase tracking-wide">Expected Output:</div>
-                                <pre className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 font-mono overflow-x-auto">
+                                <pre className="p-3 bg-gray-50 rounded-sm border border-gray-200 text-xs text-gray-800 font-mono overflow-x-auto">
                                   {typeof tc.output === 'object' ? JSON.stringify(tc.output, null, 2) : tc.output || tc.expected_output}
                                 </pre>
                               </div>
@@ -513,21 +513,21 @@ function QuestionDetailModal({
                   </h3>
                   <div className="grid grid-cols-3 gap-4">
                     {question.views && (
-                      <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                      <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-sm border border-blue-200 shadow-sm">
                         <Eye className="w-5 h-5 text-[#1B73E8] mx-auto mb-2" />
                         <div className="text-2xl font-black text-[#1B73E8]">{question.views}</div>
                         <div className="text-[10px] text-gray-600 mt-1 font-semibold">Views</div>
                       </div>
                     )}
                     {question.submissions && (
-                      <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200 shadow-sm">
+                      <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-sm border border-purple-200 shadow-sm">
                         <Code2 className="w-5 h-5 text-purple-600 mx-auto mb-2" />
                         <div className="text-2xl font-black text-purple-600">{question.submissions}</div>
                         <div className="text-[10px] text-gray-600 mt-1 font-semibold">Submissions</div>
                       </div>
                     )}
                     {question.successRate && (
-                      <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-200 shadow-sm">
+                      <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-sm border border-emerald-200 shadow-sm">
                         <Award className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
                         <div className="text-2xl font-black text-emerald-600">{question.successRate}%</div>
                         <div className="text-[10px] text-gray-600 mt-1 font-semibold">Success Rate</div>
@@ -542,7 +542,7 @@ function QuestionDetailModal({
             <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-gray-600">
                 {question.source && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-sm">
                     <Database className="w-3.5 h-3.5 text-[#1B73E8]" />
                     <span className="font-medium">{question.source}</span>
                   </div>
@@ -551,18 +551,18 @@ function QuestionDetailModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-lg border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all"
+                  className="px-5 py-2.5 rounded-sm border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all"
                 >
                   Close
                 </button>
                 <button
                   onClick={onAdd}
                   disabled={isAdding}
-                  className="px-5 py-2.5 rounded-lg bg-[#1B73E8] hover:bg-[#1557B0] text-white text-xs font-semibold transition-all disabled:opacity-60 flex items-center gap-1.5 shadow-md hover:shadow-lg"
+                  className="px-5 py-2.5 rounded-sm bg-[#1B73E8] hover:bg-[#1557B0] text-white text-xs font-semibold transition-all disabled:opacity-60 flex items-center gap-1.5 shadow-md hover:shadow-lg"
                 >
                   {isAdding ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-sm animate-spin" />
                       Adding...
                     </>
                   ) : (
@@ -703,16 +703,13 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div className="h-full bg-gray-50">
+      <div className="">
         
         {/* Compact Header */}
         <div className={`${panel} px-5 py-4 mb-5`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1B73E8] rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">Question Library</h1>
                 <p className="text-xs text-gray-600">
@@ -723,21 +720,21 @@ export default function LibraryPage() {
 
             {/* Compact Stats */}
             <div className="hidden md:flex items-center gap-2">
-              <div className={`${pill} bg-indigo-50 text-indigo-700 border border-indigo-200`}>
+              <div className={`${pill} border border-indigo-200`}>
                 <Code2 className="w-3 h-3" />
                 {stats.coding}
               </div>
-              <div className={`${pill} bg-purple-50 text-purple-700 border border-purple-200`}>
+              <div className={`${pill} border border-purple-200`}>
                 <FileText className="w-3 h-3" />
                 {stats.mcq}
               </div>
-              <div className={`${pill} bg-emerald-50 text-emerald-700 border border-emerald-200`}>
+              <div className={`${pill} border border-emerald-200`}>
                 {stats.easy}
               </div>
-              <div className={`${pill} bg-amber-50 text-amber-700 border border-amber-200`}>
+              <div className={`${pill} border-amber-200`}>
                 {stats.medium}
               </div>
-              <div className={`${pill} bg-rose-50 text-rose-700 border border-rose-200`}>
+              <div className={`${pill} border-rose-200`}>
                 {stats.hard}
               </div>
             </div>
@@ -762,7 +759,7 @@ export default function LibraryPage() {
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-between ${
+                      className={`w-full px-3 py-2 rounded-sm text-xs font-medium transition-all flex items-center justify-between ${
                         isActive
                           ? 'bg-[#1B73E8] text-white shadow-sm'
                           : 'text-gray-700 hover:bg-gray-100'
@@ -785,7 +782,7 @@ export default function LibraryPage() {
               {/* Filters */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="w-full mt-4 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 flex items-center justify-between"
+                className="w-full mt-4 px-3 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 flex items-center justify-between"
               >
                 <div className="flex items-center gap-2">
                   <Filter className="w-3.5 h-3.5" />
@@ -808,7 +805,7 @@ export default function LibraryPage() {
                         <select
                           value={selectedDifficulty}
                           onChange={(e) => setSelectedDifficulty(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8]"
+                          className="w-full px-2.5 py-1.5 rounded-sm border border-gray-200 text-xs focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8]"
                         >
                           <option value="">All</option>
                           <option value="easy">Easy</option>
@@ -822,7 +819,7 @@ export default function LibraryPage() {
                         <select
                           value={selectedType}
                           onChange={(e) => setSelectedType(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8]"
+                          className="w-full px-2.5 py-1.5 rounded-sm border border-gray-200 text-xs focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8]"
                         >
                           <option value="">All</option>
                           <option value="coding">Coding</option>
@@ -836,7 +833,7 @@ export default function LibraryPage() {
                             setSelectedDifficulty('');
                             setSelectedType('');
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-semibold flex items-center justify-center gap-1"
+                          className="w-full px-2.5 py-1.5 rounded-sm bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-semibold flex items-center justify-center gap-1"
                         >
                           <X className="w-3 h-3" />
                           Clear
@@ -860,7 +857,7 @@ export default function LibraryPage() {
                   placeholder="Search questions..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8] outline-none"
+                  className="w-full pl-10 pr-4 py-2 rounded-sm border border-gray-200 text-sm focus:ring-1 focus:ring-[#1B73E8] focus:border-[#1B73E8] outline-none"
                 />
               </div>
             </div>
@@ -895,7 +892,7 @@ export default function LibraryPage() {
                     setSelectedDifficulty('');
                     setSelectedType('');
                   }}
-                  className="px-4 py-2 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-xs font-medium"
+                  className="px-4 py-2 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-sm text-xs font-medium"
                 >
                   Reset Filters
                 </button>
@@ -1068,11 +1065,11 @@ function QuestionCard({
         <button
           onClick={onAdd}
           disabled={isAdding}
-          className="flex-1 px-3 py-1.5 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-lg text-[10px] font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-1"
+          className="flex-1 px-3 py-1.5 bg-[#1B73E8] hover:bg-[#1557B0] text-white rounded-sm text-[10px] font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-1"
         >
           {isAdding ? (
             <>
-              <span className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              <span className="w-3 h-3 border-2 border-white/50 border-t-white rounded-sm animate-spin" />
               Adding...
             </>
           ) : (
@@ -1085,7 +1082,7 @@ function QuestionCard({
         
         <button 
           onClick={onView}
-          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-sm transition-colors"
         >
           <Eye className="w-3.5 h-3.5 text-gray-600" />
         </button>
