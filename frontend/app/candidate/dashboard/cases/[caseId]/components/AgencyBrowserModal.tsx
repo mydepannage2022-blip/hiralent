@@ -23,6 +23,7 @@ interface AgencyBrowserModalProps {
   caseId: string;
   destinationCountry: string;
   onSuccess: () => void;
+  agencyType: "RELOCATION" | "INTEGRATION";
 }
 
 export default function AgencyBrowserModal({
@@ -31,6 +32,7 @@ export default function AgencyBrowserModal({
   caseId,
   destinationCountry,
   onSuccess,
+  agencyType,
 }: AgencyBrowserModalProps) {
   const { token } = useAuth();
   const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -48,7 +50,7 @@ export default function AgencyBrowserModal({
       setLoading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/agencies/browse?type=RELOCATION&country=${destinationCountry}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/agencies/browse?type=${agencyType}&country=${destinationCountry}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -78,8 +80,13 @@ export default function AgencyBrowserModal({
     try {
       setSelecting(true);
 
+      const endpoint =
+        agencyType === "RELOCATION"
+          ? `/candidates/cases/${caseId}/assign-agency`
+          : `/candidates/cases/${caseId}/assign-integration-agency`;
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/assign-agency`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}${endpoint}`,
         {
           method: "POST",
           headers: {
@@ -96,7 +103,13 @@ export default function AgencyBrowserModal({
       }
 
       const data = await response.json();
-      toast.success(data.message || "Housing agency assigned successfully!");
+
+      const successMessage =
+        agencyType === "RELOCATION"
+          ? "Housing agency assigned successfully!"
+          : "Integration agency assigned successfully!";
+
+      toast.success(data.message || successMessage);
       onSuccess(); // Refresh the case data
       onClose(); // Close the modal
     } catch (err) {
@@ -123,9 +136,12 @@ export default function AgencyBrowserModal({
           {/* Header */}
           <div className="sticky top-0 bg-linear-to-r from-blue-600 to-blue-500 text-white p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Choose Housing Agency</h2>
+              Choose {agencyType === "RELOCATION" ? "Housing" : "Integration"}{" "}
+              Agency
               <p className="text-blue-100 text-sm">
-                Select an agency to help you find accommodation in {destinationCountry}
+                {agencyType === "RELOCATION"
+                  ? `Select an agency to help you find accommodation in ${destinationCountry}`
+                  : `Select an agency to help with post-arrival services in ${destinationCountry}`}
               </p>
             </div>
             <button
@@ -152,7 +168,8 @@ export default function AgencyBrowserModal({
                   <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                   <p className="text-slate-600 mb-2">No agencies found</p>
                   <p className="text-sm text-slate-500">
-                    No housing agencies are available in {destinationCountry} at the moment.
+                    No {agencyType.toLowerCase()} agencies are available in{" "}
+                    {destinationCountry} at the moment.
                   </p>
                 </div>
               </div>
@@ -161,8 +178,10 @@ export default function AgencyBrowserModal({
                 <div className="flex items-center gap-2 mb-6">
                   <Building2 className="w-5 h-5 text-blue-600" />
                   <p className="text-sm text-slate-600">
-                    Found <strong>{agencies.length}</strong> approved housing{" "}
-                    {agencies.length === 1 ? "agency" : "agencies"} in {destinationCountry}
+                    Found <strong>{agencies.length}</strong> approved{" "}
+                    {agencyType.toLowerCase()}{" "}
+                    {agencies.length === 1 ? "agency" : "agencies"} in{" "}
+                    {destinationCountry}
                   </p>
                 </div>
 

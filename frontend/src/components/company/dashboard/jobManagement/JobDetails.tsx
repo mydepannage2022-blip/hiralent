@@ -85,10 +85,10 @@ interface CompanyJob {
 const LOGO_BLUE = "#1B73E8";
 
 const panel =
-  "rounded-2xl border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
+  "rounded-sm border border-gray-200/60 bg-white shadow-[0_10px_35px_rgba(14,34,92,0.06)]";
 
 const pill =
-  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border";
+  "inline-flex items-center gap-1 px-3 py-1.5 rounded-sm text-[11px] font-semibold tracking-wide border";
 
 const ScrollShadow: React.FC<{ className?: string; children: React.ReactNode }> =
   ({ className, children }) => (
@@ -111,34 +111,34 @@ function formatEnumNice(v?: string) {
 function statusPillClass(s: JobStatus) {
   switch (s) {
     case "ACTIVE":
-      return "bg-green-50 text-green-700 border-green-200";
+      return "text-[#005edc]";
     case "DRAFT":
-      return "bg-amber-50 text-amber-700 border-amber-200";
+      return "text-[#005edc]";
     case "PAUSED":
-      return "bg-yellow-50 text-yellow-700 border-yellow-200";
+      return "text-[#005edc]";
     case "CLOSED":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "text-[#005edc]";
     case "CANCELLED":
-      return "bg-gray-50 text-gray-700 border-gray-300";
+      return "text-[#005edc]";
     case "ARCHIVED":
-      return "bg-slate-50 text-slate-700 border-slate-200";
+      return "text-[#005edc]";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200";
+      return "text-[#005edc]";
   }
 }
 
 function jobTypePillClass(t?: JobType | null) {
   switch (t) {
     case "full_time":
-      return "bg-blue-50 text-blue-700 border-blue-200";
+      return "text-[#005edc]";
     case "part_time":
-      return "bg-purple-50 text-purple-700 border-purple-200";
+      return "text-[#005edc]";
     case "contract":
-      return "bg-orange-50 text-orange-700 border-orange-200";
+      return "text-[#005edc]";
     case "internship":
-      return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      return "text-[#005edc]";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200";
+      return "text-[#005edc]";
   }
 }
 
@@ -187,7 +187,7 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
         transition={{ type: "spring", damping: 22, stiffness: 260 }}
-        className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-4xl bg-white rounded-lg shadow-2xl overflow-hidden"
       >
         <div className="bg-gradient-to-r from-[#1B73E8] via-[#2064d6] to-[#1557B0] p-6 text-white relative">
           <div className="absolute -right-10 -top-16 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
@@ -195,24 +195,16 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
 
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <motion.div
-                className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shadow-md"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.6 }}
-              >
-                <Plus className="w-5 h-5" />
-              </motion.div>
-
               <div>
                 <div className="inline-flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-white/15 border border-white/20 uppercase font-semibold tracking-wide">
+                  <span className="px-2 py-0.5 text-[11px] rounded-sm bg-white/15 border border-white/20 uppercase font-semibold tracking-wide">
                     AI-powered
                   </span>
-                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-emerald-500/80 text-white font-semibold">
+                  <span className="px-2 py-0.5 text-[11px] rounded-sm bg-emerald-500/80 text-white font-semibold">
                     Recommended
                   </span>
                 </div>
-                <h2 className="text-xl font-bold leading-tight">
+                <h2 className="text-xl font-medium leading-tight">
                   Create Assessment
                 </h2>
                 <p className="text-blue-100 text-sm mt-1">
@@ -239,19 +231,17 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onMethodSelect("JOB_DESCRIPTION_PARSE")}
-              className="w-full p-5 border-2 border-gray-200 rounded-2xl hover:border-blue-400 hover:bg-blue-50/60 transition-all text-left group relative overflow-hidden"
+              className="w-full p-5 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50/60 transition-all text-left group relative overflow-hidden"
             >
               <div className="absolute -right-10 -top-10 w-24 h-24 bg-blue-100/70 rounded-full blur-2xl group-hover:bg-blue-200/80" />
               <div className="relative flex flex-col items-center text-center gap-3 h-full">
                 <motion.div
-                  className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-200"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
+                  className="w-14 h-14 bg-blue-100 rounded-sm flex items-center justify-center group-hover:bg-blue-200"
                 >
-                  <Upload className="w-7 h-7 text-blue-700" />
+                  <Upload className="w-5 h-5 text-blue-700" />
                 </motion.div>
                 <div className="flex-1 flex flex-col gap-1">
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-[15px]">
+                  <h3 className="font-medium text-gray-900 text-sm sm:text-[15px]">
                     From Job Description
                   </h3>
                   <p className="text-xs text-gray-600 leading-relaxed">
@@ -259,7 +249,7 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
                     assessment tailored to this role.
                   </p>
                 </div>
-                <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-sm border border-blue-100">
                   <MessageSquare className="w-3 h-3" />
                   <span>Fast start</span>
                 </div>
@@ -270,19 +260,17 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onMethodSelect("CHATBOT_GUIDED")}
-              className="w-full p-5 border-2 border-gray-200 rounded-2xl hover:border-emerald-400 hover:bg-emerald-50/60 transition-all text-left group relative overflow-hidden"
+              className="w-full p-5 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50/60 transition-all text-left group relative overflow-hidden"
             >
-              <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-100/80 rounded-full blur-2xl group-hover:bg-emerald-200/90" />
+              <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-blue-100/80 rounded-full blur-2xl group-hover:bg-blue-200/90" />
               <div className="relative flex flex-col items-center text-center gap-3 h-full">
                 <motion.div
-                  className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center group-hover:bg-emerald-200"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
+                  className="w-14 h-14 bg-blue-100 rounded-sm flex items-center justify-center group-hover:bg-blue-200"
                 >
-                  <Bot className="w-7 h-7 text-emerald-700" />
+                  <Bot className="w-5 h-5 text-blue-700" />
                 </motion.div>
                 <div className="flex-1 flex flex-col gap-1">
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-[15px]">
+                  <h3 className="font-medium text-gray-900 text-sm sm:text-[15px]">
                     Chat with AI Assistant
                   </h3>
                   <p className="text-xs text-gray-600 leading-relaxed">
@@ -290,7 +278,7 @@ const AssessmentMethodModal: React.FC<AssessmentMethodModalProps> = ({
                     with the AI hiring assistant.
                   </p>
                 </div>
-                <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-sm border border-emerald-100">
                   <MessageSquare className="w-3 h-3" />
                   <span>Fully customizable</span>
                 </div>
@@ -533,20 +521,13 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, y: 20, opacity: 0 }}
         transition={{ type: "spring", damping: 25 }}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-lg shadow-2xl"
       >
         <div className="bg-gradient-to-r from-[#1B73E8] to-[#1557B0] p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <motion.div
-                className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.6 }}
-              >
-                <Edit className="w-5 h-5" />
-              </motion.div>
               <div>
-                <h2 className="text-xl font-bold">Edit Job Posting</h2>
+                <h2 className="text-lg font-medium">Edit Job Posting</h2>
                 <p className="text-blue-100 text-sm">
                   Update the job details and requirements
                 </p>
@@ -567,60 +548,60 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         <ScrollShadow className="max-h-[60vh] overflow-y-auto p-6 custom-scrollbar">
           <form id="edit-job-form" onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm text-gray-700 mb-2">
                 Job Title *
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm text-gray-700 mb-2">
                   Location *
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm text-gray-700 mb-2">
                   Department
                 </label>
                 <input
                   type="text"
                   value={formData.department}
                   onChange={(e) => setFormData((prev) => ({ ...prev, department: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm text-gray-700 mb-2">
                 Job Description *
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm text-gray-700 mb-2">
                 Required Skills & Technologies
               </label>
 
@@ -631,7 +612,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     onKeyDown={handleSkillKeyPress}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Add required skill (e.g., React, Python...)"
                   />
                   <motion.button
@@ -639,7 +620,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={addSkill}
-                    className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold flex items-center gap-2"
+                    className="px-4 py-3 bg-blue-600 text-white rounded-sm flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Add
@@ -653,10 +634,9 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                         key={skill}
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200"
+                        className="flex items-center gap-1 text-blue-700 px-2 py-1 rounded-sm border border-blue-200"
                       >
-                        <Tag className="w-3 h-3" />
-                        <span className="text-sm font-medium">{skill}</span>
+                        <span className="text-sm">{skill}</span>
                         <button
                           type="button"
                           onClick={() => removeSkill(skill)}
@@ -672,7 +652,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm text-gray-700 mb-2">
                 Screening Questions
               </label>
 
@@ -683,7 +663,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     value={newQuestion}
                     onChange={(e) => setNewQuestion(e.target.value)}
                     onKeyDown={handleQuestionKeyPress}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Add screening question for applicants"
                   />
                   <motion.button
@@ -691,7 +671,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={addQuestion}
-                    className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold flex items-center gap-2"
+                    className="px-4 py-3 bg-blue-600 text-white rounded-sm flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Add
@@ -705,7 +685,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                         key={q}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start justify-between gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200"
+                        className="flex items-start justify-between gap-2 bg-gray-50 px-3 py-2 rounded-sm border border-gray-200"
                       >
                         <span className="text-sm text-gray-800">{q}</span>
                         <button
@@ -731,7 +711,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onClose}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100"
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-sm hover:bg-gray-100"
             >
               Cancel
             </motion.button>
@@ -742,7 +722,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={loading}
-              className="px-6 py-3 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-3 bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-sm flex items-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <motion.div
@@ -751,7 +731,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                   className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                 />
               ) : (
-                <Save className="w-5 h-5" />
+                <Save className="w-4 h-4" />
               )}
               Save Changes
             </motion.button>
@@ -943,7 +923,7 @@ export default function JobDetails({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="">
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -1015,17 +995,16 @@ export default function JobDetails({ jobId }: { jobId: string }) {
       />
 
       {/* Back (same as AssessmentDetails) */}
-      <div className="max-w-7xl mx-auto px-6 py-5">
+      <div className="my-4">
         <button
           onClick={() => router.push("/company/dashboard/jobManagement")}
-          className="inline-flex items-center gap-2 text-sm font-bold text-[#0D2A5B] hover:text-[#1B73E8]"
+          className="inline-flex items-center gap-1 text-sm text-[#0D2A5B] hover:text-[#1B73E8] "
         >
-          <ChevronLeft className="w-4 h-4" />
-          Back to jobs
-        </button>
+          <ChevronLeft className="w-3 h-3" />
+          Back </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pb-10">
+      <div className="">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <motion.div
@@ -1064,10 +1043,7 @@ export default function JobDetails({ jobId }: { jobId: string }) {
   animate={{ opacity: 1, y: 0 }}
   className={`${panel} overflow-hidden`}
 >
-  <div className="h-1" style={{ background: LOGO_BLUE }} />
-
   <div className="p-6">
-    {/* Row 1: pills left / actions right */}
     <div className="flex items-center justify-between gap-3 flex-wrap">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`${pill} ${statusPillClass(job.status)}`}>
@@ -1089,15 +1065,15 @@ export default function JobDetails({ jobId }: { jobId: string }) {
       <div className="flex items-center gap-2 flex-wrap justify-end">
         <button
           onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-bold flex items-center gap-2"
+          className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center gap-2"
         >
-          <Edit className="w-4 h-4" />
+          <Edit className="w-3 h-3" />
           Edit
         </button>
 
         <button
           onClick={() => setAssessmentMethodModal(true)}
-          className="px-4 py-2 rounded-xl text-white text-sm font-bold flex items-center gap-2"
+          className="px-4 py-2 rounded-sm text-white text-sm flex items-center gap-2"
           style={{ background: LOGO_BLUE }}
         >
           <Plus className="w-4 h-4" />
@@ -1106,43 +1082,43 @@ export default function JobDetails({ jobId }: { jobId: string }) {
 
         <button
           onClick={onDelete}
-          className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold flex items-center gap-2"
+          className="px-4 py-2 rounded-sm border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm flex items-center gap-2"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3 h-3" />
           Delete
         </button>
       </div>
     </div>
 
     {/* Row 2: title */}
-    <h2 className="mt-4 text-2xl font-black text-[#0D2A5B] leading-snug">
+    <h2 className="mt-4 text-xl font-black text-[#0D2A5B] font-medium">
       {job.title}
     </h2>
 
     {/* Row 3: meta grid (tight + no wasted space) */}
     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
       <div className="flex items-center gap-2">
-        <MapPin className="w-4 h-4 text-gray-500" />
+        <MapPin className="w-3 h-3 text-gray-500" />
         {job.location || "—"}
       </div>
 
       <div className="flex items-center gap-2">
-        <DollarSign className="w-4 h-4 text-gray-500" />
+        <DollarSign className="w-3 h-3 text-gray-500" />
         {job.salary_range || "—"}
       </div>
 
       <div className="flex items-center gap-2">
-        <Briefcase className="w-4 h-4 text-gray-500" />
+        <Briefcase className="w-3 h-3 text-gray-500" />
         Experience: {job.experience_level ? formatEnumNice(job.experience_level) : "—"}
       </div>
 
       <div className="flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-gray-500" />
+        <Calendar className="w-3 h-3 text-gray-500" />
         Created {new Date(job.created_at).toLocaleDateString()}
       </div>
 
       <div className="flex items-center gap-2">
-        <Clock className="w-4 h-4 text-gray-500" />
+        <Clock className="w-3 h-3 text-gray-500" />
         Deadline:{" "}
         <span className="font-bold text-gray-900">
           {job.application_deadline
@@ -1159,10 +1135,7 @@ export default function JobDetails({ jobId }: { jobId: string }) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
               <div className={`lg:col-span-2 ${panel} p-5`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <FileText className="w-5 h-5" style={{ color: LOGO_BLUE }} />
-                  </div>
-                  <h4 className="font-black text-[#0D2A5B]">Description</h4>
+                  <h4 className="font-black text-[#0D2A5B] font-medium">Description</h4>
                 </div>
 
                 <div className="rounded-xl p-4 border border-gray-200 bg-white">
@@ -1176,11 +1149,8 @@ export default function JobDetails({ jobId }: { jobId: string }) {
 
               <div className={`${panel} p-5`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                    <Target className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <h4 className="font-black text-[#0D2A5B]">Required Skills</h4>
-                  <span className="ml-auto px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                  <h4 className="font-black text-[#0D2A5B] font-medium">Required Skills</h4>
+                  <span className="ml-auto px-2 py-1 rounded-sm text-xs font-bold  text-[#005edc]">
                     {(job.required_skills || []).length}
                   </span>
                 </div>
@@ -1194,7 +1164,7 @@ export default function JobDetails({ jobId }: { jobId: string }) {
                     {job.required_skills.map((skill) => (
                       <span
                         key={skill}
-                        className="px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold border border-blue-100"
+                        className="px-3 py-2 text-blue-700 rounded-sm text-sm border border-blue-100"
                       >
                         {skill}
                       </span>
@@ -1207,14 +1177,10 @@ export default function JobDetails({ jobId }: { jobId: string }) {
             {/* Screening Questions + Job Settings (extra sections matching AssessmentDetails “Questions” vibe) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
               <div className={`lg:col-span-2 ${panel} overflow-hidden`}>
-                <div className="h-1" style={{ background: LOGO_BLUE }} />
                 <div className="p-5">
                   <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                      <ClipboardList className="w-5 h-5 text-indigo-700" />
-                    </div>
-                    <div className="font-black text-[#0D2A5B]">Screening Questions</div>
-                    <span className="ml-auto px-2 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                    <div className="font-black text-[#0D2A5B] font-medium">Screening Questions</div>
+                    <span className="ml-auto px-2 py-1 rounded-full text-xs font-bold text-[#005edc]">
                       {(job.screening_questions || []).length}
                     </span>
                   </div>
@@ -1246,10 +1212,7 @@ export default function JobDetails({ jobId }: { jobId: string }) {
 
               <div className={`${panel} p-5`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 bg-slate-100 rounded-2xl flex items-center justify-center">
-                    <SettingsIcon />
-                  </div>
-                  <h4 className="font-black text-[#0D2A5B]">Job Settings</h4>
+                  <h4 className="font-black text-[#0D2A5B] font-medium">Job Settings</h4>
                 </div>
 
                 <div className="space-y-3 text-sm text-gray-700">

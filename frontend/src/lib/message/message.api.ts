@@ -93,7 +93,7 @@ export const sendMessage = async (
 
 export const markMessagesAsRead = async (messageIds: string[]): Promise<MessageAPIResponse> => {
   try {
-    const response = await api.put('/messages/messages/read', {
+    const response = await api.put('/messages/read', {
       message_ids: messageIds
     });
     return response.data;
@@ -120,7 +120,7 @@ export const archiveConversation = async (
 
 export const deleteMessage = async (messageId: string): Promise<MessageAPIResponse> => {
   try {
-    const response = await api.delete(`/messages/messages/${messageId}`);
+    const response = await api.delete(`/messages/${messageId}`);
     return response.data;
   } catch (error: any) {
     console.error('Delete message error:', error);
@@ -135,5 +135,61 @@ export const getConversationById = async (conversationId: string): Promise<Messa
   } catch (error: any) {
     console.error('Get conversation error:', error);
     throw new Error(error?.response?.data?.message || 'Failed to get conversation');
+  }
+};
+
+export const addReaction = async (messageId: string, emoji: string): Promise<MessageAPIResponse> => {
+  try {
+    console.log("➕ Adding reaction to message:", messageId, emoji);
+    const response = await api.post(`/messages/${messageId}/reactions`, { emoji });
+    console.log("📥 Add reaction response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Add reaction error:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to add reaction');
+  }
+};
+
+export const removeReaction = async (messageId: string): Promise<MessageAPIResponse> => {
+  try {
+    console.log("➖ Removing reaction from message:", messageId);
+    const response = await api.delete(`/messages/${messageId}/reactions`);
+    console.log("📥 Remove reaction response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Remove reaction error:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to remove reaction');
+  }
+};
+
+export const getReactions = async (messageId: string): Promise<MessageAPIResponse> => {
+  try {
+    const response = await api.get(`/messages/${messageId}/reactions`);
+    console.log("📥 Get reactions response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Get reactions error:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to get reactions');
+  }
+};
+
+export const uploadMessageFile = async (file: File): Promise<MessageAPIResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    console.log("📤 Uploading file:", file.name, file.type, file.size);
+
+    const response = await api.post('/messages/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("📥 Upload response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Upload file error:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to upload file');
   }
 };

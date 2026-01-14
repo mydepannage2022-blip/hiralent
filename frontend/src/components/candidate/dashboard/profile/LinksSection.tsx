@@ -128,21 +128,18 @@ const LinksSection: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+      className="bg-white rounded-sm border border-gray-200 p-6 mb-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Link className="w-2 h-2 lg:w-4 lg:h-4 text-blue-600" />
-          </div>
           <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Links</h3>
         </div>
         
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
           >
             <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
             Edit
@@ -152,7 +149,7 @@ const LinksSection: React.FC = () => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-sm transition-colors disabled:opacity-50"
             >
               <X className="w-2 h-2 lg:w-4 lg:h-4" />
               Cancel
@@ -160,7 +157,7 @@ const LinksSection: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-sm transition-colors disabled:opacity-50"
             >
               <Check className="w-2 h-2 lg:w-4 lg:h-4" />
               {isUpdating ? 'Saving...' : 'Save'}
@@ -180,7 +177,7 @@ const LinksSection: React.FC = () => {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-sm hover:bg-gray-100 transition-colors group"
                 >
                   <span className="text-lg">{getPlatformIcon(link.platform)}</span>
                   <div className="flex-1 min-w-0">
@@ -210,7 +207,7 @@ const LinksSection: React.FC = () => {
         <div className="space-y-4">
           {/* Existing Links */}
           {links.map((link, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg">
+            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-sm">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
                 <select
@@ -252,7 +249,7 @@ const LinksSection: React.FC = () => {
           ))}
 
           {/* Add New Link */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border-2 border-dashed border-gray-300 rounded-sm">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
               <select

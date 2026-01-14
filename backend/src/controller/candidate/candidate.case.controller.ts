@@ -123,6 +123,20 @@ export const getCaseById = async (req: Request, res: Response) => {
           take: 10,
         },
         embassy_submission: true,
+
+        integrationServices: {
+          orderBy: {
+            created_at: 'asc'
+          }
+        },
+        integrationAgency: {
+          select: {
+            agency_id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
       },
     });
 

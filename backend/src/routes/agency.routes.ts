@@ -25,6 +25,7 @@ import {
   updateArrivalDetails,
   markReadyForArrival,
 } from "../controller/agency/agency.housing.controller";
+import { searchCandidatesController } from "../controller/agency/agency.candidate.controller";
 
 const router = Router();
 
@@ -36,6 +37,9 @@ router.get("/application/:id", getApplicationStatus);
 router.get("/dashboard/stats", checkAuth, getDashboardStats);
 router.get("/dashboard/activities", checkAuth, getRecentActivities);
 router.get("/dashboard/analytics", checkAuth, getAnalytics);
+
+// Candidate Search Route 
+router.get("/candidates/search", checkAuth, searchCandidatesController);
 
 // Case Management Routes
 router.post("/cases", checkAuth, createCase);

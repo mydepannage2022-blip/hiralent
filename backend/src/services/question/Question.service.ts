@@ -86,6 +86,7 @@ export class QuestionService {
   /**
    * Créer une nouvelle question
    */
+
 async createQuestion(data: any): Promise<Question> {
   console.log('📝 [SERVICE] createQuestion called - Type:', data.type);
   
@@ -102,7 +103,18 @@ async createQuestion(data: any): Promise<Question> {
       aiGenerated: data.aiGenerated || false,
       source: data.source || 'manual',
       isLibraryQuestion: data.isLibraryQuestion === true,
+      metadata: data.metadata ?? undefined,
+      parameters: data.parameters ?? undefined,
+      generatedFromPattern: data.generatedFromPattern === true,
+      patternKey: data.patternKey ?? undefined,
+      patternDifficultyVariant: data.patternDifficultyVariant ?? undefined,
 
+      //  NEW: Diagram fields
+      hasDiagram: data.hasDiagram ?? false,
+      diagramType: data.diagramType ?? null,
+      diagramCode: data.diagramCode ?? null,
+      diagramImageUrl: data.diagramImageUrl ?? null,
+      diagramMetadata: data.diagramMetadata ?? null
     };
 
     // Handle different question types
@@ -113,7 +125,6 @@ async createQuestion(data: any): Promise<Question> {
       questionData.options = data.options || {};
       questionData.correctAnswer = data.correctAnswer || '';
       questionData.explanation = data.explanation || '';
-      // For MCQ, we can store empty values for coding-specific fields
       questionData.canonicalSolution = '';
       questionData.testCases = {};
     }
@@ -123,6 +134,10 @@ async createQuestion(data: any): Promise<Question> {
     });
 
     console.log('✅ [SERVICE] Question created:', question.id, 'Type:', question.type);
+    if (question.hasDiagram) {
+      console.log('🎨 [SERVICE] Diagram:', question.diagramType, 'stored');
+    }
+    
     return question;
   } catch (error: any) {
     console.error('❌ [SERVICE] createQuestion ERROR:', error);

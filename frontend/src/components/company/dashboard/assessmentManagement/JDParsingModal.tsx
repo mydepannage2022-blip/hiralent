@@ -180,33 +180,15 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Gradient header */}
             <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
-              {/* dotted pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                    backgroundSize: "24px 24px",
-                  }}
-                />
-              </div>
-
               <div className="relative px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <motion.div
-                      className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                    >
-                      <Wand2 className="w-5 h-5 text-white" />
-                    </motion.div>
                     <div>
-                      <h2 className="text-lg font-black tracking-tight">
+                      <h2 className="text-base font-medium tracking-tight">
                         Generate assessment from job description
                       </h2>
                       <p className="text-blue-100 text-xs">
@@ -226,33 +208,15 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                   </motion.button>
                 </div>
               </div>
-
-              {/* Wave bottom, same as other modal */}
-              <div className="absolute bottom-0 left-0 right-0">
-                <svg
-                  viewBox="0 0 1440 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-full"
-                >
-                  <path
-                    d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z"
-                    fill="white"
-                  />
-                </svg>
-              </div>
             </div>
 
             {/* Body content (scrollable) */}
             <div className="flex-1 flex flex-col px-6 pb-4 pt-3 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-slate-50">
               <div className="grid gap-6 md:grid-cols-2">
                 {/* LEFT: What AI will do */}
-                <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 md:p-5 shadow-[0_10px_40px_rgba(15,23,42,0.03)]">
+                <div className="rounded-sm border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 md:p-5 shadow-[0_10px_40px_rgba(15,23,42,0.03)]">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/60 text-[#1B73E8] shadow-sm">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm text-slate-900">
                       What the AI will do
                     </p>
                   </div>
@@ -286,7 +250,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm text-slate-900">
                         Job description to parse
                       </p>
                       <p className="text-[11px] text-slate-400">
@@ -300,14 +264,13 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={handleUseJobPosting}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:border-[#1B73E8]/60 hover:text-[#1B73E8]"
+                      className="inline-flex items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:border-[#1B73E8]/60 hover:text-[#1B73E8]"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
                       Use job posting text
                     </motion.button>
                   </div>
 
-                  <div className="flex-1 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm">
+                  <div className="flex-1 rounded-sm border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm">
                     <textarea
                       value={jobDescription}
                       onChange={(e) => setJobDescription(e.target.value)}
@@ -351,7 +314,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={onClose}
                   className="
-                    px-4 py-2 rounded-full border border-slate-200
+                    px-4 py-2 rounded-sm border border-slate-200
                     bg-white text-sm font-medium text-slate-700
                     hover:bg-slate-50
                   "
@@ -366,7 +329,7 @@ const JDParsingModal: React.FC<JDParsingModalProps> = ({
                   disabled={isGenerating}
                   onClick={() => handleGenerate()}
                   className="
-                    inline-flex items-center gap-2 rounded-full
+                    inline-flex items-center gap-2 rounded-sm
                     bg-gradient-to-r from-[#1B73E8] to-[#4F46E5]
                     px-5 py-2 text-sm font-semibold text-white
                     shadow-md disabled:opacity-60 disabled:cursor-not-allowed

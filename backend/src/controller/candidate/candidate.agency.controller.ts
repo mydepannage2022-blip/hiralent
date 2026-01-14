@@ -422,3 +422,242 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
     });
   }
 };
+
+// ==========================================
+// INTEGRATION AGENCY ENDPOINTS (NEW)
+// ==========================================
+
+/**
+ * Browse integration agencies by country
+ * GET /api/candidates/agencies/browse?type=INTEGRATION&country=Morocco
+ */
+export const browseIntegrationAgenciesController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { country, type } = req.query;
+
+    // Validate agency type
+    if (type !== "INTEGRATION") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid agency type. Must be INTEGRATION.",
+      });
+    }
+
+    if (!country) {
+      return res.status(400).json({
+        success: false,
+        message: "Country parameter is required",
+      });
+    }
+
+    const agencies = await prisma.agency.findMany({
+      where: {
+        type: "INTEGRATION",
+        status: "APPROVED",
+        operating_countries: {
+          has: country as string,
+        },
+      },
+      select: {
+        agency_id: true,
+        name: true,
+        email: true,
+        phone: true,
+        website: true,
+        operating_countries: true,
+        rating: true,
+        service_description: true,
+        languages_supported: true,
+        accreditations: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: agencies,
+      count: agencies.length,
+    });
+  } catch (error) {
+    console.error("❌ Browse integration agencies error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch integration agencies",
+    });
+  }
+};
+
+/**
+ * Assign integration agency to case
+ * POST /api/candidates/cases/:caseId/assign-integration-agency
+ * Body: { agencyId: string }
+ */
+export const assignIntegrationAgencyToCase = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { caseId } = req.params;
+    const { agencyId } = req.body;
+    const candidateId = req.user?.user_id;
+
+    if (!candidateId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!agencyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Agency ID is required",
+      });
+    }
+
+    // 1. Verify case belongs to candidate and is ready for integration
+    const existingCase = await prisma.relocationCase.findFirst({
+      where: {
+        case_id: caseId,
+        candidate_id: candidateId,
+        status: "ready_for_arrival", // Only allow if housing is complete
+      },
+    });
+
+    if (!existingCase) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found or not ready for integration assignment",
+      });
+    }
+
+    // 2. Check if integration agency already assigned
+    if (existingCase.integration_agency_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Integration agency already assigned to this case",
+      });
+    }
+
+    // 3. Verify agency exists and is INTEGRATION type
+    const agency = await prisma.agency.findFirst({
+      where: {
+        agency_id: agencyId,
+        type: "INTEGRATION",
+        status: "APPROVED",
+      },
+    });
+
+    if (!agency) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid integration agency or agency not approved",
+      });
+    }
+
+    // 4. Update case with integration agency
+    const updatedCase = await prisma.relocationCase.update({
+      where: { case_id: caseId },
+      data: {
+        integration_agency_id: agencyId,
+        status: "integration_assigned",
+      },
+    });
+
+    // 5. Auto-create 6 integration services
+    const serviceTypes = [
+      "healthcare",
+      "banking",
+      "tax_id",
+      "telecom",
+      "transport",
+      "integration_program",
+    ];
+
+    await prisma.$transaction(
+      serviceTypes.map((serviceType) =>
+        prisma.integrationService.create({
+          data: {
+            case_id: caseId,
+            service_type: serviceType,
+            status: "pending",
+          },
+        })
+      )
+    );
+
+    console.log(`✅ Integration agency assigned to case ${caseId}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Integration agency assigned successfully",
+      data: {
+        case_id: updatedCase.case_id,
+        integration_agency_id: updatedCase.integration_agency_id,
+        status: updatedCase.status,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Assign integration agency error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to assign integration agency",
+    });
+  }
+};
+
+/**
+ * Get integration services for a case
+ * GET /api/candidates/cases/:caseId/integration-services
+ */
+export const getIntegrationServicesController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { caseId } = req.params;
+    const candidateId = req.user?.user_id;
+
+    if (!candidateId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // Verify case belongs to candidate
+    const caseExists = await prisma.relocationCase.findFirst({
+      where: {
+        case_id: caseId,
+        candidate_id: candidateId,
+      },
+    });
+
+    if (!caseExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    // Get all integration services for the case
+    const services = await prisma.integrationService.findMany({
+      where: { case_id: caseId },
+      orderBy: { created_at: "asc" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+      count: services.length,
+    });
+  } catch (error) {
+    console.error("❌ Get integration services error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch integration services",
+    });
+  }
+};

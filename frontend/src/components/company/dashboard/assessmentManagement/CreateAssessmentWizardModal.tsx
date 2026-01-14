@@ -254,7 +254,7 @@ const CreateAssessmentWizardModal: React.FC<CreateAssessmentWizardModalProps> = 
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden border border-slate-100"
           >
             {/* Header (same vibe as Job wizard) */}
             <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">

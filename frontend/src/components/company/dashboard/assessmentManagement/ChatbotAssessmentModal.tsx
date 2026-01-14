@@ -564,32 +564,16 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
             transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Gradient header */}
             <div className="relative overflow-hidden bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1] text-white flex-shrink-0">
-              <div className="absolute inset-0 opacity-10">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                    backgroundSize: "24px 24px",
-                  }}
-                />
-              </div>
 
               <div className="relative px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <motion.div
-                      className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                    >
-                      <Bot className="w-5 h-5 text-white" />
-                    </motion.div>
                     <div>
-                      <h2 className="text-lg font-black tracking-tight">
+                      <h2 className="text-base">
                         AI Assessment Designer
                       </h2>
                       <p className="text-blue-100 text-xs">
@@ -617,34 +601,16 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* Wave bottom */}
-              <div className="absolute bottom-0 left-0 right-0">
-                <svg
-                  viewBox="0 0 1440 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-full"
-                >
-                  <path
-                    d="M0 20h1440V10c-157.5 0-315-10-472.5-10S652.5 10 495 10 180 0 0 0v20z"
-                    fill="white"
-                  />
-                </svg>
-              </div>
             </div>
 
             {/* Body content */}
-            <div className="flex-1 flex flex-col md:flex-row gap-6 px-6 pb-4 pt-2 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50">
+            <div className="flex-1 flex flex-col md:flex-row gap-6 px-6 py-8 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50">
               {/* LEFT: guidance + live config */}
               <div className="hidden md:flex flex-col w-full md:w-72 gap-3 flex-shrink-0">
                 {/* How to talk to it */}
-                <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.04)]">
+                <div className="rounded-sm border border-violet-100 bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.04)]">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/60 text-[#1B73E8] shadow-sm">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm text-slate-900">
                       How to talk to it
                     </p>
                   </div>
@@ -668,14 +634,14 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                 {assessmentConfig && (
                   <div
                     className="
-                      rounded-2xl border border-slate-200 bg-white/90 
+                      rounded-sm border border-slate-200 bg-white/90 
                       p-4 shadow-[0_10px_40px_rgba(15,23,42,0.03)] 
                       flex flex-col gap-2
                       max-h-80 overflow-y-auto pr-1 custom-scrollbar
                     "
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm text-slate-900">
                         Assessment snapshot
                       </p>
                       {assessmentConfig.status === "ready_for_generation" && (
@@ -777,13 +743,13 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                       </div>
                     )}
                     {isInitializing && (
-                      <div className="flex items-center gap-2 text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-700 bg-slate-50 rounded-xl px-3 py-2">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         <span>Initializing the AI assistant…</span>
                       </div>
                     )}
                     {isCompleted && (
-                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800 flex flex-col gap-1">
+                      <div className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span className="font-semibold">
@@ -812,7 +778,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                 {/* messages (scrolling area) */}
                 <div
                   ref={chatContainerRef}
-                  className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-50 px-4 py-3 space-y-3 custom-scrollbar"
+                  className="flex-1 min-h-0 overflow-y-auto rounded-sm bg-gradient-to-br from-slate-50 via-white to-slate-50 space-y-3 custom-scrollbar"
                 >
                   {messages.map((m) => {
                     const isAssistant = m.role === "assistant";
@@ -837,24 +803,11 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                             isAssistant ? "flex-row" : "flex-row-reverse"
                           }`}
                         >
-                          <div
-                            className={`w-7 h-7 rounded-full flex items-center justify-center shadow-sm ${
-                              isAssistant
-                                ? "bg-[#1B73E8]/10 text-[#1B73E8]"
-                                : "bg-slate-800 text-white"
-                            }`}
-                          >
-                            {isAssistant ? (
-                              <Bot className="w-3.5 h-3.5" />
-                            ) : (
-                              <User className="w-3.5 h-3.5" />
-                            )}
-                          </div>
                           <div className="flex flex-col gap-1 max-w-full">
                             <motion.div
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className={`rounded-2xl px-3 py-2 text-xs whitespace-pre-wrap leading-relaxed break-words shadow-sm ${
+                              className={`rounded-sm px-3 py-2 text-xs whitespace-pre-wrap leading-relaxed break-words shadow-sm ${
                                 isAssistant
                                   ? "bg-white/90 border border-slate-200 text-slate-800"
                                   : "bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white"
@@ -924,7 +877,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                         <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#1B73E8]/10 text-[#1B73E8] shadow-sm">
                           <Bot className="w-3.5 h-3.5" />
                         </div>
-                        <div className="rounded-2xl px-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-500 flex items-center gap-2 shadow-sm">
+                        <div className="rounded-sm px-3 py-2 text-xs bg-slate-50 border border-slate-200 text-slate-500 flex items-center gap-2 shadow-sm">
                           <span className="inline-flex gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce delay-150" />
@@ -938,7 +891,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
 
                   {messages.length === 0 && !isInitializing && (
                     <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-2">
-                      <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-sm bg-white border border-slate-200 flex items-center justify-center">
                         <Sparkles className="w-5 h-5 text-[#1B73E8]" />
                       </div>
                       <p>Send level, skills (commas) and duration to start.</p>
@@ -954,20 +907,32 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                   className="mt-3 border-t border-slate-100 pt-3 flex flex-col gap-2"
                 >
                   <div className="flex items-end gap-2">
-                    <div className="flex-1 bg-slate-50/80 rounded-2xl border border-slate-200 px-3 py-2 flex items-start gap-2 shadow-inner">
-                      <MessageSquare className="w-4 h-4 text-slate-400 mt-1" />
+                    <div className="flex-1 bg-slate-50/80 rounded-sm border border-slate-200 flex items-start gap-2 shadow-inner py-1 ">
                       <textarea
-                        className="flex-1 resize-none border-none outline-none text-sm py-1 max-h-24 min-h-[32px] bg-transparent"
-                        placeholder={inputPlaceholder}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        disabled={
-                          isSending ||
-                          isInitializing ||
-                          isCompleted ||
-                          !sessionId
-                        }
-                      />
+                      className="flex-1 resize-none border-none outline-none text-sm  bg-transparent px-2 "
+                      placeholder={inputPlaceholder}
+                      value={input}
+                      rows={1}
+                      onChange={(e) => {
+                        setInput(e.target.value);
+
+                        // auto grow logic
+                        e.target.style.height = "auto";
+                        e.target.style.height = Math.min(e.target.scrollHeight, 3 * 24) + "px";
+                      }}
+                      style={{
+                        lineHeight: "24px",   // must match your text size
+                        maxHeight: 3 * 24 + "px",
+                        overflowY: "auto"
+                      }}
+                      disabled={
+                        isSending ||
+                        isInitializing ||
+                        isCompleted ||
+                        !sessionId
+                      }
+                    />
+
                     </div>
 
                     <motion.button
@@ -985,7 +950,7 @@ const ChatbotAssessmentModal: React.FC<ChatbotAssessmentModalProps> = ({
                         !sessionId ||
                         !input.trim()
                       }
-                      className="flex items-center justify-center px-5 py-2 rounded-full bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed shadow-md"
+                      className="flex items-center justify-center px-5 pb-[7px] pt-[6px] rounded-sm bg-gradient-to-r from-[#1B73E8] to-[#4F46E5] text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed shadow-md"
                     >
                       {isSending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

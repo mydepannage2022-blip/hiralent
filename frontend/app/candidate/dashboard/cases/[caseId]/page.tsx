@@ -25,11 +25,13 @@ import {
   Wifi,
   Plane,
   Home,
+  Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOCUMENT_TYPES } from "@/src/constants/documentTypes";
 import AgencyBrowserModal from "./components/AgencyBrowserModal";
 import { JSX } from "react/jsx-runtime";
+import IntegrationTabContent from "./components/IntegrationTabContent";
 
 interface Agency {
   agency_id: string;
@@ -52,6 +54,24 @@ interface Document {
   created_at: string;
 }
 
+interface IntegrationService {
+  service_id: string;
+  case_id: string;
+  service_type: string; // healthcare, banking, tax_id, telecom, transport, integration_program
+  status: string; // pending, in_progress, completed
+  service_date?: string;
+  proof_document?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface IntegrationAgency {
+  agency_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
 interface Case {
   case_id: string;
   case_number: string;
@@ -88,6 +108,10 @@ interface Case {
   flight_number?: string;
   airport_pickup_required?: boolean;
   arrival_notes?: string;
+
+  integration_agency_id?: string;
+  integrationAgency?: IntegrationAgency;
+  integrationServices?: IntegrationService[];
 }
 
 interface EmbassySubmission {
@@ -105,7 +129,7 @@ interface EmbassySubmission {
   decision_notes?: string;
 }
 
-type TabType = "overview" | "visa" | "housing";
+type TabType = "overview" | "visa" | "housing" | "integration";
 
 export default function CaseDetailPage() {
   const { token } = useAuth();
@@ -133,6 +157,8 @@ export default function CaseDetailPage() {
   } | null>(null);
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
   const [showAgencyBrowser, setShowAgencyBrowser] = useState(false);
+  const [showIntegrationAgencyBrowser, setShowIntegrationAgencyBrowser] =
+    useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -419,6 +445,8 @@ export default function CaseDetailPage() {
     (caseData?.service_type === "housing" && visaApproved) ||
     Boolean(caseData?.housing_address);
 
+  const showIntegrationTab = Boolean(caseData?.integration_agency_id);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -522,7 +550,31 @@ export default function CaseDetailPage() {
             >
               <div className="flex items-center gap-2">
                 Housing
-                {caseData.status === "ready_for_arrival" && (
+                {(caseData.status === "ready_for_arrival" ||
+                  caseData.status === "integration_assigned" ||
+                  caseData.status === "integration_in_progress" ||
+                  caseData.status === "integration_complete" ||
+                  caseData.status === "fully_integrated") && (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                )}
+              </div>
+            </button>
+          )}
+
+          {/* Integration Tab */}
+          {showIntegrationTab && (
+            <button
+              onClick={() => setActiveTab("integration")}
+              className={`px-6 py-3 font-medium text-sm transition-all relative rounded-t-lg ${
+                activeTab === "integration"
+                  ? "bg-linear-to-b from-blue-50 to-transparent text-blue-600 border-b-2 border-blue-600"
+                  : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                Integration
+                {(caseData.status === "integration_complete" ||
+                  caseData.status === "fully_integrated") && (
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 )}
               </div>
@@ -566,7 +618,21 @@ export default function CaseDetailPage() {
           )}
 
           {activeTab === "housing" && showHousingTab && (
-            <HousingTabContent caseData={caseData} formatDate={formatDate} />
+            <HousingTabContent
+              caseData={caseData}
+              formatDate={formatDate}
+              setShowIntegrationAgencyBrowser={setShowIntegrationAgencyBrowser}
+            />
+          )}
+
+          {/* Integration Tab Content */}
+          {activeTab === "integration" && showIntegrationTab && (
+            <IntegrationTabContent
+              caseData={caseData}
+              formatDate={formatDate}
+              setShowIntegrationAgencyBrowser={setShowIntegrationAgencyBrowser}
+              fetchCase={fetchCase}
+            />
           )}
         </motion.div>
       </AnimatePresence>
@@ -862,11 +928,15 @@ export default function CaseDetailPage() {
 
       {/* Agency Browser Modal */}
       <AgencyBrowserModal
-        isOpen={showAgencyBrowser}
-        onClose={() => setShowAgencyBrowser(false)}
+        isOpen={showAgencyBrowser || showIntegrationAgencyBrowser}
+        onClose={() => {
+          setShowAgencyBrowser(false);
+          setShowIntegrationAgencyBrowser(false);
+        }}
         caseId={caseId}
         destinationCountry={caseData?.destination_country || ""}
         onSuccess={fetchCase}
+        agencyType={showIntegrationAgencyBrowser ? "INTEGRATION" : "RELOCATION"}
       />
     </div>
   );
@@ -887,7 +957,12 @@ function OverviewTabContent({
   getStatusColor: (status: string) => string;
 }) {
   const visaComplete = caseData.embassy_submission?.status === "approved";
-  const housingComplete = caseData.status === "ready_for_arrival";
+  const housingComplete =
+    caseData.status === "ready_for_arrival" ||
+    caseData.status === "integration_assigned" ||
+    caseData.status === "integration_in_progress" ||
+    caseData.status === "integration_complete" ||
+    caseData.status === "fully_integrated";
   const housingInProgress = Boolean(caseData.housing_address);
 
   return (
@@ -1354,13 +1429,21 @@ function VisaTabContent({
                 caseData.status === "housing_assigned" ||
                 caseData.status === "housing_in_progress" ||
                 caseData.status === "housing_complete" ||
-                caseData.status === "ready_for_arrival"
+                caseData.status === "ready_for_arrival" ||
+                caseData.status === "integration_assigned" ||
+                caseData.status === "integration_in_progress" ||
+                caseData.status === "integration_complete" ||
+                caseData.status === "fully_integrated"
               }
               className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
                 caseData.status === "housing_assigned" ||
                 caseData.status === "housing_in_progress" ||
                 caseData.status === "housing_complete" ||
-                caseData.status === "ready_for_arrival"
+                caseData.status === "ready_for_arrival" ||
+                caseData.status === "integration_assigned" ||
+                caseData.status === "integration_in_progress" ||
+                caseData.status === "integration_complete" ||
+                caseData.status === "fully_integrated"
                   ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                   : "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
               }`}
@@ -1369,7 +1452,11 @@ function VisaTabContent({
               {caseData.status === "housing_assigned" ||
               caseData.status === "housing_in_progress" ||
               caseData.status === "housing_complete" ||
-              caseData.status === "ready_for_arrival"
+              caseData.status === "ready_for_arrival" ||
+              caseData.status === "integration_assigned" ||
+              caseData.status === "integration_in_progress" ||
+              caseData.status === "integration_complete" ||
+              caseData.status === "fully_integrated"
                 ? "Housing Agency Already Selected"
                 : "Choose Housing Agency"}
             </button>
@@ -1564,9 +1651,11 @@ function VisaTabContent({
 function HousingTabContent({
   caseData,
   formatDate,
+  setShowIntegrationAgencyBrowser,
 }: {
   caseData: Case;
   formatDate: (date: string) => string;
+  setShowIntegrationAgencyBrowser: (show: boolean) => void;
 }) {
   const hasHousingData = Boolean(caseData.housing_address);
 
@@ -1888,66 +1977,110 @@ function HousingTabContent({
       </div>
 
       {/* Right Column - Checklist */}
-      <div className="lg:col-span-1">
-        <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 shadow-sm sticky top-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-4">
+      <div className="lg:col-span-1 space-y-6">
+        {/* Integration Agency Selection Card - MOVED TO TOP */}
+        {(caseData.status === "ready_for_arrival" ||
+          caseData.status === "integration_assigned" ||
+          caseData.status === "integration_in_progress" ||
+          Boolean(caseData.integration_agency_id)) && (
+          <div className="bg-linear-to-br from-blue-50 to-sky-50 rounded-xl p-5 border-2 border-blue-300 shadow-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg shrink-0">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                {caseData.integration_agency_id ? (
+                  <>
+                    <h3 className="text-sm font-bold text-blue-900 mb-1 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Integration Services Ready!
+                    </h3>
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      Your integration agency has been assigned. Check the
+                      Integration tab for details!
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-bold text-blue-900 mb-1 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Next Step: Integration Services
+                    </h3>
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      Select an agency to help with post-arrival services in{" "}
+                      {caseData.destination_country}.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Button - Always visible but disabled when integration already chosen */}
+            <button
+              onClick={() => setShowIntegrationAgencyBrowser(true)}
+              disabled={Boolean(caseData.integration_agency_id)}
+              className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                caseData.integration_agency_id
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              {caseData.integration_agency_id
+                ? "Integration Agency Already Selected"
+                : "Choose Integration Agency"}
+            </button>
+          </div>
+        )}
+
+        {/* Housing Checklist Card */}
+        <div className="bg-green-50 rounded-2xl p-6 border border-green-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-3">
             Housing Checklist
           </h3>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
-              <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
-              <span className="text-sm font-medium text-slate-700">
+          <ul className="space-y-2">
+            <li className="flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <span className="text-slate-700 font-medium">
                 Housing secured
               </span>
-            </div>
+            </li>
 
-            <div
-              className={`flex items-center gap-3 p-3 rounded-lg shadow-sm ${
-                allUtilitiesConnected ? "bg-white" : "bg-yellow-50"
-              }`}
-            >
+            <li className="flex items-center gap-2 text-sm">
               {allUtilitiesConnected ? (
-                <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                <CheckCircle className="w-4 h-4 text-green-600" />
               ) : (
-                <Clock className="w-5 h-5 text-yellow-600 shrink-0" />
+                <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
               )}
-              <span className="text-sm font-medium text-slate-700">
+              <span
+                className={
+                  allUtilitiesConnected
+                    ? "text-slate-700 font-medium"
+                    : "text-slate-500"
+                }
+              >
                 Utilities connected
               </span>
-            </div>
+            </li>
 
-            <div
-              className={`flex items-center gap-3 p-3 rounded-lg shadow-sm ${
-                arrivalPlanned ? "bg-white" : "bg-yellow-50"
-              }`}
-            >
+            <li className="flex items-center gap-2 text-sm">
               {arrivalPlanned ? (
-                <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                <CheckCircle className="w-4 h-4 text-green-600" />
               ) : (
-                <Clock className="w-5 h-5 text-yellow-600 shrink-0" />
+                <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
               )}
-              <span className="text-sm font-medium text-slate-700">
+              <span
+                className={
+                  arrivalPlanned
+                    ? "text-slate-700 font-medium"
+                    : "text-slate-500"
+                }
+              >
                 Arrival planned
               </span>
-            </div>
-          </div>
-
-          {caseData.status === "ready_for_arrival" && (
-            <div className="mt-6 p-4 bg-white rounded-xl border-2 border-green-400 shadow-md">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
-                <div>
-                  <p className="text-sm font-bold text-green-800 mb-1">
-                    You're Ready to Go!
-                  </p>
-                  <p className="text-xs text-green-700">
-                    All housing arrangements are complete. Safe travels!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+            </li>
+          </ul>
         </div>
       </div>
     </div>

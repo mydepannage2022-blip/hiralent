@@ -1,14 +1,19 @@
 import express from 'express';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
-import { 
+import { upload } from '../middlewares/multer.middleware';
+import {
   getConversationsController,
-  createConversationController, 
+  createConversationController,
   getMessagesController,
   sendMessageController,
   markMessagesReadController,
   archiveConversationController,
   deleteMessageController,
-  getConversationController
+  getConversationController,
+  addReactionController,
+  removeReactionController,
+  getReactionsController,
+  uploadMessageFileController
 } from '../controller/message.controller';
 
 const router = express.Router();
@@ -25,7 +30,15 @@ router.put('/conversations/:conversationId/archive', archiveConversationControll
 // Message Routes
 router.get('/conversations/:conversationId/messages', getMessagesController);
 router.post('/conversations/:conversationId/messages', sendMessageController);
-router.put('/messages/read', markMessagesReadController);
-router.delete('/messages/:messageId', deleteMessageController);
+router.put('/read', markMessagesReadController);
+router.delete('/:messageId', deleteMessageController);
+
+// File Upload Route
+router.post('/upload', upload.single('file'), uploadMessageFileController);
+
+// Reaction Routes
+router.post('/:messageId/reactions', addReactionController);
+router.delete('/:messageId/reactions', removeReactionController);
+router.get('/:messageId/reactions', getReactionsController);
 
 export default router;

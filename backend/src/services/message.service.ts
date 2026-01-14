@@ -208,43 +208,54 @@ export const sendMessage = async (userId: string, conversationId: string, input:
     }
 
     // Create message
-    const message = await prisma.message.create({
-      data: {
-        conversation_id: conversationId,
-        sender_id: userId,
-        content: input.content || null,
-        reply_to_id: input.reply_to_id || null,
-        message_type: input.message_type || "text",
-        file_url: input.file_url || null,
-        file_name: input.file_name || null,
-        file_size: input.file_size || null,
-        sent_at: new Date()
-      },
-      include: {
-        sender: {
+const message = await prisma.message.create({
+  data: {
+    conversation_id: conversationId,
+    sender_id: userId,
+    content: input.content || null,
+    reply_to_id: input.reply_to_id || null,
+    message_type: input.message_type || "text",
+    file_url: input.file_url || null,
+    file_name: input.file_name || null,
+    file_size: input.file_size || null,
+    sent_at: new Date()
+  },
+  include: {
+    sender: {
+      select: {
+        user_id: true,
+        full_name: true,
+        role: true,
+        candidateProfile: {
           select: {
-            user_id: true,
-            full_name: true,
-            role: true,
-            candidateProfile: {
-              select: {
-                profile_picture_url: true
-              }
-            }
-          }
-        },
-        reply_to: {
-          select: {
-            message_id: true,
-            content: true,
-            message_type: true,
-            sender: {
-              select: { full_name: true }
-            }
+            profile_picture_url: true
           }
         }
       }
-    });
+    },
+    reply_to: {
+      select: {
+        message_id: true,
+        content: true,
+        message_type: true,
+        sender: {
+          select: { full_name: true }
+        }
+      }
+    },
+    reactions: {
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            full_name: true
+          }
+        }
+      }
+    }
+  }
+});
+
 
     // Update conversation last_message info and unread count
     const otherParticipantId = conversation.participant_1_id === userId 
@@ -369,7 +380,20 @@ export const getMessages = async (userId: string, conversationId: string, query:
               select: { full_name: true }
             }
           }
+        },
+        reactions: {
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              full_name: true
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'asc'
         }
+      }
       }
     });
 
@@ -398,7 +422,14 @@ export const getMessages = async (userId: string, conversationId: string, query:
         content: message.reply_to.content,
         sender_name: message.reply_to.sender?.full_name || 'Unknown',
         message_type: message.reply_to.message_type as MessageType
-      } : null
+      } : null,
+       reactions: message.reactions?.map(r => ({
+      reaction_id: r.reaction_id,
+      emoji: r.emoji,
+      user_id: r.user_id,
+      user_name: r.user.full_name,
+      created_at: r.created_at
+     })) || []
     }));
 
   } catch (error) {
@@ -624,5 +655,113 @@ export const getConversationById = async (userId: string, conversationId: string
 
   } catch (error) {
     throw new Error(`Failed to get conversation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+
+/**
+ * Add or update reaction to a message
+ */
+export const addReaction = async (
+  messageId: string,
+  userId: string,
+  emoji: string
+) => {
+  try {
+    // Check if message exists
+    const message = await prisma.message.findUnique({
+      where: { message_id: messageId }
+    });
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    // Upsert reaction (create or update if already exists)
+    const reaction = await prisma.messageReaction.upsert({
+      where: {
+        message_id_user_id: {
+          message_id: messageId,
+          user_id: userId
+        }
+      },
+      update: {
+        emoji: emoji
+      },
+      create: {
+        message_id: messageId,
+        user_id: userId,
+        emoji: emoji
+      },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            full_name: true
+          }
+        }
+      }
+    });
+
+    return reaction;
+  } catch (error) {
+    console.error('Error adding reaction:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove reaction from a message
+ */
+export const removeReaction = async (
+  messageId: string,
+  userId: string
+) => {
+  try {
+    await prisma.messageReaction.deleteMany({
+      where: {
+        message_id: messageId,
+        user_id: userId
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error removing reaction:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all reactions for a message
+ */
+export const getReactions = async (messageId: string) => {
+  try {
+    const reactions = await prisma.messageReaction.findMany({
+      where: {
+        message_id: messageId
+      },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            full_name: true,
+            candidateProfile: {
+              select: {
+                profile_picture_url: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'asc'
+      }
+    });
+
+    return reactions;
+  } catch (error) {
+    console.error('Error getting reactions:', error);
+    throw error;
   }
 };

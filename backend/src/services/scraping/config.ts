@@ -40,19 +40,18 @@ export const defaultSchedulerConfig: SchedulerConfig = {
       enabled: true,
       schedule: process.env.CRON_GITHUB || "0 3 * * 0",
 
-      // chunk size (not total)
       maxItems: num(process.env.GITHUB_MAX_PROBLEMS, 100),
-
-      // For github, we reuse maxPages as "max_repos"
       maxPages: num(process.env.GITHUB_MAX_PAGES, 5),
 
-      // ✅ auto scrape until exhausted
-      auto: bool(process.env.GITHUB_AUTO, true),
+      //  GitHub should NOT auto-loop (it already paginates internally)
+      auto: bool(process.env.GITHUB_AUTO, false),   // <-- change true -> false
+
       hardCap: num(process.env.GITHUB_HARD_CAP, 5000),
       stopAfterEmptyPages: num(process.env.GITHUB_STOP_AFTER_EMPTY, 3),
 
       rateLimit: 1,
     },
+
 
     stackoverflow: {
       enabled: true,
