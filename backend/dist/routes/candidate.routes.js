@@ -11,6 +11,9 @@ const assessment_middleware_1 = require("../middlewares/assessment.middleware");
 const uploadImage_middleware_1 = require("../middlewares/uploadImage.middleware");
 const candidate_schema_1 = require("../validation/candidate.schema");
 const assessment_validation_1 = require("../validation/assessment.validation");
+const candidate_case_controller_1 = require("../controller/candidate/candidate.case.controller");
+const upload_middleware_1 = require("../middlewares/upload.middleware");
+const candidate_agency_controller_1 = require("../controller/candidate/candidate.agency.controller");
 const router = (0, express_1.Router)();
 router.get('/health', candidate_controller_1.healthCheckController);
 // public profile 
@@ -68,6 +71,27 @@ router.put('/profile/bulk', [checkAuth_middleware_1.checkAuth, (0, validateBody_
 router.post('/application-resume', uploadCV_middleware_1.uploadCVMiddleware, // Uses same middleware as profile-upload (handles file validation)
 uploadCV_middleware_1.handleUploadError, // Handles multer errors
 profile_controller_1.uploadApplicationResumeController);
+// View all cases for candidate
+router.get('/cases', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.getCandidateCases);
+// View single case details
+router.get('/cases/:caseId', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.getCaseById);
+// Upload document for a case
+router.post('/cases/:caseId/documents', checkAuth_middleware_1.checkAuth, upload_middleware_1.uploadDocumentMiddleware, upload_middleware_1.handleDocumentUploadError, candidate_case_controller_1.uploadCaseDocument);
+// Get all documents for a case
+router.get('/cases/:caseId/documents', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.getCaseDocuments);
+// Delete a document
+router.delete('/cases/:caseId/documents/:documentId', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.deleteCaseDocument);
+router.post('/cases/:caseId/documents/confirm-replacement', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.confirmDocumentReplacement);
+// Cancel document replacement (delete new document)
+router.delete('/cases/:caseId/documents/:documentId/cancel', checkAuth_middleware_1.checkAuth, candidate_case_controller_1.cancelDocumentReplacement);
+// Browse available agencies for selection
+router.get('/agencies/browse', checkAuth_middleware_1.checkAuth, candidate_agency_controller_1.browseAgenciesController);
+// Assign housing agency to case (candidate selection)
+router.post('/cases/:caseId/assign-agency', checkAuth_middleware_1.checkAuth, candidate_agency_controller_1.assignAgencyToCase);
+// Assign integration agency to case
+router.post('/cases/:caseId/assign-integration-agency', checkAuth_middleware_1.checkAuth, candidate_agency_controller_1.assignIntegrationAgencyToCase);
+// Get integration services for a case
+router.get('/cases/:caseId/integration-services', checkAuth_middleware_1.checkAuth, candidate_agency_controller_1.getIntegrationServicesController);
 exports.default = router;
 /*
 ==================== COMPLETE API ENDPOINTS SUMMARY ====================

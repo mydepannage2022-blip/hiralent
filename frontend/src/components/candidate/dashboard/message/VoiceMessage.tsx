@@ -51,6 +51,7 @@ export default function VoiceMessage({
   const [duration, setDuration] = useState(0);
   const [showReactBar, setShowReactBar] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "➕"];
@@ -66,37 +67,129 @@ export default function VoiceMessage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Initialize audio
+  // Initialize audio with better quality settings
   useEffect(() => {
-    const audio = new Audio(msg.text);
+    const audio = new Audio();
+
+    // Set audio source
+    audio.src = msg.text;
+    audio.preload = "metadata";
+
+    // Enable better audio quality
+    audio.volume = 1.0;
+    audio.preservesPitch = true;
+
     audioRef.current = audio;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime);
+    };
 
+    const updateDuration = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+        console.log('🎵 Audio duration loaded:', audio.duration);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      audio.currentTime = 0;
+      console.log('🎵 Playback ended');
+    };
+
+    const handleError = (e: Event) => {
+      const target = e.target as HTMLAudioElement;
+      console.error('Audio loading error:', {
+        error: target.error,
+        src: msg.text,
+        networkState: audio.networkState,
+        readyState: audio.readyState
+      });
+      setIsPlaying(false);
+      setDuration(0);
+    };
+
+    const handleCanPlay = () => {
+      console.log('🎵 Audio can play, duration:', audio.duration);
+      updateDuration();
+    };
+
+    const handleLoadedData = () => {
+      console.log('🎵 Audio data loaded');
+      updateDuration();
+    };
+
+    // Add event listeners
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("loadeddata", handleLoadedData);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("canplaythrough", updateDuration);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    // Try to load metadata
+    audio.load();
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
       audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("loadeddata", handleLoadedData);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("canplaythrough", updateDuration);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+
+      // Properly cleanup
       audio.pause();
+      audio.currentTime = 0;
+      audio.src = '';
+      audio.load(); // Reset the audio element
     };
   }, [msg.text]);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
+    if (!audio) {
+      console.error('Audio element not initialized');
+      return;
     }
-    setIsPlaying(!isPlaying);
+
+    try {
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        console.log('🎵 Paused');
+      } else {
+        // Check if audio is ready to play
+        if (audio.readyState < 2) {
+          console.log('🎵 Audio not ready, loading...');
+          audio.load();
+          await new Promise((resolve) => {
+            audio.addEventListener('canplay', resolve, { once: true });
+          });
+        }
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+          console.log('🎵 Playing');
+        }
+      }
+    } catch (error: any) {
+      console.error('Playback error:', error);
+      setIsPlaying(false);
+
+      // Show user-friendly error message
+      if (error.name === 'NotAllowedError') {
+        console.error('Playback not allowed by browser');
+      } else if (error.name === 'NotSupportedError') {
+        console.error('Audio format not supported');
+      }
+    }
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -155,20 +248,23 @@ export default function VoiceMessage({
   const progress = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4 px-2 sm:px-0`}>
       <div
-        className={`group px-4 py-3 rounded-xl max-w-[70%] relative ${
+        className={`px-3 sm:px-4 py-2 sm:py-3 rounded-xl max-w-[85%] sm:max-w-[70%] relative isolate ${
           isMine
             ? "bg-[#EFF5FF] text-black rounded-br-none"
             : "bg-[#F9F9F9] text-black rounded-bl-none"
         }`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
         {/* Action buttons */}
-        <div
-          className={`absolute top-1 ${
-            isMine ? "-left-16" : "-right-16"
-          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-        >
+        {showActions && (
+          <div
+            className={`absolute top-1 ${
+              isMine ? "-left-12 sm:-left-16" : "-right-12 sm:-right-16"
+            } transition-opacity duration-200 z-[9999]`}
+          >
           <div className="flex gap-1">
             {onReply && (
               <button
@@ -209,13 +305,14 @@ export default function VoiceMessage({
             )}
           </div>
         </div>
+        )}
 
         {/* Reaction picker */}
         {showReactBar && (
           <div
             className={`absolute ${
               isMine ? "left-0" : "right-0"
-            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-[10000] border border-gray-200`}
           >
             {emojis.map((emoji, idx) => (
               <button
@@ -242,7 +339,7 @@ export default function VoiceMessage({
             ref={pickerRef}
             className={`absolute ${
               isMine ? "left-0" : "right-0"
-            } -top-80 z-20`}
+            } -top-80 z-[10001]`}
           >
             <EmojiPicker
               onEmojiClick={(emojiObj) => {
@@ -261,9 +358,11 @@ export default function VoiceMessage({
         <div className="flex items-center gap-3">
           <button
             onClick={togglePlayPause}
+            disabled={!duration && duration !== 0}
             className={`p-2 rounded-full ${
               isMine ? "bg-blue-600 text-white" : "bg-gray-600 text-white"
-            } hover:opacity-80 transition-opacity`}
+            } hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <Pause size={16} /> : <Play size={16} />}
           </button>
@@ -271,21 +370,28 @@ export default function VoiceMessage({
           <div className="flex-1 min-w-0">
             {/* Waveform/Progress bar */}
             <div
-              className="h-2 bg-gray-300 rounded-full cursor-pointer mb-1"
+              className="h-2 bg-gray-300 rounded-full cursor-pointer mb-1 relative overflow-hidden"
               onClick={handleSeek}
+              title="Seek"
             >
               <div
                 className={`h-full ${
                   isMine ? "bg-blue-600" : "bg-gray-600"
-                } rounded-full transition-all duration-100`}
-                style={{ width: `${progress}%` }}
+                } rounded-full transition-all duration-100 ease-linear`}
+                style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
+              {/* Loading indicator */}
+              {!duration && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-1 h-1 bg-gray-500 rounded-full animate-pulse"></div>
+                </div>
+              )}
             </div>
 
             {/* Time display */}
             <div className="flex justify-between text-xs text-gray-500">
               <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+              <span>{duration ? formatTime(duration) : "--:--"}</span>
             </div>
           </div>
 

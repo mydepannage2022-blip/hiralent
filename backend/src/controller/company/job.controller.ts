@@ -22,6 +22,7 @@ import {
 } from '../../types/job.types';
 
 import type { AuthUser } from '../../types/express';
+import { talentAIServiceClient } from "../../clients/talent-ai-service.client";
 
 // ====================================================
 // ========== AUTH HELPERS ============================
@@ -377,3 +378,19 @@ export async function getJobApplicantsForJob(
     });
   }
 }
+
+// Talent AI service 
+export const suggestJobBasics = async (req, res) => {
+  const result = await talentAIServiceClient.step1Suggest(req.body);
+  res.json(result);
+};
+
+export const generateJobDescription = async (req, res) => {
+  const result = await talentAIServiceClient.step2Generate(req.body);
+  res.json(result);
+};
+
+export const improveJobDescription = async (req, res) => {
+  const result = await talentAIServiceClient.improveDescription(req.body);
+  res.json(result);
+};

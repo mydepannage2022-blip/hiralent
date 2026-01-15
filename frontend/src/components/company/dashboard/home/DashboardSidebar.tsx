@@ -85,7 +85,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         >
           <div className="w-full flex-1">
             {/* Header */}
-            <div className="flex flex-row-reverse items-center justify-between py-4 px-4 border-b border-gray-200 relative">
+            <div className="flex flex-row-reverse items-center justify-center py-4 px-4 border-b border-gray-200 relative">
               <div
                 className={`flex flex-col items-center ${(isOpen && !isMobile) || isMobile
                     ? "space-x-3"
@@ -93,7 +93,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   }`}
               >
                 <div className="rounded-lg flex items-center justify-center">
-                  <img src="/images/logo.png" alt="Logo" />
+                  <img className="w-30 h-9" src="/images/logo.png" alt="Logo" />
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
                   <p className="text-sm text-gray-500">Dashboard</p>

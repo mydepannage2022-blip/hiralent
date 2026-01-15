@@ -54,7 +54,7 @@ import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
 import schedulerRoutes from "./routes/scraping/scraping.routes";
-
+import internalRoutes from "./routes/internal.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -69,7 +69,10 @@ app.use('/api/v1/auth/sessions', authRoutes);
 
 
 app.use('/api/v1/messages', messageRoutes);
-
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path}`);
+  next();
+});
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
@@ -103,12 +106,16 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
-app.use('/api/v1', jobRoutes);
+app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
+
+//Scraping Candidates
+app.use("/internal", internalRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

@@ -71,6 +71,7 @@ export default function FileMessage({
   const [fileSize, setFileSize] = useState<string>("");
   const [showReactBar, setShowReactBar] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "➕"];
 
@@ -126,20 +127,23 @@ export default function FileMessage({
     ) : null;
 
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4 px-2 sm:px-0`}>
       <div
-        className={`group px-4 py-2 rounded-xl text-sm max-w-[70%] relative ${
+        className={`px-3 sm:px-4 py-2 rounded-xl text-sm max-w-[85%] sm:max-w-[70%] relative isolate ${
           isMine
             ? "bg-[#EFF5FF] text-black rounded-br-none"
             : "bg-[#F9F9F9] text-black rounded-bl-none"
         }`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
         {/* Action buttons */}
-        <div
-          className={`absolute top-1 ${
-            isMine ? "-left-16" : "-right-16"
-          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-        >
+        {showActions && (
+          <div
+            className={`absolute top-1 ${
+              isMine ? "-left-12 sm:-left-16" : "-right-12 sm:-right-16"
+            } transition-opacity duration-200 z-[9999]`}
+          >
           <div className="flex gap-1">
             {onReply && (
               <button
@@ -179,14 +183,15 @@ export default function FileMessage({
               </button>
             )}
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Reaction picker */}
         {showReactBar && (
           <div
             className={`absolute ${
               isMine ? "left-0" : "right-0"
-            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-[10000] border border-gray-200`}
           >
             {emojis.map((emoji, idx) => (
               <button
@@ -213,7 +218,7 @@ export default function FileMessage({
             ref={pickerRef}
             className={`absolute ${
               isMine ? "left-0" : "right-0"
-            } -top-80 z-20`}
+            } -top-80 z-[10001]`}
           >
             <EmojiPicker
               onEmojiClick={(emojiObj) => {

@@ -19,9 +19,19 @@ import MediaMessage from "./MediaMessage";
 import VoiceMessage from "./VoiceMessage";
 import CameraCapture from "./CameraCapture";
 import EmojiPicker from "emoji-picker-react";
+import { useAddReaction, useRemoveReaction, useDeleteMessage } from "../../../../lib/message/message.queries";
+import { getSocket } from "@/src/lib/message/socket.client";
 
 // Universal types
 export type MessageType = "text" | "voice" | "image" | "video" | "file" | "location";
+
+export interface MessageReaction {
+    reaction_id: string;
+    emoji: string;
+    user_id: string;
+    user_name: string;
+    created_at: string;
+}
 
 export interface LegacyMessage {
     id: string | number;
@@ -36,6 +46,7 @@ export interface LegacyMessage {
         type: MessageType;
         fileName?: string;
     };
+    reactions?: MessageReaction[];
 }
 
 export interface LegacyConversation {
@@ -87,7 +98,7 @@ const normalizeConversation = (conv: UniversalConversation | null): LegacyConver
     return {
         id: conv.conversation_id,
         name: conv.other_participant.full_name,
-        avatar: conv.other_participant.profile_picture_url || '/images/default-avatar.png',
+        avatar: conv.other_participant.profile_picture_url || '/images/candidate.jpg',
         lastSeen: conv.other_participant.is_online ? "Online" : "Offline",
         unreadCount: conv.unread_count > 0 ? conv.unread_count : undefined,
         isActive: conv.other_participant.is_online || false,
@@ -107,8 +118,10 @@ export default function ChatWindow({
     const [showCamera, setShowCamera] = useState(false);
     const [showEmoji, setShowEmoji] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const recordingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
     const [previewMedia, setPreviewMedia] = useState<{
         type: "image" | "video";
         src: string;
@@ -118,15 +131,33 @@ export default function ChatWindow({
     const [replyTo, setReplyTo] = useState<LegacyMessage | null>(null);
     const [deletedIds, setDeletedIds] = useState<(string | number)[]>([]);
     const [reactions, setReactions] = useState<Record<string | number, string | undefined>>({});
-
+    const addReactionMutation = useAddReaction();
+    const removeReactionMutation = useRemoveReaction();
+    const deleteMessageMutation = useDeleteMessage();
     const attachmentRef = useRef<HTMLDivElement | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     // Normalize conversation
     const normalizedConversation = normalizeConversation(conversation);
 
+    // Clear local reactions state when conversation changes
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setReactions({});
+        setDeletedIds([]);
+    }, [normalizedConversation?.id]);
+
+    useEffect(() => {
+        const messageCount = normalizedConversation?.messages?.length || 0;
+        if (messageCount > 0) {
+            // Use requestAnimationFrame for smoother scrolling
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                    inline: "nearest"
+                });
+            });
+        }
     }, [normalizedConversation?.messages]);
 
     useEffect(() => {
@@ -174,20 +205,38 @@ export default function ChatWindow({
         let actualFileName = fileName;
 
         // Handle file upload if file is provided
-        if (file && type !== 'text') {
+        if (file && type !== 'text' && type !== 'location') {
             setIsUploading(true);
             try {
-                // Simulate file upload (replace with actual upload logic)
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                // Add your file upload API call here
-                // const uploadResult = await uploadFile(formData);
-                
-                fileUrl = URL.createObjectURL(file); // Temporary for demo
+                console.log('📤 Processing file...', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+
+                // Use blob URL for immediate preview (works locally)
+                fileUrl = URL.createObjectURL(file);
                 actualFileName = file.name;
-            } catch (error) {
-                console.error('File upload error:', error);
+
+                // Try to upload to server in background (don't block if it fails)
+                try {
+                    const { uploadMessageFile } = await import('../../../../lib/message/message.api');
+                    const uploadResult = await uploadMessageFile(file);
+
+                    if (uploadResult.success && uploadResult.data) {
+                        // Update with server URL if upload succeeds
+                        fileUrl = uploadResult.data.file_url;
+                        console.log('✅ File uploaded to server:', fileUrl);
+                    }
+                } catch (uploadError) {
+                    // Upload failed but continue with blob URL for local preview
+                    console.warn('⚠️ Server upload failed, using local preview:', uploadError);
+                }
+
+            } catch (error: any) {
+                console.error('❌ File processing error:', error);
+                alert(`Failed to process file: ${error.message || 'Unknown error'}`);
+                setIsUploading(false);
                 return;
             } finally {
                 setIsUploading(false);
@@ -197,7 +246,7 @@ export default function ChatWindow({
         const msg: LegacyMessage = {
             id: Date.now(),
             sender: "me",
-            text: type === 'text' ? text : (actualFileName || 'File'),
+            text: type === 'text' || type === 'location' ? text : fileUrl,
             type,
             fileName: actualFileName,
             timestamp: new Date().toLocaleTimeString([], {
@@ -302,23 +351,86 @@ export default function ChatWindow({
             alert("Audio recording not supported.");
             return;
         }
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-            const recorder = new MediaRecorder(stream);
+
+        // Request high-quality audio
+        navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 48000,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
+        }).then((stream) => {
+            // Check for supported MIME types
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : 'audio/mp4';
+
+            const recorder = new MediaRecorder(stream, {
+                mimeType: mimeType,
+                audioBitsPerSecond: 128000 // 128kbps for better quality
+            });
+
             const chunks: Blob[] = [];
-            
-            recorder.ondataavailable = (e) => chunks.push(e.data);
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunks.push(e.data);
+                }
+            };
+
             recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: "audio/wav" });
-                const file = new File([blob], `voice-message-${Date.now()}.wav`, { type: "audio/wav" });
-                await createAndSend("voice", URL.createObjectURL(blob), file.name, file);
                 stream.getTracks().forEach(track => track.stop());
+
+                if (chunks.length === 0) {
+                    alert("No audio recorded. Please try again.");
+                    return;
+                }
+
+                const blob = new Blob(chunks, { type: mimeType });
+
+                // Check if blob has data
+                if (blob.size === 0) {
+                    alert("Recording failed. Please try again.");
+                    return;
+                }
+
+                const fileExtension = mimeType.includes('webm') ? 'webm' : 'mp4';
+                const file = new File([blob], `voice-message-${Date.now()}.${fileExtension}`, { type: mimeType });
+
+                console.log('🎤 Voice recorded:', {
+                    size: blob.size,
+                    type: mimeType,
+                    estimatedDuration: (blob.size * 8) / 128000 // seconds
+                });
+
+                // Create object URL for playback
+                const audioUrl = URL.createObjectURL(blob);
+                await createAndSend("voice", audioUrl, file.name, file);
+            };
+
+            recorder.onerror = (event) => {
+                console.error('MediaRecorder error:', event);
+                alert('Recording error occurred.');
             };
 
             setMediaRecorder(recorder);
-            recorder.start();
+            recorder.start(1000); // Collect data every 1 second for better quality
             setIsRecording(true);
-        }).catch(() => {
-            alert("Microphone access denied.");
+            setRecordingTime(0);
+
+            // Start recording timer
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+            console.log('🎤 Recording started with', mimeType);
+        }).catch((error) => {
+            console.error('Microphone error:', error);
+            alert("Microphone access denied or not available.");
         });
     };
 
@@ -326,17 +438,90 @@ export default function ChatWindow({
         if (mediaRecorder && isRecording) {
             mediaRecorder.stop();
             setIsRecording(false);
+            setRecordingTime(0);
+
+            // Clear timer
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+                recordingIntervalRef.current = null;
+            }
         }
     };
 
-    // Message actions
-    const handleDeleteMessage = (id: string | number) => {
-        setDeletedIds((prev) => [...prev, id]);
+    // Format recording time
+    const formatRecordingTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleReactMessage = (id: string | number, emoji: string) => {
-        setReactions((prev) => ({ ...prev, [id]: emoji }));
+    // Message actions
+    const handleDeleteMessage = async (id: string | number) => {
+        const messageId = String(id);
+        const socket = getSocket();
+        const conversationId = normalizedConversation?.id;
+
+        // Optimistically hide from UI
+        setDeletedIds((prev) => [...prev, id]);
+
+        try {
+            // Emit socket event for real-time
+            if (socket && conversationId) {
+                socket.emit('delete_message', {
+                    message_id: messageId,
+                    conversation_id: String(conversationId)
+                });
+            }
+
+            // Also call API for persistence
+            await deleteMessageMutation.mutateAsync(messageId);
+            console.log('✅ Message deleted:', messageId);
+        } catch (error) {
+            console.error('❌ Failed to delete message:', error);
+            // Revert if failed
+            setDeletedIds((prev) => prev.filter(deletedId => deletedId !== id));
+        }
     };
+
+    const handleReactMessage = async (id: string | number, emoji: string) => {
+        const messageId = String(id);
+        const existingReaction = reactions[id];
+        
+        const socket = getSocket();
+        if (!socket || !conversation) return;
+        
+        // Get conversation_id from normalized conversation
+        const conversationId = normalizedConversation?.id;
+        if (!conversationId) {
+            console.error('No conversation ID found');
+            return;
+        }
+        
+        if (existingReaction === emoji) {
+            // Remove via socket
+            socket.emit('remove_reaction', {
+                message_id: messageId,
+                conversation_id: conversationId
+            });
+            
+            setReactions((prev) => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+        } else {
+            // Add via socket
+            socket.emit('add_reaction', {
+                message_id: messageId,
+                conversation_id: conversationId,
+                emoji: emoji
+            });
+            
+            setReactions((prev) => ({ ...prev, [id]: emoji }));
+        }
+    };
+
+
 
     const handleCopyMessage = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -344,8 +529,10 @@ export default function ChatWindow({
 
     const renderMessage = (msg: LegacyMessage): React.ReactNode => {
         if (deletedIds.includes(msg.id)) return null;
-        const reaction = reactions[msg.id];
-        
+        // Use reactions from backend message data, fallback to local state for optimistic updates
+        const backendReaction = msg.reactions && msg.reactions.length > 0 ? msg.reactions[0].emoji : undefined;
+        const reaction = backendReaction || reactions[msg.id];
+
         switch (msg.type) {
             case "text":
             case "location":
@@ -441,9 +628,9 @@ export default function ChatWindow({
 
     return (
         <>
-            <div className="flex flex-col w-full h-full bg-white">
+            <div className="flex flex-col w-full h-full max-h-screen bg-white">
                 {/* HEADER */}
-                <div className="flex items-center py-3 px-4 border-b border-gray-100">
+                <div className="flex-shrink-0 flex items-center py-3 px-4 border-b border-gray-100">
                     <button
                         onClick={onBack}
                         className="mr-3 md:hidden text-gray-600 hover:text-gray-800"
@@ -456,7 +643,7 @@ export default function ChatWindow({
                             alt={normalizedConversation.name}
                             className="w-10 h-10 rounded-full object-cover"
                             onError={(e) => {
-                                e.currentTarget.src = '/images/default-avatar.png';
+                                e.currentTarget.src = '/images/candidate.jpg';
                             }}
                         />
                         {normalizedConversation.isActive && (
@@ -464,13 +651,13 @@ export default function ChatWindow({
                         )}
                     </div>
                     <div className="ml-3 flex-1">
-                        <h2 className="font-semibold text-gray-800">{normalizedConversation.name}</h2>
+                        <h2 className="font-semibold text-gray-800 text-sm sm:text-base">{normalizedConversation.name}</h2>
                         <p className="text-xs text-gray-500">{normalizedConversation.lastSeen}</p>
                     </div>
                 </div>
 
                 {/* MESSAGES */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-3">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3" style={{maxHeight: 'calc(100vh - 200px)'}}>
                     {(normalizedConversation.messages ?? []).map((m) => renderMessage(m))}
                     {renderTypingIndicator()}
                     <div ref={messagesEndRef} />
@@ -478,12 +665,12 @@ export default function ChatWindow({
 
                 {/* REPLY PREVIEW */}
                 {replyTo && (
-                    <div className="mx-4 mb-2 p-2 rounded-lg flex items-center justify-between border-l-4 border-blue-600 bg-white shadow-sm">
+                    <div className="flex-shrink-0 mx-2 sm:mx-4 mb-2 p-2 rounded-lg flex items-center justify-between border-l-4 border-blue-600 bg-white shadow-sm">
                         <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold text-blue-600">
+                            <p className="text-xs sm:text-sm font-semibold text-blue-600">
                                 {replyTo.sender === "me" ? "You" : "Them"}
                             </p>
-                            <p className="text-xs text-gray-500 truncate max-w-[230px]">
+                            <p className="text-xs text-gray-500 truncate max-w-[180px] sm:max-w-[230px]">
                                 {replyTo.text ||
                                     (replyTo.type === "image"
                                         ? "📷 Photo"
@@ -508,7 +695,7 @@ export default function ChatWindow({
                 {/* INPUT BAR */}
                 <div
                     ref={attachmentRef}
-                    className="py-1 px-2 flex items-center sm:gap-2 relative bg-white border border-gray-300 rounded-xl mx-2 sm:mx-4 mb-4"
+                    className="flex-shrink-0 py-1 px-2 flex items-center sm:gap-2 relative bg-white border border-gray-300 rounded-xl mx-2 sm:mx-4 mb-2 sm:mb-4"
                 >
                     <button
                         onClick={() => {
@@ -604,17 +791,26 @@ export default function ChatWindow({
                                 onClick={startRecording}
                                 disabled={isUploading}
                                 className="p-1 sm:p-2 hover:bg-gray-100 rounded-full text-gray-600 disabled:opacity-50"
+                                title="Record voice message"
                             >
                                 <Mic size={20} />
                             </button>
                         )
                     ) : (
-                        <button
-                            onClick={stopRecording}
-                            className="p-1 sm:p-2 bg-red-600 hover:bg-red-700 rounded-full text-white animate-pulse"
-                        >
-                            <X size={20} />
-                        </button>
+                        <div className="flex items-center gap-2 flex-1">
+                            <div className="flex items-center gap-2 bg-red-50 rounded-full px-3 py-1 flex-1">
+                                <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                                <span className="text-sm text-red-600 font-medium">Recording...</span>
+                                <span className="text-sm text-red-600 font-mono">{formatRecordingTime(recordingTime)}</span>
+                            </div>
+                            <button
+                                onClick={stopRecording}
+                                className="p-1 sm:p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all hover:scale-110"
+                                title="Stop and send"
+                            >
+                                <Send size={20} />
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>

@@ -76,7 +76,7 @@ export class ScrapingScheduler {
       throw new Error(`Unknown source: ${source}`);
     }
 
-    await this.executeJob(source, sourceConfig.maxItems, sourceConfig.maxPages);
+    await this.executeJob(source, sourceConfig);
   }
 
   /**
@@ -116,11 +116,11 @@ export class ScrapingScheduler {
     }
 
     const job = cron.schedule(config.schedule, async () => {
-      await this.executeJob("leetcode", config.maxItems, config.maxPages);
+      await this.executeJob("leetcode", config);
     });
 
     this.jobs.set("leetcode", job);
-    console.log(`📅 [SCHEDULER] LeetCode scheduled: ${config.schedule} (${config.maxItems} items)`);
+    console.log(`📅 [SCHEDULER] LeetCode scheduled: ${config.schedule} (${config.maxItems} items, auto=${config.auto})`);
   }
 
   private scheduleGitHub(): void {
@@ -131,11 +131,11 @@ export class ScrapingScheduler {
     }
 
     const job = cron.schedule(config.schedule, async () => {
-      await this.executeJob("github", config.maxItems, config.maxPages);
+      await this.executeJob("github", config);
     });
 
     this.jobs.set("github", job);
-    console.log(`📅 [SCHEDULER] GitHub scheduled: ${config.schedule} (${config.maxItems} items)`);
+    console.log(`📅 [SCHEDULER] GitHub scheduled: ${config.schedule} (${config.maxItems} items, auto=${config.auto})`);
   }
 
   private scheduleStackOverflow(): void {
@@ -146,11 +146,11 @@ export class ScrapingScheduler {
     }
 
     const job = cron.schedule(config.schedule, async () => {
-      await this.executeJob("stackoverflow", config.maxItems, config.maxPages);
+      await this.executeJob("stackoverflow", config);
     });
 
     this.jobs.set("stackoverflow", job);
-    console.log(`📅 [SCHEDULER] StackOverflow scheduled: ${config.schedule} (${config.maxItems} items)`);
+    console.log(`📅 [SCHEDULER] StackOverflow scheduled: ${config.schedule} (${config.maxItems} items, auto=${config.auto})`);
   }
 
   private scheduleHackerRank(): void {
@@ -161,11 +161,11 @@ export class ScrapingScheduler {
     }
 
     const job = cron.schedule(config.schedule, async () => {
-      await this.executeJob("hackerrank", config.maxItems, config.maxPages);
+      await this.executeJob("hackerrank", config);
     });
 
     this.jobs.set("hackerrank", job);
-    console.log(`📅 [SCHEDULER] HackerRank scheduled: ${config.schedule} (${config.maxItems} items)`);
+    console.log(`📅 [SCHEDULER] HackerRank scheduled: ${config.schedule} (${config.maxItems} items, auto=${config.auto})`);
   }
 
   // =========================================================================
@@ -174,8 +174,7 @@ export class ScrapingScheduler {
 
   private async executeJob(
     source: Source,
-    maxItems: number,
-    maxPages?: number
+    config: any
   ): Promise<void> {
     // Prevent concurrent execution
     if (this.isRunning.get(source)) {
@@ -193,10 +192,14 @@ export class ScrapingScheduler {
     `);
 
     try {
+      // ✅ PASS ALL CONFIG PARAMS to orchestrator
       const result = await this.orchestrator.executeJob({
         source,
-        maxItems,
-        maxPages,
+        maxItems: config.maxItems,
+        maxPages: config.maxPages,
+        auto: config.auto,           // ✅ Critical: pass auto param
+        hardCap: config.hardCap,     // ✅ Optional: pass hardCap
+        stopAfterEmptyPages: config.stopAfterEmptyPages, // ✅ Optional
       });
 
       if (result.success) {
@@ -207,6 +210,7 @@ export class ScrapingScheduler {
 📥 Patterns Scraped: ${result.patternsScraped}
 💾 Patterns Saved: ${result.patternsSaved}
 ⏱️  Duration: ${(result.durationMs / 1000).toFixed(2)}s
+${config.auto ? "🔁 Auto Mode: Yes" : "🔁 Auto Mode: No"}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         `);
       } else {
@@ -236,18 +240,20 @@ Error: ${result.error}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `);
 
-    if (this.config.sources.leetcode.enabled) {
-      console.log(`  🔹 LeetCode: ${this.config.sources.leetcode.schedule} (${this.config.sources.leetcode.maxItems} items)`);
-    }
-    if (this.config.sources.github.enabled) {
-      console.log(`  🔹 GitHub: ${this.config.sources.github.schedule} (${this.config.sources.github.maxItems} items)`);
-    }
-    if (this.config.sources.stackoverflow.enabled) {
-      console.log(`  🔹 StackOverflow: ${this.config.sources.stackoverflow.schedule} (${this.config.sources.stackoverflow.maxItems} items)`);
-    }
-    if (this.config.sources.hackerrank.enabled) {
-      console.log(`  🔹 HackerRank: ${this.config.sources.hackerrank.schedule} (${this.config.sources.hackerrank.maxItems} items)`);
-    }
+    const sources = [
+      { key: "leetcode", name: "LeetCode" },
+      { key: "github", name: "GitHub" },
+      { key: "stackoverflow", name: "StackOverflow" },
+      { key: "hackerrank", name: "HackerRank" },
+    ] as const;
+
+    sources.forEach(({ key, name }) => {
+      const config = this.config.sources[key];
+      if (config.enabled) {
+        console.log(`  🔹 ${name}: ${config.schedule}`);
+        console.log(`     Items: ${config.maxItems}, Auto: ${config.auto}, Pages: ${config.maxPages || 'N/A'}`);
+      }
+    });
 
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   }

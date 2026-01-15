@@ -587,6 +587,20 @@ const AssessmentsManagement: React.FC = () => {
                 <option value="OLDEST">Oldest</option>
               </select>
             </div>
+                        {/* ✅ ONLY New Assessment button (bottom) */}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setWizardOpen(true)}
+              className="text-white px-5 py-3 rounded-sm shadow-2xl z-50 flex items-center gap-2 text-sm font-semibold"
+              style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Plus className="w-4 h-4" />
+              New Assessment
+            </motion.button> 
           </div>
         </div>
 
@@ -596,7 +610,7 @@ const AssessmentsManagement: React.FC = () => {
             <motion.div className="flex items-center justify-center py-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="relative">
                 <motion.div
-                  className="w-16 h-16 border-4 border-gray-200 rounded-full"
+                  className="w-16 h-16 border-4 border-gray-200 rounded-sm"
                   style={{ borderTopColor: LOGO_BLUE }}
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -767,20 +781,6 @@ const AssessmentsManagement: React.FC = () => {
           )}
         </div>
 
-        {/* ✅ ONLY New Assessment button (bottom) */}
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setWizardOpen(true)}
-          className="fixed bottom-6 right-6 text-white px-5 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 text-sm font-semibold"
-          style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Plus className="w-4 h-4" />
-          New Assessment
-        </motion.button>
       </div>
     </div>
   );

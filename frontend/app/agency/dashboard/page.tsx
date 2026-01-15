@@ -23,8 +23,16 @@ import {
   Phone,
   MapPin,
   Calendar,
+  Search,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+interface Candidate {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone_number?: string;
+}
 
 interface BaseStats {
   agencyType: "VISA" | "RELOCATION" | "INTEGRATION";
@@ -87,11 +95,17 @@ export default function AgencyDashboard() {
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
 
+  const [candidateSearch, setCandidateSearch] = useState("");
+  const [candidateResults, setCandidateResults] = useState<Candidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
+    null
+  );
+  const [searchingCandidates, setSearchingCandidates] = useState(false);
+  const [showCandidateDropdown, setShowCandidateDropdown] = useState(false);
+
   // New Case Form State
   const [newCaseForm, setNewCaseForm] = useState({
-    candidateName: "",
-    candidateEmail: "",
-    candidatePhone: "",
+    candidate_id: "", // Store selected candidate ID
     serviceType: "",
     originCountry: "",
     destinationCountry: "",
@@ -175,6 +189,66 @@ export default function AgencyDashboard() {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    if (viewMode === "clients") {
+      fetchClients();
+    } else if (viewMode === "reports") {
+      fetchAnalytics();
+    }
+  }, [viewMode]);
+
+  // Debounced candidate search
+  useEffect(() => {
+    const searchCandidates = async () => {
+      if (candidateSearch.trim().length < 2) {
+        setCandidateResults([]);
+        return;
+      }
+
+      try {
+        setSearchingCandidates(true);
+        const token = localStorage.getItem("authToken");
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_BASE_URL
+          }/agency/candidates/search?query=${encodeURIComponent(
+            candidateSearch
+          )}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setCandidateResults(data.data || []);
+        }
+      } catch (error) {
+        console.error("Candidate search error:", error);
+      } finally {
+        setSearchingCandidates(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchCandidates, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [candidateSearch]);
+
+  // Handle candidate selection
+  const handleCandidateSelect = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setCandidateSearch(candidate.full_name);
+    setShowCandidateDropdown(false);
+    setNewCaseForm({
+      ...newCaseForm,
+      candidate_id: candidate.user_id,
+    });
+  };
+
   // Filter service types based on agency type
   const getServiceTypeOptions = () => {
     if (!stats) return [];
@@ -196,13 +270,16 @@ export default function AgencyDashboard() {
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!selectedCandidate) {
+      toast.error("Please select a candidate from the dropdown");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("authToken");
 
       console.log("🔵 Creating case with data:", {
-        candidateEmail: newCaseForm.candidateEmail,
-        candidateName: newCaseForm.candidateName,
-        candidatePhone: newCaseForm.candidatePhone,
+        candidate_id: newCaseForm.candidate_id,
         serviceType: newCaseForm.serviceType,
         originCountry: newCaseForm.originCountry,
         destinationCountry: newCaseForm.destinationCountry,
@@ -224,9 +301,7 @@ export default function AgencyDashboard() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            candidateEmail: newCaseForm.candidateEmail,
-            candidateName: newCaseForm.candidateName,
-            candidatePhone: newCaseForm.candidatePhone,
+            candidate_id: newCaseForm.candidate_id,
             serviceType: newCaseForm.serviceType,
             originCountry: newCaseForm.originCountry,
             destinationCountry: newCaseForm.destinationCountry,
@@ -266,9 +341,7 @@ export default function AgencyDashboard() {
 
       // Reset form
       setNewCaseForm({
-        candidateName: "",
-        candidateEmail: "",
-        candidatePhone: "",
+        candidate_id: "",
         serviceType: "",
         originCountry: "",
         destinationCountry: "",
@@ -956,314 +1029,378 @@ export default function AgencyDashboard() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
+              <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between z-20">
                 <h3 className="text-2xl font-bold text-slate-800">
                   Create New Case
                 </h3>
                 <button
-                  onClick={() => setShowNewCaseModal(false)}
+                  onClick={() => {
+                    setShowNewCaseModal(false);
+                    setSelectedCandidate(null);
+                    setCandidateSearch("");
+                    setCandidateResults([]);
+                  }}
                   className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-
-              <form onSubmit={handleCreateCase} className="p-6 space-y-6">
-                {/* Candidate Name */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Candidate Name *
-                  </label>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      value={newCaseForm.candidateName}
-                      onChange={(e) =>
-                        setNewCaseForm({
-                          ...newCaseForm,
-                          candidateName: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
-
-                {/* Email & Phone */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+              <div className="overflow-y-auto flex-1">
+                <form onSubmit={handleCreateCase} className="p-6 space-y-6">
+                  {/* Candidate Search with Autocomplete */}
+                  <div className="sticky top-0 bg-white z-10 pb-4 -mt-6 pt-6">
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Email *
+                      Select Candidate *
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
                       <input
-                        type="email"
+                        type="text"
                         required
-                        value={newCaseForm.candidateEmail}
-                        onChange={(e) =>
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            candidateEmail: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="john@example.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Phone
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="tel"
-                        value={newCaseForm.candidatePhone}
-                        onChange={(e) =>
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            candidatePhone: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="+1 234 567 8900"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Service Type */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Service Type *
-                  </label>
-                  <select
-                    required
-                    value={newCaseForm.serviceType}
-                    onChange={(e) =>
-                      setNewCaseForm({
-                        ...newCaseForm,
-                        serviceType: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select service type</option>
-                    {getServiceTypeOptions().map((service) => (
-                      <option key={service.value} value={service.value}>
-                        {service.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Origin & Destination Country */}
-                {/* Origin & Destination Country - DROPDOWNS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Origin Country *
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
-                      <select
-                        required
-                        value={newCaseForm.originCountry}
-                        onChange={(e) =>
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            originCountry: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                      >
-                        <option value="">Select origin country</option>
-                        {Country.getAllCountries().map((country) => (
-                          <option key={country.isoCode} value={country.name}>
-                            {country.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Destination Country *
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
-                      <select
-                        required
-                        value={newCaseForm.destinationCountry}
+                        value={candidateSearch}
                         onChange={(e) => {
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            destinationCountry: e.target.value,
-                            destinationCity: "", // Reset city when country changes
-                          });
+                          setCandidateSearch(e.target.value);
+                          setShowCandidateDropdown(true);
+                          if (e.target.value.trim() === "") {
+                            setSelectedCandidate(null);
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              candidate_id: "",
+                            });
+                          }
                         }}
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                      >
-                        <option value="">Select destination country</option>
-                        {Country.getAllCountries().map((country) => (
-                          <option key={country.isoCode} value={country.name}>
-                            {country.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                        onFocus={() => setShowCandidateDropdown(true)}
+                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Search by name or email..."
+                        autoComplete="off"
+                      />
 
-                {/* Destination City & Priority */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Destination City
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
-                      <select
-                        value={newCaseForm.destinationCity}
-                        onChange={(e) =>
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            destinationCity: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                        disabled={!newCaseForm.destinationCountry}
-                      >
-                        <option value="">Select city (optional)</option>
-                        {newCaseForm.destinationCountry &&
-                          City.getCitiesOfCountry(
-                            Country.getAllCountries().find(
-                              (c) => c.name === newCaseForm.destinationCountry
-                            )?.isoCode || ""
-                          )?.map((city, index) => (
-                            <option
-                              key={`${city.name}-${city.stateCode || index}`}
-                              value={city.name}
-                            >
-                              {city.name}
-                            </option>
-                          ))}
-                      </select>
+                      {/* Loading indicator */}
+                      {searchingCandidates && (
+                        <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 animate-spin" />
+                      )}
+
+                      {/* Dropdown Results */}
+                      {showCandidateDropdown &&
+                        candidateSearch.length >= 2 &&
+                        !selectedCandidate && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20">
+                            {candidateResults.length === 0 ? (
+                              <div className="p-4 text-center text-slate-500 text-sm">
+                                {searchingCandidates
+                                  ? "Searching..."
+                                  : "No candidates found"}
+                              </div>
+                            ) : (
+                              candidateResults.map((candidate) => (
+                                <button
+                                  key={candidate.user_id}
+                                  type="button"
+                                  onClick={() =>
+                                    handleCandidateSelect(candidate)
+                                  }
+                                  className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-b-0"
+                                >
+                                  <p className="font-medium text-slate-800">
+                                    {candidate.full_name}
+                                  </p>
+                                  <p className="text-sm text-slate-600">
+                                    {candidate.email}
+                                  </p>
+                                  {candidate.phone_number && (
+                                    <p className="text-xs text-slate-500">
+                                      {candidate.phone_number}
+                                    </p>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
                     </div>
-                    {!newCaseForm.destinationCountry && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Select destination country first
-                      </p>
+
+                    {/* Selected Candidate Display */}
+                    {selectedCandidate && (
+                      <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-semibold text-green-900">
+                                {selectedCandidate.full_name}
+                              </p>
+                              <p className="text-sm text-green-700">
+                                {selectedCandidate.email}
+                              </p>
+                              {selectedCandidate.phone_number && (
+                                <p className="text-xs text-green-600">
+                                  {selectedCandidate.phone_number}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCandidate(null);
+                              setCandidateSearch("");
+                              setNewCaseForm({
+                                ...newCaseForm,
+                                candidate_id: "",
+                              });
+                            }}
+                            className="p-1 hover:bg-green-100 rounded transition-colors"
+                            title="Clear selection"
+                          >
+                            <X className="w-4 h-4 text-green-700" />
+                          </button>
+                        </div>
+                      </div>
                     )}
+
+                    <p className="text-xs text-slate-500 mt-2">
+                      Type at least 2 characters to search for existing
+                      candidates
+                    </p>
                   </div>
+
+                  {/* Service Type */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Priority Level *
+                      Service Type *
                     </label>
                     <select
                       required
-                      value={newCaseForm.priorityLevel}
+                      value={newCaseForm.serviceType}
                       onChange={(e) =>
                         setNewCaseForm({
                           ...newCaseForm,
-                          priorityLevel: e.target.value,
+                          serviceType: e.target.value,
                         })
                       }
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
+                      <option value="">Select service type</option>
+                      {getServiceTypeOptions().map((service) => (
+                        <option key={service.value} value={service.value}>
+                          {service.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                </div>
 
-                {/* Estimated Completion & Cost */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Estimated Completion
-                    </label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="date"
-                        value={newCaseForm.estimatedCompletion}
-                        onChange={(e) =>
-                          setNewCaseForm({
-                            ...newCaseForm,
-                            estimatedCompletion: e.target.value,
-                          })
-                        }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                  {/* Origin & Destination Country */}
+                  {/* Origin & Destination Country - DROPDOWNS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Origin Country *
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
+                        <select
+                          required
+                          value={newCaseForm.originCountry}
+                          onChange={(e) =>
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              originCountry: e.target.value,
+                            })
+                          }
+                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                        >
+                          <option value="">Select origin country</option>
+                          {Country.getAllCountries().map((country) => (
+                            <option key={country.isoCode} value={country.name}>
+                              {country.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Destination Country *
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
+                        <select
+                          required
+                          value={newCaseForm.destinationCountry}
+                          onChange={(e) => {
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              destinationCountry: e.target.value,
+                              destinationCity: "", // Reset city when country changes
+                            });
+                          }}
+                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                        >
+                          <option value="">Select destination country</option>
+                          {Country.getAllCountries().map((country) => (
+                            <option key={country.isoCode} value={country.name}>
+                              {country.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Estimated Cost ($)
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={newCaseForm.estimatedCost}
+                  {/* Destination City & Priority */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Destination City
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
+                        <select
+                          value={newCaseForm.destinationCity}
+                          onChange={(e) =>
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              destinationCity: e.target.value,
+                            })
+                          }
+                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          disabled={!newCaseForm.destinationCountry}
+                        >
+                          <option value="">Select city (optional)</option>
+                          {newCaseForm.destinationCountry &&
+                            City.getCitiesOfCountry(
+                              Country.getAllCountries().find(
+                                (c) => c.name === newCaseForm.destinationCountry
+                              )?.isoCode || ""
+                            )?.map((city, index) => (
+                              <option
+                                key={`${city.name}-${city.stateCode || index}`}
+                                value={city.name}
+                              >
+                                {city.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      {!newCaseForm.destinationCountry && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Select destination country first
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Priority Level *
+                      </label>
+                      <select
+                        required
+                        value={newCaseForm.priorityLevel}
                         onChange={(e) =>
                           setNewCaseForm({
                             ...newCaseForm,
-                            estimatedCost: e.target.value,
+                            priorityLevel: e.target.value,
                           })
                         }
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="5000"
-                      />
+                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
                     </div>
                   </div>
-                </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Notes
-                  </label>
-                  <textarea
-                    value={newCaseForm.notes}
-                    onChange={(e) =>
-                      setNewCaseForm({ ...newCaseForm, notes: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Additional information..."
-                  />
-                </div>
+                  {/* Estimated Completion & Cost */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Estimated Completion
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="date"
+                          value={newCaseForm.estimatedCompletion}
+                          onChange={(e) =>
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              estimatedCompletion: e.target.value,
+                            })
+                          }
+                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-4 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCaseModal(false)}
-                    className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium transition-colors"
-                  >
-                    Create Case
-                  </button>
-                </div>
-              </form>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Estimated Cost ($)
+                      </label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={newCaseForm.estimatedCost}
+                          onChange={(e) =>
+                            setNewCaseForm({
+                              ...newCaseForm,
+                              estimatedCost: e.target.value,
+                            })
+                          }
+                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="5000"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={newCaseForm.notes}
+                      onChange={(e) =>
+                        setNewCaseForm({
+                          ...newCaseForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="Additional information..."
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="sticky bottom-0 bg-white pt-4 pb-2 -mb-6 border-t border-slate-200">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewCaseModal(false);
+                          setSelectedCandidate(null);
+                          setCandidateSearch("");
+                        }}
+                        className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!selectedCandidate}
+                        className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium transition-colors"
+                      >
+                        Create Case
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}

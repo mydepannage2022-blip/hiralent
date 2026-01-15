@@ -6,6 +6,38 @@ from typing import Dict, Any, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+#  NOUVEAU: Imports pour génération de diagrammes
+from typing import Optional
+try:
+    from app.diagram_generator import (
+        diagram_detector,
+        diagram_generator,
+        diagram_renderer,
+        cloudinary_uploader
+    )
+    DIAGRAM_GENERATION_AVAILABLE = True
+    logger.info(" Diagram generation modules loaded successfully")
+except ImportError as e:
+    #  CHECK SI DIAGRAM GENERATION EST DISPONIBLE
+    DIAGRAM_GENERATION_AVAILABLE = False
+
+    try:
+        from app.diagram_generator.diagram_renderer import diagram_renderer
+        
+        # Vérifier que mmdc est installé
+        if diagram_renderer.validate_installation():
+            DIAGRAM_GENERATION_AVAILABLE = True
+            print("✅ Diagram generation ENABLED (mmdc found)")
+        else:
+            print("⚠️ Diagram generation DISABLED (mmdc not found)")
+            
+    except Exception as e:
+        print(f"⚠️ Diagram generation unavailable: {e}")
+    logger.warning(f"⚠️ Diagram generation not available: {e}")
+    diagram_detector = None
+    diagram_generator = None
+    diagram_renderer = None
+    cloudinary_uploader = None
 
 class GeminiAIService:
     def __init__(self):
@@ -423,6 +455,144 @@ class GeminiAIService:
             "data": question,
             "source": "demo"
         }
+    async def generate_question_with_diagram(
+        self,
+        topic: str,
+        difficulty: str = "medium"
+    ) -> Dict[str, Any]:
+        """
+         NOUVEAU: Génère une question ET son diagramme automatiquement si nécessaire
+        
+        Args:
+            topic: Le sujet de la question (ex: "database schema", "class design")
+            difficulty: Niveau de difficulté ("easy", "medium", "hard")
+        
+        Returns:
+            {
+                'success': bool,
+                'question': {...},  # Données complètes de la question
+                'diagram': {        # Informations sur le diagramme (ou None)
+                    'needed': bool,
+                    'type': str,    # 'er', 'class', 'sequence', etc.
+                    'code': str,    # Code Mermaid
+                    'imageUrl': str # URL Cloudinary
+                } or None
+            }
+        """
+        logger.info(f"🎨 Generating question with diagram: {topic} ({difficulty})")
+        
+        # 1. Générer la question normalement
+        question_result = self.generate_question(topic, difficulty, "coding")
+        
+        if not question_result.get("success"):
+            logger.warning(f"⚠️ Question generation failed, skipping diagram")
+            return question_result
+        
+        question_data = question_result.get("data")
+        
+        # 2. Vérifier si le module de diagrammes est disponible
+        if not DIAGRAM_GENERATION_AVAILABLE:
+            logger.warning("⚠️ Diagram generation module not available")
+            return {
+                'success': True,
+                'question': question_data,
+                'diagram': None
+            }
+        
+        # 3. Détecter si un diagramme est nécessaire
+        try:
+            diagram_req = diagram_detector.detect_diagram_need(question_data)
+            
+            if not diagram_req or not diagram_req.get('needed'):
+                logger.info(f"ℹ️ No diagram needed for this question")
+                return {
+                    'success': True,
+                    'question': question_data,
+                    'diagram': None
+                }
+            
+            logger.info(f"📊 Diagram needed: {diagram_req['type']} (confidence: {diagram_req.get('confidence', 0):.2f})")
+            
+            # 4. Générer le code Mermaid
+            mermaid_code = await diagram_generator.generate_diagram_code(
+                question_data,
+                diagram_req['type']
+            )
+            
+            if not mermaid_code:
+                logger.warning("⚠️ Failed to generate Mermaid code")
+                return {
+                    'success': True,
+                    'question': question_data,
+                    'diagram': {
+                        'needed': True,
+                        'type': diagram_req['type'],
+                        'code': None,
+                        'imageUrl': None,
+                        'error': 'Mermaid code generation failed'
+                    }
+                }
+            
+            logger.info(f"✅ Mermaid code generated ({len(mermaid_code)} chars)")
+            
+            # 5. Rendre le diagramme en image PNG
+            render_result = await diagram_renderer.render_to_png(mermaid_code)
+            
+            if not render_result:
+                logger.warning("⚠️ Failed to render diagram to PNG")
+                return {
+                    'success': True,
+                    'question': question_data,
+                    'diagram': {
+                        'needed': True,
+                        'type': diagram_req['type'],
+                        'code': mermaid_code,
+                        'imageUrl': None,
+                        'error': 'Image rendering failed'
+                    }
+                }
+            
+            image_bytes, mime_type = render_result
+            logger.info(f"✅ Diagram rendered ({len(image_bytes)} bytes, {mime_type})")
+            
+            # 6. Upload vers Cloudinary
+            # Générer un ID temporaire pour la question
+            import hashlib
+            question_id = hashlib.md5(question_data['title'].encode()).hexdigest()[:12]
+            
+            image_url = await cloudinary_uploader.upload_diagram(
+                image_bytes,
+                question_id,
+                diagram_req['type']
+            )
+            
+            if not image_url:
+                logger.warning("⚠️ Failed to upload diagram to Cloudinary")
+            else:
+                logger.info(f"✅ Diagram uploaded: {image_url}")
+            
+            # 7. Retourner le résultat complet
+            return {
+                'success': True,
+                'question': question_data,
+                'diagram': {
+                    'needed': True,
+                    'type': diagram_req['type'],
+                    'code': mermaid_code,
+                    'imageUrl': image_url,
+                    'confidence': diagram_req.get('confidence', 0),
+                    'reason': diagram_req.get('reason', '')
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error generating diagram: {e}", exc_info=True)
+            return {
+                'success': True,
+                'question': question_data,
+                'diagram': None,
+                'diagram_error': str(e)
+            }
     
     def generate_batch(self, topics: List[str], difficulty: str = "medium", 
                       question_type: str = "mcq", count_per_topic: int = 5) -> Dict[str, Any]:

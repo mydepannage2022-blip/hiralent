@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Briefcase, Clock, TrendingUp, Building2 } from 'lucide-react';
 import { Job, JobRecommendation } from '@/src/lib/jobs/jobs.api';
+import { createConversation } from '@/src/lib/message/message.api';
 
 interface JobCardProps {
   job: Job;
@@ -11,8 +12,38 @@ interface JobCardProps {
   showMatchScore?: boolean;
 }
 
+
 const JobCard: React.FC<JobCardProps> = ({ job, matchScore, showMatchScore = false }) => {
   const router = useRouter();
+
+  const [isMessaging, setIsMessaging] = useState(false);
+
+  
+  const handleMessageCompany = async () => {
+    if (!job.company_id) {
+      alert('Company information not available');
+      return;
+    }
+
+    setIsMessaging(true);
+    try {
+      const response = await createConversation({
+        participant_id: job.company_id,
+      });
+      
+      if (response.success && response.data?.conversation_id) {
+        router.push(`/candidate/dashboard/messages?conversation=${response.data.conversation_id}`);
+      } else {
+        alert('Failed to start conversation');
+      }
+    } catch (error) {
+      console.error('Message error:', error);
+      alert('Failed to start conversation');
+    } finally {
+      setIsMessaging(false);
+    }
+  };
+
 
   const handleClick = () => {
     router.push(`/job/jobdetails/${job.job_id}`);
@@ -101,31 +132,45 @@ const JobCard: React.FC<JobCardProps> = ({ job, matchScore, showMatchScore = fal
         </p>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        {/* Salary */}
-        <div className="text-sm">
-          {job.salary_range ? (
-            <span className="font-semibold text-gray-900">{job.salary_range}</span>
-          ) : (
-            <span className="text-gray-500">Salary not disclosed</span>
-          )}
-        </div>
+{/* Footer */}
+<div className="flex items-center justify-between pt-4 border-t border-gray-100">
+  {/* Salary */}
+  <div className="text-sm">
+    {job.salary_range ? (
+      <span className="font-semibold text-gray-900">{job.salary_range}</span>
+    ) : (
+      <span className="text-gray-500">Salary not disclosed</span>
+    )}
+  </div>
 
-        {/* Tags */}
-        <div className="flex items-center gap-2">
-          {job.remote_option && (
-            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full">
-              {job.remote_option}
-            </span>
-          )}
-          {job.visa_sponsored && (
-            <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
-              Visa Sponsored
-            </span>
-          )}
-        </div>
-      </div>
+  {/* Right Side */}
+  <div className="flex items-center gap-3">
+    {/* Tags */}
+    {job.remote_option && (
+      <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full">
+        {job.remote_option}
+      </span>
+    )}
+    {job.visa_sponsored && (
+      <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+        Visa Sponsored
+      </span>
+    )}
+
+    {/* Message Button */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleMessageCompany();
+      }}
+      disabled={isMessaging}
+      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    >
+      {isMessaging ? 'Loading...' : 'Message'}
+    </button>
+  </div>
+</div>
+
     </div>
   );
 };

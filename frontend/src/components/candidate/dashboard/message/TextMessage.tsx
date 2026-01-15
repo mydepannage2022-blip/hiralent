@@ -83,21 +83,26 @@ export default function TextMessage({
       </div>
     ) : null;
 
+  const [showActions, setShowActions] = useState(false);
+
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4 px-2 sm:px-0`}>
       <div
-        className={`group px-4 py-2 rounded-xl text-sm max-w-[70%] relative ${
+        className={`px-3 sm:px-4 py-2 rounded-xl text-sm max-w-[85%] sm:max-w-[70%] min-w-[100px] relative isolate ${
           isMine
             ? "bg-[#EFF5FF] text-black rounded-br-none"
             : "bg-[#F9F9F9] text-black rounded-bl-none"
         }`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
         {/* Action buttons (reply, delete, copy, react) */}
-        <div
-          className={`absolute top-1 ${
-            isMine ? "-left-16" : "-right-16"
-          } opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-        >
+        {showActions && (
+          <div
+            className={`absolute top-1 ${
+              isMine ? "-left-12 sm:-left-16" : "-right-12 sm:-right-16"
+            } transition-opacity duration-200 z-[9999]`}
+          >
           <MessageActions
             onReply={onReply}
             onDelete={onDelete}
@@ -105,14 +110,15 @@ export default function TextMessage({
             onCopy={onCopy}
             isMine={isMine}
           />
-        </div>
+          </div>
+        )}
 
         {/* Reaction picker bar */}
         {showReactBar && (
           <div
-            className={`absolute ${
-              isMine ? "left-0" : "right-0"
-            } -top-12 bg-white shadow-lg rounded-full px-2 py-1 flex gap-1 z-10 border border-gray-200`}
+            className={`fixed ${
+              isMine ? "left-4" : "right-4"
+            } top-1/2 -translate-y-1/2 bg-white shadow-xl rounded-full px-2 py-1 flex gap-1 z-[10000] border border-gray-200`}
           >
             {emojis.map((emoji, idx) => (
               <button
@@ -137,9 +143,9 @@ export default function TextMessage({
         {showPicker && (
           <div
             ref={pickerRef}
-            className={`absolute ${
-              isMine ? "left-0" : "right-0"
-            } -top-80 z-20`}
+            className={`fixed ${
+              isMine ? "left-4" : "right-4"
+            } top-1/2 -translate-y-1/2 z-[10001] max-w-[90vw] sm:max-w-none`}
           >
             <EmojiPicker
               onEmojiClick={(emojiObj) => {
@@ -158,26 +164,26 @@ export default function TextMessage({
         <div>
           {isLocation && (
             <div className="flex items-center gap-2 mb-1">
-              <MapPin size={16} className="text-blue-600" />
+              <MapPin size={14} className="text-blue-600" />
               <span className="text-xs text-blue-600 font-medium">Location</span>
             </div>
           )}
-          
-          <p className="whitespace-pre-wrap break-words">
+
+          <p className="whitespace-pre-wrap break-words text-xs sm:text-sm">
             {msg.text}
           </p>
         </div>
 
         {/* Reaction display */}
         {reaction && (
-          <div className="absolute -bottom-2 -right-2 bg-white border border-gray-200 rounded-full px-1 text-sm">
+          <div className={`absolute -bottom-2 ${isMine ? "-left-1 sm:-left-2" : "-right-1 sm:-right-2"} bg-white border border-gray-200 rounded-full px-1 sm:px-1.5 py-0.5 text-xs sm:text-sm shadow-sm`}>
             {reaction}
           </div>
         )}
 
         {/* Timestamp */}
-        <div className="flex justify-end mt-2">
-          <span className="text-xs text-gray-500">{msg.timestamp}</span>
+        <div className="flex justify-end mt-1 sm:mt-2">
+          <span className="text-[10px] sm:text-xs text-gray-500">{msg.timestamp}</span>
         </div>
       </div>
     </div>

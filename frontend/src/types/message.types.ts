@@ -17,7 +17,13 @@ export interface MessageReply {
   sender_name: string;
   message_type: MessageType;
 }
-
+export interface MessageReaction {
+  reaction_id: string;
+  emoji: string;
+  user_id: string;
+  user_name: string;
+  created_at: string;
+}
 export interface Message {
   message_id: string;
   conversation_id: string;
@@ -34,6 +40,7 @@ export interface Message {
   reply_to_id?: string | null;
   sender: MessageSender;
   reply_to?: MessageReply | null;
+  reactions?: MessageReaction[]; 
 }
 
 export interface ConversationParticipant {
@@ -177,6 +184,7 @@ export interface LegacyMessage {
     type: MessageType;
     fileName?: string;
   };
+  reactions?: MessageReaction[];
 }
 
 export interface LegacyConversation {
@@ -197,7 +205,7 @@ export type ConversationConverter = (conversation: Conversation, messages: Messa
 // ==================== CONVERTER FUNCTIONS ====================
 
 export const convertToLegacyMessage = (
-  message: Message, 
+  message: Message,
   currentUserId: string
 ): LegacyMessage => ({
   id: message.message_id,
@@ -205,16 +213,17 @@ export const convertToLegacyMessage = (
   text: message.content || message.file_name || '',
   type: message.message_type,
   fileName: message.file_name || undefined,
-  timestamp: new Date(message.sent_at).toLocaleTimeString([], { 
-    hour: "2-digit", 
-    minute: "2-digit" 
+  timestamp: new Date(message.sent_at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
   }),
   replyTo: message.reply_to ? {
     sender: message.reply_to.sender_name === "You" ? "me" : "them",
     text: message.reply_to.content || '',
     type: message.reply_to.message_type,
     fileName: undefined
-  } : undefined
+  } : undefined,
+  reactions: message.reactions || []
 });
 
 export const convertToLegacyConversation = (

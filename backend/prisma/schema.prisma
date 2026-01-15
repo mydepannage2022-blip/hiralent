@@ -74,6 +74,7 @@ model Agency {
   invitations           CompanyAgencyInvitation[]
   relocationAnalytics   RelocationAnalytics[]
   cases                 RelocationCase[]
+  integrationCases      RelocationCase[] @relation("IntegrationAgency") // Integration agency cases
 }
 
 model User {
@@ -132,7 +133,7 @@ model User {
   generatedContents         GeneratedContent[]        @relation("GeneratedContent")
   aiFeedbacks               AIFeedback[]              @relation("AIFeedback")
   uploadedDocuments         UploadedDocument[]        @relation("UserUploadedDocuments")
-
+  reactions            MessageReaction[]   @relation("UserReactions") 
   companyAssessments EmployerAssessment[] @relation("CompanyAssessments")
   // Removed candidateAssessments (invalid inverse)
   // Removed competeChallenges (invalid inverse)
@@ -143,6 +144,11 @@ model User {
   hiringAnalytics           HiringAnalytics[] @relation("CompanyAnalytics")
   subscriptions     UserSubscription[]  @relation("UserSubscriptions")
   payments          PaymentTransaction[] @relation("UserPayments")
+
+  // Relations to Scraping Candidates models (Do not Touch !!!)
+  sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
+  sourcingRunsTriggered SourcingRun[] @relation("SourcingRunTriggeredByUser")
+
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -234,6 +240,20 @@ model Question {
   isLibraryQuestion Boolean @default(false)
   assessments AssessmentQuestion[]   //  NEW
 
+  //  NEW (for pattern-generated questions)
+  generatedFromPattern     Boolean @default(false)
+  patternKey               String?  // "stackoverflow:123456"
+  patternDifficultyVariant String?  // "easy" | "medium" | "hard"
+
+  //  Diagram
+  hasDiagram       Boolean   @default(false)
+  diagramType      String?   // 'er', 'class', 'sequence', 'tree', 'architecture'
+  diagramCode      String?   @db.Text  // Code Mermaid
+  diagramImageUrl  String?   // URL Cloudinary
+  diagramMetadata  Json?     // Métadonnées supplémentaires
+
+  @@unique([patternKey, patternDifficultyVariant])
+
 
   @@map("questions")
 }
@@ -250,6 +270,8 @@ model AlgorithmPattern {
   inputStructure Json
   extractedAt   DateTime
   createdAt     DateTime @default(now())
+  //  OPTIONAL
+  questionsGenerated Boolean @default(false)
 
   @@unique([source, sourceId])
 }
@@ -478,6 +500,8 @@ model RelocationCase {
 
   embassy_submission  EmbassySubmission?
 
+  integration_agency_id String?
+
   // Housing Details
   housing_type         String?
   housing_address      String?
@@ -498,7 +522,31 @@ model RelocationCase {
   airport_pickup_required Boolean? @default(false)
   arrival_notes           String?
 
+  // Relations
+  integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id])
+
+  integrationServices   IntegrationService[] @relation("IntegrationServices")
+
   @@map("relocation_cases")
+}
+
+model IntegrationService {
+  service_id       String   @id @default(uuid())
+  case_id          String
+  service_type     String   // healthcare, banking, tax_id, telecom, transport, integration_program
+  status           String   @default("pending") // pending, in_progress, completed
+  service_date     DateTime?
+  proof_document   String?  // URL to uploaded proof document
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  case             RelocationCase @relation("IntegrationServices", fields: [case_id], references: [case_id], onDelete: Cascade)
+  
+  @@index([case_id])
+  @@index([service_type])
+  @@index([status])
+  @@map("integration_services")
 }
 
 model CaseAssignment {
@@ -1610,9 +1658,29 @@ model Message {
   sender       User         @relation("UserMessages", fields: [sender_id], references: [user_id])
   reply_to     Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
   replies      Message[]    @relation("MessageReplies")
+  reactions    MessageReaction[]
 
   @@map("messages")
 }
+
+// Add this after the Message model (around line 1663)
+
+model MessageReaction {
+  reaction_id   String   @id @default(uuid())
+  message_id    String
+  user_id       String
+  emoji         String
+  created_at    DateTime @default(now())
+  
+  message       Message  @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  user          User     @relation("UserReactions", fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@unique([message_id, user_id])
+  @@index([message_id])
+  @@index([user_id])
+  @@map("message_reactions")
+}
+
 
   // Code execution submissions used by the runner and worker
   model CodeSubmission {
@@ -1720,4 +1788,106 @@ model EmbassySubmission {
   case                RelocationCase @relation(fields: [case_id], references: [case_id])
 
   @@map("embassy_submissions")
+}
+
+// Scraping candidates (Models + enums)
+
+enum SourcedCandidateStatus {
+  NEW
+  ACTIVE
+  HIDDEN
+  CONVERTED
+}
+
+model SourcedCandidate {
+  sourced_candidate_id String   @id @default(uuid())
+
+  // Where it came from
+  source              String   // "greenhouse" | "lever" | "csv" | "github" | ...
+  source_uid          String?  // id from the source if available
+  source_profile_url  String?  // link to profile page
+  source_run_id       String?  // last run that touched this record
+
+  // Normalized profile fields (employer-facing)
+  full_name   String?
+  headline    String?
+  about_me    String?  @db.VarChar(800)
+  location    String?
+  city        String?
+  skills      String[] @default([])
+  links       Json?    // store as JSON instead of String (much better)
+  
+  // Optional contact fields (might exist for ATS/CSV)
+  email       String?
+  phone       String?
+  linkedin_url String?
+
+  // Dedupe + search helpers
+  fingerprint String  @unique  // computed hash (see below)
+  status      SourcedCandidateStatus @default(NEW)
+
+  // Conversion: if candidate later becomes a real platform user
+  user_id     String? @unique
+  user        User?   @relation("SourcedCandidateToUser", fields: [user_id], references: [user_id], onDelete: SetNull)
+
+  runItems SourcingRunItem[] @relation("RunItemToSourcedCandidate")
+
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([source])
+  @@index([email])
+  @@index([linkedin_url])
+}
+
+enum SourcingRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model SourcingRun {
+  run_id      String   @id @default(uuid())
+  status      SourcingRunStatus @default(QUEUED)
+
+  triggered_by_user_id String?
+  triggered_by User? @relation("SourcingRunTriggeredByUser", fields: [triggered_by_user_id], references: [user_id], onDelete: SetNull)
+
+
+  sources     String[]  // ["greenhouse","lever"]
+  query       String?
+  filters     Json?
+  started_at  DateTime @default(now())
+  ended_at    DateTime?
+
+  total_found Int @default(0)
+  total_saved Int @default(0)
+  total_skipped Int @default(0)
+  error       String?
+
+  items       SourcingRunItem[]
+
+  @@index([status])
+}
+
+model SourcingRunItem {
+  item_id    String @id @default(uuid())
+  run_id     String
+  run        SourcingRun @relation(fields: [run_id], references: [run_id], onDelete: Cascade)
+
+  sourced_candidate_id String?
+  sourcedCandidate SourcedCandidate? @relation("RunItemToSourcedCandidate", fields: [sourced_candidate_id], references: [sourced_candidate_id], onDelete: SetNull)
+
+
+  source     String
+  source_uid String?
+  action     String // "created" | "updated" | "skipped" | "failed"
+  reason     String?
+  raw        Json?  // optional: store raw payload (careful with size)
+
+  created_at DateTime @default(now())
+
+  @@index([run_id])
 }
