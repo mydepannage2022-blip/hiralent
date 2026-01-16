@@ -26,6 +26,8 @@ import {
   Plane,
   Home,
   Users,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOCUMENT_TYPES } from "@/src/constants/documentTypes";
@@ -97,6 +99,8 @@ interface Case {
   lease_start_date?: string;
   lease_end_date?: string;
   housing_contract_url?: string;
+  housing_agency_id?: string;
+  housingAgency?: Agency;
 
   // Utility fields
   utility_water?: string;
@@ -439,11 +443,11 @@ export default function CaseDetailPage() {
   };
 
   // Calculate which tabs to show
-  // Housing tab only shows after visa is approved
+  // Housing tab shows after visa is approved OR housing agency is assigned
   const visaApproved = caseData?.embassy_submission?.status === "approved";
+  const housingAgencyAssigned = Boolean(caseData?.housing_agency_id); // Check housing_agency_id
   const showHousingTab =
-    (caseData?.service_type === "housing" && visaApproved) ||
-    Boolean(caseData?.housing_address);
+    visaApproved || housingAgencyAssigned || Boolean(caseData?.housing_address);
 
   const showIntegrationTab = Boolean(caseData?.integration_agency_id);
 
@@ -963,7 +967,14 @@ function OverviewTabContent({
     caseData.status === "integration_in_progress" ||
     caseData.status === "integration_complete" ||
     caseData.status === "fully_integrated";
-  const housingInProgress = Boolean(caseData.housing_address);
+
+  // Replace the housingInProgress check with:
+  const housingInProgress =
+    caseData.status === "housing_assigned" ||
+    caseData.status === "housing_in_progress" ||
+    Boolean(caseData.housing_address);
+
+  const showIntegrationTab = Boolean(caseData.integration_agency_id);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -988,27 +999,6 @@ function OverviewTabContent({
                   {caseData.destination_city &&
                     ` (${caseData.destination_city})`}
                 </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Building2 className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 mb-1">
-                  {caseData.service_type === "housing"
-                    ? "Housing Agency"
-                    : "Primary Agency"}
-                </p>
-                <p className="text-sm font-medium text-slate-700">
-                  {caseData.agency.name}
-                </p>
-                {caseData.agency.email && (
-                  <p className="text-xs text-slate-500">
-                    {caseData.agency.email}
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1155,6 +1145,69 @@ function OverviewTabContent({
                 </div>
               </div>
             )}
+
+            {/* ADD INTEGRATION STEP HERE */}
+            {showIntegrationTab && (
+              <div
+                className={`flex items-start gap-4 p-4 rounded-xl border-l-4 ${
+                  caseData.status === "integration_complete" ||
+                  caseData.status === "fully_integrated"
+                    ? "bg-linear-to-r from-blue-50 to-transparent border-blue-500"
+                    : caseData.integration_agency_id
+                    ? "bg-linear-to-r from-yellow-50 to-transparent border-yellow-500"
+                    : "bg-linear-to-r from-slate-50 to-transparent border-slate-300"
+                }`}
+              >
+                <div
+                  className={`p-2 rounded-lg ${
+                    caseData.status === "integration_complete" ||
+                    caseData.status === "fully_integrated"
+                      ? "bg-green-100"
+                      : caseData.integration_agency_id
+                      ? "bg-yellow-100"
+                      : "bg-slate-100"
+                  }`}
+                >
+                  {caseData.status === "integration_complete" ||
+                  caseData.status === "fully_integrated" ? (
+                    <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                  ) : caseData.integration_agency_id ? (
+                    <Clock className="w-6 h-6 text-yellow-600 shrink-0" />
+                  ) : (
+                    <Users className="w-6 h-6 text-slate-400 shrink-0" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-semibold mb-1 ${
+                      caseData.status === "integration_complete" ||
+                      caseData.status === "fully_integrated" ||
+                      caseData.integration_agency_id
+                        ? "text-slate-800"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    Integration Services
+                  </p>
+                  <p
+                    className={`text-sm ${
+                      caseData.status === "integration_complete" ||
+                      caseData.status === "fully_integrated" ||
+                      caseData.integration_agency_id
+                        ? "text-slate-600"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {caseData.status === "integration_complete" ||
+                    caseData.status === "fully_integrated"
+                      ? "All set - Fully integrated and settled"
+                      : caseData.integration_agency_id
+                      ? "Integration services in progress"
+                      : "Waiting for housing completion"}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1221,6 +1274,31 @@ function OverviewTabContent({
                   {housingComplete
                     ? "Complete"
                     : housingInProgress
+                    ? "In Progress"
+                    : "Pending"}
+                </span>
+              </div>
+            )}
+            {/* ✅ ADD INTEGRATION HERE */}
+            {showIntegrationTab && (
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                <span className="text-sm font-medium text-slate-700">
+                  Integration
+                </span>
+                <span
+                  className={`text-sm font-bold ${
+                    caseData.status === "integration_complete" ||
+                    caseData.status === "fully_integrated"
+                      ? "text-green-600"
+                      : caseData.integration_agency_id
+                      ? "text-yellow-600"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {caseData.status === "integration_complete" ||
+                  caseData.status === "fully_integrated"
+                    ? "Complete"
+                    : caseData.integration_agency_id
                     ? "In Progress"
                     : "Pending"}
                 </span>
@@ -1372,133 +1450,6 @@ function VisaTabContent({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Right Column */}
-      <div className="lg:col-span-1 space-y-6">
-        {/* Visa Approved - Housing Agency Selection */}
-        {caseData.embassy_submission?.status === "approved" && (
-          <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-300 shadow-sm">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="p-2 bg-green-100 rounded-lg shrink-0">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div className="flex-1">
-                {caseData.status === "ready_for_arrival" ? (
-                  <>
-                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
-                      <Home className="w-4 h-4" />
-                      Housing Complete!
-                    </h3>
-                    <p className="text-xs text-green-800 leading-relaxed">
-                      Your housing is all set and ready. Check the Housing tab
-                      for full details!
-                    </p>
-                  </>
-                ) : caseData.status === "housing_assigned" ||
-                  caseData.status === "housing_in_progress" ||
-                  caseData.status === "housing_complete" ? (
-                  <>
-                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
-                      <Home className="w-4 h-4" />
-                      Housing Agency Working
-                    </h3>
-                    <p className="text-xs text-green-800 leading-relaxed">
-                      {caseData.agency.name} is arranging your accommodation.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Visa Approved!
-                    </h3>
-                    <p className="text-xs text-green-800 leading-relaxed">
-                      Select a housing agency to help you find accommodation in{" "}
-                      {caseData.destination_country}.
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Button - Always visible but disabled when housing already chosen */}
-            <button
-              onClick={() => setShowAgencyBrowser(true)}
-              disabled={
-                caseData.status === "housing_assigned" ||
-                caseData.status === "housing_in_progress" ||
-                caseData.status === "housing_complete" ||
-                caseData.status === "ready_for_arrival" ||
-                caseData.status === "integration_assigned" ||
-                caseData.status === "integration_in_progress" ||
-                caseData.status === "integration_complete" ||
-                caseData.status === "fully_integrated"
-              }
-              className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
-                caseData.status === "housing_assigned" ||
-                caseData.status === "housing_in_progress" ||
-                caseData.status === "housing_complete" ||
-                caseData.status === "ready_for_arrival" ||
-                caseData.status === "integration_assigned" ||
-                caseData.status === "integration_in_progress" ||
-                caseData.status === "integration_complete" ||
-                caseData.status === "fully_integrated"
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              {caseData.status === "housing_assigned" ||
-              caseData.status === "housing_in_progress" ||
-              caseData.status === "housing_complete" ||
-              caseData.status === "ready_for_arrival" ||
-              caseData.status === "integration_assigned" ||
-              caseData.status === "integration_in_progress" ||
-              caseData.status === "integration_complete" ||
-              caseData.status === "fully_integrated"
-                ? "Housing Agency Already Selected"
-                : "Choose Housing Agency"}
-            </button>
-          </div>
-        )}
-
-        {/* Required Documents Checklist */}
-        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-800 mb-3">
-            Required Documents
-          </h3>
-          <ul className="space-y-2">
-            {DOCUMENT_TYPES.map((type) => {
-              const hasDoc = caseData.documents.some(
-                (d) =>
-                  d.document_type === type.value &&
-                  d.status === "approved" &&
-                  d.is_active === true
-              );
-              return (
-                <li
-                  key={type.value}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  {hasDoc ? (
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
-                  )}
-                  <span
-                    className={
-                      hasDoc ? "text-slate-700 font-medium" : "text-slate-500"
-                    }
-                  >
-                    {type.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
         {/* Embassy Status */}
         {caseData.embassy_submission && (
           <div className="bg-green-50 rounded-2xl p-6 border border-green-100 shadow-sm">
@@ -1640,6 +1591,180 @@ function VisaTabContent({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Right Column */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Visa Approved - Housing Agency Selection */}
+        {caseData.embassy_submission?.status === "approved" && (
+          <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-300 shadow-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg shrink-0">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                {caseData.status === "ready_for_arrival" ? (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Housing Complete!
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      Your housing is all set and ready. Check the Housing tab
+                      for full details!
+                    </p>
+                  </>
+                ) : caseData.status === "housing_assigned" ||
+                  caseData.status === "housing_in_progress" ||
+                  caseData.status === "housing_complete" ? (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Housing Agency Working
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      {caseData.agency.name} is arranging your accommodation.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-bold text-green-900 mb-1 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Visa Approved!
+                    </h3>
+                    <p className="text-xs text-green-800 leading-relaxed">
+                      Select a housing agency to help you find accommodation in{" "}
+                      {caseData.destination_country}.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Button - Always visible but disabled when housing already chosen */}
+            <button
+              onClick={() => setShowAgencyBrowser(true)}
+              disabled={
+                caseData.status === "housing_assigned" ||
+                caseData.status === "housing_in_progress" ||
+                caseData.status === "housing_complete" ||
+                caseData.status === "ready_for_arrival" ||
+                caseData.status === "integration_assigned" ||
+                caseData.status === "integration_in_progress" ||
+                caseData.status === "integration_complete" ||
+                caseData.status === "fully_integrated"
+              }
+              className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                caseData.status === "housing_assigned" ||
+                caseData.status === "housing_in_progress" ||
+                caseData.status === "housing_complete" ||
+                caseData.status === "ready_for_arrival" ||
+                caseData.status === "integration_assigned" ||
+                caseData.status === "integration_in_progress" ||
+                caseData.status === "integration_complete" ||
+                caseData.status === "fully_integrated"
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              {caseData.status === "housing_assigned" ||
+              caseData.status === "housing_in_progress" ||
+              caseData.status === "housing_complete" ||
+              caseData.status === "ready_for_arrival" ||
+              caseData.status === "integration_assigned" ||
+              caseData.status === "integration_in_progress" ||
+              caseData.status === "integration_complete" ||
+              caseData.status === "fully_integrated"
+                ? "Housing Agency Already Selected"
+                : "Choose Housing Agency"}
+            </button>
+          </div>
+        )}
+
+        {/* VISA AGENCY CARD */}
+        {caseData.agency && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Building2 className="w-5 h-5 text-blue-600" />
+              </div>
+              Your Visa Agency
+            </h2>
+            <div className="space-y-3">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 font-medium mb-1">
+                  Agency Name
+                </p>
+                <p className="text-sm font-semibold text-blue-900">
+                  {caseData.agency.name}
+                </p>
+              </div>
+              {caseData.agency.email && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Mail className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Contact Email
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.agency.email}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {caseData.agency.phone && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Phone Number
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.agency.phone}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Required Documents Checklist */}
+        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-3">
+            Required Documents
+          </h3>
+          <ul className="space-y-2">
+            {DOCUMENT_TYPES.map((type) => {
+              const hasDoc = caseData.documents.some(
+                (d) =>
+                  d.document_type === type.value &&
+                  d.status === "approved" &&
+                  d.is_active === true
+              );
+              return (
+                <li
+                  key={type.value}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  {hasDoc ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
+                  )}
+                  <span
+                    className={
+                      hasDoc ? "text-slate-700 font-medium" : "text-slate-500"
+                    }
+                  >
+                    {type.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -2030,6 +2155,54 @@ function HousingTabContent({
                 ? "Integration Agency Already Selected"
                 : "Choose Integration Agency"}
             </button>
+          </div>
+        )}
+
+        {/* ADD HOUSING AGENCY INFO CARD */}
+        {caseData.housingAgency && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Building2 className="w-5 h-5 text-green-600" />
+              </div>
+              Your Housing Agency
+            </h2>
+            <div className="space-y-3">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-xs text-green-700 font-medium mb-1">
+                  Agency Name
+                </p>
+                <p className="text-sm font-semibold text-green-900">
+                  {caseData.housingAgency.name}
+                </p>
+              </div>
+              {caseData.housingAgency.email && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Mail className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Contact Email
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.housingAgency.email}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {caseData.housingAgency.phone && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      Phone Number
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.housingAgency.phone}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

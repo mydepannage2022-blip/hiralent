@@ -224,9 +224,6 @@ export default function CasesPage() {
                       title={`${caseItem.priority_level} priority`}
                     />
                   </div>
-                  <p className="text-sm text-slate-500">
-                    {caseItem.service_type.replace('_', ' ')}
-                  </p>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
@@ -244,16 +241,6 @@ export default function CasesPage() {
                     <p className="text-sm font-medium text-slate-700">
                       {caseItem.origin_country} → {caseItem.destination_country}
                       {caseItem.destination_city && ` (${caseItem.destination_city})`}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Agency</p>
-                    <p className="text-sm font-medium text-slate-700">
-                      {caseItem.agency.name}
                     </p>
                   </div>
                 </div>

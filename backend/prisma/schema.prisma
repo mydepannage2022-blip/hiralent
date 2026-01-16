@@ -75,6 +75,7 @@ model Agency {
   relocationAnalytics   RelocationAnalytics[]
   cases                 RelocationCase[]
   integrationCases      RelocationCase[] @relation("IntegrationAgency") // Integration agency cases
+  housingCases          RelocationCase[] @relation("HousingAgency")
 }
 
 model User {
@@ -486,6 +487,7 @@ model RelocationCase {
   candidate_id String
   job_id       String? // Optional: linked to specific job
   agency_id    String
+  housing_agency_id     String?
   case_number  String  @unique // Human readable case number
 
   // Case Details
@@ -517,6 +519,8 @@ model RelocationCase {
   candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
   agency      Agency               @relation(fields: [agency_id], references: [agency_id])
+  housingAgency     Agency?        @relation("HousingAgency", fields: [housing_agency_id], references: [agency_id])
+  housing_details   HousingArrangement?
   assignments CaseAssignment[]
   updates     CaseProgressUpdate[]
   documents   CaseDocument[]
@@ -524,26 +528,6 @@ model RelocationCase {
   embassy_submission  EmbassySubmission?
 
   integration_agency_id String?
-
-  // Housing Details
-  housing_type         String?
-  housing_address      String?
-  monthly_rent_mad     Float?
-  agency_fee_amount    Float?
-  lease_start_date     DateTime?
-  lease_end_date       DateTime?
-  housing_contract_url String?
-
-  // Utility Setup
-  utility_water        String? @default("pending")
-  utility_electricity  String? @default("pending")
-  utility_internet     String? @default("pending")
-
-  // Travel & Arrival
-  arrival_date            DateTime?
-  flight_number           String?
-  airport_pickup_required Boolean? @default(false)
-  arrival_notes           String?
 
   // Relations
   integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id])
@@ -570,6 +554,39 @@ model IntegrationService {
   @@index([service_type])
   @@index([status])
   @@map("integration_services")
+}
+
+model HousingArrangement {
+  housing_id String @id @default(uuid())
+  case_id    String @unique
+  
+  // Housing Details
+  housing_type         String?
+  housing_address      String?
+  monthly_rent_mad     Float?
+  agency_fee_amount    Float?
+  lease_start_date     DateTime?
+  lease_end_date       DateTime?
+  housing_contract_url String?
+  
+  // Utility Setup
+  utility_water        String? @default("pending")
+  utility_electricity  String? @default("pending")
+  utility_internet     String? @default("pending")
+  
+  // Travel & Arrival
+  arrival_date            DateTime?
+  flight_number           String?
+  airport_pickup_required Boolean? @default(false)
+  arrival_notes           String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  // Relation
+  case RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
+  
+  @@map("housing_arrangements")
 }
 
 model CaseAssignment {

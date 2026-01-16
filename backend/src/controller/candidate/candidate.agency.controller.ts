@@ -135,28 +135,16 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
       });
     }
 
-    // 3. Check if housing agency already assigned
-    const existingAssignment = await prisma.caseAssignment.findFirst({
-      where: {
-        case_id: caseId,
-        status: "active",
-      },
-      include: {
-        agency: {
-          select: {
-            agency_id: true,
-            name: true,
-            type: true,
-          },
-        },
-      },
-    });
-
-    if (existingAssignment) {
+    // 3. Check if housing agency already assigned in case record
+    if (caseData.housing_agency_id) {
+      const existingAgency = await prisma.agency.findUnique({
+        where: { agency_id: caseData.housing_agency_id },
+        select: { name: true },
+      });
+      
       return res.status(400).json({
         success: false,
-        message: `Housing agency already assigned: ${existingAssignment.agency.name}`,
-        data: existingAssignment,
+        message: `Housing agency already assigned: ${existingAgency?.name || 'Unknown'}`,
       });
     }
 
@@ -206,18 +194,16 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
       }
     }
 
-    // 6. Create case assignment
-    const assignment = await prisma.caseAssignment.create({
+    // 6. Update case with housing_agency_id
+    const updatedCase = await prisma.relocationCase.update({
+      where: { case_id: caseId },
       data: {
-        case_id: caseId,
-        agency_id: agencyId,
-        agent_id: userId, // Temporarily use candidate's user_id (agency will reassign to their agent)
-        assigned_at: new Date(),
-        status: "active",
-        notes: "Housing agency selected by candidate",
+        housing_agency_id: agencyId,  // Set housing agency!
+        status: "housing_assigned",
+        updated_at: new Date(),
       },
       include: {
-        agency: {
+        housingAgency: {
           select: {
             agency_id: true,
             name: true,
@@ -226,16 +212,6 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
             website: true,
           },
         },
-      },
-    });
-
-    // 7. Update case status and service_type to housing
-    await prisma.relocationCase.update({
-      where: { case_id: caseId },
-      data: {
-        status: "housing_assigned",
-        service_type: "housing",
-        updated_at: new Date(),
       },
     });
 
@@ -406,11 +382,11 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
       success: true,
       message: `Housing agency assigned successfully: ${agency.name}`,
       data: {
-        assignment_id: assignment.assignment_id,
-        case_id: caseId,
-        agency: assignment.agency,
-        assigned_at: assignment.assigned_at,
-        status: assignment.status,
+        case_id: updatedCase.case_id,
+        housing_agency_id: updatedCase.housing_agency_id,
+        agency: updatedCase.housingAgency,
+        status: updatedCase.status,
+        updated_at: updatedCase.updated_at,
       },
     });
   } catch (error) {
