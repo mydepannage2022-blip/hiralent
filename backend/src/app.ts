@@ -56,6 +56,9 @@ import subscriptionRoutes from './routes/subscription.routes';
 import schedulerRoutes from "./routes/scraping/scraping.routes";
 import internalRoutes from "./routes/internal.routes";
 import candidateJobsRoutes from "./routes/candidate/jobs.routes";
+import internalCandidateRoutes from "./routes/internal/candidate/candidateSnapshot.routes";
+import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes";
+import matchingInternalRoutes from "./routes/internal/matching.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -111,11 +114,18 @@ app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
 
-//Scraping Candidates
-app.use("/api/v1/internal", internalRoutes);
+
 
 //Candidate (jobs+assessments)
 app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
+
+app.use("/internal/matching/candidate", internalCandidateRoutes);
+app.use("/internal/matching/company", internalCompanyRoutes);
+app.use("/internal/matching", matchingInternalRoutes);
+
+//Scraping Candidates
+app.use("/internal", internalRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

@@ -627,6 +627,10 @@ model JobRecommendation {
   is_eligible     Boolean  @default(false)
   reason_codes    String[] @default([])   // ["PROFILE_NOT_READY","MISSING_FIELD:resume_url","MISSING_SKILL:nodejs"]
   missing_skills  String[] @default([])   // ["nodejs","postgresql"]
+  vector_score Float?
+  trigger String? // "INTERVIEW_REQUIRED" | "ASSESSMENT_REQUIRED" | "NO_TRIGGER"
+  job_embedding_hash String?
+  candidate_embedding_hash String?
 
   is_viewed         Boolean    @default(false)
   is_applied        Boolean    @default(false)
@@ -638,17 +642,69 @@ model JobRecommendation {
   @@unique([candidate_id, job_id]) // IMPORTANT (1 rec per candidate per job)
 }
 
-model JobVector {
-  vector_id           String     @id @default(uuid())
-  job_id              String     @unique
-  requirements_vector Json
-  skills_vector       Json
-  combined_vector     Json
-  vector_version      String
-  last_updated        DateTime   @default(now())
-  created_at          DateTime   @default(now())
-  job                 CompanyJob @relation("JobVector", fields: [job_id], references: [job_id])
+// Models and enums for matching-candidate-job  (Pleaze Do not touch)
+
+enum VectorIndexStatus {
+  PENDING
+  INDEXED
+  FAILED
 }
+
+model JobVector {
+  vector_id        String           @id @default(uuid())
+  job_id           String           @unique
+  qdrant_point_id  String?          
+  embedding_hash   String?
+  provider         String?          // e.g. "all-MiniLM-L6-v2"
+  vector_version   String           @default("v1")
+  status           VectorIndexStatus @default(PENDING)
+  indexed_at       DateTime?
+  last_attempt_at  DateTime?
+  last_error       String?
+
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  job CompanyJob @relation("JobVector", fields: [job_id], references: [job_id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([embedding_hash])
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum MatchingEventType {
+  JOB_UPDATED
+  CANDIDATE_UPDATED
+}
+
+enum MatchingEntityType {
+  JOB
+  CANDIDATE
+}
+
+model MatchingOutboxEvent {
+  event_id    String      @id @default(uuid())
+  event_type  MatchingEventType
+  entity_id   String
+  entity_type MatchingEntityType
+  payload     Json?
+  status      OutboxStatus @default(PENDING)
+  dedupe_key String? @unique
+
+  attempts    Int         @default(0)
+  last_error  String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  @@index([status])
+  @@index([entity_id])
+}
+
 
 model CandidateProfile {
   candidate_id           String   @id
@@ -823,17 +879,27 @@ model CareerPrediction {
   candidate          User     @relation("CareerPredictions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 }
 
+// Model for matching-candidate-job  (Pleaze Do not touch)
+
 model CandidateVector {
-  vector_id         String   @id @default(uuid())
-  candidate_id      String   @unique
-  skill_vector      Json
-  experience_vector Json
-  education_vector  Json
-  combined_vector   Json
-  vector_version    String
-  last_updated      DateTime @default(now())
-  created_at        DateTime @default(now())
-  candidate         User     @relation("CandidateVector", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  vector_id        String           @id @default(uuid())
+  candidate_id     String           @unique
+  qdrant_point_id  String?
+  embedding_hash   String?
+  provider         String?
+  vector_version   String           @default("v1")
+  status           VectorIndexStatus @default(PENDING)
+  indexed_at       DateTime?
+  last_attempt_at  DateTime?
+  last_error       String?
+
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  candidate User @relation("CandidateVector", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([embedding_hash])
 }
 
 model ProfileCompleteness {

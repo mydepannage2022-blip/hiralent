@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.0-flash"
 
+    # backend (node internal)
+    BACKEND_BASE_URL: str | None = None
+    BACKEND_INTERNAL_TOKEN: str | None = None
+
     class Config:
         env_file = ".env"
 
