@@ -147,6 +147,8 @@ model User {
   // Relations to Scraping Candidates models (Do not Touch !!!)
   sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
   sourcingRunsTriggered SourcingRun[] @relation("SourcingRunTriggeredByUser")
+  candidateGlobalScore CandidateGlobalScore?
+  candidateGlobalScoreHistory CandidateGlobalScoreHistory[]
 
 }
 
@@ -374,6 +376,18 @@ model JobApplication {
   applied_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
+  // per-application scoring (store externally, not profile)
+  relevance_score Float?        // 0..1 or 0..100 (choisis une échelle et garde-la partout)
+  vector_score    Float?        // optional: keep for debug
+  trigger         String?       // "INTERVIEW_REQUIRED" | "ASSESSMENT_REQUIRED" | "NO_TRIGGER"
+  score_version   String?       // e.g. "v1" (optional but useful)
+  scored_at       DateTime?     // last scoring timestamp
+
+  // link to JobRecommendation row (nice for traceability)
+  recommendation_id String?
+  recommendation    JobRecommendation? @relation("ApplicationToRecommendation", fields: [recommendation_id], references: [recommendation_id], onDelete: SetNull)
+
+
   // Enhanced Application Fields
   salary_expectation  Float?
   available_from      DateTime? // When candidate can start
@@ -392,11 +406,98 @@ model JobApplication {
   interview          AIInterviewResult?
   interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
 
+  applicationScores JobApplicationScoreHistory[]
+  events            JobApplicationEventOutbox[]
+
   @@unique([candidate_id, job_id])
   @@index([candidate_id])
   @@index([job_id])
   @@index([status])
 }
+
+model JobApplicationScoreHistory {
+  history_id     String   @id @default(uuid())
+  application_id String
+
+  // score snapshot
+  relevance_score Float
+  vector_score    Float?
+  trigger         String?
+  reason_codes    String[] @default([])
+  missing_skills  String[] @default([])
+  breakdown       Json?    // ex: skill_match json, weights, etc.
+
+  created_at     DateTime @default(now())
+  created_by     String?  // "system" | user_id | worker name
+  source         String?  // "matching" | "apply" | "recompute" ...
+
+  application JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+
+  @@index([application_id])
+  @@index([created_at])
+}
+
+enum JobApplicationEventType {
+  APPLIED_CREATED
+  ASSESSMENT_REQUIRED
+  INTERVIEW_REQUIRED
+  STATUS_UPDATED
+}
+
+enum JobApplicationEventStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model JobApplicationEventOutbox {
+  event_id       String   @id @default(uuid())
+  application_id String
+  type           JobApplicationEventType
+
+  payload        Json?
+  status         JobApplicationEventStatus @default(PENDING)
+  attempts       Int      @default(0)
+  last_error     String?
+
+  // idempotency (important)
+  dedupe_key     String?  @unique
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  application JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([application_id])
+  @@index([type])
+}
+
+model CandidateGlobalScore {
+  candidate_id String @id
+  total_score  Float  // 0..1 or 0..100
+  components   Json?  // store breakdown: applications avg, assessment, etc.
+
+  updated_at   DateTime @updatedAt
+  created_at   DateTime @default(now())
+
+  candidate User @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+}
+
+model CandidateGlobalScoreHistory {
+  history_id   String   @id @default(uuid())
+  candidate_id String
+  total_score  Float
+  components   Json?
+  reason       String?
+  created_at   DateTime @default(now())
+
+  candidate User @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([candidate_id])
+  @@index([created_at])
+}
+
 
 model CandidateProgressTracker {
   progress_id  String     @id @default(uuid())
@@ -638,6 +739,8 @@ model JobRecommendation {
   updated_at        DateTime   @updatedAt
   candidate         User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job               CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+  applications JobApplication[] @relation("ApplicationToRecommendation")
+
 
   @@unique([candidate_id, job_id]) // IMPORTANT (1 rec per candidate per job)
 }

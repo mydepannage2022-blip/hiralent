@@ -118,13 +118,20 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         return { title: 'Profile', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/postjob':
         return { title: 'Post Job', description: 'Updating your information will offer you the most relevent content' };
-       // ✅ NEW: My Jobs
+
       case '/company/dashboard/jobManagement':
         return { title: 'My Jobs', description: 'Create, edit, and track all your job postings' };
-       // ✅ NEW: My Assessments
+
       case '/company/dashboard/assessmentManagement':
         return { title: 'My Assessments', description: 'Build and manage candidate assessments' };
-      case '/company/dashboard/notifications':
+        
+      case "/company/dashboard/candidates":
+      case "/company/dashboard/candidates/internal":
+        return { title: "Candidates", description: "Ranked internal candidates (registered users)" };
+      case "/company/dashboard/candidates/external":
+        return { title: "Candidates", description: "Ranked external candidates (scraped sources)" };
+      
+     case '/company/dashboard/notifications':
         return { title: 'Notifications', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/manage-hiring':
         return { title: 'Manage Hiring', description: 'Updating your information will offer you the most relevent content' };

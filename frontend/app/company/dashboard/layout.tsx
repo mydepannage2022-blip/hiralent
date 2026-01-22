@@ -15,6 +15,7 @@ import {
   CheckSquare,
   BookOpen,    // add for Question Bank
   Clock,       //  add for Review Queue
+  Users,
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
@@ -39,6 +40,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // ✅ your existing sections
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
+    { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
 
     // ✅ NEW SECTIONS
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
@@ -58,6 +60,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     // ✅ also include here so they appear while on /postjob
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
+    { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
 
     // ✅ NEW SECTIONS (also in postJobMenu)
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
@@ -70,9 +73,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   // 👉 Switch menus based on route
-  const menuItems = pathname.startsWith("/company/dashboard/postjob")
-    ? postJobMenu
-    : defaultMenu;
+const menuItems = (pathname ?? "").startsWith("/company/dashboard/postjob")
+  ? postJobMenu
+  : defaultMenu;
 
   return (
     <ProtectedRoute>

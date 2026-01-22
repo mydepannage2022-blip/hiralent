@@ -46,10 +46,13 @@ def upsert_candidate_vector(*, candidate_id: str, status: str, qdrant_point_id: 
     r.raise_for_status()
 
 
-def upsert_job_recommendations(items: List[Dict[str, Any]]) -> None:
-    """
-    items: list of JobRecommendationUpsert dictionaries expected by backend
-    """
+def upsert_job_recommendations(*, candidate_id: str, items: List[Dict[str, Any]]) -> None:
     url = f"{_base_url()}/internal/matching/recommendations/upsert"
-    r = requests.post(url, headers=_headers(), json={"items": items}, timeout=15)
+    r = requests.post(
+        url,
+        headers=_headers(),
+        json={"candidate_id": candidate_id, "items": items},
+        timeout=15,
+    )
     r.raise_for_status()
+

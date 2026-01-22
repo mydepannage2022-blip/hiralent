@@ -12,7 +12,9 @@ import {
   Subscript,
   LucideIcon,
   X,
-  Briefcase
+  Briefcase,
+  ClipboardList,
+  FolderKanban
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
@@ -49,13 +51,15 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
     { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
-    { name: 'My Cases', icon: Briefcase, href: '/candidate/dashboard/cases' },
+    { name: 'My Cases', icon: FolderKanban, href: '/candidate/dashboard/cases' },
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
     { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
     { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',}
+    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
+    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
+
   ];
 
   // Update active item based on current pathname

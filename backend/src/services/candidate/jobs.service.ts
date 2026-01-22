@@ -19,7 +19,7 @@ export class CandidateJobsService {
   constructor(private prisma: PrismaClient) {}
 
   // ---------------------------------------------
-  // A) Eligibility Gate (Hard filters)
+  // A) Eligibility Gate (Hard filters – READ ONLY)
   // ---------------------------------------------
   async computeEligibility(
     candidateId: string,
@@ -60,9 +60,11 @@ export class CandidateJobsService {
         select: {
           candidate_id: true,
           resume_url: true,
+          resume_application_url: true, // ✅ add
           headline: true,
           profile_picture_url: true,
           skills: true,
+          preferred_locations: true, // ✅ add
           about_me: true,
         },
       }),
@@ -82,18 +84,30 @@ export class CandidateJobsService {
     if (profileScore === undefined || profileScore === null) {
       reasons.push("PROFILE_NOT_READY");
     } else if (minScore !== null && profileScore < minScore) {
-      reasons.push("LOW_PROFILE_SCORE");
+      reasons.push(`LOW_PROFILE_SCORE:min=${minScore}|actual=${profileScore}`);
     }
 
     // 2) Required fields
     const requiredFields = safeArray(job.required_fields);
     const missingFields: string[] = [];
 
+    const hasPreferredLocations = () => {
+      const v: any = (profile as any)?.preferred_locations;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "string") return v.trim().length > 0;
+      return false;
+    };
+
     const fieldMap: Record<string, () => boolean> = {
-      resume_url: () => !!profile?.resume_url,
+      resume_url: () =>
+        !!profile?.resume_url || !!(profile as any)?.resume_application_url,
       headline: () => !!profile?.headline,
       profile_picture_url: () => !!profile?.profile_picture_url,
       about_me: () => !!profile?.about_me,
+
+      // ✅ add
+      skills: () => Array.isArray(profile?.skills) && profile.skills.length > 0,
+      preferred_locations: () => hasPreferredLocations(),
     };
 
     for (const f of requiredFields) {
@@ -102,6 +116,7 @@ export class CandidateJobsService {
 
       if (!checker) {
         // unknown rule => safer to block
+        // (tu peux laisser ça: si un nouveau champ arrive, on veut le voir)
         missingFields.push(f);
         reasons.push(`UNKNOWN_REQUIRED_FIELD:${f}`);
         continue;
@@ -130,9 +145,7 @@ export class CandidateJobsService {
   }
 
   // ---------------------------------------------
-  // B) Jobs list (non recommended)
-  // - DB filters cheap
-  // - eligibility computed per job (hard gate)
+  // B) Jobs list (ACTIVE only)
   // ---------------------------------------------
   async getJobs(
     candidateId: string,
@@ -154,7 +167,6 @@ export class CandidateJobsService {
     }
 
     if (query.skills?.length) {
-      // Postgres array filter
       where.required_skills = { hasSome: query.skills };
     }
 
@@ -178,17 +190,17 @@ export class CandidateJobsService {
       }),
     ]);
 
-    const itemsWithEligibility: JobListItemDTO[] = await Promise.all(
-      jobs.map(async (j) => {
-        const eligibility = await this.computeEligibility(candidateId, j.job_id);
-        return { ...j, eligibility };
-      })
+    const items: JobListItemDTO[] = await Promise.all(
+      jobs.map(async (j) => ({
+        ...j,
+        eligibility: await this.computeEligibility(candidateId, j.job_id),
+      }))
     );
 
     const filtered =
       query.eligible === undefined
-        ? itemsWithEligibility
-        : itemsWithEligibility.filter((x) => x.eligibility.eligible === query.eligible);
+        ? items
+        : items.filter((x) => x.eligibility.eligible === query.eligible);
 
     return {
       items: filtered,
@@ -200,11 +212,7 @@ export class CandidateJobsService {
   }
 
   // ---------------------------------------------
-  // C) Recommended jobs
-  // IMPORTANT:
-  // - microservice fills JobRecommendation
-  // - backend just reads it
-  // - eligibility comes from stored fields OR fallback computeEligibility
+  // C) Recommended jobs (READ ONLY)
   // ---------------------------------------------
   async getRecommendedJobs(
     candidateId: string,
@@ -244,7 +252,6 @@ export class CandidateJobsService {
       }),
     ]);
 
-    // Map stored eligibility from JobRecommendation (fast path)
     let items: JobListItemDTO[] = recs
       .filter((r) => r.job.status === "ACTIVE")
       .map((r) => ({
@@ -261,16 +268,6 @@ export class CandidateJobsService {
         },
       }));
 
-    // Optional: if you want "always correct" hard gate, even if rec table is stale:
-    // (costs more DB calls)
-    // items = await Promise.all(
-    //   items.map(async (it) => ({
-    //     ...it,
-    //     eligibility: await this.computeEligibility(candidateId, it.job_id),
-    //   }))
-    // );
-
-    // filters
     if (query.eligible !== undefined) {
       items = items.filter((x) => x.eligibility.eligible === query.eligible);
     }
@@ -281,7 +278,9 @@ export class CandidateJobsService {
 
     if (query.skills?.length) {
       const S = new Set(query.skills.map(normalize));
-      items = items.filter((x) => x.required_skills?.some((sk) => S.has(normalize(sk))));
+      items = items.filter((x) =>
+        x.required_skills?.some((sk) => S.has(normalize(sk)))
+      );
     }
 
     if (query.search) {
@@ -300,39 +299,5 @@ export class CandidateJobsService {
       total,
       hasMore: skip + limit < total,
     };
-  }
-
-  // ---------------------------------------------
-  // D) Apply gate + create application
-  // ---------------------------------------------
-  async applyToJob(
-    candidateId: string,
-    jobId: string,
-    payload?: { cover_letter?: string }
-  ) {
-    // Hard gate ALWAYS computed live (safer)
-    const eligibility = await this.computeEligibility(candidateId, jobId);
-
-    if (!eligibility.eligible) {
-      const err: any = new Error("Not eligible to apply");
-      err.statusCode = 403;
-      err.details = eligibility;
-      throw err;
-    }
-
-    return this.prisma.jobApplication.create({
-      data: {
-        candidate_id: candidateId,
-        job_id: jobId,
-        cover_letter: payload?.cover_letter,
-      },
-      select: {
-        application_id: true,
-        status: true,
-        applied_at: true,
-        job_id: true,
-        candidate_id: true,
-      },
-    });
   }
 }
