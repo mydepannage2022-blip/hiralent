@@ -53,6 +53,7 @@ import skillRadarRoutes from "./routes/skillRadar.routes";
 import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
+import documentValidationWebhookRoutes from './routes/webhook.documentValidation.routes';
 
 
 // Mount routes
@@ -105,6 +106,7 @@ app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
+app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");
