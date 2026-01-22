@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
 
 dotenv.config();
 const app = express();
@@ -119,6 +120,21 @@ app.use("/api/v1/internal", internalRoutes);
 
 //Candidate (jobs+assessments)
 app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
+
+//candidate cv
+// Serve uploaded files statically
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+      }
+    },
+  })
+);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

@@ -19,6 +19,7 @@ import { getProfileCompleteness,
   bulkUpdateProfile,
   uploadApplicationResume,
   BasicInfoData,
+  api,
   SkillData,
   ExperienceData,
   EducationData,
@@ -26,7 +27,6 @@ import { getProfileCompleteness,
   JobBenefitData } from './profile.api';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-
 export const useProfileCompleteness = () => {
   const { setProfileCompleteness } = useProfile();
   const { user } = useAuth();
@@ -83,18 +83,25 @@ export const useProfileCompleteness = () => {
   });
 };
 
-const refreshProfileData = async (setProfileData: any , updateUser: any) => {
+const refreshProfileData = async (setProfileData: any, updateUser: any) => {
   try {
     const profileResponse = await getCandidateProfile();
     if (profileResponse.success) {
+      console.log('🔄 refreshProfileData: Fetched fresh data', profileResponse.data);
+      
+      // ✅ Update ProfileContext state
       setProfileData(profileResponse.data.profile);
       updateUser(profileResponse.data.user);
       
-      console.log('User data refreshed:', profileResponse.data.user);
-      console.log('Profile data refreshed:', profileResponse.data.profile);
+      // ✅ Also update localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('profileData', JSON.stringify(profileResponse.data.profile));
+      }
+      
+      console.log('✅ refreshProfileData: Context and localStorage updated');
     }
   } catch (error) {
-    console.error('Failed to refresh profile data:', error);
+    console.error('❌ refreshProfileData failed:', error);
   }
 };
 
@@ -439,6 +446,87 @@ export const useUploadApplicationResume = () => {
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Failed to upload application resume';
       console.error('Application resume upload failed:', errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+};
+
+// ==================== PROJECTS HOOKS ====================
+
+export const useUpdateProjects = () => {
+  const queryClient = useQueryClient();
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
+  
+  return useMutation({
+    mutationFn: async ({ projects }: { projects: any[] }) => {
+      const response = await api.put('/candidates/profile/projects', { projects }); // ✅ CHANGED
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      console.log('Projects updated:', data);
+      toast.success('Projects updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
+      
+      await refreshProfileData(setProfileData, updateUser);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update projects';
+      console.error('Projects update failed:', errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+};
+
+// ==================== CERTIFICATIONS HOOKS ====================
+
+export const useUpdateCertifications = () => {
+  const queryClient = useQueryClient();
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
+  
+  return useMutation({
+    mutationFn: async ({ certifications }: { certifications: any[] }) => {
+      const response = await api.put('/candidates/profile/certifications', { certifications }); // ✅ CHANGED
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      console.log('Certifications updated:', data);
+      toast.success('Certifications updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
+      
+      await refreshProfileData(setProfileData, updateUser);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update certifications';
+      console.error('Certifications update failed:', errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+};
+
+// ==================== LANGUAGES HOOKS ====================
+
+export const useUpdateLanguages = () => {
+  const queryClient = useQueryClient();
+  const { setProfileData } = useProfile();
+  const { updateUser } = useAuth(); 
+  
+  return useMutation({
+    mutationFn: async (languages: any[]) => {
+      const response = await api.put('/candidates/profile/languages', { languages }); // ✅ CHANGED
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      console.log('Languages updated:', data);
+      toast.success('Languages updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] });
+      
+      await refreshProfileData(setProfileData, updateUser);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update languages';
+      console.error('Languages update failed:', errorMessage);
       toast.error(errorMessage);
     },
   });
