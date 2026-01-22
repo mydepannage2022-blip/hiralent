@@ -2,28 +2,97 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit2, Link as LinkIcon, X, Check, Plus, Trash2, ExternalLink, Mail, Linkedin, Github } from "lucide-react";
+import {
+  Edit2,
+  Link as LinkIcon,
+  X,
+  Check,
+  Plus,
+  Trash2,
+  ExternalLink,
+  Mail,
+  Linkedin,
+  Github,
+} from "lucide-react";
 import { useUpdateLinks } from "@/src/lib/profile/profile.queries";
 import { SocialLinkData } from "@/src/lib/profile/profile.api";
 import { useProfile } from "@/src/context/ProfileContext";
 
 /* ---------------- Helpers ---------------- */
-const normalizeGithubUrl = (val: string) => {
-  const v = (val || "").trim();
+
+// "trim + remove trailing punctuation that often appears in CV text"
+const cleanRaw = (val: string) =>
+  (val || "")
+    .trim()
+    .replace(/[)\].,;]+$/g, "") // remove trailing punctuation
+    .replace(/^[(\[]+/g, ""); // remove leading brackets
+
+const ensureHttps = (url: string) => {
+  const u = cleanRaw(url);
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `https://${u}`;
+};
+
+const canonicalizeUrl = (url: string) => {
+  // used for dedupe: lowercase + remove trailing slash
+  const u = (url || "").trim().toLowerCase();
+  return u.replace(/\/+$/g, "");
+};
+
+const normalizeEmail = (val: string) => {
+  const v = cleanRaw(val);
   if (!v) return "";
-  if (v.startsWith("http://") || v.startsWith("https://")) return v;
-  return `https://github.com/${v.replace(/^@/, "")}`;
+  const email = v.replace(/^mailto:/i, "");
+  return `mailto:${email}`;
+};
+
+const normalizeGithubUrl = (val: string) => {
+  const raw = cleanRaw(val);
+  if (!raw) return "";
+
+  // already full url
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+
+  // contains github.com (with or without www)
+  if (/github\.com/i.test(raw)) {
+    // if raw starts with "github.com/.."
+    return ensureHttps(raw).replace(/\/+$/g, "");
+  }
+
+  // handle @username or username
+  const username = raw.replace(/^@/g, "").trim();
+  if (!username) return "";
+  return `https://github.com/${username}`.replace(/\/+$/g, "");
 };
 
 const normalizeLinkedinUrl = (val: string) => {
-  const v = (val || "").trim();
-  if (!v) return "";
-  if (v.startsWith("http://") || v.startsWith("https://")) return v;
-  if (v.includes("linkedin.com")) return `https://${v.replace(/^https?:\/\//, "")}`;
+  const raw = cleanRaw(val);
+  if (!raw) return "";
 
-  // "safae nagbi" -> "safaenagbi"
-  const slug = v.replace(/\s+/g, "").replace(/[^a-zA-Z0-9-_]/g, "");
-  return `https://www.linkedin.com/in/${slug}`;
+  // already full url
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+
+  // contains linkedin.com
+  if (/linkedin\.com/i.test(raw)) {
+    // "linkedin.com/in/..." or "www.linkedin.com/in/..."
+    return ensureHttps(raw).replace(/\/+$/g, "");
+  }
+
+  // handle "in/slug" (some parsers return that)
+  if (/^in\//i.test(raw)) {
+    return `https://www.linkedin.com/${raw}`.replace(/\/+$/g, "");
+  }
+
+  // handle @slug or slug
+  const slug = raw
+    .replace(/^@/g, "")
+    .trim()
+    // keep common linkedin slug chars
+    .replace(/[^a-zA-Z0-9-_]/g, "");
+
+  if (!slug) return "";
+  return `https://www.linkedin.com/in/${slug}`.replace(/\/+$/g, "");
 };
 
 const safeParseLinks = (raw: any): SocialLinkData[] => {
@@ -31,8 +100,7 @@ const safeParseLinks = (raw: any): SocialLinkData[] => {
   try {
     if (typeof raw === "string") {
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed;
+      return Array.isArray(parsed) ? parsed : [];
     }
     if (Array.isArray(raw)) return raw;
     return [];
@@ -42,22 +110,63 @@ const safeParseLinks = (raw: any): SocialLinkData[] => {
   }
 };
 
+const normalizeByPlatform = (platform: string, value: string) => {
+  const p = (platform || "").toLowerCase().trim();
+  const v = cleanRaw(value);
+
+  if (!v) return "";
+
+  if (p === "email") return normalizeEmail(v);
+  if (p === "github") return normalizeGithubUrl(v);
+  if (p === "linkedin") return normalizeLinkedinUrl(v);
+
+  // generic URL: if user types "example.com" => https://example.com
+  if (/^https?:\/\//i.test(v)) return v.replace(/\/+$/g, "");
+  if (v.includes(".")) return ensureHttps(v).replace(/\/+$/g, "");
+
+  return v; // fallback
+};
+
 const uniqByPlatformAndUrl = (arr: SocialLinkData[]) => {
   const seen = new Set<string>();
   return arr.filter((l) => {
-    const key = `${(l.platform || "").toLowerCase()}::${(l.url || "").toLowerCase()}`;
+    const platform = (l.platform || "").toLowerCase().trim();
+    const url = canonicalizeUrl(l.url || "");
+    const key = `${platform}::${url}`;
+    if (!url) return false;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 };
+
+const platformMeta = (platform: string) => {
+  switch ((platform || "").toLowerCase()) {
+    case "email":
+      return { label: "Email", icon: <Mail className="w-4 h-4 text-gray-600" /> };
+    case "github":
+      return { label: "GitHub", icon: <Github className="w-4 h-4 text-gray-600" /> };
+    case "linkedin":
+      return { label: "LinkedIn", icon: <Linkedin className="w-4 h-4 text-gray-600" /> };
+    case "twitter":
+      return { label: "Twitter", icon: <span className="text-base">🐦</span> };
+    case "portfolio":
+      return { label: "Portfolio", icon: <span className="text-base">🌐</span> };
+    case "behance":
+      return { label: "Behance", icon: <span className="text-base">🎨</span> };
+    case "dribbble":
+      return { label: "Dribbble", icon: <span className="text-base">🏀</span> };
+    default:
+      return { label: platform || "Link", icon: <span className="text-base">🔗</span> };
+  }
+};
+
 /* ---------------------------------------- */
 
 const LinksSection: React.FC = () => {
   const { profileData, setProfileData, refetch } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Editable links (stored in profileData.links)
   const [links, setLinks] = useState<SocialLinkData[]>([]);
   const [newLink, setNewLink] = useState<SocialLinkData>({
     platform: "github",
@@ -68,55 +177,64 @@ const LinksSection: React.FC = () => {
   const { mutate: updateLinks, isPending: isUpdating } = useUpdateLinks();
 
   const personalInfo = (profileData as any)?.personal_info || {};
-  const piEmail = (personalInfo.email || "").trim();
-  const piGithub = (personalInfo.github || "").trim();
-  const piLinkedin = (personalInfo.linkedin || "").trim();
+  const piEmail = cleanRaw(personalInfo.email || "");
+  const piGithub = cleanRaw(personalInfo.github || "");
+  const piLinkedin = cleanRaw(personalInfo.linkedin || "");
 
-  // Parse links from DB (editable ones)
+  // links stored in CandidateProfile.links (editable ones)
   const linksFromProfile = useMemo(() => {
     const arr = safeParseLinks((profileData as any)?.links);
-    return arr.map((link: any) => ({
-      platform: (link.platform || "other").toLowerCase(),
-      url: (link.url || "").trim(),
-      display_name: (link.display_name || "").trim(),
-    })) as SocialLinkData[];
+    return arr
+      .map((link: any) => {
+        const platform = (link.platform || "other").toLowerCase().trim();
+        const url = normalizeByPlatform(platform, link.url || "");
+        return {
+          platform,
+          url,
+          display_name: cleanRaw(link.display_name || ""),
+        } as SocialLinkData;
+      })
+      .filter((l) => l.url);
   }, [profileData]);
 
-  // Build “display links” = personal_info + editable links merged
+  // display links = personal_info + editable links merged + deduped
   const displayLinks = useMemo(() => {
     const fromPI: SocialLinkData[] = [];
 
     if (piEmail) {
       fromPI.push({
         platform: "email",
-        url: `mailto:${piEmail}`,
+        url: normalizeEmail(piEmail),
         display_name: piEmail,
       });
     }
 
     if (piLinkedin) {
       const url = normalizeLinkedinUrl(piLinkedin);
-      fromPI.push({
-        platform: "linkedin",
-        url,
-        display_name: url,
-      });
+      if (url) {
+        fromPI.push({
+          platform: "linkedin",
+          url,
+          display_name: piLinkedin, // keep original text as label
+        });
+      }
     }
 
     if (piGithub) {
       const url = normalizeGithubUrl(piGithub);
-      fromPI.push({
-        platform: "github",
-        url,
-        display_name: url,
-      });
+      if (url) {
+        fromPI.push({
+          platform: "github",
+          url,
+          display_name: piGithub, // keep original text as label
+        });
+      }
     }
 
-    // Merge (editable links override duplicates if same platform+url)
-    return uniqByPlatformAndUrl([...fromPI, ...linksFromProfile]).filter((l) => l.url);
+    return uniqByPlatformAndUrl([...fromPI, ...linksFromProfile]);
   }, [piEmail, piGithub, piLinkedin, linksFromProfile]);
 
-  // Keep local editable state synced
+  // sync editable state
   useEffect(() => {
     if (!isEditing) setLinks(linksFromProfile);
   }, [linksFromProfile, isEditing]);
@@ -133,35 +251,25 @@ const LinksSection: React.FC = () => {
   };
 
   const handleSave = () => {
-    const sanitizedLinks = links
-      .filter((l) => (l.url || "").trim())
-      .map((l) => {
-        const platform = (l.platform || "other").toLowerCase().trim();
-        let url = (l.url || "").trim();
-        let display_name = (l.display_name || "").trim();
-
-        // normalize common platforms
-        if (platform === "github") url = normalizeGithubUrl(url);
-        if (platform === "linkedin") url = normalizeLinkedinUrl(url);
-        if (platform === "email") url = url.startsWith("mailto:") ? url : `mailto:${url}`;
-
-        // if user didn't provide display name, fallback to url
-        if (!display_name) display_name = url;
-
-        return { platform, url, display_name };
-      });
+    // only editable links are saved to profile.links
+    const sanitizedLinks = uniqByPlatformAndUrl(
+      links
+        .filter((l) => (l.url || "").trim())
+        .map((l) => {
+          const platform = (l.platform || "other").toLowerCase().trim();
+          const url = normalizeByPlatform(platform, l.url || "");
+          const display_name = cleanRaw(l.display_name || "");
+          return { platform, url, display_name: display_name || url } as SocialLinkData;
+        })
+    );
 
     updateLinks(sanitizedLinks, {
       onSuccess: () => {
         setIsEditing(false);
-
-        // update local context immediately
         setProfileData({
           ...profileData,
           links: [...sanitizedLinks],
         });
-
-        // ensure global UI refresh (autofill/apply)
         refetch?.();
       },
       onError: (error) => console.error("API Error:", error),
@@ -169,23 +277,20 @@ const LinksSection: React.FC = () => {
   };
 
   const handleAddLink = () => {
-    const url = (newLink.url || "").trim();
-    const platform = (newLink.platform || "other").trim().toLowerCase();
-    if (!url || !platform) return;
+    const platform = (newLink.platform || "other").toLowerCase().trim();
+    const url = normalizeByPlatform(platform, newLink.url || "");
+    if (!url) return;
 
-    let normalizedUrl = url;
-    if (platform === "github") normalizedUrl = normalizeGithubUrl(url);
-    if (platform === "linkedin") normalizedUrl = normalizeLinkedinUrl(url);
-    if (platform === "email") normalizedUrl = url.startsWith("mailto:") ? url : `mailto:${url}`;
-
-    setLinks((prev) => [
-      ...prev,
-      {
-        platform,
-        url: normalizedUrl,
-        display_name: (newLink.display_name || "").trim(),
-      },
-    ]);
+    setLinks((prev) =>
+      uniqByPlatformAndUrl([
+        ...prev,
+        {
+          platform,
+          url,
+          display_name: cleanRaw(newLink.display_name || ""),
+        },
+      ])
+    );
 
     setNewLink({ platform: "github", url: "", display_name: "" });
   };
@@ -200,27 +305,6 @@ const LinksSection: React.FC = () => {
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
-  };
-
-  const getPlatformMeta = (platform: string) => {
-    switch ((platform || "").toLowerCase()) {
-      case "email":
-        return { label: "Email", icon: <Mail className="w-4 h-4 text-gray-600" /> };
-      case "github":
-        return { label: "GitHub", icon: <Github className="w-4 h-4 text-gray-600" /> };
-      case "linkedin":
-        return { label: "LinkedIn", icon: <Linkedin className="w-4 h-4 text-gray-600" /> };
-      case "twitter":
-        return { label: "Twitter", icon: <span className="text-base">🐦</span> };
-      case "portfolio":
-        return { label: "Portfolio", icon: <span className="text-base">🌐</span> };
-      case "behance":
-        return { label: "Behance", icon: <span className="text-base">🎨</span> };
-      case "dribbble":
-        return { label: "Dribbble", icon: <span className="text-base">🏀</span> };
-      default:
-        return { label: platform || "Link", icon: <span className="text-base">🔗</span> };
-    }
   };
 
   const hasContent = displayLinks.length > 0;
@@ -276,9 +360,8 @@ const LinksSection: React.FC = () => {
           {hasContent ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {displayLinks.map((link, index) => {
-                const meta = getPlatformMeta(link.platform);
+                const meta = platformMeta(link.platform);
 
-                // show nice display (email raw, else url)
                 const displayText =
                   link.platform === "email"
                     ? (personalInfo.email || link.display_name || link.url)
@@ -298,11 +381,8 @@ const LinksSection: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 text-xs lg:text-sm">{meta.label}</p>
-
-                      {/* IMPORTANT: no truncate, show full */}
-                      <p className="text-gray-600 text-[10px] lg:text-xs break-all">
-                        {displayText}
-                      </p>
+                      {/* show full (no truncate) */}
+                      <p className="text-gray-600 text-[10px] lg:text-xs break-all">{displayText}</p>
                     </div>
 
                     <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
@@ -316,10 +396,7 @@ const LinksSection: React.FC = () => {
                 <Plus className="w-6 h-6 text-gray-400" />
               </div>
               <p className="text-gray-500 text-xs lg:text-sm">Add all your portfolio and social links here</p>
-              <button
-                onClick={handleEdit}
-                className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
-              >
+              <button onClick={handleEdit} className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700">
                 Add links
               </button>
             </div>
@@ -412,10 +489,9 @@ const LinksSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Note */}
           <p className="text-[11px] text-gray-500">
-            Note: Email/LinkedIn/GitHub coming from <b>CV autofill (personal_info)</b> are displayed automatically and
-            are not edited here.
+            Note: Email/LinkedIn/GitHub from <b>CV autofill (personal_info)</b> are displayed automatically and deduped
+            against manually added links.
           </p>
         </div>
       )}

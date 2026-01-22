@@ -29,34 +29,110 @@ const customSelectStyles = {
   }),
 };
 
+/* ---------------- Robust normalizers ---------------- */
+
+// remove trailing punctuation often present in extracted text
+const cleanRaw = (val: string) =>
+  (val || "")
+    .trim()
+    .replace(/[)\].,;]+$/g, "")
+    .replace(/^[(\[]+/g, "");
+
+const ensureHttps = (url: string) => {
+  const u = cleanRaw(url);
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `https://${u}`;
+};
+
+const normalizeEmail = (val: string) => {
+  const v = cleanRaw(val);
+  if (!v) return "";
+  const email = v.replace(/^mailto:/i, "");
+  return `mailto:${email}`;
+};
+
+const normalizeGithubUrl = (val: string) => {
+  const raw = cleanRaw(val);
+  if (!raw) return "";
+
+  // already full url
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+
+  // contains github.com (with or without www)
+  if (/github\.com/i.test(raw)) {
+    return ensureHttps(raw).replace(/\/+$/g, "");
+  }
+
+  // username (@user or user)
+  const username = raw.replace(/^@/g, "").trim();
+  if (!username) return "";
+  return `https://github.com/${username}`.replace(/\/+$/g, "");
+};
+
+const normalizeLinkedinUrl = (val: string) => {
+  const raw = cleanRaw(val);
+  if (!raw) return "";
+
+  // already full url
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+
+  // contains linkedin.com
+  if (/linkedin\.com/i.test(raw)) {
+    return ensureHttps(raw).replace(/\/+$/g, "");
+  }
+
+  // starts with "in/slug"
+  if (/^in\//i.test(raw)) {
+    return `https://www.linkedin.com/${raw}`.replace(/\/+$/g, "");
+  }
+
+  // slug only (or @slug)
+  const slug = raw
+    .replace(/^@/g, "")
+    .trim()
+    .replace(/[^a-zA-Z0-9-_]/g, "");
+
+  if (!slug) return "";
+  return `https://www.linkedin.com/in/${slug}`.replace(/\/+$/g, "");
+};
+
+/* ---------------------------------------------------- */
+
 const Personal = () => {
   const { user } = useAuth();
   const { profileData, refetch } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
 
-  // ✅ Prefer autofill-extracted personal_info, fallback to auth user/profileData
+  // Prefer autofill-extracted personal_info, fallback to auth user/profileData
   const extractedPI = (profileData as any)?.personal_info || {};
 
   const fullName = useMemo(() => user?.full_name || "", [user?.full_name]);
   const firstName = useMemo(() => fullName.split(" ")[0] || "", [fullName]);
   const lastName = useMemo(() => fullName.split(" ").slice(1).join(" ") || "", [fullName]);
 
-  const phone = useMemo(() => extractedPI.phone || user?.phone_number || "", [extractedPI.phone, user?.phone_number]);
+  const phone = useMemo(
+    () => extractedPI.phone || user?.phone_number || "",
+    [extractedPI.phone, user?.phone_number]
+  );
 
-  const location = useMemo(() => profileData?.location || extractedPI.location || "", [profileData?.location, extractedPI.location]);
+  const location = useMemo(
+    () => profileData?.location || extractedPI.location || "",
+    [profileData?.location, extractedPI.location]
+  );
 
-  // ✅ NEW: email / linkedin / github
+  // email / linkedin / github
   const email = useMemo(() => extractedPI.email || user?.email || "", [extractedPI.email, user?.email]);
 
-  const linkedin = useMemo(() => (profileData as any)?.linkedin || extractedPI.linkedin || "", [
-    (profileData as any)?.linkedin,
-    extractedPI.linkedin,
-  ]);
+  const linkedin = useMemo(
+    () => (profileData as any)?.linkedin || extractedPI.linkedin || "",
+    [(profileData as any)?.linkedin, extractedPI.linkedin]
+  );
 
-  const github = useMemo(() => (profileData as any)?.github || extractedPI.github || "", [
-    (profileData as any)?.github,
-    extractedPI.github,
-  ]);
+  const github = useMemo(
+    () => (profileData as any)?.github || extractedPI.github || "",
+    [(profileData as any)?.github, extractedPI.github]
+  );
 
   const aboutMe = useMemo(() => profileData?.about_me || "", [profileData?.about_me]);
 
@@ -70,7 +146,6 @@ const Personal = () => {
     phone_number: phone,
     location,
     about_me: aboutMe,
-    // ✅ NEW fields saved in personal_info JSON on backend
     email,
     linkedin,
     github,
@@ -78,7 +153,7 @@ const Personal = () => {
 
   const [selectedLocation, setSelectedLocation] = useState<any>(selectedLocationOption);
 
-  // ✅ Sync when autofill updates profile
+  // Sync when autofill updates profile
   useEffect(() => {
     setFormData({
       full_name: fullName,
@@ -115,9 +190,6 @@ const Personal = () => {
     const updatedFormData = {
       ...formData,
       location: selectedLocation?.label || "",
-      // You likely store these inside candidateprofile.personal_info (Json)
-      // If your backend expects them directly, keep as-is.
-      // If your backend expects `personal_info`, wrap them.
       personal_info: {
         email: formData.email,
         phone: formData.phone_number,
@@ -142,21 +214,10 @@ const Personal = () => {
 
   const hasAboutContent = aboutMe && aboutMe.trim().length > 0;
 
-  const normalizeLinkedinUrl = (val: string) => {
-    if (!val) return "";
-    const v = val.trim();
-    if (v.startsWith("http://") || v.startsWith("https://")) return v;
-    // if user typed just "safae nagbi" (name), don't force link
-    if (v.includes(" ")) return "";
-    return `https://www.linkedin.com/in/${v.replace(/^@/, "")}`;
-  };
-
-  const normalizeGithubUrl = (val: string) => {
-    if (!val) return "";
-    const v = val.trim();
-    if (v.startsWith("http://") || v.startsWith("https://")) return v;
-    return `https://github.com/${v.replace(/^@/, "")}`;
-  };
+  // computed final URLs for display
+  const emailHref = useMemo(() => normalizeEmail(email), [email]);
+  const linkedinHref = useMemo(() => normalizeLinkedinUrl(linkedin), [linkedin]);
+  const githubHref = useMemo(() => normalizeGithubUrl(github), [github]);
 
   return (
     <motion.div
@@ -228,18 +289,22 @@ const Personal = () => {
             </div>
           </div>
 
-          {/* ✅ NEW: Contact row with icons */}
+          {/* Contact row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Email */}
-            <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3">
+            <a
+              href={emailHref || undefined}
+              className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3 hover:bg-gray-100 transition-colors"
+            >
               <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
                 <Mail className="w-4 h-4 text-gray-700" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Email</p>
-                <p className="text-xs lg:text-sm text-gray-900 truncate">{email || "Add"}</p>
+                {/* show full email */}
+                <p className="text-xs lg:text-sm text-gray-900 break-all">{email || "Add"}</p>
               </div>
-            </div>
+            </a>
 
             {/* LinkedIn */}
             <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3">
@@ -248,17 +313,17 @@ const Personal = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">LinkedIn</p>
-                {normalizeLinkedinUrl(linkedin) ? (
+                {linkedinHref ? (
                   <a
-                    href={normalizeLinkedinUrl(linkedin)}
+                    href={linkedinHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 truncate block"
+                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 break-all block"
                   >
                     {linkedin}
                   </a>
                 ) : (
-                  <p className="text-xs lg:text-sm text-gray-900 truncate">{linkedin || "Add"}</p>
+                  <p className="text-xs lg:text-sm text-gray-900 break-all">{linkedin || "Add"}</p>
                 )}
               </div>
             </div>
@@ -270,17 +335,17 @@ const Personal = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">GitHub</p>
-                {normalizeGithubUrl(github) ? (
+                {githubHref ? (
                   <a
-                    href={normalizeGithubUrl(github)}
+                    href={githubHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 truncate block"
+                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 break-all block"
                   >
                     {github}
                   </a>
                 ) : (
-                  <p className="text-xs lg:text-sm text-gray-900 truncate">{github || "Add"}</p>
+                  <p className="text-xs lg:text-sm text-gray-900 break-all">{github || "Add"}</p>
                 )}
               </div>
             </div>
@@ -339,7 +404,6 @@ const Personal = () => {
               />
             </div>
 
-            {/* ✅ NEW: Email */}
             <div>
               <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
@@ -348,11 +412,10 @@ const Personal = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., nagbi.safae@ensam-casa.ma"
+                placeholder="e.g., yousrra@gmail.com"
               />
             </div>
 
-            {/* ✅ NEW: GitHub */}
             <div>
               <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">GitHub</label>
               <input
@@ -361,11 +424,10 @@ const Personal = () => {
                 value={formData.github}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., nagbisafae"
+                placeholder="e.g., github.com/username OR username"
               />
             </div>
 
-            {/* ✅ NEW: LinkedIn */}
             <div className="md:col-span-2">
               <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
               <input
@@ -374,11 +436,10 @@ const Personal = () => {
                 value={formData.linkedin}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., safae-nagbi or full URL"
+                placeholder="e.g., linkedin.com/in/slug OR slug"
               />
             </div>
 
-            {/* Location */}
             <div className="md:col-span-2">
               <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Location</label>
               <div className="relative">
