@@ -1,27 +1,19 @@
 // src/lib/profile/autofill.queries.ts
 import { useMutation, useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import toast from 'react-hot-toast';
+import { useProfile } from '@/src/context/ProfileContext';
+import { useAuth } from '@/src/context/AuthContext';
+
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// FIXED: Create axios instance with correct config
 const api = axios.create({
   baseURL: `${API_ORIGIN}/api/v1`,
   headers: { "Content-Type": "application/json" },
 });
 
-//  FIXED: Add auth interceptor
 api.interceptors.request.use((config) => {
-  const token =
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken");
-
-  console.log("🚀 AUTOFILL REQUEST", {
-    url: `${config.baseURL}${config.url}`,
-    hasAuth: !!token,
-    data: config.data,
-  });
-
+  const token = localStorage.getItem("authToken");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -107,71 +99,39 @@ export interface AutofillPreviewResponse {
   message: string;
 }
 
-//  FIXED: Correct endpoint
-
 export const useAutofillPreview = (documentId: string | null, enabled: boolean = true) => {
   return useQuery<AutofillPreviewResponse>({
     queryKey: ['autofill-preview', documentId],
     queryFn: async () => {
-      if (!documentId) {
-        throw new Error('Document ID is required');
-      }
+      if (!documentId) throw new Error('Document ID is required');
 
-      console.log('📤 [Attempt] Requesting autofill preview for document:', documentId);
+      console.log('📤 Requesting autofill preview for document:', documentId);
 
-      try {
-        const response = await api.post('/candidates/profile/autofill/preview', {
-          document_id: documentId
-        });
+      const response = await api.post('/candidates/profile/autofill/preview', {
+        document_id: documentId
+      });
 
-        console.log('✅ [Success] Autofill preview loaded:', {
-          skills: response.data?.data?.parsed_data?.skills?.length || 0,
-          experience: response.data?.data?.parsed_data?.experience?.length || 0,
-          education: response.data?.data?.parsed_data?.education?.length || 0,
-        });
-
-        return response.data;
-      } catch (error: any) {
-        const status = error?.response?.status;
-        const message = error?.response?.data?.message;
-
-        if (status === 409) {
-          console.log('⏳ [Processing] CV still being analyzed, will retry...', message);
-        } else {
-          console.error('❌ [Error] Failed to get autofill preview:', {
-            status,
-            message,
-            error: error?.response?.data?.error
-          });
-        }
-
-        throw error;
-      }
+      console.log('✅ Autofill preview loaded:', response.data);
+      return response.data;
     },
     enabled: enabled && !!documentId,
     retry: (failureCount, error: any) => {
       const status = error?.response?.status;
-      
-      // Retry on 409 (still processing) up to 15 times (more attempts)
       if (status === 409 && failureCount < 15) {
-        console.log(`🔄 [Retry ${failureCount + 1}/15] Waiting for CV processing...`);
+        console.log(`🔄 Retry ${failureCount + 1}/15: Waiting for CV processing...`);
         return true;
       }
-      
-      console.log(`⛔ [Stop] Max retries reached or different error (status: ${status})`);
       return false;
     },
-    retryDelay: (attemptIndex) => {
-      // Start with 2s, then 4s, 6s, 8s, max 10s
-      const delay = Math.min(2000 + (attemptIndex * 2000), 10000);
-      console.log(`⏱️ [Delay] Waiting ${delay/1000}s before next retry...`);
-      return delay;
-    },
-    refetchInterval: false, // Don't auto-refetch
+    retryDelay: (attemptIndex) => Math.min(2000 + (attemptIndex * 2000), 10000),
   });
 };
-// ✅ FIXED: Correct endpoint
+
+// ✅ FIXED: Added ProfileContext and AuthContext integration
 export const useApplyAutofill = () => {
+  const { refetch: refetchProfile } = useProfile();
+  const { updateUser } = useAuth();
+
   return useMutation({
     mutationFn: async (sessionId: string) => {
       console.log('📤 Applying autofill for session:', sessionId);
@@ -183,10 +143,26 @@ export const useApplyAutofill = () => {
       console.log('✅ Autofill apply response:', response.data);
       return response.data;
     },
+    onSuccess: async (data) => {
+      console.log('✅ Autofill applied successfully:', data);
+      toast.success('CV data applied successfully!');
+      
+      // ✅ Force refresh ProfileContext
+      await refetchProfile();
+      
+      // ✅ Clear localStorage to force fresh fetch
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('profileData');
+        localStorage.removeItem('profileCompleteness');
+      }
+    },
+    onError: (error: any) => {
+      console.error('❌ Apply autofill failed:', error);
+      toast.error('Failed to apply CV data');
+    }
   });
 };
 
-// Confirm specific field mapping
 export const useConfirmMapping = () => {
   return useMutation({
     mutationFn: async ({ sessionId, mappingId }: { sessionId: string; mappingId: string }) => {
@@ -199,7 +175,6 @@ export const useConfirmMapping = () => {
   });
 };
 
-// Reject specific field mapping
 export const useRejectMapping = () => {
   return useMutation({
     mutationFn: async ({ sessionId, mappingId }: { sessionId: string; mappingId: string }) => {

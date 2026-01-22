@@ -44,37 +44,35 @@ const AutofillPreviewModal: React.FC<AutofillPreviewModalProps> = ({
   const { data: previewData, isLoading, isError, error } = useAutofillPreview(documentId, isOpen);
   const { mutate: applyAutofill, isPending: isApplying } = useApplyAutofill();
 
-  // In AutofillPreviewModal.tsx, update handleApply:
   const handleApply = () => {
-    if (!previewData?.data?.session_id) return;
+    if (!previewData?.data?.session_id) {
+      console.error('❌ No session_id found');
+      return;
+    }
+    
+    console.log('📤 Applying autofill with session:', previewData.data.session_id);
     
     applyAutofill(previewData.data.session_id, {
       onSuccess: async (response) => {
-        console.log('✅ Autofill applied successfully');
+        console.log('✅ Autofill applied successfully:', response);
         
-        // Call the onApplySuccess callback
-        if (onApplySuccess) {
-          onApplySuccess();
-        }
+        // Show success message first
+        toast.success('CV data applied successfully!');
         
+        // Close modal
         onClose();
         
-        // Show success message
-        toast.success('CV data applied successfully! Refreshing profile...');
-        
-        // Small delay before refresh
-        setTimeout(() => {
-          // Force a hard refresh of the profile page
-          window.dispatchEvent(new CustomEvent('profile-refresh'));
-        }, 500);
+        // Call the callback if provided
+        if (onApplySuccess) {
+          await onApplySuccess();
+        }
       },
-      onError: (error) => {
-        console.error('❌ Apply failed:', error);
-        toast.error('Failed to apply CV data');
+      onError: (error: any) => {
+        console.error('❌ Apply failed:', error?.response?.data || error);
+        toast.error('Failed to apply autofill. Please try again.');
       }
     });
   };
-
   if (!isOpen) return null;
 
   const parsedData = previewData?.data?.parsed_data;
