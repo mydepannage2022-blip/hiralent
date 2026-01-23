@@ -10,12 +10,21 @@ class CandidateSnapshot(BaseModel):
     education: Optional[str] = None
     profile_score: Optional[float] = None
 
+    # ✅ add (used by eligibility required_fields sometimes)
+    resume_url: Optional[str] = None
+
+
 class JobSnapshot(BaseModel):
     job_id: str
     title: str
     description: str
     required_skills: List[str] = Field(default_factory=list)
     min_profile_score: Optional[float] = None
+
+    # ✅ add (used by eligibility)
+    status: Optional[str] = "ACTIVE"
+    required_fields: List[str] = Field(default_factory=list)
+
 
 class MatchOptions(BaseModel):
     top_k: int = 20
@@ -29,3 +38,11 @@ class JobsForCandidateRequest(BaseModel):
 class CandidatesForJobRequest(BaseModel):
     job: JobSnapshot
     options: MatchOptions = MatchOptions()
+
+class IndexJobIn(BaseModel):
+    job_id: Optional[str] = None
+    snapshot: Optional[JobSnapshot] = None
+
+class IndexCandidateIn(BaseModel):
+    candidate_id: Optional[str] = None
+    snapshot: Optional[CandidateSnapshot] = None

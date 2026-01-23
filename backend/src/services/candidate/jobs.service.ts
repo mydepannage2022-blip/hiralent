@@ -1,15 +1,30 @@
 // src/services/candidate/jobs.service.ts
 import { PrismaClient } from "@prisma/client";
-import { EligibilityResult, JobListItemDTO, JobListQuery, PagedResult } from "../../types/candidate.jobs.types";
-import { buildMissingFieldReasons, buildMissingSkillReasons, missing, normalize, safeArray, uniqNormalized } from "../../utils/eligibility.util";
+import {
+  EligibilityResult,
+  JobListItemDTO,
+  JobListQuery,
+  PagedResult,
+} from "../../types/candidate.jobs.types";
+import {
+  buildMissingFieldReasons,
+  buildMissingSkillReasons,
+  missing,
+  normalize,
+  safeArray,
+  uniqNormalized,
+} from "../../utils/eligibility.util";
 
 export class CandidateJobsService {
   constructor(private prisma: PrismaClient) {}
 
-  // -------------------------
-  // A) Core eligibility gate
-  // -------------------------
-  async computeEligibility(candidateId: string, jobId: string): Promise<EligibilityResult> {
+  // ---------------------------------------------
+  // A) Eligibility Gate (Hard filters – READ ONLY)
+  // ---------------------------------------------
+  async computeEligibility(
+    candidateId: string,
+    jobId: string
+  ): Promise<EligibilityResult> {
     const job = await this.prisma.companyJob.findUnique({
       where: { job_id: jobId },
       select: {
@@ -45,9 +60,11 @@ export class CandidateJobsService {
         select: {
           candidate_id: true,
           resume_url: true,
+          resume_application_url: true, // ✅ add
           headline: true,
           profile_picture_url: true,
           skills: true,
+          preferred_locations: true, // ✅ add
           about_me: true,
         },
       }),
@@ -67,32 +84,45 @@ export class CandidateJobsService {
     if (profileScore === undefined || profileScore === null) {
       reasons.push("PROFILE_NOT_READY");
     } else if (minScore !== null && profileScore < minScore) {
-      reasons.push("LOW_PROFILE_SCORE");
+      reasons.push(`LOW_PROFILE_SCORE:min=${minScore}|actual=${profileScore}`);
     }
 
     // 2) Required fields
     const requiredFields = safeArray(job.required_fields);
     const missingFields: string[] = [];
 
-    // map known fields -> source in CandidateProfile (you can extend)
+    const hasPreferredLocations = () => {
+      const v: any = (profile as any)?.preferred_locations;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "string") return v.trim().length > 0;
+      return false;
+    };
+
     const fieldMap: Record<string, () => boolean> = {
-      resume_url: () => !!profile?.resume_url,
+      resume_url: () =>
+        !!profile?.resume_url || !!(profile as any)?.resume_application_url,
       headline: () => !!profile?.headline,
       profile_picture_url: () => !!profile?.profile_picture_url,
       about_me: () => !!profile?.about_me,
+
+      // ✅ add
+      skills: () => Array.isArray(profile?.skills) && profile.skills.length > 0,
+      preferred_locations: () => hasPreferredLocations(),
     };
 
     for (const f of requiredFields) {
       const key = normalize(f);
       const checker = fieldMap[key];
-      if (checker && !checker()) {
-        missingFields.push(f);
-      }
-      // if unknown required field: treat as missing (safer)
+
       if (!checker) {
+        // unknown rule => safer to block
+        // (tu peux laisser ça: si un nouveau champ arrive, on veut le voir)
         missingFields.push(f);
         reasons.push(`UNKNOWN_REQUIRED_FIELD:${f}`);
+        continue;
       }
+
+      if (!checker()) missingFields.push(f);
     }
 
     reasons.push(...buildMissingFieldReasons(missingFields));
@@ -100,15 +130,12 @@ export class CandidateJobsService {
     // 3) Skills gate
     const reqSkills = uniqNormalized(safeArray(job.required_skills));
     const missingSkills = missing(reqSkills, candidateSkills);
-
     reasons.push(...buildMissingSkillReasons(missingSkills));
 
-    const eligible =
-      reasons.length === 0 ||
-      reasons.every((r) => r === ""); // safety
+    const eligible = reasons.length === 0;
 
     return {
-      eligible: eligible && reasons.length === 0,
+      eligible,
       reasons,
       missingSkills,
       missingFields,
@@ -117,15 +144,17 @@ export class CandidateJobsService {
     };
   }
 
-  // ------------------------------------------------
-  // B) Fetch jobs list (ALL ACTIVE) + filters
-  // ------------------------------------------------
-  async getJobs(candidateId: string, query: JobListQuery): Promise<PagedResult<JobListItemDTO>> {
+  // ---------------------------------------------
+  // B) Jobs list (ACTIVE only)
+  // ---------------------------------------------
+  async getJobs(
+    candidateId: string,
+    query: JobListQuery
+  ): Promise<PagedResult<JobListItemDTO>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    // DB filters (cheap)
     const where: any = { status: "ACTIVE" };
 
     if (query.level) where.experience_level = query.level;
@@ -137,8 +166,6 @@ export class CandidateJobsService {
       ];
     }
 
-    // NOTE: skills filter in SQL is tricky for String[] (Postgres)
-    // Prisma supports hasEvery/hasSome for arrays.
     if (query.skills?.length) {
       where.required_skills = { hasSome: query.skills };
     }
@@ -163,22 +190,17 @@ export class CandidateJobsService {
       }),
     ]);
 
-    // Eligibility is computed per job
-    const itemsWithEligibility = await Promise.all(
-      jobs.map(async (j) => {
-        const eligibility = await this.computeEligibility(candidateId, j.job_id);
-        return {
-          ...j,
-          eligibility,
-        } satisfies JobListItemDTO;
-      })
+    const items: JobListItemDTO[] = await Promise.all(
+      jobs.map(async (j) => ({
+        ...j,
+        eligibility: await this.computeEligibility(candidateId, j.job_id),
+      }))
     );
 
-    // optional filter by eligibility (computed)
     const filtered =
       query.eligible === undefined
-        ? itemsWithEligibility
-        : itemsWithEligibility.filter((x) => x.eligibility.eligible === query.eligible);
+        ? items
+        : items.filter((x) => x.eligibility.eligible === query.eligible);
 
     return {
       items: filtered,
@@ -189,12 +211,13 @@ export class CandidateJobsService {
     };
   }
 
-  // -------------------------------------------------------------------
-  // C) Recommended jobs
-  // - Use JobRecommendation table if exists (your schema has it)
-  // - returns job + match_score + eligibility from stored fields
-  // -------------------------------------------------------------------
-  async getRecommendedJobs(candidateId: string, query: JobListQuery): Promise<PagedResult<JobListItemDTO>> {
+  // ---------------------------------------------
+  // C) Recommended jobs (READ ONLY)
+  // ---------------------------------------------
+  async getRecommendedJobs(
+    candidateId: string,
+    query: JobListQuery
+  ): Promise<PagedResult<JobListItemDTO>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -230,7 +253,7 @@ export class CandidateJobsService {
     ]);
 
     let items: JobListItemDTO[] = recs
-      .filter((r) => r.job.status === "ACTIVE") // safety
+      .filter((r) => r.job.status === "ACTIVE")
       .map((r) => ({
         ...r.job,
         match_score: r.match_score,
@@ -242,30 +265,31 @@ export class CandidateJobsService {
             .filter((x) => String(x).startsWith("MISSING_FIELD:"))
             .map((x) => String(x).split(":")[1])
             .filter(Boolean),
-          // we don't store profileScore here; optional
         },
       }));
 
-    // filter by eligibility
     if (query.eligible !== undefined) {
       items = items.filter((x) => x.eligibility.eligible === query.eligible);
     }
 
-    // filter by level
     if (query.level) {
       items = items.filter((x) => x.experience_level === query.level);
     }
 
-    // filter by skills (candidate wants jobs requiring certain skills)
     if (query.skills?.length) {
       const S = new Set(query.skills.map(normalize));
-      items = items.filter((x) => x.required_skills?.some((sk) => S.has(normalize(sk))));
+      items = items.filter((x) =>
+        x.required_skills?.some((sk) => S.has(normalize(sk)))
+      );
     }
 
-    // search
     if (query.search) {
       const q = query.search.toLowerCase();
-      items = items.filter((x) => x.title.toLowerCase().includes(q));
+      items = items.filter(
+        (x) =>
+          x.title.toLowerCase().includes(q) ||
+          (x.location ?? "").toLowerCase().includes(q)
+      );
     }
 
     return {
@@ -275,34 +299,5 @@ export class CandidateJobsService {
       total,
       hasMore: skip + limit < total,
     };
-  }
-
-  // -------------------------
-  // D) Apply gate + create application
-  // -------------------------
-  async applyToJob(candidateId: string, jobId: string, payload?: { cover_letter?: string }) {
-    const eligibility = await this.computeEligibility(candidateId, jobId);
-    if (!eligibility.eligible) {
-      const err: any = new Error("Not eligible to apply");
-      err.statusCode = 403;
-      err.details = eligibility;
-      throw err;
-    }
-
-    // prevent duplicates: JobApplication has @@unique([candidate_id, job_id])
-    return this.prisma.jobApplication.create({
-      data: {
-        candidate_id: candidateId,
-        job_id: jobId,
-        cover_letter: payload?.cover_letter,
-      },
-      select: {
-        application_id: true,
-        status: true,
-        applied_at: true,
-        job_id: true,
-        candidate_id: true,
-      },
-    });
   }
 }

@@ -11,6 +11,9 @@ export function internalAuth(req: Request, res: Response, next: NextFunction) {
   if (token !== process.env.BACKEND_INTERNAL_TOKEN) {
     return res.status(403).json({ message: "Invalid internal token" });
   }
+  console.log("internalAuth HIT", req.originalUrl);
+  console.log("auth header =", req.headers.authorization);
+
 
   return next();
 }

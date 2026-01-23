@@ -42,3 +42,10 @@ def requeue_with_backoff(task: Dict[str, Any]) -> None:
     delay = base * (2 ** max(0, attempt - 1))  # 2,4,8,16...
     run_at = time.time() + min(delay, 60)      # cap delay at 60s (simple)
     enqueue(task["type"], task["payload"], attempt=attempt, run_at=run_at)
+
+def requeue_same(task: Dict[str, Any]) -> None:
+    """
+    Requeue the exact same task without incrementing attempts.
+    Used only for scheduling when run_at is in the future.
+    """
+    redis_client.lpush(settings.REDIS_QUEUE_NAME, json.dumps(task))
