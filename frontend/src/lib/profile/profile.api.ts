@@ -13,6 +13,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+export { api };
+
 
 // Profile Completeness Response Type
 export interface ProfileCompletenessResponse {
