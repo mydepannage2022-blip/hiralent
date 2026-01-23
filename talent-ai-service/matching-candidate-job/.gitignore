@@ -1,1 +1,4 @@
 venv-matching-candidate-job/
+.pytest_cache/
+*.log
+__pycache__/
