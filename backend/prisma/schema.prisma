@@ -2021,6 +2021,7 @@ model EmbassySubmission {
   @@map("embassy_submissions")
 }
 
+
 // Ajouter ces models à la fin du fichier
 
 // Resume Autofill
