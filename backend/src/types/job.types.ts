@@ -48,6 +48,7 @@ export interface CreateJobRequest {
   required_skills?: string[];
 
   job_type?: JobType;
+  status?: JobStatus;
   experience_level?: ExperienceLevel;
   education_level?: EducationLevel;
   remote_option?: RemoteOption;

@@ -1,144 +1,145 @@
-'use client';
+// frontend/app/candidate/dashboard/jobs/page.tsx
+"use client";
 
-import React, { useState } from 'react';
-import { Briefcase, Filter } from 'lucide-react';
-import JobList from '@/src/components/candidate/dashboard/jobs/JobList';
-import JobFilters from '@/src/components/candidate/dashboard/jobs/JobFilters';
-import { useJobs } from '@/src/lib/jobs/jobs.queries';
-import { JobFilters as JobFiltersType } from '@/src/lib/jobs/jobs.api';
+import React, { useState } from "react";
+import { Briefcase, Sparkles, Filter } from "lucide-react";
+import JobList from "@/src/components/candidate/dashboard/jobs/JobList";
+import JobFilters from "@/src/components/candidate/dashboard/jobs/JobFilters";
+import { useCandidateJobsList, useCandidateRecommendedJobs } from "@/src/lib/candidate/jobs.queries";
+import type { JobListQuery } from "../../../../src/types/candidate.jobs.types";
 
 export default function JobsPage() {
+  const [activeTab, setActiveTab] = useState<"recommended" | "all">("recommended");
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<JobFiltersType>({
-    status: 'ACTIVE',
+
+  const [query, setQuery] = useState<JobListQuery>({
     page: 1,
     limit: 20,
-    sort_by: 'created_at',
-    sort_order: 'desc',
   });
 
-  // Fetch all jobs with filters
-  const {
-    data: jobsData,
-    isLoading: jobsLoading,
-    error: jobsError,
-  } = useJobs(filters);
+  const recommendedQ = useCandidateRecommendedJobs(
+    { page: 1, limit: 20 },
+    { enabled: activeTab === "recommended" }
+  );
 
-  const handleFilterChange = (newFilters: JobFiltersType) => {
-    setFilters(newFilters);
-  };
+  const allQ = useCandidateJobsList(query, { enabled: activeTab === "all" });
 
-  const handleClearFilters = () => {
-    setFilters({
-      status: 'ACTIVE',
-      page: 1,
-      limit: 20,
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    });
-  };
+  const isLoading = activeTab === "recommended" ? recommendedQ.isLoading : allQ.isLoading;
+  const error = activeTab === "recommended" ? recommendedQ.error : allQ.error;
+
+  const items = activeTab === "recommended" ? recommendedQ.data?.items ?? [] : allQ.data?.items ?? [];
+
+  const clearFilters = () => setQuery({ page: 1, limit: 20 });
 
   return (
-    <div>
-      <div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar (Desktop) */}
-          <div className="hidden lg:block">
-            <JobFilters
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onClearFilters={handleClearFilters}
-            />
-          </div>
-
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden mb-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tabs */}
+        <div className="bg-white rounded-lg border border-gray-200 mb-6">
+          <div className="flex items-center">
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+              onClick={() => setActiveTab("recommended")}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
+                activeTab === "recommended"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
             >
-              <Filter className="w-5 h-5" />
-              Filters
+              <Sparkles className="w-5 h-5" />
+              Recommended For You
             </button>
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
+                activeTab === "all"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Briefcase className="w-5 h-5" />
+              All Jobs
+            </button>
+          </div>
+        </div>
 
-            {/* Mobile Filters Overlay */}
-            {showFilters && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-                <div className="bg-white h-full overflow-y-auto p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold">Filters</h2>
-                    <button
-                      onClick={() => setShowFilters(false)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <JobFilters
-                    filters={filters}
-                    onFilterChange={(newFilters) => {
-                      handleFilterChange(newFilters);
-                      setShowFilters(false);
-                    }}
-                    onClearFilters={() => {
-                      handleClearFilters();
-                      setShowFilters(false);
-                    }}
-                  />
-                </div>
-              </div>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">Failed to load jobs. Please try again.</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Desktop filters */}
+          <div className="hidden lg:block">
+            {activeTab === "all" && (
+              <JobFilters query={query} onChange={setQuery} onClear={clearFilters} />
             )}
           </div>
 
-          {/* Jobs List */}
-          <div className="lg:col-span-3">
-            {/* Error State */}
-            {jobsError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-red-800">
-                  Failed to load jobs. Please try again later.
-                </p>
-              </div>
-            )}
+          {/* Mobile filters */}
+          {activeTab === "all" && (
+            <div className="lg:hidden mb-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                <Filter className="w-5 h-5" />
+                Filters
+              </button>
 
-            {/* Results Count */}
-            {jobsData && !jobsLoading && (
+              {showFilters && (
+                <div className="fixed inset-0 bg-black/50 z-50">
+                  <div className="bg-white h-full overflow-y-auto p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold">Filters</h2>
+                      <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-gray-700">
+                        ✕
+                      </button>
+                    </div>
+
+                    <JobFilters
+                      query={query}
+                      onChange={(q) => {
+                        setQuery(q);
+                        setShowFilters(false);
+                      }}
+                      onClear={() => {
+                        clearFilters();
+                        setShowFilters(false);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className={activeTab === "all" ? "lg:col-span-3" : "lg:col-span-4"}>
+            {/* Count + pagination (only for ALL tab) */}
+            {activeTab === "all" && allQ.data && !allQ.isLoading && (
               <div className="mb-4 text-sm text-gray-600">
-                Showing {jobsData?.jobs?.length || 0} of {jobsData?.pagination?.total || 0} jobs
+                Showing {allQ.data.items.length} of {allQ.data.total} jobs
               </div>
             )}
 
-            {/* Jobs List */}
-            <JobList
-              jobs={jobsData?.jobs || []}
-              isLoading={jobsLoading}
-              showMatchScore={false}
-            />
+            <JobList items={items} isLoading={isLoading} showMatchScore={activeTab === "recommended"} />
 
-            {/* Pagination */}
-            {jobsData?.pagination && jobsData.pagination.totalPages > 1 && (
+            {activeTab === "all" && allQ.data && allQ.data.total > (query.limit ?? 20) && (
               <div className="mt-8 flex items-center justify-center gap-2">
                 <button
-                  onClick={() =>
-                    handleFilterChange({ ...filters, page: (filters.page || 1) - 1 })
-                  }
-                  disabled={filters.page === 1}
+                  onClick={() => setQuery({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
+                  disabled={(query.page ?? 1) === 1}
                   className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Previous
                 </button>
 
-                <span className="px-4 py-2 text-sm text-gray-700">
-                  Page {filters.page || 1} of {jobsData.pagination.totalPages}
-                </span>
+                <span className="px-4 py-2 text-sm text-gray-700">Page {query.page ?? 1}</span>
 
                 <button
-                  onClick={() =>
-                    handleFilterChange({ ...filters, page: (filters.page || 1) + 1 })
-                  }
-                  disabled={filters.page === jobsData.pagination.totalPages}
+                  onClick={() => setQuery({ ...query, page: (query.page ?? 1) + 1 })}
+                  disabled={!allQ.data.hasMore}
                   className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Next

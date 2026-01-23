@@ -31,11 +31,4 @@ router.get("/recommended", controller.listRecommendedJobs);
  */
 router.get("/:jobId/eligibility", controller.getEligibility);
 
-/**
- * Apply (blocked if not eligible)
- * POST /candidate/jobs/:jobId/apply
- * body: { cover_letter?: string }
- */
-router.post("/:jobId/apply", controller.apply);
-
 export default router;
