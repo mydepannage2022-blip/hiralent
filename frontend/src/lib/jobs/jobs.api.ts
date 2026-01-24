@@ -90,6 +90,11 @@ export interface JobFilters {
   created_from?: string;
   created_to?: string;
   search_term?: string;
+  location?: string;
+  salary_min?: number | string;
+  salary_max?: number | string;
+  company_id?: string;
+  skills?: string;
   page?: number;
   limit?: number;
   sort_by?: string;

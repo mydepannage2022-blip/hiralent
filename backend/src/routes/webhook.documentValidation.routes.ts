@@ -81,15 +81,12 @@ router.post("/document-validation", async (req: Request, res: Response) => {
     });
 
     // Determine new document status based on validation result
-    let newStatus: string;
+    // Per spec: Agency always reviews - AI only flags issues
+    let newStatus: string = "pending";
+
+    // Only mark as validation_failed if the AI service itself failed (technical error)
     if (payload.status === "failed") {
       newStatus = "validation_failed";
-    } else if (payload.overall_status === "valid" && (payload.overall_confidence || 0) >= 0.9) {
-      newStatus = "approved"; // Auto-approve high confidence
-    } else if (payload.overall_status === "invalid") {
-      newStatus = "rejected";
-    } else {
-      newStatus = "pending_review"; // needs_review or low confidence
     }
 
     // Update CaseDocument with validation results
@@ -111,44 +108,30 @@ router.post("/document-validation", async (req: Request, res: Response) => {
       `[Webhook] Updated document ${payload.document_id} status to: ${newStatus}`
     );
 
-    // Create notification if needs review
-    if (newStatus === "pending_review" && relocationCase?.agency) {
+    // Create high-priority notification if AI found issues
+    // This flags the document for agency attention
+    const hasIssues = payload.overall_status === "invalid" ||
+                      (payload.issues && payload.issues.length > 0) ||
+                      (payload.overall_confidence && payload.overall_confidence < 0.7);
+
+    if (hasIssues && relocationCase?.agency) {
       const agencyOwnerId = relocationCase.agency.owner_user_id;
 
       if (agencyOwnerId) {
+        const issueDescription = payload.issues?.map((i) => i.message).join(", ")
+                               || "Low confidence validation";
+
         await prisma.notification.create({
           data: {
             user_id: agencyOwnerId,
-            type: "document_needs_review",
-            message: `Document "${document.document_type}" requires manual review. Confidence: ${((payload.overall_confidence || 0) * 100).toFixed(0)}%`,
+            type: "document_needs_attention",
+            message: `Document "${document.document_type}" flagged by AI: ${issueDescription}. Confidence: ${((payload.overall_confidence || 0) * 100).toFixed(0)}%`,
             sent_via: "push",
             is_read: false,
           },
         });
 
-        console.log(`[Webhook] Created notification for agency owner: ${agencyOwnerId}`);
-      }
-    }
-
-    // Create notification if rejected
-    if (newStatus === "rejected" && relocationCase?.candidate) {
-      const candidateUserId = relocationCase.candidate.user_id;
-
-      if (candidateUserId) {
-        // Get the issues as a readable message
-        const issueMessages = payload.issues?.map((i) => i.message).join(", ") || "Document did not pass validation";
-
-        await prisma.notification.create({
-          data: {
-            user_id: candidateUserId,
-            type: "document_rejected",
-            message: `Your "${document.document_type}" was rejected: ${issueMessages}`,
-            sent_via: "push",
-            is_read: false,
-          },
-        });
-
-        console.log(`[Webhook] Created rejection notification for candidate: ${candidateUserId}`);
+        console.log(`[Webhook] Created flagged document notification for agency owner: ${agencyOwnerId}`);
       }
     }
 

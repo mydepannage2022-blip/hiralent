@@ -5,9 +5,12 @@ import { validateBatchGeneration } from '../../middlewares/question.validation.m
 import { vectorEngineService } from '../../../src/services/question/vectorEngine.service';
 import express, { Request, Response } from 'express'; 
 import { vettingService } from '../../services/question/vetting.service';
+import { PatternQuestionPipeline } from "../../services/question/pattern-question.pipeline";
+import { requireScrapingAccess } from "../../middlewares/scrapingAuth.middleware";
 
 const router = express.Router();
 const controller = new QuestionController();
+const pipeline = new PatternQuestionPipeline();
 
 console.log('📋 Loading question routes...');
 
@@ -100,6 +103,25 @@ router.delete('/:id',
   checkAuth,
   controller.deleteQuestion.bind(controller)
 );
+
+// ========== DIAGRAM GENERATION ROUTES (NEW) ==========
+
+// Generate question WITH automatic diagram
+router.post('/generate-with-diagram',
+  checkAuth,
+  checkAIServiceAvailable,
+  controller.generateQuestionWithDiagram.bind(controller)
+);
+
+// Check if diagram generation is available
+router.get('/diagram-service/health',
+  controller.checkDiagramServiceHealth.bind(controller)
+);
+
+// Get diagram for a specific question
+router.get('/:id/diagram',
+  controller.getQuestionDiagram.bind(controller)
+);
 // ========== WEB SCRAPING ROUTES ==========
 router.post('/scrape',
   checkAuth,
@@ -132,6 +154,25 @@ router.post('/scrape/leetcode/url',
 router.post('/scrape/leetcode/batch',
   checkAuth,
   controller.scrapeLeetCodeBatch.bind(controller)
+);
+
+/**
+ * POST /api/questions/generate-from-patterns
+ * body: { source?: "stackoverflow" | "leetcode" | "github" | "hackerrank", limit?: number }
+ * Auth: requireScrapingAccess (system token, not user token)
+ */
+router.post(
+  "/generate-from-patterns",
+  requireScrapingAccess, //  system auth (no user token)
+  async (req, res) => {
+    try {
+      const { source, limit } = req.body ?? {};
+      const result = await pipeline.generateFromPatterns({ source, limit });
+      return res.json(result);
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Failed" });
+    }
+  }
 );
 
 // ========== VARIATION ENGINE ROUTES ==========

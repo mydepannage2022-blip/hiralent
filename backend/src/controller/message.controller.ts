@@ -294,3 +294,202 @@ export const getConversationController = async (req: Request, res: Response): Pr
     } as APIResponse);
   }
 };
+
+/**
+ * POST /api/messages/:messageId/reactions
+ * Add or update reaction to a message
+ */
+export const addReactionController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+
+    if (!emoji || typeof emoji !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Emoji is required',
+        error: 'VALIDATION_ERROR'
+      } as APIResponse);
+      return;
+    }
+
+    const reaction = await messageService.addReaction(
+      messageId,
+      req.user.user_id,
+      emoji
+    );
+
+    res.status(200).json({
+      success: true,
+      data: reaction,
+      message: 'Reaction added successfully'
+    } as APIResponse);
+
+  } catch (error) {
+    console.error('Error adding reaction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add reaction',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+/**
+ * DELETE /api/messages/:messageId/reactions
+ * Remove reaction from a message
+ */
+export const removeReactionController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    const { messageId } = req.params;
+
+    await messageService.removeReaction(messageId, req.user.user_id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Reaction removed successfully'
+    } as APIResponse);
+
+  } catch (error) {
+    console.error('Error removing reaction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove reaction',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+/**
+ * GET /api/messages/:messageId/reactions
+ * Get all reactions for a message
+ */
+export const getReactionsController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    const { messageId } = req.params;
+
+    const reactions = await messageService.getReactions(messageId);
+
+    res.status(200).json({
+      success: true,
+      data: reactions,
+      message: 'Reactions retrieved successfully'
+    } as APIResponse);
+
+  } catch (error) {
+    console.error('Error getting reactions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get reactions',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+/**
+ * POST /api/messages/upload
+ * Upload file for message (image, video, voice, file)
+ */
+export const uploadMessageFileController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error: 'UNAUTHORIZED'
+      } as APIResponse);
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'No file provided',
+        error: 'NO_FILE'
+      } as APIResponse);
+      return;
+    }
+
+    const userId = req.user.user_id;
+    const file = req.file;
+
+    // Import handleUpload dynamically
+    const { handleUpload } = await import('../services/upload/upload.service');
+    const { signedUrl } = await import('../services/upload/storage.service');
+
+    // Upload to MinIO/S3
+    const { documentId } = await handleUpload({
+      buffer: file.buffer,
+      originalName: file.originalname,
+      uploadedBy: userId,
+      subjectType: 'MESSAGE',
+      subjectId: userId, // Use userId as subject for messages
+      documentType: 'message_attachment',
+    });
+
+    // Get uploaded document
+    const prisma = (await import('../lib/prisma')).default;
+    const document = await prisma.uploadedDocument.findUnique({
+      where: { document_id: documentId },
+    });
+
+    if (!document) {
+      res.status(500).json({
+        success: false,
+        message: 'File uploaded but not found in database',
+        error: 'UPLOAD_ERROR'
+      } as APIResponse);
+      return;
+    }
+
+    // Generate signed URL for access
+    const fileUrl = await signedUrl(document.storage_key);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        file_url: fileUrl,
+        file_name: document.file_name,
+        file_size: document.file_size,
+        mime_type: document.mime_type,
+        document_id: documentId
+      },
+      message: 'File uploaded successfully'
+    } as APIResponse);
+
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload file',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};

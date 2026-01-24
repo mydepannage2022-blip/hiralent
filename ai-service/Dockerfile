@@ -4,10 +4,19 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# System dependencies (for some pip packages)
+# System + Mermaid CLI dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    nodejs \
+    npm \
+    chromium \
+    ca-certificates \
+    fonts-liberation \
+    fonts-dejavu \
+  && npm install -g @mermaid-js/mermaid-cli \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
 
 # Project root inside the container
 WORKDIR /app
@@ -22,5 +31,5 @@ COPY . .
 # FastAPI port
 EXPOSE 8000
 
-# 🔥 EXACTLY what you run locally:
+#  EXACTLY what you run locally:
 CMD ["python", "-m", "app.main"]

@@ -1,4 +1,7 @@
+// UPDATED: CV Upload now uses LOCAL STORAGE instead of Cloudinary
+
 import { PrismaClient } from "@prisma/client";
+import path from 'path';
 import {
   generateJobMatchReasoning,
 } from "../lib/openai";
@@ -30,10 +33,13 @@ cloudinary.config({
   cloudinary_url: process.env.CLOUDINARY_URL,
 });
 
+// ==================== CV UPLOAD - NOW USES LOCAL STORAGE ====================
 export const uploadAndProcessCV = async (
   candidateId: string,
   file: Express.Multer.File
 ): Promise<CVUploadResponse> => {
+  let tempFilePath: string | null = null;
+
   try {
     if (!file) {
       throw new Error("No file provided");
@@ -43,21 +49,37 @@ export const uploadAndProcessCV = async (
       throw new Error("File not found after upload");
     }
 
-    await cleanupOldResume(candidateId);
+    tempFilePath = file.path;
 
-    const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
-      folder: "hiralent-candidate/resumes",
-      public_id: `resume_${candidateId}_${Date.now()}`,
-      resource_type: "raw",
-      access_mode: 'public',
-      type: 'upload'
-    });
+    // Delete old CV if exists
+    //await cleanupOldResume(candidateId);
 
+    // Create upload directory for CVs
+    const uploadDir = path.join(process.cwd(), 'uploads', 'resumes', 'cv');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`✅ Created directory: ${uploadDir}`);
+    }
+
+    // Generate unique filename
+    const fileExtension = path.extname(file.originalname);
+    const filename = `cv_${candidateId}_${Date.now()}${fileExtension}`;
+    const destinationPath = path.join(uploadDir, filename);
+
+    // Move file from temp to permanent location
+    fs.renameSync(tempFilePath, destinationPath);
+    console.log(`✅ CV saved to: ${destinationPath}`);
+
+    // Generate URL for access
+    const fileUrl = `/uploads/resumes/cv/${filename}`;
+    const fullUrl = `${process.env.APP_URL || 'http://localhost:5000'}${fileUrl}`;
+
+    // Create document record with full URL
     const document = await prisma.candidateDocument.create({
       data: {
         candidate_id: candidateId,
         file_name: file.originalname,
-        file_path: cloudinaryResult.secure_url,
+        file_path: fullUrl, // Store full URL for easy access
         file_type: file.mimetype,
         file_size: file.size,
         upload_status: "uploaded",
@@ -65,9 +87,10 @@ export const uploadAndProcessCV = async (
       },
     });
 
-    cleanupTempFile(file.path);
+    // Process document asynchronously (extract text, parse skills, etc.)
+    processDocumentAsync(document.document_id, candidateId, destinationPath);
 
-    processDocumentAsync(document.document_id, candidateId, cloudinaryResult.secure_url);
+    console.log(`✅ CV uploaded successfully for candidate: ${candidateId}`);
 
     return {
       success: true,
@@ -79,18 +102,21 @@ export const uploadAndProcessCV = async (
         candidate_id: candidateId,
         whole_document: undefined,
       },
-      message: "CV uploaded successfully to Cloudinary. Processing in background.",
+      message: "CV uploaded successfully. Processing in background.",
     };
   } catch (error) {
-    console.error("Error uploading CV:", error);
+    console.error("❌ Error uploading CV:", error);
     
-    if (file && fs.existsSync(file.path)) {
-      cleanupTempFile(file.path);
+    // Cleanup temp file on error
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      cleanupTempFile(tempFilePath);
     }
     
     throw error;
   }
 };
+
+// ==================== REST OF THE FILE REMAINS THE SAME ====================
 
 export const getResumeDownloadUrl = async (
   candidateId: string
@@ -367,7 +393,7 @@ export const calculateProfileCompleteness = async (candidateId: string): Promise
 
     let documentScore = 0;
     const hasResume = candidate.candidateDocuments.some(doc => 
-      doc.upload_status === 'completed' && doc.extraction_status === 'completed'
+      doc.upload_status === 'uploaded' && doc.extraction_status === 'completed'
     );
     if (hasResume) {
       documentScore = 5;

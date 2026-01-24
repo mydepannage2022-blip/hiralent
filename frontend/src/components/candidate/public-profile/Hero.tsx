@@ -4,6 +4,7 @@ import Image from "next/image";
 import ProfileCard from "./ProfileCard";
 import { Download, MapPin, Globe } from "lucide-react";
 import { HeroProps, ParsedLanguage } from "@/src/types/profile";
+import { useMemo } from "react";
 
 export default function Hero({ profile }: HeroProps) {
     // Parse languages if available
@@ -41,6 +42,21 @@ export default function Hero({ profile }: HeroProps) {
         }
         return 2; // Default
     };
+
+    const resumeUrl = useMemo(() => {
+        const raw = profile.resume_application_url;
+        if (!raw) return "";
+
+        // if already absolute (cloudinary or full backend url) keep it
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+
+        // if relative (/uploads/...) => prefix with backend url
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:5000";
+        const base = apiUrl.replace(/\/+$/, "");
+        const path = raw.startsWith("/") ? raw : `/${raw}`;
+        return `${base}${path}`;
+        }, [profile.resume_application_url]);
+
 
     const countryFlag = getCountryFlag();
     const totalExperience = getTotalExperience();
@@ -131,9 +147,9 @@ export default function Hero({ profile }: HeroProps) {
                             Contact for Opportunity
                         </button>
 
-                        {profile.resume_application_url && (
+                        {resumeUrl && (
                             <a
-                                href={profile.resume_application_url}
+                                href={resumeUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="rounded-full px-5 py-3 border-2 border-[#1B1B1B29] flex items-center gap-2 font-medium hover:bg-yellow-50 transition"

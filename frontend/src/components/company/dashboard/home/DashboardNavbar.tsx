@@ -97,25 +97,50 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         />
       </SmartLink>
     );
-
+  const pathnameSafe = pathname ?? "";
   const getPageInfo = () => {
+      // ✅ dynamic details route
+  if (pathnameSafe.startsWith("/company/dashboard/assessmentManagement/")) {
+    return {
+      title: "Assessment Details",
+      description: "Configure and manage questions",
+    };
+  }
+    // ✅ dynamic details route (Job Details)
+  if (pathnameSafe.startsWith("/company/dashboard/jobManagement/")) {
+    return {
+      title: "Job Details",
+      description: "View, edit, and manage this job posting",
+    };
+  }
     switch (pathname) {
       case '/company/dashboard/employer-profile':
         return { title: 'Profile', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/postjob':
         return { title: 'Post Job', description: 'Updating your information will offer you the most relevent content' };
-       // ✅ NEW: My Jobs
+
       case '/company/dashboard/jobManagement':
         return { title: 'My Jobs', description: 'Create, edit, and track all your job postings' };
-       // ✅ NEW: My Assessments
+
       case '/company/dashboard/assessmentManagement':
         return { title: 'My Assessments', description: 'Build and manage candidate assessments' };
-      case '/company/dashboard/notifications':
+        
+      case "/company/dashboard/candidates":
+      case "/company/dashboard/candidates/internal":
+        return { title: "Candidates", description: "Ranked internal candidates (registered users)" };
+      case "/company/dashboard/candidates/external":
+        return { title: "Candidates", description: "Ranked external candidates (scraped sources)" };
+      
+     case '/company/dashboard/notifications':
         return { title: 'Notifications', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/manage-hiring':
         return { title: 'Manage Hiring', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/messages':
         return { title: 'Messages', description: 'Updating your information will offer you the most relevent content' };
+       case '/company/dashboard/review-queue':
+        return { title: 'Review Queue', description: 'Review and approve candidate assessments' };
+      case '/company/dashboard/questions':
+        return { title: 'Question Bank', description: 'Manage and organize questions for assessments' };
       case '/company/dashboard/settings':
         return { title: 'Settings', description: 'Updating your information will offer you the most relevent content' };
       default:

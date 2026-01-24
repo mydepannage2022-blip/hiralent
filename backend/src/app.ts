@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
 
 dotenv.config();
 const app = express();
@@ -55,6 +56,14 @@ import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
 import documentValidationWebhookRoutes from './routes/webhook.documentValidation.routes';
 
+import schedulerRoutes from "./routes/scraping/scraping.routes";
+import internalRoutes from "./routes/internal.routes";
+import candidateJobsRoutes from "./routes/candidate/jobs.routes";
+import internalCandidateRoutes from "./routes/internal/candidate/candidateSnapshot.routes";
+import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes";
+import matchingInternalRoutes from "./routes/internal/matching.routes";
+import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
+import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -69,7 +78,10 @@ app.use('/api/v1/auth/sessions', authRoutes);
 
 
 app.use('/api/v1/messages', messageRoutes);
-
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path}`);
+  next();
+});
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
@@ -91,6 +103,9 @@ if (process.env.NODE_ENV !== 'production') {
     console.warn('Dev routes not available:', (e as Error).message);
   }
 }
+//scraping route
+app.use("/api/v1/scraping/scheduler", schedulerRoutes);
+
 
 
 // ✅ Admin routes ONLY here (use ADMIN_JWT_SECRET internally)
@@ -100,13 +115,43 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
-app.use('/api/v1', jobRoutes);
+app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
 app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
+
+
+
+//Candidate (jobs+assessments)
+app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
+app.use("/api/v1/candidate", jobApplicationsRoutes);
+app.use("/internal/matching/candidate", internalCandidateRoutes);
+app.use("/internal/matching/company", internalCompanyRoutes);
+app.use("/internal/matching", matchingInternalRoutes);
+app.use("/api/v1", companyCandidateRankingRoutes);
+
+
+//Scraping Candidates
+app.use("/internal", internalRoutes);
+
+
+//candidate cv
+// Serve uploaded files statically
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+      }
+    },
+  })
+);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

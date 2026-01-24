@@ -1,7 +1,7 @@
 from asyncio.log import logger
 import re
 from urllib.parse import urljoin
-from fastapi import FastAPI, HTTPException, Body, APIRouter, Request
+from fastapi import FastAPI, HTTPException, Body, APIRouter, Request,Query
 from typing import Optional, Dict, Any
 from app.routes import variation_routes
 from app.routes.vector_routes import router as vector_router
@@ -26,7 +26,20 @@ from typing import List, Dict, Optional, Any
 import re
 from datetime import datetime
 from app.vetting_pipeline.service import VettingPipelineService
+from app.crawler.github_spider import GitHubSpider
+from app.crawler.hackerrank_spider import HackerRankSpider
+from app.crawler.leetcode_pattern_spider import LeetCodePatternSpider
+from app.crawler.stackoverflow_spider import StackOverflowAPISpider
+#Scraping Orchestrator
+from app.scraping.orchestrator import get_orchestrator
+from app.pattern_extraction.extractor import UnifiedPatternExtractor
+from app.routes.questions_from_pattern import router as questions_from_pattern_router
 
+from dotenv import load_dotenv
+load_dotenv() 
+
+ALLOW_LEGACY = os.getenv("ALLOW_LEGACY_LEETCODE_FULL_SCRAPE") == "true"
+print("ALLOW_LEGACY_LEETCODE_FULL_SCRAPE =", os.getenv("ALLOW_LEGACY_LEETCODE_FULL_SCRAPE"))
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -38,6 +51,7 @@ print("🚀 Starting Hiralent AI Service...")
 # =============================================================================
 GEMINI_AVAILABLE = False
 gemini_ai_service = None
+DIAGRAM_GENERATION_AVAILABLE = False  
 
 try:
     # Essayer l'import direct
@@ -171,6 +185,43 @@ class BaseSpider(abc.ABC):
                 "error": str(e),
                 "base_url": self.base_url
             }
+
+class GitHubSpiderAdapter(BaseSpider):
+    def __init__(self):
+        super().__init__("github", "https://github.com")
+        self._impl = GitHubSpider()
+        self.session = self._impl.session  # ✅ overwrite the session created by BaseSpider
+
+    def extract_problems(self, html: str) -> List[Dict]:
+        return self._impl.extract_problems(html)
+
+    def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
+        return None
+
+    def crawl(self, max_pages: int = 3) -> List[Dict]:
+        return self._impl.crawl(max_pages=max_pages)
+
+    def health_check(self) -> Dict[str, Any]:
+        return self._impl.health_check()
+
+
+class HackerRankSpiderAdapter(BaseSpider):
+    def __init__(self):
+        super().__init__("hackerrank", "https://www.hackerrank.com")
+        self._impl = HackerRankSpider()
+        self.session = self._impl.session  # ✅ overwrite
+
+    def extract_problems(self, html: str) -> List[Dict]:
+        return self._impl.extract_problems(html)
+
+    def get_next_page(self, soup: BeautifulSoup) -> Optional[str]:
+        return None
+
+    def crawl(self, max_pages: int = 3) -> List[Dict]:
+        return self._impl.crawl(max_pages=max_pages)
+
+    def health_check(self) -> Dict[str, Any]:
+        return self._impl.health_check()
 
 # =============================================================================
 # STACKOVERFLOW SPIDER (Integrated to avoid import issues)
@@ -312,7 +363,7 @@ class StackOverflowSpider(BaseSpider):
 
 # Add this after your existing BaseSpider and StackOverflowSpider classes
 
-class LeetCodeSpider(BaseSpider):
+class LeetCodeSpiderLegacy(BaseSpider):
     """
     Advanced spider for scraping LeetCode problems with complete details
     """
@@ -814,7 +865,7 @@ class WebScrapingService:
         """Initialize web scraping components"""
         try:
             # Initialize real components - now they're in the same file
-            self.spiders = [StackOverflowSpider(),LeetCodeSpider()]
+            self.spiders = [StackOverflowSpider(),LeetCodePatternSpider(),GitHubSpiderAdapter(), HackerRankSpiderAdapter()]
             self.processor = ContentProcessor()
             self.corpus_manager = CorpusManager()
             
@@ -1332,6 +1383,69 @@ async def generate_question(request: Dict[str, Any]):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating question: {str(e)}")
+@app.post("/generate-with-diagram")
+async def generate_question_with_diagram_route(request: Dict[str, Any]):
+    """
+    ✨ NOUVEAU: Génère une question avec diagramme automatique si nécessaire
+    
+    Body:
+        {
+            "topic": "database schema for ecommerce",
+            "difficulty": "medium"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "question": {...},
+            "diagram": {
+                "needed": true,
+                "type": "er",
+                "code": "erDiagram...",
+                "imageUrl": "https://cloudinary.com/..."
+            },
+            "metadata": {...}
+        }
+    """
+    try:
+        topic = request.get("topic")
+        difficulty = request.get("difficulty", "medium")
+        
+        if not topic:
+            raise HTTPException(status_code=400, detail="Topic is required")
+        
+        logger.info(f"🎯 Generating question with diagram: {topic} ({difficulty})")
+        
+        # Appeler la nouvelle méthode
+        result = await gemini_ai_service.generate_question_with_diagram(topic, difficulty)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Generation failed")
+            )
+        
+        return {
+            "success": True,
+            "question": result["question"],
+            "diagram": result.get("diagram"),
+            "metadata": {
+                "topic": topic,
+                "difficulty": difficulty,
+                "source": "gemini_ai",
+                "diagram_generation_available": DIAGRAM_GENERATION_AVAILABLE,
+                "diagram_needed": result.get("diagram") is not None
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error in generate-with-diagram route: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Generation failed: {str(e)}"
+        )
 
 @app.post("/generate-batch")
 async def generate_batch(request: Dict[str, Any]):
@@ -1390,16 +1504,16 @@ async def get_scraping_status():
         return {"error": "Web scraping module not available", "available": False, "mode": "mock"}
     return web_scraping_service.get_scraping_status()
 
-@app.post("/scraping/start")
-async def start_scraping_job(request: dict = None):
-    if not SCRAPING_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Web scraping module not available")
+# @app.post("/scraping/start")
+# async def start_scraping_job(request: dict = None):
+#     if not SCRAPING_AVAILABLE:
+#         raise HTTPException(status_code=503, detail="Web scraping module not available")
     
-    sources = request.get("sources", ["stackoverflow"]) if request else ["stackoverflow"]
-    max_pages = request.get("max_pages", 3) if request else 3
+#     sources = request.get("sources", ["stackoverflow"]) if request else ["stackoverflow"]
+#     max_pages = request.get("max_pages", 3) if request else 3
     
-    result = await web_scraping_service.run_scraping_job(sources=sources, max_pages=max_pages)
-    return result
+#     result = await web_scraping_service.run_scraping_job(sources=sources, max_pages=max_pages)
+#     return result
 
 @app.get("/scraping/problems")
 async def get_scraped_problems(limit: int = 50, offset: int = 0, language: str = None, source: str = None):
@@ -1453,76 +1567,82 @@ async def get_enhanced_problems(
     )
 
 @app.post("/scraping/leetcode/url")
-async def scrape_leetcode_by_url(request: dict):
+async def scrape_leetcode_pattern_by_url(request: dict):
     """
-    Scrape a specific LeetCode problem by URL
+    SAFE: Extract LeetCode PATTERN ONLY by URL (no statement/examples/solutions/tests stored).
     """
     try:
         url = request.get("url")
         if not url:
             raise HTTPException(status_code=400, detail="URL is required")
-        
-        print(f"🔍 Scraping LeetCode URL: {url}")
-        
+
+        print(f"🔍 Pattern-extracting LeetCode URL: {url}")
+
         # Extract title slug from URL
         title_slug = extract_leetcode_slug(url)
         if not title_slug:
             raise HTTPException(status_code=400, detail="Invalid LeetCode URL")
-        
+
         print(f"📝 Extracted title slug: {title_slug}")
-        
-        # Create LeetCode spider instance
-        leetcode_spider = LeetCodeSpider()
-        
-        # Get detailed problem info using GraphQL API
-        print(f"🔄 Fetching problem details from LeetCode API...")
-        detailed_info = leetcode_spider.get_detailed_problem_info(title_slug)
-        
-        if not detailed_info:
-            print(f"❌ Failed to fetch problem details for {title_slug}")
+
+        # ✅ Use the NEW safe spider
+        spider = LeetCodePatternSpider()
+
+        # Fetch minimal metadata + extract pattern
+        meta = spider._fetch_meta(title_slug)  # or spider.fetch_meta(...) if you expose it public
+        if not meta:
             raise HTTPException(status_code=404, detail="Problem not found or access denied")
-        
-        print(f"✅ Successfully fetched problem: {detailed_info.get('title', 'Unknown')}")
-        
-        # Transform to Prisma format
-        problem_data = transform_leetcode_to_prisma_format(detailed_info, url)
-        
+
+        pattern = spider._extract_pattern(meta)
+
+        # Guardrail: ensure we never return forbidden content keys
+        spider._assert_safe(pattern)
+
         return {
             "success": True,
-            "message": "LeetCode problem scraped successfully",
-            "problem": problem_data,
+            "message": "LeetCode pattern extracted successfully",
+            "pattern": pattern,
             "metadata": {
                 "url": url,
                 "title_slug": title_slug,
                 "scraped_at": datetime.now().isoformat()
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error scraping LeetCode URL: {e}")
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        logger.error(f"Error extracting LeetCode pattern: {e}")
+        raise HTTPException(status_code=500, detail=f"Pattern extraction failed: {str(e)}")
 
 @app.post("/scraping/leetcode/test")
 async def test_leetcode_scraping(request: dict):
     """
-    Test LeetCode scraping with the working approach
+    LEGACY: Test LeetCode scraping with the full-content approach (description/tests/snippets).
+    Disabled by default. Enable only for local debugging:
+    ALLOW_LEGACY_LEETCODE_FULL_SCRAPE=true
     """
     try:
+        # ✅ GUARD (add this at the very top)
+        if not ALLOW_LEGACY:
+            raise HTTPException(
+                status_code=403,
+                detail="Legacy LeetCode full scrape disabled. Set ALLOW_LEGACY_LEETCODE_FULL_SCRAPE=true to enable."
+            )
+
         url = request.get("url")
         if not url:
             raise HTTPException(status_code=400, detail="URL is required")
-        
+
         print(f"🧪 Testing LeetCode scraping for: {url}")
-        
+
         # Extract title slug from URL
         title_slug = extract_leetcode_slug(url)
         if not title_slug:
             raise HTTPException(status_code=400, detail="Invalid LeetCode URL")
-        
+
         print(f"📝 Extracted title slug: {title_slug}")
-        
+
         # Use the working GraphQL query directly
         query = {
             "operationName": "questionData",
@@ -1550,13 +1670,13 @@ async def test_leetcode_scraping(request: dict):
             }
             """
         }
-        
+
         headers = {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': f'https://leetcode.com/problems/{title_slug}/'
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": f"https://leetcode.com/problems/{title_slug}/",
         }
-        
+
         print("🔄 Sending GraphQL request...")
         response = requests.post(
             "https://leetcode.com/graphql",
@@ -1564,41 +1684,41 @@ async def test_leetcode_scraping(request: dict):
             headers=headers,
             timeout=10
         )
-        
+
         if response.status_code == 200:
             data = response.json()
-            if 'data' in data and data['data']['question']:
-                problem_data = data['data']['question']
+            if "data" in data and data["data"].get("question"):
+                problem_data = data["data"]["question"]
                 print(f"✅ Successfully fetched: {problem_data.get('title', 'Unknown')}")
-                
+
                 # ✅ GET THE CONTENT AND CLEAN IT
-                raw_content = problem_data.get('content', '')
+                raw_content = problem_data.get("content", "") or ""
                 clean_description = clean_html_content(raw_content)
-                
+
                 return {
                     "success": True,
-                    "message": "LeetCode scraping test successful",
+                    "message": "LeetCode scraping test successful (LEGACY)",
                     "data": {
-                        "question_id": problem_data.get('questionId'),
-                        "title": problem_data.get('title'),
-                        "title_slug": problem_data.get('titleSlug'),
-                        "difficulty": problem_data.get('difficulty'),
-                        "topics": [tag['name'] for tag in problem_data.get('topicTags', [])],
-                        
-                        # ✅ ADD THESE - THE ACTUAL DESCRIPTION
+                        "question_id": problem_data.get("questionId"),
+                        "title": problem_data.get("title"),
+                        "title_slug": problem_data.get("titleSlug"),
+                        "difficulty": problem_data.get("difficulty"),
+                        "topics": [tag["name"] for tag in problem_data.get("topicTags", [])],
+
+                        # ✅ DESCRIPTION
                         "description": clean_description,
-                        "description_preview": clean_description[:500] + "..." if len(clean_description) > 500 else clean_description,
+                        "description_preview": (clean_description[:500] + "...") if len(clean_description) > 500 else clean_description,
                         "description_length": len(clean_description),
                         "has_content": bool(raw_content),
-                        
-                        # ✅ FULL TEST CASES
-                        "test_cases": problem_data.get('exampleTestcases', ''),
-                        "sample_test_case": problem_data.get('sampleTestCase', ''),
-                        
-                        # CODE SNIPPETS
-                        "code_snippets": [s['lang'] for s in problem_data.get('codeSnippets', [])],
-                        
-                        # ✅ ADD URL
+
+                        # ✅ TEST CASES
+                        "test_cases": problem_data.get("exampleTestcases", ""),
+                        "sample_test_case": problem_data.get("sampleTestCase", ""),
+
+                        # CODE SNIPPETS (just languages list)
+                        "code_snippets": [s.get("lang") for s in problem_data.get("codeSnippets", []) if s.get("lang")],
+
+                        # ✅ URL
                         "url": f"https://leetcode.com/problems/{problem_data.get('titleSlug')}/"
                     }
                 }
@@ -1608,20 +1728,145 @@ async def test_leetcode_scraping(request: dict):
                     "success": False,
                     "error": "No question data found in response"
                 }
-        else:
-            print(f"❌ HTTP Error: {response.status_code}")
-            return {
-                "success": False,
-                "error": f"HTTP {response.status_code}",
-                "response_text": response.text[:500] if response.text else "No response text"
-            }
-            
+
+        print(f"❌ HTTP Error: {response.status_code}")
+        return {
+            "success": False,
+            "error": f"HTTP {response.status_code}",
+            "response_text": response.text[:500] if response.text else "No response text"
+        }
+
+    except HTTPException:
+        # keep FastAPI HTTP errors clean
+        raise
+
     except Exception as e:
         logger.error(f"Error in test scraping: {e}")
         return {
             "success": False,
             "error": str(e)
         }
+@app.get("/debug/fetch")
+async def debug_fetch(url: str = Query(..., description="URL to fetch")):
+    r = requests.get(
+        url,
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=20
+    )
+    soup = BeautifulSoup(r.text, "html.parser")
+    title = soup.title.get_text(strip=True) if soup.title else None
+    return {
+        "status_code": r.status_code,
+        "final_url": str(r.url),
+        "title": title,
+        "html_preview": r.text[:800]
+    }
+
+@app.get("/scraping/stackoverflow/parse-test")
+async def so_parse_test(tag: str = "python", pagesize: int = 30):
+    url = f"https://stackoverflow.com/questions/tagged/{tag}?sort=votes&pagesize={pagesize}"
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # ✅ Current-ish selectors (StackOverflow changes often)
+    links = []
+    for a in soup.select("a.s-link[href^='/questions/']"):
+        href = a.get("href", "")
+        if href.count("/") >= 2:
+            full = "https://stackoverflow.com" + href.split("?")[0]
+            links.append(full)
+
+    # Deduplicate
+    links = list(dict.fromkeys(links))
+
+    return {
+        "tag": tag,
+        "status_code": r.status_code,
+        "url": url,
+        "found_links": len(links),
+        "sample": links[:10],
+        "html_title": soup.title.get_text(strip=True) if soup.title else None,
+    }
+@app.get("/scraping/stackoverflow/api-test")
+async def so_api_test(tag: str = Query("python"), pagesize: int = Query(20)):
+    url = "https://api.stackexchange.com/2.3/questions"
+    params = {
+        "site": "stackoverflow",
+        "tagged": tag,
+        "pagesize": pagesize,
+        "order": "desc",
+        "sort": "votes",
+        "filter": "default"
+    }
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    items = data.get("items", [])
+    return {
+        "tag": tag,
+        "count": len(items),
+        "sample": [
+            {"title": q["title"], "link": q["link"], "score": q["score"]}
+            for q in items[:10]
+        ],
+        "quota_remaining": data.get("quota_remaining"),
+    }
+@app.get("/scraping/stackoverflow/run")
+async def run_so(max_pages: int = 1, pagesize: int = 30):
+    spider = StackOverflowAPISpider(tags=None, pagesize=pagesize)  # ✅ ALL topics
+    items = spider.crawl(max_pages=max_pages)
+
+    health = spider.health_check()
+
+    # show a tiny sample so you know it really worked
+    sample = [
+        {"title": x.get("title"), "source_url": x.get("source_url"), "difficulty": x.get("difficulty")}
+        for x in items[:3]
+    ]
+
+    return {
+        "count": len(items),
+        "sample": sample,
+        "health": health,
+    }
+@app.get("/scraping/stackoverflow/raw")
+async def so_raw(page: int = 1, pagesize: int = 10, tagged: str = "python"):
+    url = "https://api.stackexchange.com/2.3/questions"
+    params = {
+        "site": "stackoverflow",
+        "pagesize": pagesize,
+        "page": page,
+        "order": "desc",
+        "sort": "votes",
+        "filter": "default",
+        "tagged": tagged,
+        # optionally add key if you have it
+        # "key": os.getenv("STACKEXCHANGE_KEY"),
+    }
+
+    r = requests.get(url, params=params, timeout=20)
+
+    # Try parse JSON even on 400
+    try:
+        data = r.json()
+    except Exception:
+        data = {"non_json_body_preview": (r.text or "")[:800]}
+
+    return {
+        "status_code": r.status_code,
+        "final_url": str(r.url),
+        "error_name": data.get("error_name"),
+        "error_message": data.get("error_message"),
+        "backoff": data.get("backoff"),
+        "quota_remaining": data.get("quota_remaining"),
+        "items_len": len(data.get("items", []) or []),
+        "sample": [
+            {"title": q.get("title"), "link": q.get("link"), "score": q.get("score")}
+            for q in (data.get("items", [])[:5] if isinstance(data.get("items", []), list) else [])
+        ],
+        "raw": data,  # keep this while debugging
+    }
 
 
 def clean_html_content(html_content: str) -> str:
@@ -1846,6 +2091,85 @@ async def debug_scraping():
         "timestamp": datetime.now().isoformat(),
         "scraping_available": SCRAPING_AVAILABLE
     }
+
+
+# ADD NEW ROUTE TO TEST THE SCRAPERS:
+
+# @app.get("/scraping/test-github")
+# async def test_github_scraping():
+#     try:
+#         github_spider = GitHubSpiderAdapter()
+
+#         test_url = "https://api.github.com/repos/TheAlgorithms/Python/contents/sorts"
+#         response = github_spider.session.get(test_url, timeout=10)
+
+#         if response.status_code != 200:
+#             return {"success": False, "error": f"HTTP {response.status_code}", "message": "GitHub API request failed"}
+
+#         patterns = github_spider.extract_problems(response.text)
+
+#         return {
+#             "success": True,
+#             "message": f"Successfully extracted {len(patterns)} patterns from GitHub",
+#             "patterns_sample": patterns[:3],
+#             "total_patterns": len(patterns),
+#             "spider_status": github_spider.health_check(),
+#         }
+#     except Exception as e:
+#         logger.error(f"GitHub test failed: {e}")
+#         return {"success": False, "error": str(e)}
+
+
+# @app.get("/scraping/test-hackerrank")
+# async def test_hackerrank_scraping():
+#     try:
+#         hackerrank_spider = HackerRankSpiderAdapter()
+
+#         test_url = "https://www.hackerrank.com/rest/contests/master/tracks/algorithms/challenges?limit=20"
+#         response = hackerrank_spider.session.get(test_url, timeout=10)
+
+#         if response.status_code != 200:
+#             return {"success": False, "error": f"HTTP {response.status_code}", "message": "HackerRank API request failed"}
+
+#         patterns = hackerrank_spider.extract_problems(response.text)
+
+#         return {
+#             "success": True,
+#             "message": f"Successfully extracted {len(patterns)} patterns from HackerRank",
+#             "patterns_sample": patterns[:3],
+#             "total_patterns": len(patterns),
+#             "spider_status": hackerrank_spider.health_check(),
+#         }
+#     except Exception as e:
+#         logger.error(f"HackerRank test failed: {e}")
+#         return {"success": False, "error": str(e)}
+
+# @app.post("/scraping/start-enhanced")
+# async def start_scraping_job_enhanced(request: dict = None):
+#     """
+#     Enhanced scraping job with GitHub and HackerRank support
+    
+#     Body:
+#         {
+#             "sources": ["stackoverflow", "leetcode", "github", "hackerrank"],
+#             "max_pages": 3
+#         }
+#     """
+#     if not SCRAPING_AVAILABLE:
+#         raise HTTPException(status_code=503, detail="Web scraping module not available")
+    
+#     sources = request.get("sources", ["stackoverflow", "leetcode"]) if request else ["stackoverflow"]
+#     max_pages = request.get("max_pages", 3) if request else 3
+    
+#     print(f"🚀 Starting enhanced scraping job with sources: {sources}")
+    
+#     result = await web_scraping_service.run_scraping_job(sources=sources, max_pages=max_pages)
+    
+#     # Add summary
+#     result["available_sources"] = ["stackoverflow", "leetcode", "github", "hackerrank"]
+#     result["requested_sources"] = sources
+    
+#     return result
 # =============================================================================
 # MCQ GENERATION ROUTES (FIXED - ACCEPTS JSON BODY)
 # =============================================================================
@@ -2488,9 +2812,163 @@ def health_check():
         "timestamp": time.time()
     })
 
+# =============================================================================
+# SCRAPING ROUTES - REFACTORED VERSION
+# Replace your existing scraping routes with these
+# =============================================================================
+
+
+# Get global orchestrator instance
+scraping_orchestrator = get_orchestrator()
+
+
+# =============================================================================
+# INDIVIDUAL SOURCE ROUTES
+# =============================================================================
+
+@app.post("/scraping/leetcode/run")
+async def run_leetcode_scraping(max_items: int = 500):
+    """
+    Run LeetCode scraping job.
+    Routes just trigger - NO business logic here.
+    """
+    return await scraping_orchestrator.run_scraping("leetcode", max_items)
+
+
+@app.post("/scraping/github/run")
+async def run_github_scraping(
+    max_items: int = 200,
+    max_pages: int = 5,              # interpreted as max_repos
+    max_depth: int = 2,
+    per_repo_max_files: int = 60,
+    use_search: bool = True,
+    search_pages: int = 2,
+):
+    return await scraping_orchestrator.run_scraping(
+        "github",
+        max_items,
+        max_pages=max_pages,
+        max_depth=max_depth,
+        per_repo_max_files=per_repo_max_files,
+        use_search=use_search,
+        search_pages=search_pages,
+    )
+
+@app.post("/scraping/stackoverflow/run")
+async def run_stackoverflow_scraping(
+    max_items: int = 30,
+    max_pages: int = 2,
+    auto: bool = True,
+    hard_cap: int = 5000,
+    stop_after_empty_pages: int = 3,
+):
+    """Run StackOverflow scraping job"""
+    return await scraping_orchestrator.run_scraping(
+        "stackoverflow",
+        max_items,
+        max_pages=max_pages,
+        auto=auto,
+        hard_cap=hard_cap,
+        stop_after_empty_pages=stop_after_empty_pages,
+    )
+
+
+
+@app.post("/scraping/hackerrank/run")
+async def run_hackerrank_scraping(
+    max_items: int = 500,
+    pages_per_track: int = 10,
+):
+    """
+    Run HackerRank scraping job.
+
+    - pages_per_track: how many offset pages to fetch FOR EACH track
+    - max_items: global cap in orchestrator (if it enforces it)
+    """
+    return await scraping_orchestrator.run_scraping(
+        "hackerrank",
+        max_items,
+        max_pages=pages_per_track,  # keep orchestrator arg name unchanged
+    )
+
+# =============================================================================
+# BATCH SCRAPING ROUTE
+# =============================================================================
+
+@app.post("/scraping/batch")
+async def run_batch_scraping(request: Dict[str, Any]):
+    """
+    Run batch scraping for multiple sources.
+    
+    Body:
+        {
+            "sources": ["leetcode", "github", "stackoverflow", "hackerrank"],
+            "max_items": 50
+        }
+    """
+    sources = request.get("sources", ["leetcode"])
+    max_items = request.get("max_items", 50)
+    
+    return await scraping_orchestrator.run_batch_scraping(sources, max_items)
+
+
+# =============================================================================
+# SCHEDULER ENDPOINT (FOR NODE-CRON)
+# =============================================================================
+
+@app.post("/scrape")
+async def scheduler_scrape_endpoint(request: Dict[str, Any]):
+    source = request.get("source")
+    max_problems = request.get("max_problems", 50)
+    max_pages = request.get("max_pages", 3)
+
+    if not source:
+        raise HTTPException(status_code=400, detail="Source is required")
+
+    result = await scraping_orchestrator.execute_scheduled_job(
+        source,
+        max_problems,
+        max_pages=max_pages
+    )
+
+    return {
+        "success": result["status"] == "completed",
+        "patterns": result.get("patterns_scraped", 0),
+        "count": result.get("patterns_scraped", 0),
+        "job_log": result
+    }
+
+
+# =============================================================================
+# HEALTH CHECK ROUTES
+# =============================================================================
+
+@app.get("/scraping/health")
+async def scraping_health_check():
+    """Check health of all spiders"""
+    return scraping_orchestrator.health_check()
+
+
+@app.get("/scraping/status")
+async def get_scraping_status():
+    """Get current scraping service status"""
+    health = scraping_orchestrator.health_check()
+    
+    return {
+        "service": "scraping",
+        "status": health["status"],
+        "available_sources": list(scraping_orchestrator.spiders.keys()),
+        "spiders": health["spiders"],
+        "healthy_count": health["healthy_count"],
+        "total_count": health["total_count"]
+    }
+
+
+
+
 
 # Initialiser le service de vetting (avec variables d'environnement)
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/1")
 SANDBOX_URL = os.getenv("SANDBOX_SERVICE_URL", "localhost:50054")
 
 vetting_service = VettingPipelineService(
@@ -2555,6 +3033,10 @@ async def vetting_health():
             "status": "unhealthy",
             "error": str(e)
         }
+    
+#added a router of from pattern to questions 
+app.include_router(questions_from_pattern_router, tags=["questions"])
+
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================

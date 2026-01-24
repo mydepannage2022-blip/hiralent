@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec \"ts-node --transpile-only src/server.ts\"",
+    "_old_dev_Just_to_test_new_dev": "nodemon --exec \"ts-node --transpile-only src/server.ts\"",
+    "dev": "nodemon --watch src --ext ts,js,json --ignore node_modules --ignore dist --ignore .git --ignore uploads --ignore *.log --legacy-watch --exec \"tsx src/server.ts\"",
     "notify:companies": "ts-node src/scripts/companyEmailNotifier.ts",
     "build": "tsc",
     "start": "node dist/server.js",
@@ -14,9 +15,11 @@
     "db:studio": "prisma studio",
     "dev:test": "ts-node src/scripts/dev-test.ts",
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
-    "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\""
+    "generate:batch": "ts-node src/scripts/batch-generate-questions.ts",
+    "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\"",
+    "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\""
   },
-   "prisma": {
+  "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
   "module": "CommonJS",
@@ -37,7 +40,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/redis": "^4.0.10",
     "@types/speakeasy": "^2.0.10",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.63.0",
@@ -62,6 +65,7 @@
     "minio": "^8.0.6",
     "mongodb": "^6.17.0",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.4",
     "openai": "^5.23.2",
     "passport": "^0.7.0",
@@ -99,7 +103,8 @@
     "@types/socket.io": "^3.0.1",
     "nodemon": "^3.1.11",
     "prisma": "6.19.0",
-    "ts-node": "^10.9.2",
+    "ts-node": "^1.7.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.2"
   }
 }

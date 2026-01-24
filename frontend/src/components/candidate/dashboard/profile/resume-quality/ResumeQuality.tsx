@@ -75,7 +75,7 @@ export const ResumeQuality: React.FC<ResumeQualityProps> = ({
           {suggestions.map((suggestion) => (
             <div 
               key={suggestion.id}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-2 rounded-sm hover:bg-gray-50 transition-colors"
             >
               <span className="shrink-0 bg-blue-50 text-blue-600 border-blue-200 font-medium px-2 py-1 rounded text-xs border">
                 +{suggestion.percentage}%

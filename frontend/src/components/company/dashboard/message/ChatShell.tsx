@@ -63,10 +63,15 @@ const ChatShell: React.FC = () => {
     ? conversationsResponse.data 
     : [];
 
-  // Update messages when API response changes
   useEffect(() => {
     if (messagesResponse?.success && selectedChatId) {
-      setMessages(messagesResponse.data.reverse()); // Reverse to show oldest first
+      // Messages come in descending order (newest first), reverse to show oldest first
+      const sortedMessages = [...messagesResponse.data].sort((a, b) =>
+        new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
+      );
+      setMessages(sortedMessages);
+    } else if (!messagesResponse && selectedChatId) {
+      // Keep previous messages while loading
     }
   }, [messagesResponse, selectedChatId]);
 
@@ -127,33 +132,76 @@ const ChatShell: React.FC = () => {
       console.error("❌ Socket error:", error);
     });
 
+  // Reaction listeners
+  socket.on('reaction_added', (data: { message_id: string; reaction: any }) => {
+    console.log('📨 Reaction added:', data);
+
+    // Update local messages state for real-time update
+    setMessages(prev => prev.map(msg => {
+      if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
+        return {
+          ...msg,
+          reactions: [...(msg.reactions || []), data.reaction]
+        };
+      }
+      return msg;
+    }));
+
+    refetchConversations();
+  });
+
+  socket.on('reaction_removed', (data: { message_id: string; user_id: string }) => {
+    console.log('🗑️ Reaction removed:', data);
+
+    // Update local messages state for real-time update
+    setMessages(prev => prev.map(msg => {
+      if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
+        return {
+          ...msg,
+          reactions: (msg.reactions || []).filter(r => r.user_id !== data.user_id)
+        };
+      }
+      return msg;
+    }));
+
+    refetchConversations();
+  });
+
+  // Listen for message deletion
+  socket.on('message_deleted', (data: { message_id: string; deleted_by: string }) => {
+    console.log('🗑️ Message deleted:', data);
+
+    // Remove from local state
+    setMessages(prev => prev.filter(msg => msg.message_id !== data.message_id));
+    refetchConversations();
+  });
+
     // Cleanup listeners
     return () => {
       socket.off('new_message');
       socket.off('message_sent');
       socket.off('user_typing');
       socket.off('error');
+      socket.off('reaction_added');
+      socket.off('reaction_removed');
+      socket.off('message_deleted');
     };
   }, [selectedChatId, refetchConversations]);
 
-  const handleSelectChat = (id: string | number) => {
-    const conversationId = String(id);
-    
-    // Leave previous conversation
-    if (selectedChatId) {
-      leaveConversation(selectedChatId);
-    }
+const handleSelectChat = (id: string | number) => {
+  const conversationId = String(id);
+  
+  // Leave previous conversation
+  if (selectedChatId && selectedChatId !== conversationId) {
+    leaveConversation(selectedChatId);
+  }
 
-    // Set new conversation
-    setSelectedChatId(conversationId);
-    
-    // Join new conversation
-    joinConversation(conversationId);
-    
-    // Clear previous data
-    setMessages([]);
-    setTypingUsers(new Set());
-  };
+  setSelectedChatId(conversationId);
+  
+  joinConversation(conversationId);
+  
+  setTypingUsers(new Set());
+};
 
   const handleBack = () => {
     if (selectedChatId) {

@@ -9,7 +9,10 @@ import {
   archiveConversation,
   deleteMessage,
   getConversationById,
-  MessageAPIResponse
+  MessageAPIResponse,
+  addReaction,     
+  removeReaction,    
+  getReactions,   
 } from './message.api';
 
 // ==================== QUERY KEYS ====================
@@ -252,4 +255,57 @@ export const usePrefetchMessages = () => {
       staleTime: 2 * 60 * 1000
     });
   };
+};
+
+
+// ==================== REACTIONS ====================
+
+export const useAddReaction = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) => 
+      addReaction(messageId, emoji),
+    onSuccess: (data, variables) => {
+      console.log("✅ Reaction added successfully:", data);
+      
+      // Invalidate messages to refresh reactions
+      queryClient.invalidateQueries({
+        queryKey: messageKeys.all
+      });
+    },
+    onError: (error) => {
+      console.error('Add reaction mutation error:', error);
+    }
+  });
+};
+
+export const useRemoveReaction = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ messageId }: { messageId: string }) => 
+      removeReaction(messageId),
+    onSuccess: (data, variables) => {
+      console.log("✅ Reaction removed successfully:", data);
+      
+      // Invalidate messages to refresh reactions
+      queryClient.invalidateQueries({
+        queryKey: messageKeys.all
+      });
+    },
+    onError: (error) => {
+      console.error('Remove reaction mutation error:', error);
+    }
+  });
+};
+
+export const useReactions = (messageId: string) => {
+  return useQuery({
+    queryKey: [...messageKeys.all, 'reactions', messageId],
+    queryFn: () => getReactions(messageId),
+    enabled: !!messageId,
+    staleTime: 1 * 60 * 1000, // 1 minute
+    retry: 1
+  });
 };

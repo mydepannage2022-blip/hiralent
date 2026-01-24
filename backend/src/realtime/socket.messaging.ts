@@ -178,6 +178,122 @@ export const setupSocketIO = (httpServer: HTTPServer) => {
       }
     });
 
+        // Add reaction to message
+    socket.on('add_reaction', async (data: {
+      message_id: string;
+      conversation_id: string;
+      emoji: string;
+    }) => {
+      try {
+        if (!authenticatedSocket.userId) {
+          socket.emit('error', { message: 'Authentication required' });
+          return;
+        }
+
+        console.log('🔥 Socket: add_reaction received', data);
+
+        // Save to database
+        const reaction = await messageService.addReaction(
+          data.message_id,
+          authenticatedSocket.userId,
+          data.emoji
+        );
+
+        console.log('✅ Socket: Reaction saved, broadcasting...', reaction);
+
+        // Broadcast to everyone in conversation (including sender)
+        io.to(`conversation_${data.conversation_id}`).emit('reaction_added', {
+          message_id: data.message_id,
+          reaction: reaction
+        });
+
+        // Confirmation to sender
+        socket.emit('reaction_added_success', reaction);
+
+      } catch (error) {
+        console.error('❌ Socket: Error adding reaction:', error);
+        socket.emit('error', { 
+          message: 'Failed to add reaction',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+
+    // Remove reaction from message
+    socket.on('remove_reaction', async (data: {
+      message_id: string;
+      conversation_id: string;
+    }) => {
+      try {
+        if (!authenticatedSocket.userId) {
+          socket.emit('error', { message: 'Authentication required' });
+          return;
+        }
+
+        console.log('🗑️ Socket: remove_reaction received', data);
+
+        // Remove from database
+        await messageService.removeReaction(
+          data.message_id,
+          authenticatedSocket.userId
+        );
+
+        console.log('✅ Socket: Reaction removed, broadcasting...');
+
+        // Broadcast to everyone in conversation
+        io.to(`conversation_${data.conversation_id}`).emit('reaction_removed', {
+          message_id: data.message_id,
+          user_id: authenticatedSocket.userId
+        });
+
+        // Confirmation to sender
+        socket.emit('reaction_removed_success', { message_id: data.message_id });
+
+      } catch (error) {
+        console.error('❌ Socket: Error removing reaction:', error);
+        socket.emit('error', {
+          message: 'Failed to remove reaction',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+
+    // Delete message
+    socket.on('delete_message', async (data: {
+      message_id: string;
+      conversation_id: string;
+    }) => {
+      try {
+        if (!authenticatedSocket.userId) {
+          socket.emit('error', { message: 'Authentication required' });
+          return;
+        }
+
+        console.log('🗑️ Socket: delete_message received', data);
+
+        // Delete from database
+        await messageService.deleteMessage(authenticatedSocket.userId, data.message_id);
+
+        console.log('✅ Socket: Message deleted, broadcasting...');
+
+        // Broadcast to everyone in conversation
+        io.to(`conversation_${data.conversation_id}`).emit('message_deleted', {
+          message_id: data.message_id,
+          deleted_by: authenticatedSocket.userId
+        });
+
+        // Confirmation to sender
+        socket.emit('message_deleted_success', { message_id: data.message_id });
+
+      } catch (error) {
+        console.error('❌ Socket: Error deleting message:', error);
+        socket.emit('error', {
+          message: 'Failed to delete message',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+
     // Handle disconnection
     socket.on('disconnect', (reason) => {
       console.log(`User ${authenticatedSocket.userData?.full_name} disconnected:`, reason);

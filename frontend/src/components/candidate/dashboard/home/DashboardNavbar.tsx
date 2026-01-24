@@ -127,6 +127,16 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           title: 'Messages',
           description: 'View and manage your conversations with employers',
         };
+      case '/candidate/dashboard/jobs':
+        return {
+          title: 'Jobs',
+          description: 'Browse and apply to job opportunities tailored for you',
+        };
+      case '/candidate/dashboard/cases':
+        return {
+          title: 'Cases',
+          description: 'View and manage your Cases',
+        };
       case '/candidate/dashboard/notifications':
         return {
           title: 'Notifications',

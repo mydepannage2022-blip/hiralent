@@ -12,7 +12,9 @@ import {
   Subscript,
   LucideIcon,
   X,
-  Briefcase
+  Briefcase,
+  ClipboardList,
+  FolderKanban
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
@@ -49,13 +51,17 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
     { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
-    { name: 'My Cases', icon: Briefcase, href: '/candidate/dashboard/cases' },
+    { name: 'My Cases', icon: FolderKanban, href: '/candidate/dashboard/cases' },
     { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
+    // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
+    // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
     { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
     { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',}
+    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
+    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
+
   ];
 
   // Update active item based on current pathname
@@ -113,7 +119,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               <div className={`flex flex-col items-center ${
                 (isOpen && !isMobile) || isMobile ? 'space-x-3' : 'justify-center hidden'
               }`}>
-                <div className="rounded-lg flex items-center justify-center">
+                <div className="rounded-sm flex items-center justify-center">
                   <img src="/images/logo.png" alt="Logo" className="w-30 h-9" />
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
@@ -127,7 +133,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               {!isMobile && (
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className={`${isOpen ? 'absolute right-1 bottom-[-15%] p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors text-[#353535] cursor-pointer' : 'w-full flex justify-center p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors text-[#353535] cursor-pointer'} `}
+                  className={`${isOpen ? 'absolute right-1 bottom-[-15%] p-2 rounded-sm bg-gray-100 hover:bg-gray-200 transition-colors text-[#353535] cursor-pointer' : 'w-full flex justify-center p-2 rounded-sm bg-gray-100 hover:bg-gray-200 transition-colors text-[#353535] cursor-pointer'} `}
                 >
                   {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
                 </button>
@@ -137,7 +143,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               {isMobile && (
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="absolute right-4 top-4 p-2 rounded-sm hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   <X size={20} className="text-[#353535]" />
                 </button>
@@ -156,18 +162,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       <SmartLink
                         href={item.href}
                         onClick={handleMobileItemClick}
-                        className={`w-full flex items-center cursor-pointer font-normal ${
+                        className={`w-full flex items-center cursor-pointer ${
                           (isOpen && !isMobile) || isMobile 
                             ? 'lg:px-2 xl:px-4 py-3 space-x-3' 
                             : 'px-3 py-3 justify-center'
-                          } rounded-lg transition-all duration-200 ${isActive
+                          } rounded-sm transition-all duration-200 ${isActive
                             ? 'bg-[#EDEDED]'
                             : 'text-[#353535] hover:bg-gray-50'
                           }`}
                       >
-                        <Icon size={22} className="shrink-0 text-[#353535] text-sm" />
+                        <Icon size={14} className="shrink-0 text-[#353535] text-sm" />
                         {((isOpen && !isMobile) || isMobile) && (
-                          <span className="font-normal text-base">{item.name}</span>
+                          <span className="text-sm">{item.name}</span>
                         )}
                       </SmartLink>
                     </li>
@@ -184,11 +190,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`w-full flex items-center cursor-pointer ${(isOpen && !isMobile) || isMobile
                   ? 'px-4 py-3 space-x-3 justify-start'
                   : 'px-3 py-3 justify-center'
-                } rounded-lg transition-all duration-200 hover:bg-gray-50`}
+                } rounded-sm transition-all duration-200 hover:bg-gray-50`}
             >
-              <LogOut size={22} className='shrink-0 text-red-600' />
+              <LogOut size={14} className='shrink-0 text-red-600' />
               {((isOpen && !isMobile) || isMobile) && (
-                <span className='text-red-600 text-sm lg:text-base font-medium'>Logout</span>
+                <span className='text-red-600 text-sm lg:text-sm'>Logout</span>
               )}
             </button>
           </div>

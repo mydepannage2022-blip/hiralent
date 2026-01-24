@@ -45,6 +45,65 @@ async function main() {
   });
 
   console.log('Subscription plans seeded successfully!');
+  
+  await seedBadges();
+}
+//seedBadges
+async function seedBadges() {
+  console.log('🏆 Seeding badges...');
+  
+  const badges = [
+    {
+      name: "Profil Complet",
+      description: "100% de complétude du profil",
+      icon: "✅",
+      category: "profile",
+      rule_id: "profile_complete",
+      criteria: { completeness: 100 }
+    },
+    {
+      name: "Compétences Validées",
+      description: "5+ compétences validées par assessments",
+      icon: "🎓",
+      category: "skill",
+      rule_id: "skills_validated",
+      criteria: { validated_skills_min: 5 }
+    },
+    {
+      name: "Top 10%",
+      description: "Score dans le top 10%",
+      icon: "⭐",
+      category: "achievement",
+      rule_id: "top_scorer",
+      criteria: { score_min: 90 }
+    },
+    {
+      name: "Expert Certifié",
+      description: "3+ certifications valides",
+      icon: "🏆",
+      category: "skill",
+      rule_id: "certified_expert",
+      criteria: { certifications_min: 3 }
+    },
+    {
+      name: "Profil Vérifié",
+      description: "Tous les documents vérifiés",
+      icon: "✓",
+      category: "profile",
+      rule_id: "verified_profile",
+      criteria: { documents_verified: true }
+    }
+  ];
+
+  for (const badge of badges) {
+    await prisma.badge.upsert({
+      where: { rule_id: badge.rule_id },
+      update: {},
+      create: badge
+    });
+  }
+
+  console.log('✅ 5 badges seeded successfully');
 }
 
 main()

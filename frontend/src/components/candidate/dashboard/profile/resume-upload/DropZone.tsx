@@ -85,7 +85,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
     <div className={className}>
       <div
         className={`
-          relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+          relative border-2 border-dashed rounded-sm p-8 text-center cursor-pointer
           transition-all duration-200 hover:border-blue-400 hover:bg-blue-50
           ${isDragOver 
             ? 'border-blue-500 bg-blue-50' 
