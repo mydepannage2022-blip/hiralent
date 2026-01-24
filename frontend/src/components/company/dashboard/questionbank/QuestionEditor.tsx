@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SimilaritySearch from './SimilaritySearch';
+import type { Question as QuestionType } from "@/src/types/question.types";
+
 import { 
   Save, 
   X, 
@@ -52,11 +54,33 @@ interface Question {
 }
 
 interface QuestionEditorProps {
-  question?: Question;
-  onSave: (question: Partial<Question>) => void;
+  question?: QuestionType;
+  onSave: (question: Partial<QuestionType>) => void;
   onCancel: () => void;
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
 }
+
+const DiagramViewer: React.FC<{
+  hasDiagram?: boolean;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
+}> = ({ hasDiagram, diagramType, diagramCode, diagramImageUrl }) => {
+  const hasAnyDiagram = !!(diagramImageUrl || diagramCode);
+  if (!hasAnyDiagram && !hasDiagram) return null; // optional: keep hasDiagram as fallback
+
+  return (
+    <div className="border rounded-sm p-4 bg-white">
+      {/* ...same UI... */}
+      {!hasAnyDiagram ? (
+        <p className="text-sm text-gray-500">
+          Diagram flagged, but no image/code was provided.
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   question,
@@ -64,20 +88,30 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onCancel,
   mode
 }) => {
-  const [formData, setFormData] = useState<Partial<Question>>({
-    title: '',
-    description: '',
-    problemStatement: '',
-    difficulty: 'medium',
-    skillTags: [],
-    type: 'coding',
-    canonicalSolution: '',
-    testCases: [{ input: '', output: '' }],
-    status: 'draft',
-    options: { A: '', B: '', C: '', D: '' },
-    correctAnswer: '',
-    explanation: ''
-  });
+const [formData, setFormData] = useState<Partial<QuestionType>>({
+  title: "",
+  description: "",
+  problemStatement: "",
+  difficulty: "medium",
+  skillTags: [],
+  type: "coding",
+  canonicalSolution: "",
+  testCases: [{ input: "", output: "" }],
+  status: "draft",
+
+  // diagram
+  hasDiagram: false,
+  diagramType: null,
+  diagramCode: null,
+  diagramImageUrl: null,
+  diagramMetadata: null,
+
+  // mcq
+  options: { A: "", B: "", C: "", D: "" },
+  correctAnswer: "",
+  explanation: "",
+});
+
 
   const [newTag, setNewTag] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'solution' | 'tests' | 'mcq'>('details');
@@ -471,6 +505,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         </div>
                       </div>
                     </div>
+                    <DiagramViewer
+                        hasDiagram={formData.hasDiagram}
+                        diagramType={formData.diagramType}
+                        diagramCode={formData.diagramCode}
+                        diagramImageUrl={formData.diagramImageUrl}
+                      />
+
 
                     {/* Skills Tags */}
                     <div>

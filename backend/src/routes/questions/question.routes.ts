@@ -118,7 +118,7 @@ router.get('/diagram-service/health',
   controller.checkDiagramServiceHealth.bind(controller)
 );
 
-// Get diagram for a specific question
+// Get diagram for a specific questionq
 router.get('/:id/diagram',
   controller.getQuestionDiagram.bind(controller)
 );
