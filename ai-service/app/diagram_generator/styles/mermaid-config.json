@@ -1,0 +1,38 @@
+{
+  "theme": "neutral",
+  "themeVariables": {
+    "primaryColor": "#ffffff",
+    "primaryTextColor": "#000000",
+    "primaryBorderColor": "#000000",
+    "lineColor": "#000000",
+    "secondaryColor": "#f5f5f5",
+    "tertiaryColor": "#ffffff",
+    "background": "#ffffff",
+    "mainBkg": "#ffffff",
+    "secondBkg": "#f5f5f5",
+    "labelBackground": "#ffffff",
+    "labelTextColor": "#000000",
+    "actorBkg": "#ffffff",
+    "actorBorder": "#000000",
+    "actorTextColor": "#000000",
+    "actorLineColor": "#000000",
+    "signalColor": "#000000",
+    "signalTextColor": "#000000",
+    "labelBoxBkgColor": "#ffffff",
+    "labelBoxBorderColor": "#000000",
+    "noteBackgroundColor": "#ffffff",
+    "noteBorderColor": "#000000",
+    "noteTextColor": "#000000"
+  },
+  "er": {
+    "useMaxWidth": false,
+    "diagramPadding": 20
+  },
+  "class": {
+    "hideEmptyMembersBox": false
+  },
+  "flowchart": {
+    "htmlLabels": false,
+    "curve": "linear"
+  }
+}
