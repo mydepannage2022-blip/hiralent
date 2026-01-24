@@ -51,7 +51,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   if (isLoading) {
     return (
       <div 
-        className={`flex items-center justify-center bg-gray-100 rounded-lg ${className}`}
+        className={`flex items-center justify-center bg-gray-100 rounded-sm ${className}`}
         style={{ width: size, height: size }}
       >
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -62,7 +62,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   if (error) {
     return (
       <div 
-        className={`flex items-center justify-center bg-gray-100 rounded-lg text-gray-500 text-sm ${className}`}
+        className={`flex items-center justify-center bg-gray-100 rounded-sm text-gray-500 text-sm ${className}`}
         style={{ width: size, height: size }}
       >
         QR Error
@@ -77,7 +77,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
         alt="QR Code for resume link"
         width={size}
         height={size}
-        className="rounded-lg border border-gray-200"
+        className="rounded-sm border border-gray-200"
       />
     </div>
   );

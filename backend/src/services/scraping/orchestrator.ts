@@ -24,7 +24,7 @@ export class ScrapingOrchestrator {
       source,
       maxItems,
       maxPages,                 // new: pages per track (hackerrank/so/github)
-      auto = true,              // new: let AI-service loop until it stops finding new
+      auto = false,              // new: let AI-service loop until it stops finding new
       hardCap = 5000,           // new: safety
       stopAfterEmptyPages = 3,  // new: stop condition
     } = options as any;
@@ -85,10 +85,28 @@ export class ScrapingOrchestrator {
       } else {
         console.warn(`⚠️ [ORCHESTRATOR] No patterns returned from AI-service for ${source}`);
       }
+      //  OPTIONAL: generate library questions from the patterns we just stored
+      if (process.env.GENERATE_LIBRARY_QUESTIONS === "true" && patternsSaved > 0) {
+        try {
+          const { PatternQuestionPipeline } = await import("../question/pattern-question.pipeline");
+          const pipeline = new PatternQuestionPipeline();
+
+          // You can tune limit here: generate from the latest patterns of this source
+          await pipeline.generateFromPatterns({
+            source,
+            limit: Math.min(patternsSaved, 10),
+          });
+
+          console.log(`📚 [ORCHESTRATOR] Library question generation done for ${source}`);
+        } catch (e: any) {
+          console.warn(`⚠️ [ORCHESTRATOR] Library question generation failed:`, e?.message || e);
+        }
+      }
+
 
       const durationMs = Date.now() - startTime;
 
-      // ✅ IMPORTANT: 0 saved is not necessarily a failure (it can mean "no new")
+      //  IMPORTANT: 0 saved is not necessarily a failure (it can mean "no new")
       const status = "success";
       const errorMsg = null;
 

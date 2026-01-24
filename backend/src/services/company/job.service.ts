@@ -342,6 +342,10 @@ export async function listJobs(
     created_from,
     created_to,
     search_term,
+    location,    
+    salary_min,    
+    salary_max,   
+    skills,     
     page = 1,
     limit = 20,
     sort_by = 'created_at',
@@ -355,6 +359,17 @@ export async function listJobs(
     ...(experience_level ? { experience_level } : {}),
     ...(remote_option ? { remote_option } : {}),
     ...(urgency_level ? { urgency_level } : {}),
+    ...(location ? { 
+      location: { 
+        contains: location, 
+        mode: 'insensitive' 
+      } 
+    } : {}),
+    ...(salary_min || salary_max ? {
+      salary_range: {
+        contains: '',
+      }
+    } : {}),
     ...(status && status !== 'ALL'
       ? Array.isArray(status)
         ? { status: { in: status } }
@@ -396,13 +411,30 @@ export async function listJobs(
 
   const [total_count, rows] = await Promise.all([
     prisma.companyJob.count({ where }),
-    prisma.companyJob.findMany({
-      where,
-      orderBy: { [sort_by]: sort_order },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-  ]);
+      prisma.companyJob.findMany({
+        where,
+        include: {
+          company: {
+            select: {
+              user_id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+          companyProfile: {
+            select: {
+              company_name: true,
+              logo_url: true,
+              industry: true,
+              website: true,
+            },
+          },
+        },
+        orderBy: { [sort_by]: sort_order },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+   ]);
 
   const total_pages = Math.max(1, Math.ceil(total_count / limit));
 
@@ -483,3 +515,5 @@ export const jobService = {
 };
 
 export default jobService;
+
+

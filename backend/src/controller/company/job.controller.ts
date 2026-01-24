@@ -75,22 +75,26 @@ export async function listJobs(req: Request, res: Response) {
     const user = getAuthUser(req);
     const q = req.query;
 
-    const filters: JobListFilters = {
-      company_id: undefined,
-      status: (q.status as any) || 'ALL',
-      department: (q.department as string) || undefined,
-      job_type: (q.job_type as string) || undefined,
-      experience_level: (q.experience_level as string) || undefined,
-      remote_option: (q.remote_option as string) || undefined,
-      urgency_level: (q.urgency_level as string) || undefined,
-      created_from: (q.created_from as string) || undefined,
-      created_to: (q.created_to as string) || undefined,
-      search_term: (q.q as string) || undefined,
-      page: q.page ? Number(q.page) : 1,
-      limit: q.limit ? Number(q.limit) : 20,
-      sort_by: (q.sort_by as any) || 'created_at',
-      sort_order: (q.sort_order as any) || 'desc',
-    };
+const filters: JobListFilters = {
+  company_id: undefined,
+  status: (q.status as any) || 'ALL',
+  department: (q.department as string) || undefined,
+  job_type: (q.job_type as string) || undefined,
+  experience_level: (q.experience_level as string) || undefined,
+  remote_option: (q.remote_option as string) || undefined,
+  urgency_level: (q.urgency_level as string) || undefined,
+  created_from: (q.created_from as string) || undefined,
+  created_to: (q.created_to as string) || undefined,
+  search_term: (q.search_term as string) || undefined,  
+  location: (q.location as string) || undefined,        
+  salary_min: q.salary_min ? Number(q.salary_min) : undefined,  
+  salary_max: q.salary_max ? Number(q.salary_max) : undefined,  
+  skills: (q.skills as string) || undefined,             
+  page: q.page ? Number(q.page) : 1,
+  limit: q.limit ? Number(q.limit) : 20,
+  sort_by: (q.sort_by as any) || 'created_at',
+  sort_order: (q.sort_order as any) || 'desc',
+};
 
     // Company users → leurs jobs (sauf si superadmin override)
     if (isCompanyUser(user)) {

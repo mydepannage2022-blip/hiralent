@@ -74,6 +74,8 @@ model Agency {
   invitations           CompanyAgencyInvitation[]
   relocationAnalytics   RelocationAnalytics[]
   cases                 RelocationCase[]
+  integrationCases      RelocationCase[] @relation("IntegrationAgency") // Integration agency cases
+  housingCases          RelocationCase[] @relation("HousingAgency")
 }
 
 model User {
@@ -132,7 +134,7 @@ model User {
   generatedContents         GeneratedContent[]        @relation("GeneratedContent")
   aiFeedbacks               AIFeedback[]              @relation("AIFeedback")
   uploadedDocuments         UploadedDocument[]        @relation("UserUploadedDocuments")
-
+  reactions            MessageReaction[]   @relation("UserReactions") 
   companyAssessments EmployerAssessment[] @relation("CompanyAssessments")
   // Removed candidateAssessments (invalid inverse)
   // Removed competeChallenges (invalid inverse)
@@ -144,6 +146,12 @@ model User {
   subscriptions     UserSubscription[]  @relation("UserSubscriptions")
   payments          PaymentTransaction[] @relation("UserPayments")
 
+  //new fields
+  autofillSessions      ResumeAutofillSession[] @relation("AutofillSessions")
+  candidateScore        CandidateScore?         @relation("CandidateScore")
+  badges                BadgeAward[]            @relation("CandidateBadges")
+  certifications        Certification[]         @relation("CandidateCertifications")
+  profileEvents         ProfileEvent[]          @relation("ProfileEvents")
   // Relations to Scraping Candidates models (Do not Touch !!!)
   sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
   sourcingRunsTriggered SourcingRun[] @relation("SourcingRunTriggeredByUser")
@@ -241,6 +249,20 @@ model Question {
   isLibraryQuestion Boolean @default(false)
   assessments AssessmentQuestion[]   //  NEW
 
+  //  NEW (for pattern-generated questions)
+  generatedFromPattern     Boolean @default(false)
+  patternKey               String?  // "stackoverflow:123456"
+  patternDifficultyVariant String?  // "easy" | "medium" | "hard"
+
+  //  Diagram
+  hasDiagram       Boolean   @default(false)
+  diagramType      String?   // 'er', 'class', 'sequence', 'tree', 'architecture'
+  diagramCode      String?   @db.Text  // Code Mermaid
+  diagramImageUrl  String?   // URL Cloudinary
+  diagramMetadata  Json?     // Métadonnées supplémentaires
+
+  @@unique([patternKey, patternDifficultyVariant])
+
 
   @@map("questions")
 }
@@ -257,6 +279,8 @@ model AlgorithmPattern {
   inputStructure Json
   extractedAt   DateTime
   createdAt     DateTime @default(now())
+  //  OPTIONAL
+  questionsGenerated Boolean @default(false)
 
   @@unique([source, sourceId])
 }
@@ -570,6 +594,7 @@ model RelocationCase {
   candidate_id String
   job_id       String? // Optional: linked to specific job
   agency_id    String
+  housing_agency_id     String?
   case_number  String  @unique // Human readable case number
 
   // Case Details
@@ -601,12 +626,47 @@ model RelocationCase {
   candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
   agency      Agency               @relation(fields: [agency_id], references: [agency_id])
+  housingAgency     Agency?        @relation("HousingAgency", fields: [housing_agency_id], references: [agency_id])
+  housing_details   HousingArrangement?
   assignments CaseAssignment[]
   updates     CaseProgressUpdate[]
   documents   CaseDocument[]
 
   embassy_submission  EmbassySubmission?
 
+  integration_agency_id String?
+
+  // Relations
+  integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id])
+
+  integrationServices   IntegrationService[] @relation("IntegrationServices")
+
+  @@map("relocation_cases")
+}
+
+model IntegrationService {
+  service_id       String   @id @default(uuid())
+  case_id          String
+  service_type     String   // healthcare, banking, tax_id, telecom, transport, integration_program
+  status           String   @default("pending") // pending, in_progress, completed
+  service_date     DateTime?
+  proof_document   String?  // URL to uploaded proof document
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  case             RelocationCase @relation("IntegrationServices", fields: [case_id], references: [case_id], onDelete: Cascade)
+  
+  @@index([case_id])
+  @@index([service_type])
+  @@index([status])
+  @@map("integration_services")
+}
+
+model HousingArrangement {
+  housing_id String @id @default(uuid())
+  case_id    String @unique
+  
   // Housing Details
   housing_type         String?
   housing_address      String?
@@ -615,19 +675,25 @@ model RelocationCase {
   lease_start_date     DateTime?
   lease_end_date       DateTime?
   housing_contract_url String?
-
+  
   // Utility Setup
   utility_water        String? @default("pending")
   utility_electricity  String? @default("pending")
   utility_internet     String? @default("pending")
-
+  
   // Travel & Arrival
   arrival_date            DateTime?
   flight_number           String?
   airport_pickup_required Boolean? @default(false)
   arrival_notes           String?
-
-  @@map("relocation_cases")
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  // Relation
+  case RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
+  
+  @@map("housing_arrangements")
 }
 
 model CaseAssignment {
@@ -830,8 +896,13 @@ model CandidateProfile {
   job_benefits           String?
   links                  String?
   skills                 String[]
+  //  ADD THESE NEW FIELDS
+  personal_info          Json?     // Store extracted personal info
+  projects               Json?     // Store projects array
+  certifications         Json?     // Store certifications (duplicate with Certification table but useful)
   resume_application_url String?
   user                   User     @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+ 
 }
 
 model AdminAuditLog {
@@ -927,6 +998,9 @@ model CandidateDocument {
   candidate         User              @relation("CandidateDocuments", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   candidateSkills   CandidateSkill[]  @relation("SkillsFromDocument")
   skillExtractions  SkillExtraction[]
+  
+  autofillSessions ResumeAutofillSession[]
+
 }
 
 model CandidateSkill {
@@ -1815,9 +1889,29 @@ model Message {
   sender       User         @relation("UserMessages", fields: [sender_id], references: [user_id])
   reply_to     Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
   replies      Message[]    @relation("MessageReplies")
+  reactions    MessageReaction[]
 
   @@map("messages")
 }
+
+// Add this after the Message model (around line 1663)
+
+model MessageReaction {
+  reaction_id   String   @id @default(uuid())
+  message_id    String
+  user_id       String
+  emoji         String
+  created_at    DateTime @default(now())
+  
+  message       Message  @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  user          User     @relation("UserReactions", fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@unique([message_id, user_id])
+  @@index([message_id])
+  @@index([user_id])
+  @@map("message_reactions")
+}
+
 
   // Code execution submissions used by the runner and worker
   model CodeSubmission {
@@ -1927,6 +2021,7 @@ model EmbassySubmission {
   @@map("embassy_submissions")
 }
 
+
 // Scraping candidates (Models + enums)
 
 enum SourcedCandidateStatus {
@@ -2027,4 +2122,136 @@ model SourcingRunItem {
   created_at DateTime @default(now())
 
   @@index([run_id])
+}
+
+// Resume Autofill
+model ResumeAutofillSession {
+  session_id       String   @id @default(uuid())
+  candidate_id     String
+  document_id      String
+  status           String
+  parsed_data      Json
+  confirmed_fields Json?
+  rejected_fields  Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  candidate        User              @relation("AutofillSessions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  document         CandidateDocument @relation(fields: [document_id], references: [document_id])
+  mappings         AutofillFieldMapping[]
+  
+  @@index([candidate_id])
+  @@index([status])
+}
+
+model AutofillFieldMapping {
+  mapping_id       String   @id @default(uuid())
+  session_id       String
+  field_name       String
+  extracted_value  Json
+  confidence       Float
+  is_confirmed     Boolean  @default(false)
+  confirmed_value  Json?
+  created_at       DateTime @default(now())
+  
+  session          ResumeAutofillSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+}
+
+// Scoring System
+model CandidateScore {
+  score_id            String   @id @default(uuid())
+  candidate_id        String   @unique
+  total_score         Float    @default(0)
+  skills_score        Float    @default(0)
+  experience_score    Float    @default(0)
+  education_score     Float    @default(0)
+  completeness_score  Float    @default(0)
+  last_calculated     DateTime @updatedAt
+  calculation_method  String   @default("v1")
+  created_at          DateTime @default(now())
+  
+  candidate           User     @relation("CandidateScore", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  history             ScoreHistory[]
+  
+  @@index([total_score])
+}
+
+model ScoreHistory {
+  history_id       String   @id @default(uuid())
+  score_id         String
+  score_value      Float
+  trigger_event    String
+  timestamp        DateTime @default(now())
+  
+  candidateScore   CandidateScore @relation(fields: [score_id], references: [score_id], onDelete: Cascade)
+  
+  @@index([score_id])
+  @@index([timestamp])
+}
+
+// Badge System
+model Badge {
+  badge_id     String   @id @default(uuid())
+  name         String   @unique
+  description  String
+  icon         String
+  category     String
+  rule_id      String   @unique
+  criteria     Json
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  
+  awards       BadgeAward[]
+}
+
+model BadgeAward {
+  award_id     String   @id @default(uuid())
+  candidate_id String
+  badge_id     String
+  awarded_at   DateTime @default(now())
+  revoked_at   DateTime?
+  is_active    Boolean  @default(true)
+  
+  candidate    User     @relation("CandidateBadges", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  badge        Badge    @relation(fields: [badge_id], references: [badge_id])
+  
+  @@unique([candidate_id, badge_id])
+  @@index([candidate_id])
+  @@index([is_active])
+}
+
+// Certification System
+model Certification {
+  certification_id String   @id @default(uuid())
+  candidate_id     String
+  name             String
+  issuer           String
+  issue_date       DateTime
+  expiry_date      DateTime?
+  credential_id    String?
+  credential_url   String?
+  is_verified      Boolean  @default(false)
+  verification_source String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  candidate        User     @relation("CandidateCertifications", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([candidate_id])
+  @@index([expiry_date])
+}
+
+// Event System
+model ProfileEvent {
+  event_id     String   @id @default(uuid())
+  candidate_id String
+  event_type   String
+  event_data   Json
+  timestamp    DateTime @default(now())
+  
+  candidate    User     @relation("ProfileEvents", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([candidate_id])
+  @@index([event_type])
+  @@index([timestamp])
 }

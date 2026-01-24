@@ -24,6 +24,8 @@ import {
 } from "../types/candidate.types";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
+import axios from "axios";
+import { processDocumentAsync } from "./candidate/documentProcessor.service";
 
 import {
   processSkillsUpdate,
@@ -32,7 +34,7 @@ import {
   validateProfileData
 } from "./candidate/profileSection.service";
 import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
-
+import path from 'path';
 const prisma = new PrismaClient();
 
 export const updateBasicInfo = async (
@@ -543,70 +545,143 @@ export const bulkUpdateProfile = async (
     throw new Error(`Failed to update profile: ${error.message || "Unknown error"}`);
   }
 };
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || process.env.MATCHING_AI_BASE_URL;
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+
+async function triggerResumeExtraction(params: {
+  candidateId: string;
+  documentId: string;
+  filePath: string;
+  fileType: string;
+}) {
+  const { candidateId, documentId, filePath, fileType } = params;
+
+  if (!AI_SERVICE_URL) {
+    throw new Error("AI_SERVICE_URL (or MATCHING_AI_BASE_URL) is not set");
+  }
+
+  // ✅ CHANGE THIS PATH to match your ai-service endpoint
+  // Example: /resume/extract or /api/v1/resume/extract etc.
+  const url = `${AI_SERVICE_URL}/resume/extract`;
+
+  const headers: Record<string, string> = {};
+  if (INTERNAL_SERVICE_KEY) headers["x-internal-key"] = INTERNAL_SERVICE_KEY;
+
+  const res = await axios.post(
+    url,
+    {
+      candidate_id: candidateId,
+      document_id: documentId,
+      file_path: filePath,
+      file_type: fileType,
+    },
+    { headers, timeout: 120000 }
+  );
+
+  return res.data;
+}
 
 export const uploadApplicationResume = async (
   candidateId: string,
   file: Express.Multer.File
-): Promise<APIResponse<{ resume_application_url: string; file_name: string }>> => {
-  try {
-    if (!candidateId) {
-      throw new Error("Candidate ID is required");
-    }
+) => {
+  let tempFilePath: string | null = null;
 
-    if (!file || !fs.existsSync(file.path)) {
+  try {
+    if (!candidateId) throw new Error("Candidate ID is required");
+    if (!file || !file.path || !fs.existsSync(file.path)) {
       throw new Error("File not found after upload");
     }
 
+    tempFilePath = file.path;
+
+    const uploadDir = path.join(process.cwd(), "uploads", "resumes", "application");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    // Delete old local resume (only if stored as /uploads/...)
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId },
       select: { resume_application_url: true },
     });
 
-    const oldApplicationResumeUrl = existingProfile?.resume_application_url;
+    if (existingProfile?.resume_application_url?.startsWith("/uploads/")) {
+      const oldFilePath = path.join(
+        process.cwd(),
+        existingProfile.resume_application_url.replace(/^\//, "")
+      );
+      if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
+    }
 
-    const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
-      folder: "hiralent-candidate/application-resumes",
-      public_id: `application_resume_${candidateId}_${Date.now()}`,
-      resource_type: "raw",
-      access_mode: 'public',
-      type: 'upload'
-    });
+    // Build safe extension
+    const extWithDot = path.extname(file.originalname || "").toLowerCase();
+    const safeExt = extWithDot && extWithDot.length <= 6 ? extWithDot : ".pdf";
+    const ext = safeExt.replace(".", "");
 
-    const updatedProfile = await prisma.candidateProfile.upsert({
+    const filename = `application_resume_${candidateId}_${Date.now()}.${ext}`;
+    const destinationPath = path.join(uploadDir, filename);
+
+    // Move file to final location
+    fs.renameSync(tempFilePath, destinationPath);
+    tempFilePath = null;
+
+    // Store as relative URL
+    const fileUrl = `/uploads/resumes/application/${filename}`;
+
+    // Save into CandidateProfile
+    await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
-      update: {
-        resume_application_url: cloudinaryResult.secure_url,
-        updated_at: new Date(),
-      },
-      create: {
-        candidate_id: candidateId,
-        resume_application_url: cloudinaryResult.secure_url,
-      },
+      update: { resume_application_url: fileUrl, updated_at: new Date() },
+      create: { candidate_id: candidateId, resume_application_url: fileUrl },
     });
 
-    cleanupTempFile(file.path);
+    // ✅ Create CandidateDocument (ONLY fields that exist in schema)
+    const doc = await prisma.candidateDocument.create({
+      data: {
+        candidate_id: candidateId,
+        file_name: file.originalname,
+        file_path: destinationPath,
+        file_type: ext.toUpperCase(), // schema = String, keep it simple ("PDF", "DOCX", etc.)
+        file_size: file.size,
+        upload_status: "uploaded",      // REQUIRED
+        extraction_status: "pending",   // optional in schema but good to set
+      },
+      select: { document_id: true },
+    });
 
-    if (oldApplicationResumeUrl && oldApplicationResumeUrl !== cloudinaryResult.secure_url) {
-      await cleanupOldApplicationResume(candidateId, oldApplicationResumeUrl);
+
+    //  Kick off extraction in background (so the upload API responds immediately)
+    setImmediate(() => {
+      processDocumentAsync(doc.document_id, candidateId, destinationPath)
+        .catch((e) => console.error("❌ processDocumentAsync(application) failed:", e?.message || e));
+    });
+
+
+    
+
+    // Optional: create SkillExtraction row if your table exists
+    const hasSkillExtraction = (prisma as any).skillExtraction?.create;
+    if (hasSkillExtraction) {
+      await (prisma as any).skillExtraction.create({
+        data: {
+          candidate_id: candidateId,
+          document_id: doc.document_id,
+          status: "pending",
+          ai_provider: "gemini",
+        },
+      });
     }
 
     return {
       success: true,
       data: {
-        resume_application_url: cloudinaryResult.secure_url,
+        resume_application_url: fileUrl,
         file_name: file.originalname,
+        document_id: doc.document_id,
       },
       message: "Application resume uploaded successfully",
     };
-
-  } catch (error) {
-    console.error("Service error - Application resume upload:", error);
-
-    if (file && fs.existsSync(file.path)) {
-      cleanupTempFile(file.path);
-    }
-
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`Application resume upload failed: ${errorMessage}`);
+  } catch (error: any) {
+    if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    throw new Error(`Application resume upload failed: ${error?.message || "Unknown error"}`);
   }
 };

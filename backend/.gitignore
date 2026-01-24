@@ -4,3 +4,25 @@ node_modules/
 /src/generated/prisma
 /config/firebase-adminsdk.json
 /dist
+
+# Uploads (keep structure, ignore content)
+# ======================
+/uploads/**
+!/uploads/.gitkeep
+
+# keep resumes structure
+!/uploads/resumes/
+!/uploads/resumes/application/
+!/uploads/resumes/parsing/
+!/uploads/resumes/cv/
+
+# keep placeholders
+!/uploads/resumes/application/.gitkeep
+!/uploads/resumes/parsing/.gitkeep
+!/uploads/resumes/cv/.gitkeep
+
+# ======================
+# Exports (keep structure, ignore content)
+# ======================
+/exports/**
+!/exports/.gitkeep

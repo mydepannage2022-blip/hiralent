@@ -85,7 +85,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         >
           <div className="w-full flex-1">
             {/* Header */}
-            <div className="flex flex-row-reverse items-center justify-between py-4 px-4 border-b border-gray-200 relative">
+            <div className="flex flex-row-reverse items-center justify-center py-4 px-4 border-b border-gray-200 relative">
               <div
                 className={`flex flex-col items-center ${(isOpen && !isMobile) || isMobile
                     ? "space-x-3"
@@ -93,7 +93,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   }`}
               >
                 <div className="rounded-lg flex items-center justify-center">
-                  <img src="/images/logo.png" alt="Logo" />
+                  <img className="w-30 h-9" src="/images/logo.png" alt="Logo" />
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
                   <p className="text-sm text-gray-500">Dashboard</p>
@@ -123,7 +123,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </div>
 
             {/* Menu */}
-            <nav className="mt-6 text-black">
+            <nav className="mt-6 mb-6 text-black">
               <ul className="space-y-2 px-4">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -138,12 +138,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                             : "px-3 py-3 justify-center"
                           } rounded-lg transition-all duration-200 ${isActive
                             ? "bg-[#EDEDED]"
-                            : "text-[#353535] hover:bg-gray-50"
+                            : "text-black hover:bg-gray-50 font-medium"
                           }`}
                       >
-                        <Icon size={22} className="flex-shrink-0 text-[#353535]" />
+                        <Icon size={14} className="flex-shrink-0 text-black font-medium" />
                         {((isOpen && !isMobile) || isMobile) && (
-                          <span className="font-medium">{item.name}</span>
+                          <span className="text-sm font-normal">{item.name}</span>
                         )}
                       </SmartLink>
                     </li>
@@ -162,9 +162,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "px-3 py-3 justify-center"
                 } rounded-lg transition-all duration-200 hover:bg-gray-50`}
             >
-              <LogOut size={22} className="flex-shrink-0 text-red-600" />
+              <LogOut size={14} className="flex-shrink-0 text-red-600" />
               {((isOpen && !isMobile) || isMobile) && (
-                <span className="text-red-600 text-sm lg:text-base font-medium">
+                <span className="text-red-600 text-sm font-normal">
                   Logout
                 </span>
               )}

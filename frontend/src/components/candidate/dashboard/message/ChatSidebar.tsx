@@ -75,7 +75,7 @@ const getConversationAvatar = (conv: UniversalConversation): string => {
     if (isLegacyConversation(conv)) {
         return conv.avatar;
     }
-    return conv.other_participant.profile_picture_url || '/images/default-avatar.png';
+    return conv.other_participant.profile_picture_url || '/images/candidate.jpg';
 };
 
 const getLastSeen = (conv: UniversalConversation): string => {
@@ -280,7 +280,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         alt={conversationName}
                                         className="w-12 h-12 rounded-full object-cover"
                                         onError={(e) => {
-                                            e.currentTarget.src = '/images/default-avatar.png';
+                                            e.currentTarget.src = '/images/candidate.jpg';
                                         }}
                                     />
                                     {online && (

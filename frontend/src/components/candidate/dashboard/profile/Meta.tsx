@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useMemo  } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, Camera, Check, X } from 'lucide-react';
 import { HiCheckBadge, HiExclamationTriangle } from 'react-icons/hi2';
@@ -138,12 +138,26 @@ const MetaSection: React.FC = () => {
   const handleStartEdit = () => {
     setIsEditing(true);
   };
+const resumeUrl = useMemo(() => {
+  const raw = profileData?.resume_application_url;
+  if (!raw) return "";
+
+  // already absolute (cloudinary / full backend url)
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+
+  // relative => prefix backend
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:5000";
+  const base = apiUrl.replace(/\/+$/, "");
+  const path = raw.startsWith("/") ? raw : `/${raw}`;
+  return `${base}${path}`;
+}, [profileData?.resume_application_url]);
 
   //Updated resume handler - uses profileData.resume_application_url
   const handleViewResume = () => {
-    if (profileData?.resume_application_url) {
-      window.open(profileData.resume_application_url, '_blank');
-    } else {
+    if (resumeUrl) {
+      window.open(resumeUrl, "_blank", "noopener,noreferrer");
+    }
+    else {
       console.log('No resume URL found in profile data');
       alert('Resume not available. Please upload your resume first.');
     }

@@ -20,6 +20,7 @@ interface AuthContextType {
   token: string | null;
   login: (userData: User, authToken: string) => void;
   logout: () => void;
+  updateUser: (userData: User) => void; // ✅ ADD THIS LINE
   isAuthenticated: boolean;
 }
 
@@ -81,22 +82,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("✅ Verification - Token in localStorage:", verify ? "YES" : "NO");
   };
 
-const logout = () => {
-  console.log("🚪 Logout called");
-  
-  localStorage.removeItem('profileData');
-  localStorage.removeItem('profileCompleteness');
-  
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("authUser");
+  //  ADD THIS NEW FUNCTION
+  const updateUser = (userData: User) => {
+    console.log("🔄 Updating user data:", userData);
+    
+    // Update state
+    setUser(userData);
+    
+    // Update localStorage
+    localStorage.setItem("authUser", JSON.stringify(userData));
+    
+    console.log("✅ User data updated in state and localStorage");
+  };
 
-  // ✅ Clear in-memory state too
-  setUser(null);
-  setToken(null);
+  const logout = () => {
+    console.log("🚪 Logout called");
+    
+    localStorage.removeItem('profileData');
+    localStorage.removeItem('profileCompleteness');
+    
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("authUser");
 
-  console.log("✅ Auth cleared from localStorage and state");
-};
+    // Clear in-memory state too
+    setUser(null);
+    setToken(null);
 
+    console.log("✅ Auth cleared from localStorage and state");
+  };
 
   return (
     <AuthContext.Provider
@@ -105,6 +118,7 @@ const logout = () => {
         token,
         login,
         logout,
+        updateUser, //  ADD THIS LINE
         isAuthenticated: !!user && !!token,
       }}
     >

@@ -2,6 +2,14 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { sendEmail } from "../../utils/email.util";
+import {
+  isActiveVisaCase,
+  isActiveRelocationCase,
+  isCompletedVisaCase,
+  isCompletedRelocationCase,
+  isCompletedIntegrationCase,
+  isActiveIntegrationCase,
+} from "../../constants/caseStatuses";
 
 const prisma = new PrismaClient();
 
@@ -45,41 +53,25 @@ const generateCaseNumber = async (agencyId: string): Promise<string> => {
   return caseNumber;
 };
 
-// POST /api/v1/agency/cases - Create new case
+/**
+ * POST /api/v1/agency/cases
+ * Create a new case for an EXISTING candidate
+ * Body: { candidate_id, serviceType, originCountry, destinationCountry, ... }
+ */
 export const createCase = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
+    const agencyId = req.user?.agency_id;
+    const agencyUserId = req.user?.user_id;
 
-    if (!userId) {
+    if (!agencyId || !agencyUserId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      select: {
-        agency_id: true,
-        agency: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    if (!user?.agency_id) {
-      return res.status(403).json({
-        success: false,
-        message: "User is not associated with an agency",
-      });
-    }
-
     const {
-      candidateEmail,
-      candidateName,
-      candidatePhone,
+      candidate_id, // ✅ NEW: Use candidate_id instead of individual fields
       serviceType,
       originCountry,
       destinationCountry,
@@ -90,250 +82,155 @@ export const createCase = async (req: Request, res: Response) => {
       notes,
     } = req.body;
 
-    // Validate required fields
-    if (
-      !candidateEmail ||
-      !serviceType ||
-      !originCountry ||
-      !destinationCountry
-    ) {
+    // ✅ VALIDATE: Candidate ID is required
+    if (!candidate_id) {
       return res.status(400).json({
         success: false,
         message:
-          "Missing required fields: candidateEmail, serviceType, originCountry, destinationCountry",
+          "Candidate ID is required. Please select an existing candidate.",
       });
     }
 
-    // Find or create candidate
-    let candidate = await prisma.user.findUnique({
-      where: { email: candidateEmail },
+    // ✅ VALIDATE: Candidate exists and is a CANDIDATE role
+    const candidate = await prisma.user.findFirst({
+      where: {
+        user_id: candidate_id,
+        role: "candidate",
+      },
+      select: {
+        user_id: true,
+        full_name: true,
+        email: true,
+        phone_number: true,
+      },
     });
 
-    let isNewCandidate = false;
-    let tempPassword = "";
-
     if (!candidate) {
-      isNewCandidate = true;
-      tempPassword = Math.random().toString(36).slice(-10) + "A1!";
-      const password_hash = await bcrypt.hash(tempPassword, 10);
-
-      candidate = await prisma.user.create({
-        data: {
-          email: candidateEmail,
-          password_hash,
-          full_name: candidateName || candidateEmail.split("@")[0],
-          role: "candidate",
-          phone_number: candidatePhone || null,
-          is_email_verified: false,
-        },
+      return res.status(404).json({
+        success: false,
+        message: "Candidate not found or invalid candidate ID",
       });
-
-      await prisma.candidateProfile.create({
-        data: {
-          candidate_id: candidate.user_id,
-        },
-      });
-
-      console.log(`[CREATE CASE] Created new candidate: ${candidate.email}`);
     }
 
-    const caseNumber = await generateCaseNumber(user.agency_id);
+    // Validate required fields
+    if (!serviceType || !destinationCountry || !priorityLevel) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required fields: serviceType, destinationCountry, priorityLevel",
+      });
+    }
 
+    // Generate unique case number
+    const caseNumber = `CASE-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 6)
+      .toUpperCase()}`;
+
+    // Create the case
     const newCase = await prisma.relocationCase.create({
       data: {
         case_number: caseNumber,
-        candidate_id: candidate.user_id,
-        agency_id: user.agency_id,
+        candidate_id: candidate.user_id, // ✅ Use validated candidate ID
+        agency_id: agencyId,
         service_type: serviceType,
-        priority_level: priorityLevel || "medium",
-        status: "initiated",
-        origin_country: originCountry,
+        origin_country: originCountry || "Not specified",
         destination_country: destinationCountry,
         destination_city: destinationCity || null,
+        priority_level: priorityLevel,
+        status: "documents_pending",
         estimated_completion: estimatedCompletion
           ? new Date(estimatedCompletion)
           : null,
-        estimated_cost: estimatedCost || null,
+        estimated_cost: estimatedCost ? parseFloat(estimatedCost) : null,
         notes: notes || null,
-        case_manager_id: userId,
       },
       include: {
         candidate: {
           select: {
             user_id: true,
-            email: true,
             full_name: true,
+            email: true,
             phone_number: true,
+          },
+        },
+        agency: {
+          select: {
+            agency_id: true,
+            name: true,
+            email: true,
           },
         },
       },
     });
 
-    console.log(`✅ Case created: ${caseNumber}`);
+    // ✅ Send email to candidate
+    try {
+      const candidateEmailHtml = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+      .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+      .button { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>New Case Created for You! 🎉</h1>
+      </div>
+      <div class="content">
+        <p>Hi <strong>${candidate.full_name}</strong>,</p>
+        <p>Great news! A new relocation case has been created for you by <strong>${
+          newCase.agency.name
+        }</strong>.</p>
+        
+        <div class="info-box">
+          <h3 style="margin-top: 0; color: #1e40af;">Case Details</h3>
+          <p><strong>Case Number:</strong> ${newCase.case_number}</p>
+          <p><strong>Service Type:</strong> ${serviceType.replace("_", " ")}</p>
+          <p><strong>Destination:</strong> ${destinationCountry}${
+        destinationCity ? ` (${destinationCity})` : ""
+      }</p>
+          <p><strong>Priority:</strong> ${priorityLevel}</p>
+        </div>
 
-    // ============================
-    // 📧 EMAIL NOTIFICATIONS
-    // ============================
+        <h3>Next Steps:</h3>
+        <ol>
+          <li>Log in to your dashboard to view case details</li>
+          <li>Upload required documents for visa processing</li>
+          <li>Our team will review and guide you through the process</li>
+        </ol>
 
-    const agencyName = user.agency?.name || "Hiralent Agency";
-    const candidateName_display =
-      candidate.full_name || candidateEmail.split("@")[0];
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-
-    console.log("📧 Queuing emails for:", candidateEmail);
-
-    if (isNewCandidate) {
-      const welcomeEmailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .credentials { background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0; }
-            .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-            .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Welcome to Hiralent! 🎉</h1>
-            </div>
-            <div class="content">
-              <p>Hi <strong>${candidateName_display}</strong>,</p>
-              
-              <p>Welcome to Hiralent! Your account has been created by <strong>${agencyName}</strong> to manage your relocation process.</p>
-              
-              <div class="credentials">
-                <h3>Your Login Credentials:</h3>
-                <p><strong>Email:</strong> ${candidateEmail}</p>
-                <p><strong>Temporary Password:</strong> <code style="background: #fee; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
-              </div>
-              
-              <p><strong>⚠️ Important:</strong> Please change your password after your first login for security.</p>
-              
-              <a href="${frontendUrl}/candidate/cases" class="button">Access Your Dashboard</a>
-              
-              <p>You can now log in to view your relocation case and upload required documents.</p>
-              
-              <div class="footer">
-                <p>This is an automated message from Hiralent.</p>
-                <p>If you did not expect this email, please contact support.</p>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
+        <div style="text-align: center;">
+          <a href="${process.env.FRONTEND_URL}/candidate/dashboard/cases/${
+        newCase.case_id
+      }" class="button">
+            View Your Case
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
       `;
 
-      // Fire-and-forget (non-blocking)
-      sendEmail({
-        to: candidateEmail,
-        subject: "Welcome to Hiralent - Your Account is Ready! 🎉",
-        html: welcomeEmailHtml,
-      })
-        .then(() => console.log(`✅ Welcome email sent to: ${candidateEmail}`))
-        .catch((err) => console.error("❌ Welcome email error:", err.message));
+      await sendEmail({
+        to: candidate.email,
+        subject: `New Case Created - ${newCase.case_number}`,
+        html: candidateEmailHtml,
+      });
+    } catch (emailError) {
+      console.error("Failed to send candidate email:", emailError);
+      // Don't fail the request if email fails
     }
 
-    // Case notification email
-    const caseEmailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-          .case-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; }
-          .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-          .info-label { font-weight: bold; width: 150px; color: #6b7280; }
-          .info-value { flex: 1; }
-          .docs-section { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-          .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-          .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>New Relocation Case Created 📋</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${candidateName_display}</strong>,</p>
-            
-            <p>A new relocation case has been created for you by <strong>${agencyName}</strong>.</p>
-            
-            <div class="case-info">
-              <h3>Case Details:</h3>
-              <div class="info-row">
-                <span class="info-label">Case Number:</span>
-                <span class="info-value"><strong>${caseNumber}</strong></span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Service Type:</span>
-                <span class="info-value">${serviceType}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">From:</span>
-                <span class="info-value">${originCountry}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">To:</span>
-                <span class="info-value">${destinationCountry}${
-      destinationCity ? `, ${destinationCity}` : ""
-    }</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Status:</span>
-                <span class="info-value" style="color: #10b981; font-weight: bold;">Initiated</span>
-              </div>
-            </div>
-            
-            <div class="docs-section">
-              <h3>📄 Action Required: Upload Documents</h3>
-              <p>To proceed with your visa application, please upload the following documents:</p>
-              <ul>
-                <li>Passport copy (all pages)</li>
-                <li>Visa application form</li>
-                <li>Recent bank statements (last 3 months)</li>
-                <li>Employment letter</li>
-                <li>Proof of accommodation</li>
-              </ul>
-            </div>
-            
-            <a href="${frontendUrl}/candidate/cases/${
-      newCase.case_id
-    }" class="button">Upload Documents Now</a>
-            
-            <p>If you have any questions, please contact your case manager at ${agencyName}.</p>
-            
-            <div class="footer">
-              <p>This is an automated notification from Hiralent.</p>
-              <p>Case created on ${new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Fire-and-forget (non-blocking)
-    setTimeout(() => {
-      sendEmail({
-        to: candidateEmail,
-        subject: `New Relocation Case Created - ${caseNumber}`,
-        html: caseEmailHtml,
-      })
-        .then(() =>
-          console.log(`✅ Case notification sent to: ${candidateEmail}`)
-        )
-        .catch((err) => console.error("❌ Case email error:", err.message));
-    }, 2000);
+    console.log(`✅ Case created successfully: ${newCase.case_number}`);
 
     return res.status(201).json({
       success: true,
@@ -341,7 +238,7 @@ export const createCase = async (req: Request, res: Response) => {
       data: newCase,
     });
   } catch (error) {
-    console.error("Create case error:", error);
+    console.error("❌ Create case error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create case",
@@ -428,28 +325,53 @@ export const listCases = async (req: Request, res: Response) => {
         },
       });
     }
-    // RELOCATION/INTEGRATION agencies: Show cases assigned to them
-    else if (
-      user.agency?.type === "RELOCATION" ||
-      user.agency?.type === "INTEGRATION"
-    ) {
-      // Get case IDs from assignments
-      const assignments = await prisma.caseAssignment.findMany({
-        where: {
-          agency_id: user.agency_id,
-          status: "active",
+    // RELOCATION agencies: Show cases assigned via housing_agency_id
+    else if (user.agency?.type === "RELOCATION") {
+      const where: any = {
+        housing_agency_id: user.agency_id, // Direct query
+      };
+
+      if (status && status !== "all") {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { case_number: { contains: search as string, mode: "insensitive" } },
+          {
+            candidate: {
+              full_name: { contains: search as string, mode: "insensitive" },
+            },
+          },
+          {
+            candidate: {
+              email: { contains: search as string, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      cases = await prisma.relocationCase.findMany({
+        where,
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+            },
+          },
         },
-        select: {
-          case_id: true,
+        orderBy: {
+          created_at: "desc",
         },
       });
-
-      const caseIds = assignments.map((a) => a.case_id);
-
+    }
+    // INTEGRATION agencies: Show cases assigned via integration_agency_id
+    else if (user.agency?.type === "INTEGRATION") {
       const where: any = {
-        case_id: {
-          in: caseIds,
-        },
+        integration_agency_id: user.agency_id, // Direct query
       };
 
       if (status && status !== "all") {
@@ -538,25 +460,13 @@ export const getCaseById = async (req: Request, res: Response) => {
     if (user.agency?.type === "VISA") {
       whereClause.agency_id = user.agency_id;
     }
-    // RELOCATION/INTEGRATION agencies: Check caseAssignment
-    else if (
-      user.agency?.type === "RELOCATION" ||
-      user.agency?.type === "INTEGRATION"
-    ) {
-      const assignment = await prisma.caseAssignment.findFirst({
-        where: {
-          case_id: id,
-          agency_id: user.agency_id,
-          status: "active",
-        },
-      });
-
-      if (!assignment) {
-        return res.status(404).json({
-          success: false,
-          message: "Case not found or not assigned to your agency",
-        });
-      }
+    // RELOCATION agency: Check housing_agency_id
+    else if (user.agency?.type === "RELOCATION") {
+      whereClause.housing_agency_id = user.agency_id;
+    }
+    // INTEGRATION agency: Check integration_agency_id
+    else if (user.agency?.type === "INTEGRATION") {
+      whereClause.integration_agency_id = user.agency_id;
     }
 
     const caseData = await prisma.relocationCase.findFirst({
@@ -589,6 +499,7 @@ export const getCaseById = async (req: Request, res: Response) => {
             type: true,
           },
         },
+        housing_details: true,
       },
     });
 
@@ -601,10 +512,29 @@ export const getCaseById = async (req: Request, res: Response) => {
 
     const viewingAgencyType = user.agency?.type || null;
 
+    // FLATTEN THE RESPONSE:
     return res.status(200).json({
       success: true,
       data: {
         ...caseData,
+        // Merge housing fields to top level
+        housing_type: caseData.housing_details?.housing_type,
+        housing_address: caseData.housing_details?.housing_address,
+        monthly_rent_mad: caseData.housing_details?.monthly_rent_mad,
+        agency_fee_amount: caseData.housing_details?.agency_fee_amount,
+        lease_start_date: caseData.housing_details?.lease_start_date,
+        lease_end_date: caseData.housing_details?.lease_end_date,
+        housing_contract_url: caseData.housing_details?.housing_contract_url,
+        utility_water: caseData.housing_details?.utility_water,
+        utility_electricity: caseData.housing_details?.utility_electricity,
+        utility_internet: caseData.housing_details?.utility_internet,
+        arrival_date: caseData.housing_details?.arrival_date,
+        flight_number: caseData.housing_details?.flight_number,
+        airport_pickup_required:
+          caseData.housing_details?.airport_pickup_required,
+        arrival_notes: caseData.housing_details?.arrival_notes,
+        // Remove nested object
+        housing_details: undefined,
         viewing_agency_type: viewingAgencyType,
       },
     });
@@ -631,35 +561,99 @@ export const getClients = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { user_id: userId },
-      select: { agency_id: true },
+      select: {
+        agency_id: true,
+        agency: {
+          select: {
+            type: true,
+          },
+        },
+      },
     });
 
-    if (!user?.agency_id) {
+    if (!user?.agency_id || !user.agency) {
       return res.status(403).json({
         success: false,
         message: "User is not associated with an agency",
       });
     }
 
-    // Get all unique clients (candidates) who have cases with this agency
-    const cases = await prisma.relocationCase.findMany({
-      where: {
-        agency_id: user.agency_id,
-      },
-      include: {
-        candidate: {
-          select: {
-            user_id: true,
-            email: true,
-            full_name: true,
-            phone_number: true,
-            created_at: true,
+    const agencyType = user.agency.type;
+    let cases: any[] = [];
+
+    // ============================================
+    // VISA AGENCY - Get cases they created
+    // ============================================
+    if (agencyType === "VISA") {
+      cases = await prisma.relocationCase.findMany({
+        where: {
+          agency_id: user.agency_id,
+        },
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+              created_at: true,
+            },
+          },
+          embassy_submission: {
+            select: {
+              status: true,
+            },
           },
         },
-      },
-    });
+      });
+    }
+    // ============================================
+    // RELOCATION AGENCY - Get cases via housing_agency_id
+    // ============================================
+    else if (agencyType === "RELOCATION") {
+      cases = await prisma.relocationCase.findMany({
+        where: {
+          housing_agency_id: user.agency_id, // Direct query
+        },
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+              created_at: true,
+            },
+          },
+        },
+      });
+    }
+    // ============================================
+    // INTEGRATION AGENCY - Get cases via integration_agency_id
+    // ============================================
+    else if (agencyType === "INTEGRATION") {
+      cases = await prisma.relocationCase.findMany({
+        where: {
+          integration_agency_id: user.agency_id, // Direct query
+        },
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+              created_at: true,
+            },
+          },
+          integrationServices: true, // Include services for completion check
+        },
+      });
+    }
 
-    // Group cases by candidate to get unique clients with their case counts
+    // ============================================
+    // Group cases by candidate
+    // ============================================
     const clientsMap = new Map();
 
     cases.forEach((c) => {
@@ -689,22 +683,43 @@ export const getClients = async (req: Request, res: Response) => {
       });
       client.totalCases += 1;
 
-      if (c.status === "completed") {
-        client.completedCases += 1;
-      } else if (
-        ["initiated", "in_progress", "pending_documents"].includes(c.status)
-      ) {
-        client.activeCases += 1;
+      // Using helper functions instead of hardcoded status checks
+      if (agencyType === "VISA") {
+        const embassyStatus = c.embassy_submission?.status;
+        const housingAssigned = c.housing_agency_id !== null; // Add this
+
+        if (isCompletedVisaCase(c.status, embassyStatus, housingAssigned)) {
+          // Add 3rd param
+          client.completedCases += 1;
+        } else if (isActiveVisaCase(c.status, embassyStatus, housingAssigned)) {
+          // Add 3rd param
+          client.activeCases += 1;
+        }
+      } else if (agencyType === "RELOCATION") {
+        if (isCompletedRelocationCase(c.status)) {
+          client.completedCases += 1;
+        } else if (isActiveRelocationCase(c.status)) {
+          client.activeCases += 1;
+        }
+      } else if (agencyType === "INTEGRATION") {
+        // Add this
+        const services = c.integrationServices || [];
+
+        if (isCompletedIntegrationCase(services)) {
+          client.completedCases += 1;
+        } else if (isActiveIntegrationCase(services)) {
+          client.activeCases += 1;
+        }
       }
     });
 
-    // Convert map to array and calculate status
+    // Converting map to array and calculating status
     const clients = Array.from(clientsMap.values()).map((client) => ({
       ...client,
       status: client.activeCases > 0 ? "Active" : "Completed",
     }));
 
-    // Sort by most recent case
+    // Sorting by most recent case
     clients.sort((a, b) => {
       const aLastCase = Math.max(
         ...a.cases.map((c: any) => new Date(c.created_at).getTime())

@@ -137,6 +137,10 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         return { title: 'Manage Hiring', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/messages':
         return { title: 'Messages', description: 'Updating your information will offer you the most relevent content' };
+       case '/company/dashboard/review-queue':
+        return { title: 'Review Queue', description: 'Review and approve candidate assessments' };
+      case '/company/dashboard/questions':
+        return { title: 'Question Bank', description: 'Manage and organize questions for assessments' };
       case '/company/dashboard/settings':
         return { title: 'Settings', description: 'Updating your information will offer you the most relevent content' };
       default:

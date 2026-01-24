@@ -15,6 +15,7 @@
     "db:studio": "prisma studio",
     "dev:test": "ts-node src/scripts/dev-test.ts",
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
+    "generate:batch": "ts-node src/scripts/batch-generate-questions.ts",
     "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\"",
     "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\""
   },

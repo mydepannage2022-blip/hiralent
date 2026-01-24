@@ -41,16 +41,15 @@ export const updateHousingDetails = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify case exists and is assigned to this agency
-    const assignment = await prisma.caseAssignment.findFirst({
+    // CHANGED: Verify case is assigned to this housing agency
+    const caseData = await prisma.relocationCase.findFirst({
       where: {
         case_id: caseId,
-        agency_id: user.agency_id,
-        status: "active",
+        housing_agency_id: user.agency_id,
       },
     });
 
-    if (!assignment) {
+    if (!caseData) {
       return res.status(404).json({
         success: false,
         message: "Case not found or not assigned to your agency",
@@ -68,26 +67,59 @@ export const updateHousingDetails = async (req: Request, res: Response) => {
       housing_notes,
     } = req.body;
 
-    // Update housing details
-    const updatedCase = await prisma.relocationCase.update({
+    // CHANGED: Update or create HousingArrangement
+    const housingData = {
+      housing_type: housing_type || undefined,
+      housing_address: housing_address || undefined,
+      monthly_rent_mad: monthly_rent_mad
+        ? parseFloat(monthly_rent_mad)
+        : undefined,
+      agency_fee_amount: agency_fee_amount
+        ? parseFloat(agency_fee_amount)
+        : undefined,
+      lease_start_date: lease_start_date
+        ? new Date(lease_start_date)
+        : undefined,
+      lease_end_date: lease_end_date ? new Date(lease_end_date) : undefined,
+      housing_contract_url: housing_contract_url || undefined,
+    };
+
+    // Check if housing arrangement exists
+    const existingHousing = await prisma.housingArrangement.findUnique({
       where: { case_id: caseId },
-      data: {
-        housing_type: housing_type || undefined,
-        housing_address: housing_address || undefined,
-        monthly_rent_mad: monthly_rent_mad
-          ? parseFloat(monthly_rent_mad)
-          : undefined,
-        agency_fee_amount: agency_fee_amount
-          ? parseFloat(agency_fee_amount)
-          : undefined,
-        lease_start_date: lease_start_date
-          ? new Date(lease_start_date)
-          : undefined,
-        lease_end_date: lease_end_date ? new Date(lease_end_date) : undefined,
-        housing_contract_url: housing_contract_url || undefined,
-        notes: housing_notes || undefined,
-        updated_at: new Date(),
-      },
+    });
+
+    let updatedHousing;
+    if (existingHousing) {
+      // Update existing
+      updatedHousing = await prisma.housingArrangement.update({
+        where: { case_id: caseId },
+        data: housingData,
+      });
+    } else {
+      // Create new
+      updatedHousing = await prisma.housingArrangement.create({
+        data: {
+          case_id: caseId,
+          ...housingData,
+        },
+      });
+    }
+
+    // Update case status if not already in progress
+    if (caseData.status === "housing_assigned") {
+      await prisma.relocationCase.update({
+        where: { case_id: caseId },
+        data: {
+          status: "housing_in_progress",
+          updated_at: new Date(),
+        },
+      });
+    }
+
+    // Return updated case with housing details
+    const updatedCase = await prisma.relocationCase.findUnique({
+      where: { case_id: caseId },
       include: {
         candidate: {
           select: {
@@ -96,6 +128,7 @@ export const updateHousingDetails = async (req: Request, res: Response) => {
             full_name: true,
           },
         },
+        housing_details: true,
       },
     });
 
@@ -142,16 +175,15 @@ export const updateUtilityStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify case assignment
-    const assignment = await prisma.caseAssignment.findFirst({
+    // CHANGED: Verify case assignment via housing_agency_id
+    const caseData = await prisma.relocationCase.findFirst({
       where: {
         case_id: caseId,
-        agency_id: user.agency_id,
-        status: "active",
+        housing_agency_id: user.agency_id,
       },
     });
 
-    if (!assignment) {
+    if (!caseData) {
       return res.status(404).json({
         success: false,
         message: "Case not found or not assigned to your agency",
@@ -160,20 +192,26 @@ export const updateUtilityStatus = async (req: Request, res: Response) => {
 
     const { utility_water, utility_electricity, utility_internet } = req.body;
 
-    const updatedCase = await prisma.relocationCase.update({
+    // CHANGED: Update utilities in HousingArrangement table
+    const updatedHousing = await prisma.housingArrangement.upsert({
       where: { case_id: caseId },
-      data: {
+      update: {
         utility_water: utility_water || undefined,
         utility_electricity: utility_electricity || undefined,
         utility_internet: utility_internet || undefined,
-        updated_at: new Date(),
+      },
+      create: {
+        case_id: caseId,
+        utility_water: utility_water || "pending",
+        utility_electricity: utility_electricity || "pending",
+        utility_internet: utility_internet || "pending",
       },
     });
 
     return res.status(200).json({
       success: true,
       message: "Utility status updated successfully",
-      data: updatedCase,
+      data: updatedHousing,
     });
   } catch (error) {
     console.error("Update utility error:", error);
@@ -213,15 +251,15 @@ export const updateArrivalDetails = async (req: Request, res: Response) => {
       });
     }
 
-    const assignment = await prisma.caseAssignment.findFirst({
+    // CHANGED: Verify case assignment via housing_agency_id
+    const caseData = await prisma.relocationCase.findFirst({
       where: {
         case_id: caseId,
-        agency_id: user.agency_id,
-        status: "active",
+        housing_agency_id: user.agency_id,
       },
     });
 
-    if (!assignment) {
+    if (!caseData) {
       return res.status(404).json({
         success: false,
         message: "Case not found or not assigned to your agency",
@@ -235,9 +273,10 @@ export const updateArrivalDetails = async (req: Request, res: Response) => {
       arrival_notes,
     } = req.body;
 
-    const updatedCase = await prisma.relocationCase.update({
+    // CHANGED: Update arrival details in HousingArrangement table
+    const updatedHousing = await prisma.housingArrangement.upsert({
       where: { case_id: caseId },
-      data: {
+      update: {
         arrival_date: arrival_date ? new Date(arrival_date) : undefined,
         flight_number: flight_number || undefined,
         airport_pickup_required:
@@ -245,14 +284,19 @@ export const updateArrivalDetails = async (req: Request, res: Response) => {
             ? airport_pickup_required
             : undefined,
         arrival_notes: arrival_notes || undefined,
-        updated_at: new Date(),
+      },
+      create: {
+        case_id: caseId,
+        arrival_date: arrival_date ? new Date(arrival_date) : null,
+        flight_number: flight_number || null,
+        airport_pickup_required: airport_pickup_required || false,
+        arrival_notes: arrival_notes || null,
       },
     });
-
     return res.status(200).json({
       success: true,
       message: "Arrival details updated successfully",
-      data: updatedCase,
+      data: updatedHousing,
     });
   } catch (error) {
     console.error("Update arrival error:", error);
@@ -295,25 +339,12 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify case assignment
-    const assignment = await prisma.caseAssignment.findFirst({
+    // CHANGED: Verify case assignment via housing_agency_id
+    const caseData = await prisma.relocationCase.findFirst({
       where: {
         case_id: caseId,
-        agency_id: user.agency_id,
-        status: "active",
+        housing_agency_id: user.agency_id,
       },
-    });
-
-    if (!assignment) {
-      return res.status(404).json({
-        success: false,
-        message: "Case not found or not assigned to your agency",
-      });
-    }
-
-    // Fetch full case details
-    const caseData = await prisma.relocationCase.findUnique({
-      where: { case_id: caseId },
       include: {
         candidate: {
           select: {
@@ -322,36 +353,50 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
             full_name: true,
           },
         },
+        housing_details: true, // Include HousingArrangement
       },
     });
 
     if (!caseData) {
       return res.status(404).json({
         success: false,
-        message: "Case not found",
+        message: "Case not found or not assigned to your agency",
       });
     }
 
-    // Validate all requirements are met
+    const housing = caseData.housing_details;
+
+    // CHANGED: Validate from HousingArrangement table
     const isComplete = !!(
-      caseData.housing_type &&
-      caseData.housing_address &&
-      caseData.monthly_rent_mad &&
-      caseData.lease_start_date &&
-      caseData.utility_water === "completed" &&
-      caseData.utility_electricity === "completed" &&
-      caseData.utility_internet === "completed" &&
-      caseData.arrival_date &&
-      caseData.flight_number
+      housing &&
+      housing.housing_type &&
+      housing.housing_address &&
+      housing.monthly_rent_mad &&
+      housing.lease_start_date &&
+      housing.utility_water === "completed" &&
+      housing.utility_electricity === "completed" &&
+      housing.utility_internet === "completed" &&
+      housing.arrival_date &&
+      housing.flight_number
     );
 
     if (!isComplete) {
       return res.status(400).json({
         success: false,
         message: "Cannot mark as ready - incomplete information",
+        missing: {
+          housing_type: !housing?.housing_type,
+          housing_address: !housing?.housing_address,
+          monthly_rent: !housing?.monthly_rent_mad,
+          lease_start: !housing?.lease_start_date,
+          water: housing?.utility_water !== "completed",
+          electricity: housing?.utility_electricity !== "completed",
+          internet: housing?.utility_internet !== "completed",
+          arrival_date: !housing?.arrival_date,
+          flight_number: !housing?.flight_number,
+        },
       });
     }
-
     // Update case status
     const updatedCase = await prisma.relocationCase.update({
       where: { case_id: caseId },
@@ -373,8 +418,10 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
       .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
       .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
       .info-section { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #3b82f6; }
+      .next-step-box { background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
       .checklist { background: #dbeafe; padding: 15px; border-radius: 8px; margin: 20px 0; }
-      .button { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold; }
+      .button-primary { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; font-weight: bold; }
+      .button-secondary { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
       .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
       .highlight { color: #059669; font-weight: bold; }
     </style>
@@ -397,34 +444,25 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
 
         <div class="info-section">
           <h3 style="margin-top: 0; color: #3b82f6;">Housing Details</h3>
-          <p><strong>Type:</strong> ${caseData.housing_type?.replace(
+          <p><strong>Type:</strong> ${housing!.housing_type?.replace(
             "_",
             " "
           )}</p>
-          <p><strong>Address:</strong> ${caseData.housing_address}</p>
+          <p><strong>Address:</strong> ${housing!.housing_address}</p>
           <p><strong>Move-in Date:</strong> ${new Date(
-            caseData.lease_start_date!
+            housing!.lease_start_date!
           ).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
             month: "long",
             day: "numeric",
           })}</p>
-          <p><strong>Monthly Rent:</strong> ${caseData.monthly_rent_mad} MAD</p>
+          <p><strong>Monthly Rent:</strong> ${housing!.monthly_rent_mad} MAD</p>
           ${
-            caseData.agency_fee_amount
-              ? `<p><strong>Agency Fee:</strong> ${caseData.agency_fee_amount} MAD</p>`
-              : ""
-          }
-          ${
-            caseData.lease_end_date
-              ? `<p><strong>Lease End Date:</strong> ${new Date(
-                  caseData.lease_end_date
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}</p>`
+            housing!.agency_fee_amount
+              ? `<p><strong>Agency Fee:</strong> ${
+                  housing!.agency_fee_amount
+                } MAD</p>`
               : ""
           }
         </div>
@@ -432,22 +470,17 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
         <div class="info-section">
           <h3 style="margin-top: 0; color: #3b82f6;">Travel Details</h3>
           <p><strong>Arrival Date:</strong> ${new Date(
-            caseData.arrival_date!
+            housing!.arrival_date!
           ).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
             month: "long",
             day: "numeric",
           })}</p>
-          <p><strong>Flight Number:</strong> ${caseData.flight_number}</p>
+          <p><strong>Flight Number:</strong> ${housing!.flight_number}</p>
           ${
-            caseData.airport_pickup_required
-              ? `<p><strong>Airport Pickup:</strong> Arranged - We'll meet you at the airport!</p>`
-              : `<p><strong>Airport Pickup:</strong> Not required</p>`
-          }
-          ${
-            caseData.arrival_notes
-              ? `<p><strong>Notes:</strong> ${caseData.arrival_notes}</p>`
+            housing!.airport_pickup_required
+              ? `<p><strong>Airport Pickup:</strong> Arranged</p>`
               : ""
           }
         </div>
@@ -459,51 +492,42 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
             <li>Electricity: <span class="highlight">Connected</span></li>
             <li>Internet: <span class="highlight">Connected</span></li>
           </ul>
-          <p style="color: #059669; font-weight: bold; margin-top: 15px;">Everything is ready for you to move in!</p>
         </div>
 
-        <div class="checklist">
-          <h3 style="margin-top: 0; color: #1e40af;">What to Bring on Arrival</h3>
-          <ul style="margin: 10px 0; padding-left: 20px;">
-            <li>Valid passport and visa documents</li>
-            <li>Lease contract (we'll provide a copy)</li>
-            <li>Initial rent payment (if not already paid)</li>
-            <li>Personal identification documents</li>
-            <li>Emergency contact information</li>
+        <div class="next-step-box">
+          <h2 style="margin-top: 0; color: #1e40af;">Next Step: Choose Your Integration Agency</h2>
+          <p>Now that your housing is ready, it's time to select an integration agency to help you settle in!</p>
+          
+          <p><strong>Integration services include:</strong></p>
+          <ul style="margin: 15px 0; padding-left: 20px;">
+            <li>Healthcare registration</li>
+            <li>Bank account setup</li>
+            <li>Tax ID registration</li>
+            <li>Telecom (mobile & internet)</li>
+            <li>Local transportation assistance</li>
+            <li>Cultural integration programs</li>
           </ul>
+
+          <div style="text-align: center; margin-top: 25px;">
+            <a href="${
+              process.env.FRONTEND_URL
+            }/candidate/dashboard/cases/${caseId}" class="button-primary">
+              Choose Integration Agency
+            </a>
+          </div>
         </div>
 
-        ${
-          caseData.notes
-            ? `
-        <div class="info-section">
-          <h3 style="margin-top: 0; color: #3b82f6;">Additional Notes</h3>
-          <p>${caseData.notes}</p>
-        </div>
-        `
-            : ""
-        }
-
-        <p style="margin-top: 30px;">
-          <strong>Next Steps:</strong> Your relocation agency will contact you shortly with final move-in instructions and any remaining details.
-        </p>
-
-        <div style="text-align: center; margin-top: 25px;">
+        <div style="text-align: center; margin-top: 20px;">
           <a href="${process.env.FRONTEND_URL}/candidate/dashboard/cases/${
       caseData.case_id
-    }" class="button">
+    }" class="button-secondary">
             View Full Case Details
           </a>
         </div>
       </div>
       <div class="footer">
-        <p>🎉 Congratulations on your new home! Safe travels!</p>
+        <p>🎉 Safe travels and welcome to your new home!</p>
         <p>This is an automated message. Please do not reply to this email.</p>
-        <p style="margin-top: 10px; font-size: 12px;">
-          If you have any questions, please contact ${
-            user.agency.name
-          } directly.
-        </p>
       </div>
     </div>
   </body>
@@ -512,7 +536,7 @@ export const markReadyForArrival = async (req: Request, res: Response) => {
 
     await sendEmail({
       to: caseData.candidate.email,
-      subject: `🎉 Your Housing is Ready - ${caseData.case_number}`,
+      subject: `🎉 Your Housing is Ready - Choose Integration Agency - ${caseData.case_number}`,
       html: readyForArrivalEmailHtml,
     });
 

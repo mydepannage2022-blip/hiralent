@@ -505,7 +505,235 @@ async generateQuestion(req: Request, res: Response) {
     });
   }
 }
+/**
+ * Generate question WITH automatic diagram if needed
+ * Route: POST /api/questions/generate-with-diagram
+ */
+async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> {  //  ADD `: Promise<void>`
+  console.log('🎨 [CONTROLLER] generateQuestionWithDiagram called');
+  console.log('👤 [CONTROLLER] req.user:', req.user);
 
+  try {
+    const { topic, difficulty } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      console.log('❌ [CONTROLLER] User not authenticated for diagram generation');
+      return res.status(401).json({  // ✅ ADD `return`
+        success: false,
+        error: 'Authentication required for diagram question generation'
+      });
+    }
+
+    if (!topic) {
+      return res.status(400).json({  // ✅ ADD `return`
+        success: false,
+        error: 'Topic is required'
+      });
+    }
+
+    console.log('🎨 [CONTROLLER] Calling Python diagram service...');
+    console.log('📋 [CONTROLLER] Topic:', topic, 'Difficulty:', difficulty || 'medium');
+
+    // Call Python AI service with diagram support
+    const diagramResponse = await fetch('http://localhost:8000/generate-with-diagram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic,
+        difficulty: difficulty || 'medium'
+      })
+    });
+
+    if (!diagramResponse.ok) {
+      throw new Error(`Diagram service returned ${diagramResponse.status}`);
+    }
+
+    const diagramData = await diagramResponse.json();
+    console.log('✅ [CONTROLLER] Diagram generation response received');
+
+    if (!diagramData.success || !diagramData.question) {
+      throw new Error(diagramData.error || 'Question generation failed');
+    }
+
+    // ✅ VECTOR ENGINE: Check similarity
+    console.log('🔍 [CONTROLLER] Checking similarity with vector engine...');
+    const similarityCheck = await vectorEngineService.checkSimilarity(diagramData.question);
+    
+    if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
+      return res.status(400).json({  // ✅ ADD `return`
+        success: false,
+        error: 'Duplicate question detected',
+        details: 'Generated question is very similar to existing ones',
+        similarityCheck: similarityCheck
+      });
+    }
+
+    // Prepare question data with diagram fields
+    const questionData: any = {
+      title: diagramData.question.title,
+      description: diagramData.question.explanation,
+      problemStatement: diagramData.question.problemStatement,
+      difficulty: diagramData.question.difficulty as 'easy' | 'medium' | 'hard',
+      skillTags: diagramData.question.skillTags,
+      type: 'coding',
+      canonicalSolution: diagramData.question.canonicalSolution,
+      testCases: diagramData.question.testCases,
+      status: 'draft',
+      aiGenerated: true,
+      source: 'ai_gemini_diagram',
+      createdBy: userId,
+      
+      // ✅ NEW: Diagram fields
+      hasDiagram: diagramData.diagram?.needed || false,
+      diagramType: diagramData.diagram?.type || null,
+      diagramCode: diagramData.diagram?.code || null,
+      diagramImageUrl: diagramData.diagram?.imageUrl || null,
+      diagramMetadata: diagramData.diagram ? {
+        confidence: diagramData.diagram.confidence,
+        reason: diagramData.diagram.reason,
+        generatedAt: new Date().toISOString()
+      } : null
+    };
+
+    // Save to database
+    const savedQuestion = await this.questionService.createQuestion(questionData);
+
+    console.log('💾 [CONTROLLER] Question saved with diagram:', savedQuestion.id);
+    console.log('🎨 [CONTROLLER] Has diagram:', savedQuestion.hasDiagram);
+    console.log('🎨 [CONTROLLER] Diagram type:', savedQuestion.diagramType);
+
+    // ✅ VECTOR ENGINE: Store in vector database
+    console.log('💾 [CONTROLLER] Storing question in vector database...');
+    const vectorResult = await vectorEngineService.storeQuestion(savedQuestion);
+    
+    let finalQuestion = savedQuestion;
+    
+    if (vectorResult.success) {
+      finalQuestion = await this.questionService.updateQuestion(savedQuestion.id, {
+        vectorStored: true,
+        vectorId: vectorResult.question_id
+      });
+      console.log('✅ [CONTROLLER] Question stored in vector DB');
+    } else {
+      console.log('⚠️ [CONTROLLER] Vector storage failed:', vectorResult.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: diagramData.diagram?.needed 
+        ? `Question generated with ${diagramData.diagram.type} diagram`
+        : 'Question generated (no diagram needed)',
+      question: finalQuestion,
+      diagram: diagramData.diagram || null,
+      similarityCheck: similarityCheck,
+      vectorStorage: vectorResult,
+      metadata: diagramData.metadata
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] generateQuestionWithDiagram ERROR:', error.message);
+    
+    if (error.message.includes('service returned')) {
+      return res.status(503).json({  // ✅ ADD `return`
+        success: false,
+        error: 'Diagram Generation service is currently unavailable',
+        details: 'Please ensure the Python service is running on port 8000'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate question with diagram',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * Check diagram service health
+ * Route: GET /api/questions/diagram-service/health
+ */
+async checkDiagramServiceHealth(req: Request, res: Response): Promise<void> {  //  ADD `: Promise<void>`
+  console.log('🎨 [CONTROLLER] checkDiagramServiceHealth called');
+  
+  try {
+    const healthResponse = await fetch('http://localhost:8000/health');
+    
+    if (!healthResponse.ok) {
+      throw new Error(`Service returned ${healthResponse.status}`);
+    }
+
+    const healthData = await healthResponse.json();
+    
+    // Check if diagram generation is available
+    const diagramAvailable = healthData.services?.diagram_generation_available || false;
+    
+    res.json({
+      success: true,
+      service: 'Diagram Generation Service',
+      status: healthResponse.ok ? 'healthy' : 'unhealthy',
+      diagram_generation_available: diagramAvailable,
+      services: healthData.services
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] Diagram service health check error:', error.message);
+    res.status(503).json({
+      success: false,
+      service: 'Diagram Generation Service',
+      status: 'unavailable',
+      diagram_generation_available: false,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Get diagram details for a question
+ * Route: GET /api/questions/:id/diagram
+ */
+async getQuestionDiagram(req: Request, res: Response): Promise<void> {  
+  console.log('🎨 [CONTROLLER] getQuestionDiagram called for:', req.params.id);
+  
+  try {
+    const question = await this.questionService.getQuestionById(req.params.id);
+    
+    if (!question) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Question not found'
+      });
+    }
+
+    if (!question.hasDiagram) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'No diagram available for this question'
+      });
+    }
+
+    res.json({
+      success: true,
+      diagram: {
+        type: question.diagramType,
+        code: question.diagramCode,
+        imageUrl: question.diagramImageUrl,
+        metadata: question.diagramMetadata
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ [CONTROLLER] getQuestionDiagram ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get diagram',
+      details: error.message
+    });
+  }
+}
 /**
  * Génère plusieurs questions en batch
  */

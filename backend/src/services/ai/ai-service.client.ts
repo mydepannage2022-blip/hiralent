@@ -28,6 +28,26 @@ export type ScrapeResponseDTO = {
   job_log?: any;
   metadata?: any;
 };
+export type PatternToQuestionRequestDTO = {
+  source: string;
+  sourceId: string;
+  difficulty: "easy" | "medium" | "hard";
+  pattern: string;
+  domain: string;
+  tags: string[];
+  constraints: any;
+  inputStructure: any;
+
+  // optional speed knob (AI-service supports it)
+  fast?: boolean;
+};
+
+export type PatternToQuestionResponseDTO = {
+  success: boolean;
+  question?: any;
+  error?: string;
+};
+
 
 type ClientConfig = {
   baseUrl?: string;     // e.g. http://localhost:8000
@@ -79,32 +99,70 @@ export class AIServiceClient {
     };
   }
 
-  /**
-   * Per-source endpoint:
-   * POST {AI_SERVICE_URL}/scraping/{source}/run?max_items=...
-   */
-  async scrapeViaSourceEndpoint(params: {
-    source: Source;
-    max_items: number;
-  }): Promise<ScrapeResponseDTO> {
-    const url = `${this.baseUrl}/scraping/${params.source}/run?max_items=${params.max_items}`;
+/**
+ * Per-source endpoint with ALL parameters:
+ * POST {AI_SERVICE_URL}/scraping/{source}/run with full parameters
+ */
+async scrapeViaSourceEndpoint(params: {
+  source: Source;
+  max_items: number;
+  max_pages?: number;
+  auto?: boolean;           //  Add this
+  hard_cap?: number;        //  Add this
+  stop_after_empty_pages?: number;  //  Add this
+}): Promise<ScrapeResponseDTO> {
+  //  FIX: Use POST with body instead of query params
+  const url = `${this.baseUrl}/scraping/${params.source}/run`;
+  
+  // Build the request body with all parameters
+  const requestBody = {
+    max_items: params.max_items,
+    max_pages: params.max_pages,
+    auto: params.auto,                    //  Pass auto parameter
+    hard_cap: params.hard_cap,            //  Pass hard_cap
+    stop_after_empty_pages: params.stop_after_empty_pages, //  Pass stop_after_empty_pages
+    max_repos: params.max_pages,          // For GitHub specifically
+  };
 
-    const res = await axios.post(url, null, {
-      timeout: this.timeoutMs,
-      validateStatus: () => true,
-    });
+  const res = await axios.post(url, requestBody, {
+    timeout: this.timeoutMs,
+    headers: { "Content-Type": "application/json" },
+    validateStatus: () => true,
+  });
 
-    if (res.status >= 200 && res.status < 300) {
-      return res.data as ScrapeResponseDTO;
-    }
+  if (res.status >= 200 && res.status < 300) {
+    return res.data as ScrapeResponseDTO;
+  }
 
-    return {
-      success: false,
-      source: params.source,
-      patterns: [],
-      count: 0,
-      error: `AI-service HTTP ${res.status}`,
-      metadata: { response: typeof res.data === "string" ? res.data.slice(0, 1000) : res.data },
-    };
+  return {
+    success: false,
+    source: params.source,
+    patterns: [],
+    count: 0,
+    error: `AI-service HTTP ${res.status}: ${res.statusText}`,
+    metadata: { response: typeof res.data === "string" ? res.data.slice(0, 1000) : res.data },
+  };
+  
+}
+
+async generateQuestionFromPattern(
+  payload: PatternToQuestionRequestDTO
+): Promise<PatternToQuestionResponseDTO> {
+  const url = `${this.baseUrl}/questions/from-pattern`;
+
+  const res = await axios.post(url, payload, {
+    timeout: this.timeoutMs,
+    headers: { "Content-Type": "application/json" },
+    validateStatus: () => true,
+  });
+
+  if (res.status >= 200 && res.status < 300) {
+    return res.data as PatternToQuestionResponseDTO;
+  }
+
+  return {
+    success: false,
+    error: `AI-service HTTP ${res.status}: ${res.statusText}`,
+  };
   }
 }

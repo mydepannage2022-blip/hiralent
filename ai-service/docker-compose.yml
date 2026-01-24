@@ -6,7 +6,11 @@ services:
       - .env
     environment:
       REDIS_URL: redis://redis:6379/1
+      GITHUB_TOKEN: ${GITHUB_TOKEN}  
       SANDBOX_SERVICE_URL: host.docker.internal:50054  # talk to sandbox on Windows host
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      CHROME_PATH: /usr/bin/chromium
+      
     ports:
       - "8000:8000"
     volumes:
