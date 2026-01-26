@@ -62,6 +62,8 @@ import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes
 import matchingInternalRoutes from "./routes/internal/matching.routes";
 import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
 import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
+import externalCandidatesRoutes from "./routes/company.externalCandidates.routes";
+import companyInternalCandidatesRoutes from "./routes/company.internalCandidates.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -133,7 +135,8 @@ app.use("/api/v1", companyCandidateRankingRoutes);
 
 //Scraping Candidates
 app.use("/internal", internalRoutes);
-
+app.use("/api/v1", externalCandidatesRoutes);
+app.use("/api/v1", companyInternalCandidatesRoutes);
 
 //candidate cv
 // Serve uploaded files statically
