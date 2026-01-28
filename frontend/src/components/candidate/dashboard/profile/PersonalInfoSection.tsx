@@ -123,7 +123,7 @@ const Personal = () => {
     const combined = `${derivedFirst} ${derivedLast}`.trim();
     return combined || rawFullName || "";
   }, [derivedFirst, derivedLast, rawFullName]);
-
+ 
   const phone = useMemo(
     () => extractedPI.phone || user?.phone_number || "",
     [extractedPI.phone, user?.phone_number]

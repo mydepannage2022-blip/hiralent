@@ -1,5 +1,3 @@
-// src/components/candidate/dashboard/profile/resume-upload/ResumeUpload.tsx
-
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -8,17 +6,17 @@ import Button from "@/src/components/layout/Button";
 import { DropZone } from "./DropZone";
 import {
   FileText,
-  CheckCircle,
   AlertCircle,
   Loader,
   Download,
   Sparkles,
   UploadCloud,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { useUploadApplicationResume } from "@/src/lib/profile/profile.queries";
 import { useProfile } from "@/src/context/ProfileContext";
-import AutofillPreviewModal from "../AutofillPreviewModal"; // ✅ IMPORT MODAL
+import AutofillPreviewModal from "../AutofillPreviewModal";
 
 interface ResumeUploadProps {
   className?: string;
@@ -33,7 +31,6 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [showUploadForm, setShowUploadForm] = useState(false);
 
-  // ✅ MODAL STATE
   const [showAutofillModal, setShowAutofillModal] = useState(false);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
 
@@ -44,22 +41,20 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
 
   const existingResumeUrl = useMemo(() => {
     if (!rawResumeUrl) return null;
-    if (rawResumeUrl.startsWith("http://") || rawResumeUrl.startsWith("https://")) {
-      return rawResumeUrl;
-    }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-    return `${apiUrl}${rawResumeUrl.startsWith("/") ? "" : "/"}${rawResumeUrl}`;
+    if (rawResumeUrl.startsWith("http://") || rawResumeUrl.startsWith("https://")) return rawResumeUrl;
+
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const path = rawResumeUrl.startsWith("/") ? rawResumeUrl : `/${rawResumeUrl}`;
+    return `${apiUrl}${path}`;
   }, [rawResumeUrl]);
 
   const existingFileName = useMemo(() => {
     if (!existingResumeUrl) return null;
     try {
       const pathname = new URL(existingResumeUrl).pathname;
-      const name = pathname.split("/").pop() || "Resume";
-      return decodeURIComponent(name);
+      return decodeURIComponent(pathname.split("/").pop() || "Resume");
     } catch {
-      const name = existingResumeUrl.split("/").pop() || "Resume";
-      return decodeURIComponent(name);
+      return decodeURIComponent(existingResumeUrl.split("/").pop() || "Resume");
     }
   }, [existingResumeUrl]);
 
@@ -79,7 +74,6 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
     setShowUploadForm(false);
   };
 
-  // ✅ FIXED handleUpload with modal trigger
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -92,24 +86,17 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      console.log("📥 Upload response:", response);
-
       const documentId = response?.data?.document_id;
-      console.log("🔑 Document ID:", documentId);
-
       if (documentId) {
-        console.log("✨ Opening autofill modal");
         setUploadedDocumentId(documentId);
         setShowAutofillModal(true);
-      } else {
-        console.warn("⚠️ No document_id in response");
       }
 
       setTimeout(() => {
         setSelectedFile(null);
         setShowUploadForm(false);
         setUploadProgress(0);
-      }, 800);
+      }, 700);
     } catch (error) {
       console.error("❌ Upload error:", error);
       clearInterval(progressInterval);
@@ -125,77 +112,83 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const getStatusIcon = () => {
-    if (uploadMutation.isPending) return <Loader className="h-5 w-5 text-blue-600 animate-spin" />;
-    if (uploadMutation.isSuccess) return <CheckCircle className="h-5 w-5 text-emerald-600" />;
-    if (uploadMutation.isError) return <AlertCircle className="h-5 w-5 text-rose-600" />;
+  const statusRow = () => {
+    if (uploadMutation.isPending)
+      return (
+        <div className="flex items-center gap-2 text-sm text-blue-700">
+          <Loader className="h-4 w-4 animate-spin" />
+          Uploading resume...
+        </div>
+      );
+
+    if (uploadMutation.isError)
+      return (
+        <div className="flex items-center gap-2 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4" />
+          Upload failed. Please try again.
+        </div>
+      );
+
+    if (uploadMutation.isSuccess)
+      return (
+        <div className="flex items-center gap-2 text-sm text-violet-700">
+          <Sparkles className="h-4 w-4" />
+          Resume uploaded. Opening preview...
+        </div>
+      );
+
     return null;
   };
 
-  const getStatusMessage = () => {
-    if (uploadMutation.isPending) return "Uploading resume...";
-    if (uploadMutation.isSuccess) return "Resume uploaded successfully!";
-    if (uploadMutation.isError) return "Upload failed. Please try again.";
-    return "";
-  };
-
-  const getStatusColor = () => {
-    if (uploadMutation.isPending) return "text-blue-700";
-    if (uploadMutation.isSuccess) return "text-emerald-700";
-    if (uploadMutation.isError) return "text-rose-700";
-    return "";
-  };
-
-  const subtleCardRing =
-    "relative overflow-hidden border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] rounded-xl";
-  const topGlow =
-    "pointer-events-none absolute -top-24 left-1/2 h-40 w-96 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-100/60 via-sky-100/40 to-fuchsia-100/50 blur-3xl";
+  // ✅ FIXED WIDTH CARD (won't grow on long names/urls)
+  const fixedCard =
+    "w-full max-w-[380px] lg:max-w-[380px] lg:min-w-[380px] shrink-0 " +
+    "rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] overflow-hidden";
 
   return (
     <>
-      {/* ✅ keep width EXACTLY the same */}
-      <Card className={`w-full max-w-sm ${subtleCardRing} ${className}`}>
-        <div className={topGlow} />
-
-        <CardHeader className="text-center pb-4 relative">
-          {/* Badge line */}
-          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-700 shadow-sm">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+      <Card className={`${fixedCard} ${className}`}>
+        <CardHeader className="pb-3">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700">
+            <ShieldCheck className="h-4 w-4 text-blue-600" />
             ATS-friendly • PDF/DOCX
           </div>
 
-          <CardTitle className="text-lg font-semibold text-slate-900">
-            Upload your resume
+          <CardTitle className="mt-3 text-base font-semibold text-slate-900">
+            Resume
           </CardTitle>
-          <p className="text-sm text-slate-600 mt-1">
-            Upload resume for job applications.
+          <p className="text-sm text-slate-600">
+            Upload to apply faster. You’ll get an autofill preview.
           </p>
         </CardHeader>
 
-        <CardContent className="space-y-4 relative">
-          {/* Existing Resume */}
+        <CardContent className="space-y-4">
+          {/* EXISTING RESUME */}
           {existingResumeUrl && !showUploadForm && (
-            <div className="space-y-4">
-              <div className="group flex items-center gap-3 p-3 rounded-xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50 to-white">
-                <div className="h-10 w-10 rounded-xl border border-emerald-200 bg-white flex items-center justify-center shrink-0">
-                  <FileText className="h-5 w-5 text-emerald-700" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                  <FileText className="h-5 w-5 text-blue-700" />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
+                {/* ✅ min-w-0 prevents flex overflow pushing width */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">
                     {existingFileName}
                   </p>
-                  <p className="text-xs text-emerald-700">Current application resume</p>
+                  <p className="text-xs text-slate-600 truncate">
+                    Current application resume
+                  </p>
                 </div>
 
                 <a
                   href={existingResumeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-lg border border-emerald-200 bg-white hover:bg-emerald-50 transition-colors"
-                  title="Download resume"
+                  className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                  title="Download"
                 >
-                  <Download className="h-4 w-4 text-emerald-700" />
+                  <Download className="h-4 w-4 text-slate-700" />
                 </a>
               </div>
 
@@ -205,34 +198,19 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
                 variant="dark"
                 className="w-full"
               />
-
-              {/* small hint */}
-              <div className="flex items-start gap-2 text-xs text-slate-600">
-                <Sparkles className="h-4 w-4 text-violet-600 mt-0.5" />
-                <span>
-                  After upload, you’ll get an <span className="font-semibold">AI autofill preview</span>.
-                </span>
-              </div>
             </div>
           )}
 
-          {/* Drop Zone */}
+          {/* DROPZONE */}
           {(!existingResumeUrl || showUploadForm) && !selectedFile && (
-            <div className="space-y-4">
-              {/* fancy helper above dropzone without changing width */}
-              <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white p-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                    <UploadCloud className="h-4 w-4 text-slate-700" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900">
-                      Drop it here
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      PDF/DOC/DOCX • Up to 10MB
-                    </p>
-                  </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+                  <UploadCloud className="h-4 w-4 text-slate-700" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">Drop your resume</p>
+                  <p className="text-xs text-slate-600">PDF/DOC/DOCX • up to 10MB</p>
                 </div>
               </div>
 
@@ -253,16 +231,16 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
             </div>
           )}
 
-          {/* Selected File */}
+          {/* SELECTED FILE */}
           {selectedFile && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white">
-                <div className="h-10 w-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center shrink-0">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white">
                   <FileText className="h-5 w-5 text-blue-700" />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">
                     {selectedFile.name}
                   </p>
                   <p className="text-xs text-slate-600">{formatFileSize(selectedFile.size)}</p>
@@ -271,42 +249,33 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
                 {!uploadMutation.isPending && (
                   <button
                     onClick={removeSelectedFile}
-                    className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
-                    title="Remove file"
+                    className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                    title="Remove"
                   >
-                    <span className="sr-only">Remove file</span>
-                    ✕
+                    <X className="h-4 w-4 text-slate-700" />
                   </button>
                 )}
               </div>
 
               {uploadMutation.isPending && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">Uploading...</span>
-                    <span className="text-slate-900 font-semibold tabular-nums">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Uploading</span>
+                    <span className="font-semibold tabular-nums text-slate-900">
                       {uploadProgress}%
                     </span>
                   </div>
 
-                  {/* upgraded progress bar */}
-                  <div className="w-full rounded-full border border-slate-200 bg-white p-1">
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-blue-600 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
                 </div>
               )}
 
-              {(uploadMutation.isPending || uploadMutation.isSuccess || uploadMutation.isError) && (
-                <div className="flex items-center gap-2 text-sm">
-                  {getStatusIcon()}
-                  <span className={getStatusColor()}>{getStatusMessage()}</span>
-                </div>
-              )}
+              {statusRow()}
 
               {!uploadMutation.isSuccess && (
                 <Button
@@ -320,19 +289,9 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
               )}
             </div>
           )}
-
-          {uploadMutation.isSuccess && (
-            <div className="flex items-start gap-2 p-3 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white">
-              <Sparkles className="h-5 w-5 text-violet-700 shrink-0 mt-0.5" />
-              <p className="text-sm text-violet-900">
-                AI autofill preview will open automatically!
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* AUTOFILL MODAL */}
       <AutofillPreviewModal
         isOpen={showAutofillModal}
         onClose={() => {
@@ -341,7 +300,6 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
         }}
         documentId={uploadedDocumentId}
         onApplySuccess={async () => {
-          console.log("Autofill applied -> calling onAutofillApplied()");
           await onAutofillApplied?.();
         }}
       />

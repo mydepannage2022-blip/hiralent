@@ -157,3 +157,38 @@ export const updateJobBenefitsSchema = z.object({
   job_benefits: z.array(jobBenefitSchema)
     .max(20, "Maximum 20 benefits allowed")
 });
+// ==================== PROJECTS ====================
+
+export const projectSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Project name is required").max(150),
+  description: z.string().min(1, "Description is required").max(2000),
+  technologies: z.array(z.string().min(1)).max(50).default([]),
+
+  project_url: z.string().url("Invalid project URL").max(255).optional().or(z.literal("")),
+  github_url: z.string().url("Invalid GitHub URL").max(255).optional().or(z.literal("")),
+
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
+  is_ongoing: z.coerce.boolean().optional(),
+  status: z.string().max(50).optional(),
+});
+
+export const updateProjectsSchema = z.object({
+  projects: z.array(projectSchema).max(50, "Maximum 50 projects allowed"),
+});
+export const languageItemSchema = z.object({
+  language: z.string().trim().min(1, "language is required"),
+  proficiency: z.enum(["native", "fluent", "advanced", "intermediate", "basic"]),
+});
+
+export const updateLanguagesSchema = z.object({
+  languages: z.array(languageItemSchema).default([]),
+});
+
+export const addLanguageSchema = languageItemSchema;
+
+export const updateLanguageAtIndexSchema = z.object({
+  language: z.string().trim().min(1).optional(),
+  proficiency: z.enum(["native", "fluent", "advanced", "intermediate", "basic"]).optional(),
+});

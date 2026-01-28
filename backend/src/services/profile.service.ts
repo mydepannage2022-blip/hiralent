@@ -20,7 +20,9 @@ import {
   SocialLink,
   JobBenefit,
   CandidateServiceError,
-  APIResponse
+  APIResponse,
+  UpdateProjectsInput, 
+  ProjectsUpdateResult,
 } from "../types/candidate.types";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
@@ -347,28 +349,28 @@ export const updateLinks = async (
   try {
     await validateProfileData({ links: data.links });
 
+    const links = normalizeLinks(data.links || []);
+
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
-      update: {
-        links: JSON.stringify(data.links),
-        updated_at: new Date()
-      },
-      create: {
-        candidate_id: candidateId,
-        links: JSON.stringify(data.links)
-      }
+      update: { links: JSON.stringify(links), updated_at: new Date() },
+      create: { candidate_id: candidateId, links: JSON.stringify(links) }
     });
+
+    const { calculateProfileCompleteness } = await import("./candidate.service");
+    await calculateProfileCompleteness(candidateId);
 
     return {
       success: true,
-      message: `Successfully updated ${data.links.length} social links`,
-      links_count: data.links.length
+      message: `Successfully updated ${links.length} social links`,
+      links_count: links.length
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating links:", error);
     throw new Error(`Failed to update links: ${error.message || "Unknown error"}`);
   }
 };
+
 
 export const addLink = async (
   candidateId: string,
@@ -388,10 +390,11 @@ export const addLink = async (
       }
     }
 
-    const existingLink = links.find(link => link.platform === linkData.platform);
-    if (existingLink) {
-      throw new Error(`${linkData.platform} link already exists`);
-    }
+    const p = normalizePlatform(linkData.platform);
+    const u = canonicalizeUrl(linkData.url);
+    const exists = links.some(l => normalizePlatform(l.platform) === p && canonicalizeUrl(l.url).toLowerCase() === u.toLowerCase());
+    if (exists) throw new Error("Link already exists");
+
 
     links.push(linkData);
 
@@ -685,3 +688,230 @@ export const uploadApplicationResume = async (
     throw new Error(`Application resume upload failed: ${error?.message || "Unknown error"}`);
   }
 };
+
+export const updateProjects = async (
+  candidateId: string,
+  data: UpdateProjectsInput
+): Promise<ProjectsUpdateResult> => {
+  try {
+    await validateProfileData({ projects: data.projects }); // optional; only if your validateProfileData supports it
+
+    await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        projects: JSON.stringify(data.projects),
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        projects: JSON.stringify(data.projects),
+      },
+    });
+
+    const { calculateProfileCompleteness } = await import("./candidate.service");
+    await calculateProfileCompleteness(candidateId);
+
+    return {
+      success: true,
+      message: `Successfully updated ${data.projects.length} projects`,
+      projects_count: data.projects.length,
+    };
+  } catch (error: any) {
+    console.error("Error updating projects:", error);
+    throw new Error(`Failed to update projects: ${error.message || "Unknown error"}`);
+  }
+};
+
+type LanguageData = {
+  language: string;
+  proficiency: "native" | "fluent" | "advanced" | "intermediate" | "basic";
+};
+
+function parseJsonArray<T>(value: any): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value as T[];
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeLanguages(arr: any[]): LanguageData[] {
+  return arr
+    .map((x) => ({
+      language: String(x?.language ?? "").trim(),
+      proficiency: (String(x?.proficiency ?? "intermediate") as LanguageData["proficiency"]),
+    }))
+    .filter((x) => x.language.length > 0)
+    .map((x) => ({
+      ...x,
+      proficiency: (["native", "fluent", "advanced", "intermediate", "basic"].includes(x.proficiency)
+        ? x.proficiency
+        : "intermediate") as LanguageData["proficiency"],
+    }));
+}
+
+//  GET
+export async function getLanguages(candidateId: string) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const languages = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+  return { languages };
+}
+
+//  PUT (bulk replace)
+export async function updateLanguages(candidateId: string, languagesInput: LanguageData[]) {
+  const languages = normalizeLanguages(languagesInput ?? []);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(languages), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(languages) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully updated ${languages.length} languages`,
+    languages_count: languages.length,
+    languages,
+  };
+}
+
+//  POST (add one)
+export async function addLanguage(candidateId: string, input: LanguageData) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  // avoid duplicates by language name (case-insensitive)
+  const exists = current.some((l) => l.language.toLowerCase() === input.language.trim().toLowerCase());
+  if (exists) throw new Error("Language already exists");
+
+  const next = normalizeLanguages([...current, input]);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully added language: ${input.language}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+
+//  DELETE (remove by index)
+export async function deleteLanguage(candidateId: string, index: number) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  if (index < 0 || index >= current.length) {
+    throw new Error("Language index out of range");
+  }
+
+  const removed = current[index];
+  const next = current.filter((_, i) => i !== index);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully deleted language: ${removed.language}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+
+//  OPTIONAL: PATCH (update one entry by index)
+export async function updateLanguageAtIndex(
+  candidateId: string,
+  index: number,
+  patch: Partial<LanguageData>
+) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  if (index < 0 || index >= current.length) {
+    throw new Error("Language index out of range");
+  }
+
+  const updated = { ...current[index], ...patch };
+  const next = [...current];
+  next[index] = normalizeLanguages([updated])[0] ?? current[index];
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully updated language #${index + 1}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+const cleanStr = (v?: string | null) => String(v ?? "").trim();
+
+const normalizePlatform = (p?: string) => cleanStr(p).toLowerCase() || "other";
+
+const canonicalizeUrl = (u?: string) => cleanStr(u).replace(/\/+$/g, "");
+
+function normalizeLinks(raw: any[]): SocialLink[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const normalized = arr
+    .map((x) => ({
+      platform: normalizePlatform(x?.platform) as any,
+      url: canonicalizeUrl(x?.url),
+      display_name: cleanStr(x?.display_name),
+    }))
+    .filter((x) => !!x.url);
+
+  const seen = new Set<string>();
+  return normalized.filter((x) => {
+    const key = `${x.platform}::${x.url.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}

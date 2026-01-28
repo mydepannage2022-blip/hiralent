@@ -2226,7 +2226,8 @@ model Certification {
   candidate_id     String
   name             String
   issuer           String
-  issue_date       DateTime
+  issue_date       DateTime?   //  make optional
+
   expiry_date      DateTime?
   credential_id    String?
   credential_url   String?

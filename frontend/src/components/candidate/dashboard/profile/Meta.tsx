@@ -1,295 +1,461 @@
 "use client";
 
-import React, { useState, useEffect,useMemo  } from 'react';
-import { motion } from 'framer-motion';
-import { Upload, Camera, Check, X } from 'lucide-react';
-import { HiCheckBadge, HiExclamationTriangle } from 'react-icons/hi2';
-import { useAuth } from '@/src/context/AuthContext';
-import { useProfile } from '@/src/context/ProfileContext'; //Added profile context
-import { useUploadProfilePicture } from '@/src/lib/profile/profile.queries';
-import Button from '@/src/components/layout/Button';
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  MapPin,
+  BadgeCheck,
+  AlertTriangle,
+  FileText,
+  Link as LinkIcon,
+  ExternalLink,
+  Briefcase,
+  GraduationCap,
+  Sparkles,
+  Camera,
+  Check,
+  X,
+} from "lucide-react";
+import { useAuth } from "@/src/context/AuthContext";
+import { useProfile } from "@/src/context/ProfileContext";
+import { useUploadProfilePicture } from "@/src/lib/profile/profile.queries";
 
-const MetaSection: React.FC = () => {
-  const { user } = useAuth(); //Only for user info (name, email verification)
-  const { profileData } = useProfile(); //For profile data (picture, headline, resume_application_url)
-  
+/* ---------------- helpers ---------------- */
+
+function cleanStr(v?: any) {
+  return String(v ?? "").trim();
+}
+
+function parseJsonArray<T>(value: any): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function toAbsoluteUrl(raw?: string | null) {
+  const v = cleanStr(raw);
+  if (!v) return "";
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").trim();
+  const base = apiUrl.replace(/\/+$/, "");
+  const path = v.startsWith("/") ? v : `/${v}`;
+  return `${base}${path}`;
+}
+
+function clampList<T>(arr: T[], n: number) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, Math.max(0, n));
+}
+
+/* ---------------------------------------- */
+
+export default function MetaSection() {
+  const { user } = useAuth();
+  const { profileData } = useProfile();
+  const reduceMotion = useReducedMotion();
+
+  const { mutate: uploadProfilePicture, isPending: isUploading } = useUploadProfilePicture();
+
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
-  const { mutate: uploadProfilePicture, isPending } = useUploadProfilePicture();
+  const profilePicture =
+    previewUrl ||
+    cleanStr((profileData as any)?.profile_picture_url) ||
+    "/images/candidate.jpg";
 
-  // Get profile picture with fallback
-  const getProfileImage = () => {
-    if (previewUrl) return previewUrl;
-    if (profileData?.profile_picture_url) { //From profile context
-      return profileData.profile_picture_url;
-    }
-    return "/images/candidate.jpg";
-  };
+  const fullName = cleanStr(user?.full_name) || "Unknown User";
+  const headline =
+    cleanStr((profileData as any)?.headline) ||
+    cleanStr((profileData as any)?.about_me) ||
+    cleanStr(user?.email);
 
-  // Get user name (from auth context)
-  const getUserName = () => {
-    return user?.full_name || "Unknown User";
-  };
+  const location = cleanStr((profileData as any)?.location);
+  const isVerified = !!user?.is_email_verified;
 
-  // Get headline with email fallback
-  const getHeadlineOrEmail = () => {
-    if (profileData?.headline) { //From profile context
-      return profileData.headline;
-    }
-    if (user?.email) { //Fallback to auth context email
-      return user.email;
-    }
-    return null;
-  };
+  const resumeUrl = useMemo(() => {
+    return toAbsoluteUrl((profileData as any)?.resume_application_url);
+  }, [profileData]);
 
-  // Check if user is verified (from auth context)
-  const isEmailVerified = () => {
-    return user?.is_email_verified || false;
-  };
+  const links = useMemo(() => {
+    return parseJsonArray<{ platform?: string; url?: string; display_name?: string }>(
+      (profileData as any)?.links
+    ).filter((x) => cleanStr(x?.url));
+  }, [profileData]);
 
-  // Get verification icon
-  const getVerificationIcon = () => {
-    if (isEmailVerified()) {
-      return (
-        <HiCheckBadge 
-          className="w-4 h-4 text-green-500" 
-          title="Email Verified"
-        />
-      );
-    } else {
-      return (
-        <HiExclamationTriangle 
-          className="w-4 h-4 text-orange-500" 
-          title="Email Not Verified"
-        />
-      );
-    }
-  };
+  const skills = useMemo(() => {
+    const raw = (profileData as any)?.skills ?? (profileData as any)?.candidate_skills;
+    const arr = parseJsonArray<any>(raw);
+    return arr
+      .map((s) => cleanStr(s?.skill_name ?? s?.name ?? s))
+      .filter(Boolean);
+  }, [profileData]);
 
-  // Handle file selection
-  const handleFileSelect = (file: File) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Please select a valid image file (JPG, JPEG, or PNG)');
+  const experience = useMemo(() => {
+    return parseJsonArray<{ job_title?: string; company?: string }>(
+      (profileData as any)?.experience
+    );
+  }, [profileData]);
+
+  const education = useMemo(() => {
+    return parseJsonArray<{ degree?: string; institution?: string }>(
+      (profileData as any)?.education
+    );
+  }, [profileData]);
+
+  const topSkills = clampList(skills, 2);
+  const extraSkillsCount = Math.max(0, skills.length - topSkills.length);
+
+  const topExp = experience?.[0];
+  const topEdu = education?.[0];
+
+  const handleViewResume = () => {
+    if (!resumeUrl) {
+      alert("Resume not available. Please upload your resume first.");
       return;
     }
+    window.open(resumeUrl, "_blank", "noopener,noreferrer");
+  };
 
+  const onPickPhoto = (file: File) => {
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      alert("Please choose a valid image (JPG, PNG, WEBP).");
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      alert("File must be less than 5MB.");
       return;
     }
 
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
+    setIsEditingPhoto(true);
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) onPickPhoto(f);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileSelect(file);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleSaveImage = () => {
-    if (selectedFile) {
-      uploadProfilePicture(selectedFile, {
-        onSuccess: () => {
-          setIsEditing(false);
-          setSelectedFile(null);
-          setPreviewUrl(null);
-          // Profile data will be updated automatically via context refresh
-        }
-      });
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
+  const handleCancelPhoto = () => {
+    setIsEditingPhoto(false);
     setSelectedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
   };
 
-  const handleStartEdit = () => {
-    setIsEditing(true);
-  };
-const resumeUrl = useMemo(() => {
-  const raw = profileData?.resume_application_url;
-  if (!raw) return "";
+  const handleSavePhoto = () => {
+    if (!selectedFile) return;
 
-  // already absolute (cloudinary / full backend url)
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-
-  // relative => prefix backend
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:5000";
-  const base = apiUrl.replace(/\/+$/, "");
-  const path = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${base}${path}`;
-}, [profileData?.resume_application_url]);
-
-  //Updated resume handler - uses profileData.resume_application_url
-  const handleViewResume = () => {
-    if (resumeUrl) {
-      window.open(resumeUrl, "_blank", "noopener,noreferrer");
-    }
-    else {
-      console.log('No resume URL found in profile data');
-      alert('Resume not available. Please upload your resume first.');
-    }
+    uploadProfilePicture(selectedFile, {
+      onSuccess: () => {
+        setIsEditingPhoto(false);
+        setSelectedFile(null);
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      },
+      onError: (err) => {
+        console.error(err);
+        alert("Upload failed. Please try again.");
+      },
+    });
   };
 
-  // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
-  const headlineOrEmail = getHeadlineOrEmail();
-  
+  // Smaller motion + subtle hover
+  const floaty = reduceMotion
+    ? {}
+    : {
+        animate: { y: [0, -4, 0] },
+        transition: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+      };
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full flex justify-start items-center gap-4 p-none lg:p-3 ring ring-[#EDEDED] rounded-xl mb-6"
-    >
-      {/* Profile Picture Section */}
-      <div className="relative">
-        {!isEditing ? (
-          <div className="relative group">
-            <img 
-              src={getProfileImage()} 
-              alt="User Profile" 
-              className="w-32 h-32 rounded-xl object-cover hidden lg:block"
+    <div className="w-full">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative mx-auto w-full max-w-[960px] overflow-hidden rounded-2xl border border-[#EDEDED] bg-white"
+      >
+        {/* soft background blobs */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-8 h-48 w-48 rounded-full bg-blue-50" />
+          <div className="absolute left-44 top-20 h-60 w-60 rounded-full bg-blue-100/60" />
+          <div className="absolute right-10 top-8 h-48 w-48 rounded-full bg-sky-50" />
+        </div>
+
+        {/* orbit lines */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="h-[280px] w-[280px] rounded-full border border-dashed border-blue-200/70" />
+          <div className="absolute h-[380px] w-[380px] rounded-full border border-dashed border-blue-200/40" />
+        </div>
+
+        {/* tiny moving dots */}
+        {!reduceMotion && (
+          <div className="pointer-events-none absolute inset-0">
+            <motion.span
+              className="absolute left-1/2 top-1/2 h-2 w-2 rounded-full bg-blue-500/80"
+              style={{ translateX: -190, translateY: -36 }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 11, repeat: Infinity, ease: "linear" }}
             />
-            <div 
-              onClick={handleStartEdit}
-              className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <Camera className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        ) : (
-          <div className="w-32 h-32 relative">
-            {/* File Upload Area */}
-            <motion.div
-              className={`w-full h-full border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ${
-                isDragOver 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-300 hover:border-blue-500'
-              }`}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-            >
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png"
-                onChange={handleFileInputChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              
-              {previewUrl ? (
-                <img 
-                  src={previewUrl} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover rounded-xl"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                  <p className="text-xs text-gray-500">Upload Photo</p>
-                </div>
-              )}
-            </motion.div>
-            
-            {/* Edit Controls */}
-            <div className="absolute -bottom-2 -right-2 flex gap-1">
-              <button
-                onClick={handleCancelEdit}
-                disabled={isPending}
-                className="w-6 h-6 bg-gray-600 text-white rounded-full flex items-center justify-center hover:bg-gray-700 disabled:opacity-50"
-              >
-                <X className="w-3 h-3" />
-              </button>
-              {selectedFile && (
-                <button
-                  onClick={handleSaveImage}
-                  disabled={isPending}
-                  className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isPending ? (
-                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Check className="w-3 h-3" />
-                  )}
-                </button>
-              )}
-            </div>
+            <motion.span
+              className="absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full bg-blue-400/70"
+              style={{ translateX: 160, translateY: 86 }}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            />
           </div>
         )}
-      </div>
 
-      {/* User Info Section */}
-      <div className="flex flex-col justify-center items-start gap-2">
-        <div>
-          {/* User Name with Verification Icon */}
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm lg:text-lg text-[#222]">
-              {getUserName()}
-            </h3>
-            {getVerificationIcon()}
+        {/* MAIN GRID (tighter) */}
+        <div className="relative grid grid-cols-1 items-center gap-5 p-5 lg:grid-cols-3 lg:gap-6 lg:p-6">
+          {/* LEFT CARD (compact) */}
+          <motion.div
+            {...floaty}
+            whileHover={reduceMotion ? undefined : { y: -4, scale: 1.01 }}
+            className="rounded-2xl border border-gray-200 bg-white/92 p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {/* show more headline */}
+                <p className="text-[12px] font-semibold leading-snug text-gray-900 lg:text-[13px]">
+                  <span className="line-clamp-2">{headline || "Your headline"}</span>
+                </p>
+
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600">
+                  {location ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                      <span className="truncate">{location}</span>
+                    </span>
+                  ) : null}
+
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
+                      isVerified
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-amber-200 bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {isVerified ? (
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    )}
+                    {isVerified ? "Verified" : "Not verified"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 pt-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-2 w-2 rounded-full ${i < 5 ? "bg-blue-500" : "bg-blue-200"}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2.5">
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-700">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  Highlighted skills
+                </p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {topSkills.length ? (
+                    <>
+                      {topSkills.map((s) => (
+                        <span
+                          key={s}
+                          className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                      {extraSkillsCount > 0 ? (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-700">
+                          +{extraSkillsCount} more
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-[11px] text-gray-500">No skills yet</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <LinkIcon className="h-3.5 w-3.5 text-blue-600" />
+                  Links: {links.length}
+                </span>
+                <span>Skills: {skills.length}</span>
+              </div>
+
+              <button
+                onClick={handleViewResume}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-blue-700 active:translate-y-[1px]"
+              >
+                <FileText className="h-4 w-4" />
+                View Resume
+                <ExternalLink className="h-4 w-4 opacity-90" />
+              </button>
+            </div>
+          </motion.div>
+
+          {/* CENTER AVATAR (slightly smaller but still big) */}
+          <div className="relative flex items-center justify-center py-1 lg:py-0">
+            <motion.div
+              animate={reduceMotion ? undefined : { scale: [1, 1.015, 1] }}
+              transition={
+                reduceMotion
+                  ? undefined
+                  : { duration: 4.8, repeat: Infinity, ease: "easeInOut" }
+              }
+              className="relative"
+            >
+              <div className="h-40 w-40 rounded-full bg-blue-100/70 p-2 shadow-[0_18px_50px_rgba(37,99,235,0.16)] lg:h-44 lg:w-44">
+                <div className="relative h-full w-full rounded-full bg-white p-2">
+                  <img
+                    src={profilePicture}
+                    alt="Candidate"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+
+                  {/* Camera overlay */}
+                  <label className="group absolute inset-0 cursor-pointer rounded-full">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="hidden"
+                      onChange={handleFileInput}
+                      disabled={isUploading}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition group-hover:bg-black/35">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-blue-600 opacity-0 shadow-md transition group-hover:opacity-100">
+                        <Camera className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Save / Cancel */}
+                  {isEditingPhoto && (
+                    <div className="absolute -bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2">
+                      <button
+                        onClick={handleCancelPhoto}
+                        disabled={isUploading}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60"
+                        title="Cancel"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        onClick={handleSavePhoto}
+                        disabled={!selectedFile || isUploading}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                        title="Save"
+                      >
+                        {isUploading ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* little link button */}
+              <motion.div whileHover={reduceMotion ? undefined : { scale: 1.05 }} className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
+                  <LinkIcon className="h-5 w-5" />
+                </div>
+              </motion.div>
+            </motion.div>
           </div>
-          
-          {/* Headline or Email */}
-          {headlineOrEmail && (
-            <p className="text-gray-600 text-[10px] lg:text-sm leading-relaxed">
-              {headlineOrEmail}
-            </p>
-          )}
-        </div>
-      
-        {/* Single Resume Button */}
-        <div className="flex justify-start mt-2">
-          <Button 
-            text="View Resume" 
-            variant="dark" 
-            animation={false}
-            onClick={handleViewResume}
-          />
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
-export default MetaSection;
+          {/* RIGHT CARD (compact) */}
+          <motion.div
+            {...floaty}
+            whileHover={reduceMotion ? undefined : { y: -4, scale: 1.01 }}
+            className="rounded-2xl border border-gray-200 bg-white/92 p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-semibold text-gray-900">Profile summary</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">Quick snapshot</p>
+              </div>
+
+              <div className="flex items-center gap-1 pt-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-2 w-2 rounded-full ${i < 4 ? "bg-blue-500" : "bg-blue-200"}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                  <Briefcase className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-800">Latest experience</p>
+                  <p className="truncate text-[11px] text-gray-600">
+                    {topExp
+                      ? `${cleanStr(topExp.job_title) || "Role"} · ${cleanStr(topExp.company) || "Company"}`
+                      : "No experience added"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                  <GraduationCap className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-800">Education</p>
+                  <p className="truncate text-[11px] text-gray-600">
+                    {topEdu
+                      ? `${cleanStr(topEdu.degree) || "Degree"} · ${cleanStr(topEdu.institution) || "Institution"}`
+                      : "No education added"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-[10px] text-gray-500">
+                <span className="truncate">{fullName}</span>
+                <span className="shrink-0">{skills.length} skills</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

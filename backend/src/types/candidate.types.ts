@@ -631,3 +631,25 @@ export interface SkillsUpdateResult {
   skills: PopulatedSkill[];
   total_skills_count: number;
 }
+export type ProjectData = {
+  id?: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  project_url?: string;
+  github_url?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_ongoing?: boolean;
+  status?: string;
+};
+
+export type UpdateProjectsInput = {
+  projects: ProjectData[];
+};
+
+export type ProjectsUpdateResult = {
+  success: boolean;
+  message: string;
+  projects_count: number;
+};

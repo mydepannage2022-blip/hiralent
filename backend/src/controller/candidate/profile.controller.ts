@@ -242,29 +242,28 @@ export const addEducationController = async (req: Request, res: Response): Promi
 export const updateLinksController = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      } as APIResponse);
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
       return;
     }
 
-    const result = await profileService.updateLinks(req.user.user_id, req.body);
+    const payload = Array.isArray(req.body) ? { links: req.body } : req.body;
+    const result = await profileService.updateLinks(req.user.user_id, payload);
 
     res.status(200).json({
       success: true,
       data: result,
-      message: 'Social links updated successfully'
+      message: "Social links updated successfully"
     } as APIResponse);
   } catch (error: any) {
-    console.error('Error updating links:', error);
+    console.error("Error updating links:", error);
     res.status(400).json({
       success: false,
-      message: error.message || 'Failed to update links',
+      message: error.message || "Failed to update links",
       error: error.message
     } as APIResponse);
   }
 };
+
 
 export const addLinkController = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -441,6 +440,157 @@ export const uploadApplicationResumeController = async (
       message: 'Failed to upload application resume',
       error_code: 'UPLOAD_FAILED',
       error: error instanceof Error ? error.message : 'Unknown error'
+    } as APIResponse);
+  }
+};
+
+export const updateProjectsController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    const result = await profileService.updateProjects(req.user.user_id, req.body);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Projects updated successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    console.error("Error updating projects:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update projects",
+      error: error.message,
+    } as APIResponse);
+  }
+};
+export const getLanguagesController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    const data = await profileService.getLanguages(req.user.user_id);
+
+    res.status(200).json({
+      success: true,
+      data,
+      message: "Languages fetched successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to fetch languages",
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+export const updateLanguagesController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    // body validated by schema: { languages: [...] }
+    const result = await profileService.updateLanguages(req.user.user_id, req.body.languages);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Languages updated successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update languages",
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+export const addLanguageController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    const result = await profileService.addLanguage(req.user.user_id, req.body);
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "Language added successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to add language",
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+export const deleteLanguageController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    const index = Number(req.params.index);
+    if (Number.isNaN(index)) {
+      res.status(400).json({ success: false, message: "Valid index is required" } as APIResponse);
+      return;
+    }
+
+    const result = await profileService.deleteLanguage(req.user.user_id, index);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Language deleted successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to delete language",
+      error: error.message,
+    } as APIResponse);
+  }
+};
+
+export const updateLanguageAtIndexController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
+      return;
+    }
+
+    const index = Number(req.params.index);
+    if (Number.isNaN(index)) {
+      res.status(400).json({ success: false, message: "Valid index is required" } as APIResponse);
+      return;
+    }
+
+    const result = await profileService.updateLanguageAtIndex(req.user.user_id, index, req.body);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Language updated successfully",
+    } as APIResponse);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update language",
+      error: error.message,
     } as APIResponse);
   }
 };
