@@ -2965,7 +2965,575 @@ async def get_scraping_status():
 
 
 
+# =============================================================================
+# USER-FACING PATTERN EXTRACTION FROM URLs
+# =============================================================================
 
+# =============================================================================
+# USER-FACING PATTERN EXTRACTION FROM URLs
+# =============================================================================
+@app.post("/extract-patterns-from-urls")
+async def extract_patterns_from_urls(request: Dict[str, Any]):
+    """
+    Extract algorithm patterns from user-provided URLs.
+    
+    Body:
+        {
+            "urls": ["https://leetcode.com/problems/two-sum/"],
+            "platform": "leetcode"  # or "github", "stackoverflow", "hackerrank"
+        }
+    
+    Returns patterns in the format expected by Node.js backend
+    """
+    try:
+        urls = request.get("urls", [])
+        platform = request.get("platform")
+        
+        if not urls:
+            raise HTTPException(status_code=400, detail="URLs are required")
+        
+        if not platform:
+            raise HTTPException(status_code=400, detail="Platform is required")
+        
+        print(f"🔍 [USER PATTERN EXTRACTION] Extracting patterns from {len(urls)} URLs on {platform}")
+        
+        # Get the pattern extractor
+        extractor = UnifiedPatternExtractor()
+        
+        all_patterns = []
+        
+        for url in urls:
+            try:
+                print(f"📥 [USER EXTRACTION] Processing URL: {url}")
+                
+                # Extract pattern based on platform
+                if platform == "leetcode":
+                    # Extract slug from URL
+                    import re
+                    match = re.search(r'/problems/([^/?]+)', url)
+                    if not match:
+                        print(f"⚠️ Could not extract slug from {url}")
+                        continue
+                    
+                    slug = match.group(1)
+                    spider = LeetCodePatternSpider()
+                    
+                    # Fetch metadata
+                    meta = spider._fetch_meta(slug)
+                    if not meta:
+                        print(f"⚠️ Could not fetch metadata for {slug}")
+                        continue
+                    
+                    # Extract pattern
+                    pattern_data = spider._extract_pattern(meta)
+                    
+                    # Convert to expected format
+                    pattern = {
+                        "source": "leetcode",
+                        "source_id": slug,
+                        "pattern": pattern_data.get("pattern", "general_algorithm"),
+                        "domain": pattern_data.get("domain", "algorithms"),
+                        "difficulty": pattern_data.get("difficulty", "medium"),
+                        "tags": pattern_data.get("tags", []),
+                        "constraints": pattern_data.get("constraints", {}),
+                        "input_structure": pattern_data.get("input_structure", {}),
+                        "extracted_at": int(time.time())
+                    }
+                    
+                    all_patterns.append(pattern)
+                    print(f"✅ Extracted pattern: {pattern.get('pattern')} from {slug}")
+                
+                elif platform == "github":
+                    # GitHub repository URL
+                    print(f"📥 [GITHUB] Processing repository URL: {url}")
+                    
+                    # Extract owner and repo from URL
+                    import re
+                    match = re.search(r'github\.com/([^/]+)/([^/]+)', url)
+                    if not match:
+                        print(f"⚠️ Could not extract owner/repo from {url}")
+                        continue
+                    
+                    owner = match.group(1)
+                    repo = match.group(2).rstrip('/')
+                    
+                    print(f"👤 Owner: {owner}, 📁 Repo: {repo}")
+                    
+                    # Fetch repository file structure using GitHub API
+                    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
+                    
+                    headers = {
+                        "Accept": "application/vnd.github.v3+json",
+                        "User-Agent": "Mozilla/5.0"
+                    }
+                    
+                    try:
+                        response = requests.get(api_url, headers=headers, timeout=10)
+                        
+                        if response.status_code != 200:
+                            print(f"⚠️ GitHub API error: {response.status_code}")
+                            continue
+                        
+                        contents = response.json()
+                        
+                        # Look for algorithm files
+                        algorithm_files = []
+                        
+                        for item in contents:
+                            if item["type"] == "file" and item["name"].endswith((".py", ".js", ".java", ".cpp", ".c")):
+                                algorithm_files.append(item)
+                            elif item["type"] == "dir":
+                                # Check common algorithm directories
+                                dir_name_lower = item["name"].lower()
+                                if any(keyword in dir_name_lower for keyword in ["algorithm", "sort", "search", "tree", "graph", "dp", "dynamic", "data-structure"]):
+                                    # Fetch directory contents
+                                    try:
+                                        dir_response = requests.get(item["url"], headers=headers, timeout=10)
+                                        if dir_response.status_code == 200:
+                                            dir_contents = dir_response.json()
+                                            algorithm_files.extend([f for f in dir_contents if f.get("type") == "file" and f.get("name", "").endswith((".py", ".js", ".java", ".cpp", ".c"))])
+                                    except Exception as e:
+                                        print(f"⚠️ Error fetching directory {item['name']}: {e}")
+                                        continue
+                        
+                        print(f"📂 Found {len(algorithm_files)} algorithm files")
+                        
+                        # Extract patterns from files (limit to first 10)
+                        for file_item in algorithm_files[:10]:
+                            try:
+                                file_name = file_item["name"]
+                                download_url = file_item.get("download_url")
+                                
+                                if not download_url:
+                                    continue
+                                
+                                # Detect pattern from filename
+                                pattern_name = "general_algorithm"
+                                
+                                filename_lower = file_name.lower()
+                                
+                                # Pattern detection from filename
+                                if "sort" in filename_lower:
+                                    if "quick" in filename_lower:
+                                        pattern_name = "quicksort"
+                                    elif "merge" in filename_lower:
+                                        pattern_name = "merge_sort"
+                                    elif "bubble" in filename_lower:
+                                        pattern_name = "bubble_sort"
+                                    else:
+                                        pattern_name = "sorting"
+                                elif "search" in filename_lower or "binary" in filename_lower:
+                                    pattern_name = "binary_search"
+                                elif "tree" in filename_lower:
+                                    if "bst" in filename_lower or "binary" in filename_lower:
+                                        pattern_name = "binary_tree"
+                                    else:
+                                        pattern_name = "tree_traversal"
+                                elif "graph" in filename_lower:
+                                    if "dfs" in filename_lower:
+                                        pattern_name = "depth_first_search"
+                                    elif "bfs" in filename_lower:
+                                        pattern_name = "breadth_first_search"
+                                    else:
+                                        pattern_name = "graph_traversal"
+                                elif "dp" in filename_lower or "dynamic" in filename_lower:
+                                    pattern_name = "dynamic_programming"
+                                elif "array" in filename_lower:
+                                    pattern_name = "array_manipulation"
+                                elif "string" in filename_lower:
+                                    pattern_name = "string_processing"
+                                elif "linked" in filename_lower or "list" in filename_lower:
+                                    pattern_name = "linked_list"
+                                elif "hash" in filename_lower:
+                                    pattern_name = "hash_table"
+                                elif "two" in filename_lower and "pointer" in filename_lower:
+                                    pattern_name = "two_pointers"
+                                
+                                # Determine language
+                                if file_name.endswith(".py"):
+                                    language = "python"
+                                elif file_name.endswith(".js"):
+                                    language = "javascript"
+                                elif file_name.endswith(".java"):
+                                    language = "java"
+                                elif file_name.endswith(".cpp") or file_name.endswith(".c"):
+                                    language = "cpp"
+                                else:
+                                    language = "unknown"
+                                
+                                # Estimate difficulty based on file complexity (simple heuristic)
+                                difficulty = "medium"  # Default
+                                if any(keyword in filename_lower for keyword in ["easy", "basic", "simple"]):
+                                    difficulty = "easy"
+                                elif any(keyword in filename_lower for keyword in ["hard", "advanced", "complex"]):
+                                    difficulty = "hard"
+                                
+                                pattern = {
+                                    "source": "github",
+                                    "source_id": f"{owner}/{repo}/{file_name}",
+                                    "pattern": pattern_name,
+                                    "domain": "algorithms",
+                                    "difficulty": difficulty,
+                                    "tags": [language, pattern_name.replace("_", "-")],
+                                    "constraints": {},
+                                    "input_structure": {},
+                                    "extracted_at": int(time.time()),
+                                    "metadata": {
+                                        "repository": f"{owner}/{repo}",
+                                        "file_name": file_name,
+                                        "language": language
+                                    }
+                                }
+                                
+                                all_patterns.append(pattern)
+                                print(f"✅ Extracted pattern '{pattern_name}' from {file_name}")
+                                
+                            except Exception as e:
+                                print(f"⚠️ Error processing file {file_item.get('name')}: {e}")
+                                continue
+                    
+                    except Exception as e:
+                        print(f"❌ Error accessing GitHub API: {e}")
+                        continue
+                
+                elif platform == "stackoverflow":
+                    # StackOverflow question URL
+                    import re
+                    match = re.search(r'/questions/(\d+)/', url)
+                    if not match:
+                        print(f"⚠️ Could not extract question ID from {url}")
+                        continue
+                    
+                    question_id = match.group(1)
+                    
+                    # Fetch question using StackExchange API
+                    api_url = f"https://api.stackexchange.com/2.3/questions/{question_id}"
+                    params = {
+                        "site": "stackoverflow",
+                        "filter": "withbody"
+                    }
+                    
+                    print(f"🔍 Fetching SO question {question_id}...")
+                    response = requests.get(api_url, params=params, timeout=10)
+                    
+                    if response.status_code != 200:
+                        print(f"⚠️ StackExchange API error: {response.status_code}")
+                        continue
+                    
+                    data = response.json()
+                    
+                    if not data.get("items"):
+                        print(f"⚠️ No question data found for {question_id}")
+                        continue
+                    
+                    question = data["items"][0]
+                    title = question.get("title", "")
+                    tags = question.get("tags", [])
+                    body = question.get("body", "")
+                    
+                    print(f"📝 SO Question: {title}")
+                    print(f"🏷️ Tags: {tags}")
+                    
+                    # Extract pattern from title and tags
+                    pattern_name = "general_algorithm"
+                    domain = "algorithms"
+                    
+                    # Detect pattern from tags
+                    tag_to_pattern = {
+                        "arrays": "array_manipulation",
+                        "array": "array_manipulation",
+                        "string": "string_processing",
+                        "recursion": "recursion",
+                        "dynamic-programming": "dynamic_programming",
+                        "sorting": "sorting",
+                        "hash-table": "hash_table",
+                        "hashtable": "hash_table",
+                        "binary-search": "binary_search",
+                        "tree": "tree_traversal",
+                        "binary-tree": "binary_tree",
+                        "graph": "graph_traversal",
+                        "linked-list": "linked_list",
+                        "two-pointers": "two_pointers",
+                        "sliding-window": "sliding_window",
+                        "greedy": "greedy_algorithm",
+                        "backtracking": "backtracking",
+                        "dfs": "depth_first_search",
+                        "bfs": "breadth_first_search",
+                        "queue": "queue_operations",
+                        "stack": "stack_operations"
+                    }
+                    
+                    # Check tags for pattern
+                    for tag in tags:
+                        if tag in tag_to_pattern:
+                            pattern_name = tag_to_pattern[tag]
+                            break
+                    
+                    # If no pattern found in tags, check title
+                    if pattern_name == "general_algorithm":
+                        title_lower = title.lower()
+                        for keyword, pattern in tag_to_pattern.items():
+                            if keyword.replace("-", " ") in title_lower:
+                                pattern_name = pattern
+                                break
+                    
+                    # Determine domain from tags
+                    if any(t in tags for t in ["python", "javascript", "java", "c++", "c#", "ruby", "go", "rust"]):
+                        domain = "programming"
+                    elif any(t in tags for t in ["algorithm", "data-structures"]):
+                        domain = "algorithms"
+                    elif any(t in tags for t in ["database", "sql", "mysql", "postgresql"]):
+                        domain = "database"
+                    
+                    # Estimate difficulty based on question score
+                    score = question.get("score", 0)
+                    if score < 10:
+                        difficulty = "easy"
+                    elif score < 50:
+                        difficulty = "medium"
+                    else:
+                        difficulty = "hard"
+                    
+                    pattern = {
+                        "source": "stackoverflow",
+                        "source_id": str(question_id),
+                        "pattern": pattern_name,
+                        "domain": domain,
+                        "difficulty": difficulty,
+                        "tags": tags[:10],  # Limit tags
+                        "constraints": {},
+                        "input_structure": {},
+                        "extracted_at": int(time.time()),
+                        "metadata": {
+                            "title": title,
+                            "score": score,
+                            "view_count": question.get("view_count", 0),
+                            "answer_count": question.get("answer_count", 0)
+                        }
+                    }
+                    all_patterns.append(pattern)
+                    
+                    print(f"✅ Extracted pattern '{pattern_name}' from SO question {question_id}")
+                
+                elif platform == "hackerrank":
+                    # HackerRank challenge URL
+                    import re
+                    match = re.search(r'/challenges/([^/?]+)', url)
+                    if not match:
+                        print(f"⚠️ Could not extract challenge slug from {url}")
+                        continue
+                    
+                    slug = match.group(1)
+                    
+                    # Pattern detection from slug
+                    pattern_name = "general_algorithm"
+                    slug_lower = slug.lower()
+                    
+                    # Common HackerRank challenge patterns
+                    if "sort" in slug_lower:
+                        pattern_name = "sorting"
+                    elif "search" in slug_lower:
+                        pattern_name = "binary_search"
+                    elif "array" in slug_lower:
+                        pattern_name = "array_manipulation"
+                    elif "string" in slug_lower:
+                        pattern_name = "string_processing"
+                    elif "tree" in slug_lower:
+                        pattern_name = "tree_traversal"
+                    elif "graph" in slug_lower:
+                        pattern_name = "graph_traversal"
+                    elif "dp" in slug_lower or "dynamic" in slug_lower:
+                        pattern_name = "dynamic_programming"
+                    elif "greedy" in slug_lower:
+                        pattern_name = "greedy_algorithm"
+                    
+                    pattern = {
+                        "source": "hackerrank",
+                        "source_id": slug,
+                        "pattern": pattern_name,
+                        "domain": "algorithms",
+                        "difficulty": "medium",  # Default
+                        "tags": [slug.replace("-", "_")],
+                        "constraints": {},
+                        "input_structure": {},
+                        "extracted_at": int(time.time()),
+                        "metadata": {
+                            "challenge_slug": slug
+                        }
+                    }
+                    all_patterns.append(pattern)
+                    print(f"✅ Extracted pattern '{pattern_name}' from HackerRank challenge {slug}")
+                
+            except Exception as e:
+                print(f"❌ Error processing URL {url}: {e}")
+                continue
+        
+        print(f"🎉 [USER EXTRACTION] Successfully extracted {len(all_patterns)} patterns")
+        
+        return {
+            "success": True,
+            "message": f"Extracted {len(all_patterns)} patterns from {len(urls)} URLs",
+            "patterns": all_patterns,
+            "total_urls": len(urls),
+            "successful_extractions": len(all_patterns),
+            "failed_extractions": len(urls) - len(all_patterns)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error in user pattern extraction: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pattern extraction failed: {str(e)}"
+        )
+
+# Add this endpoint to your Python FastAPI app
+
+@app.post("/generate-question-from-pattern")
+async def generate_question_from_pattern(request: Dict[str, Any]):
+    """
+    Generate a COMPLETE question from an extracted pattern using REAL Gemini AI.
+    
+    Body:
+        {
+            "pattern": {
+                "source": "leetcode",
+                "source_id": "two-sum",
+                "pattern": "two_pointers",
+                "domain": "algorithms",
+                "difficulty": "medium",
+                "tags": ["array", "hash-table"],
+                "constraints": {...},
+                "input_structure": {...}
+            },
+            "difficulty": "medium",
+            "user_context": "Generate for user..."
+        }
+    """
+    try:
+        pattern = request.get("pattern")
+        difficulty = request.get("difficulty", "medium")
+        user_context = request.get("user_context", "")
+        
+        if not pattern:
+            raise HTTPException(status_code=400, detail="Pattern is required")
+        
+        print(f"🤖 [GENERATE FROM PATTERN] Generating COMPLETE question from pattern: {pattern.get('pattern')}")
+        
+        # ✅ FIX: Use REAL Gemini AI service instead of simple generation
+        if not GEMINI_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini AI service not available"
+            )
+        
+        # Build a detailed topic description from pattern
+        pattern_name = pattern.get("pattern", "general_algorithm")
+        pattern_domain = pattern.get("domain", "algorithms")
+        pattern_tags = pattern.get("tags", [])
+        pattern_constraints = pattern.get("constraints", {})
+        
+        # Create a rich topic description for Gemini
+        topic_parts = [
+            f"{pattern_domain}",
+            f"{pattern_name.replace('_', ' ')} pattern"
+        ]
+        
+        if pattern_tags and len(pattern_tags) > 0:
+            topic_parts.append(f"involving {', '.join(pattern_tags[:3])}")
+        
+        if pattern_constraints:
+            constraint_desc = ", ".join([f"{k}: {v}" for k, v in pattern_constraints.items()])
+            if constraint_desc:
+                topic_parts.append(f"with constraints: {constraint_desc}")
+        
+        topic = " ".join(topic_parts)
+        
+        print(f"📝 [GENERATE FROM PATTERN] Generated topic: {topic}")
+        print(f"🎯 [GENERATE FROM PATTERN] Difficulty: {difficulty}")
+        
+        # ✅ FIX: Generate COMPLETE question using Gemini (same method as /generate endpoint)
+        ai_result = gemini_ai_service.generate_question(topic, difficulty)
+        
+        if not ai_result["success"] or not ai_result.get("data"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"AI generation failed: {ai_result.get('error', 'Unknown error')}"
+            )
+        
+        # Get the complete question data from Gemini
+        question = ai_result["data"]
+        
+        # ✅ Enhance the generated question with pattern metadata
+        enhanced_question = {
+            # Use Gemini-generated content
+            "title": f"{pattern_name.replace('_', ' ').title()} - {question.get('title', 'Problem')}",
+            "description": question.get("explanation", f"Pattern-based problem: {pattern_name}"),
+            "problem_statement": question.get("problemStatement", question.get("problem_statement", "")),
+            "difficulty": difficulty,
+            "skill_tags": list(set((question.get("skillTags", []) or []) + pattern_tags[:5])),
+            "type": "coding",
+            
+            # Use Gemini-generated solution and test cases
+            "solution": question.get("canonicalSolution", question.get("canonical_solution", "")),
+            "test_cases": question.get("testCases", question.get("test_cases", {})),
+            
+            # Pattern metadata
+            "metadata": {
+                "generated_from_pattern": True,
+                "pattern_name": pattern_name,
+                "pattern_domain": pattern_domain,
+                "pattern_tags": pattern_tags,
+                "original_pattern_source": pattern.get("source"),
+                "original_pattern_id": pattern.get("source_id"),
+                "pattern_constraints": pattern_constraints,
+                "user_context": user_context,
+                "generated_at": datetime.now().isoformat(),
+                "ai_source": "gemini"
+            }
+        }
+        
+        print(f"✅ [GENERATE FROM PATTERN] Generated complete question: {enhanced_question['title']}")
+        print(f"📊 [GENERATE FROM PATTERN] Content lengths - Problem: {len(enhanced_question.get('problem_statement', ''))}, Solution: {len(enhanced_question.get('solution', ''))}")
+        
+        return {
+            "success": True,
+            "question": enhanced_question,
+            "metadata": {
+                "pattern_used": pattern_name,
+                "difficulty": difficulty,
+                "user_context": user_context,
+                "ai_service": "gemini"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error generating question from pattern: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Question generation from pattern failed: {str(e)}"
+        )
+def extract_stackoverflow_id(url: str) -> Optional[str]:
+    """Extract question ID from StackOverflow URL"""
+    try:
+        match = re.search(r'/questions/(\d+)/', url)
+        return match.group(1) if match else None
+    except Exception as e:
+        logger.error(f"Error extracting SO ID from {url}: {e}")
+        return None
+
+
+def extract_hackerrank_slug(url: str) -> Optional[str]:
+    """Extract challenge slug from HackerRank URL"""
+    try:
+        match = re.search(r'/challenges/([^/?]+)', url)
+        return match.group(1) if match else None
+    except Exception as e:
+        logger.error(f"Error extracting HackerRank slug from {url}: {e}")
+        return None
 
 # Initialiser le service de vetting (avec variables d'environnement)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/1")

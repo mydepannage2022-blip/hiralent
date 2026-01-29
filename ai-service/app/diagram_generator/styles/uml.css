@@ -1,0 +1,191 @@
+/* ========================================
+   CLASSIC UML STYLE - Black & White (PRO)
+   Mermaid-safe, crisp, readable, platform-like
+   ======================================== */
+
+* {
+  font-family: Inter, Roboto, Arial, Helvetica, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body, svg {
+  background: #fff !important;
+}
+
+/* ---------------- ER DIAGRAM ---------------- */
+
+/* Entity box */
+.er .entityBox,
+.er rect.entityBox {
+  fill: #ffffff !important;
+  stroke: #000000 !important;
+  stroke-width: 2px !important;
+  rx: 0 !important;
+  ry: 0 !important;
+}
+
+/* Entity title */
+.er .entityLabel,
+.er text.entityLabel {
+  fill: #000000 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+}
+
+/* Attribute rows (lighter grid = more modern) */
+.er .attributeBoxEven,
+.er .attributeBoxOdd,
+.er rect.attributeBoxEven,
+.er rect.attributeBoxOdd {
+  stroke: #000000 !important;
+  stroke-width: 0.9px !important;
+  opacity: 1 !important;
+}
+
+.er .attributeBoxEven,
+.er rect.attributeBoxEven {
+  fill: #ffffff !important;
+}
+
+.er .attributeBoxOdd,
+.er rect.attributeBoxOdd {
+  fill: #f5f5f5 !important;
+}
+
+/* Attribute text (slightly bolder for readability) */
+.er text,
+.er tspan {
+  fill: #000000 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* PK/FK labels */
+.er text[text-anchor="end"] {
+  fill: #000000 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* Relationship lines */
+.er .relationshipLine,
+.er path.relationshipLine,
+path.relationshipLine {
+  stroke: #000000 !important;
+  stroke-width: 1.2px !important;
+  fill: none !important;
+}
+
+/* Relationship labels (some builds use relationshipLabel, others edgeLabel) */
+.er .relationshipLabel,
+.er text.relationshipLabel,
+.relationshipLabel,
+text.relationshipLabel {
+  fill: #000000 !important;
+  font-size: 12px !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  /* readability boost over lines */
+  paint-order: stroke !important;
+  stroke: #ffffff !important;
+  stroke-width: 4px !important;
+  stroke-linejoin: round !important;
+}
+
+/* Force edge labels visible (Mermaid’s real edge label class) */
+.edgeLabel,
+.edgeLabel text,
+.edgeLabel tspan,
+g.edgeLabel text,
+g.edgeLabel tspan {
+  fill: #000000 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  /* halo behind text so it never disappears on edges */
+  paint-order: stroke !important;
+  stroke: #ffffff !important;
+  stroke-width: 4px !important;
+  stroke-linejoin: round !important;
+}
+
+/* Edge label background = clean small pill */
+.edgeLabel rect,
+.edgeLabel .labelBkg,
+.edgeLabel .labelBackground {
+  fill: #ffffff !important;
+  stroke: #000000 !important;
+  stroke-width: 1px !important;
+  opacity: 1 !important;
+  rx: 3px !important;
+  ry: 3px !important;
+}
+
+/* Cardinality markers */
+.er .cardinality,
+.er .cardinality text {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Prevent text clipping / weird SVG rendering in some environments */
+text {
+  dominant-baseline: middle;
+}
+
+/* ---------------- CLASS DIAGRAM ---------------- */
+
+.classDiagram .classGroup rect,
+.node rect {
+  fill: #ffffff !important;
+  stroke: #000000 !important;
+  stroke-width: 2px !important;
+  rx: 0 !important;
+  ry: 0 !important;
+}
+
+.classTitle {
+  fill: #000000 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  text-decoration: underline !important;
+  letter-spacing: 0.3px !important;
+}
+
+.classText {
+  fill: #000000 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* Divider lines inside class boxes (if present) */
+.divider {
+  stroke: #000000 !important;
+  stroke-width: 0.9px !important;
+}
+
+/* Lines + arrow markers */
+.edgePath path,
+path.relation {
+  stroke: #000000 !important;
+  stroke-width: 1.3px !important;
+  fill: none !important;
+}
+
+.marker path,
+defs marker path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Remove shadows only (safe) */
+.shadow {
+  display: none !important;
+}

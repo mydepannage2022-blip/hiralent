@@ -1,181 +1,296 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Edit2, Gift, X, Check, Plus, Trash2 } from 'lucide-react';
-import { useUpdateJobBenefits } from '@/src/lib/profile/profile.queries';
-import { JobBenefitData } from '@/src/lib/profile/profile.api';
-import { useProfile } from '@/src/context/ProfileContext';
+import React, { useMemo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Edit2,
+  Gift,
+  X,
+  Check,
+  Plus,
+  Trash2,
+  HeartPulse,
+  Home,
+  Clock,
+  Laptop,
+  GraduationCap,
+  Dumbbell,
+  PiggyBank,
+  BadgeDollarSign,
+  Plane,
+  Shield,
+  Brain,
+  Eye,
+  Tooth,
+  TrendingUp,
+  MapPin,
+  Bus,
+  Utensils,
+  Phone,
+  Briefcase,
+  Sparkles,
+  Scale,
+  Tag,
+  Baby,
+  Accessibility,
+  Package,
+} from "lucide-react";
+
+import { useUpdateJobBenefits } from "@/src/lib/profile/profile.queries";
+import { JobBenefitData } from "@/src/lib/profile/profile.api";
+import { useProfile } from "@/src/context/ProfileContext";
 
 const JobBenefitsSection: React.FC = () => {
   const { profileData, setProfileData } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [benefits, setBenefits] = useState<JobBenefitData[]>([]);
   const [newBenefit, setNewBenefit] = useState<JobBenefitData>({
-    benefit_type: 'health_insurance',
-    importance: 'preferred',
-    notes: ''
+    benefit_type: "health_insurance",
+    importance: "preferred",
+    notes: "",
   });
 
   const { mutate: updateJobBenefits, isPending: isUpdating } = useUpdateJobBenefits();
 
-  // Parse job benefits data from profile context
+  // ✅ Parse job benefits data from profile context
   const getJobBenefitsData = (): JobBenefitData[] => {
     if (!profileData?.job_benefits) return [];
-    
+
     try {
-      let benefitsArray = [];
-      
-      if (typeof profileData.job_benefits === 'string') {
+      let benefitsArray: any[] = [];
+
+      if (typeof profileData.job_benefits === "string") {
         benefitsArray = JSON.parse(profileData.job_benefits);
       } else if (Array.isArray(profileData.job_benefits)) {
-        benefitsArray = profileData.job_benefits;
+        benefitsArray = profileData.job_benefits as any[];
       }
-      
+
       return benefitsArray.map((benefit: any) => ({
-        benefit_type: benefit.benefit_type || 'health_insurance',
-        importance: benefit.importance || 'preferred',
-        notes: benefit.notes || ''
+        benefit_type: benefit?.benefit_type || "health_insurance",
+        importance: benefit?.importance || "preferred",
+        notes: benefit?.notes || "",
       }));
     } catch (error) {
-      console.error('Error parsing job benefits data:', error);
+      console.error("Error parsing job benefits data:", error);
+      return [];
     }
-    return [];
   };
 
+  const viewBenefits = useMemo(() => getJobBenefitsData(), [profileData?.job_benefits]);
+
+  // ✅ IMPORTANT FIX:
+  // Don't override local edits while editing
   useEffect(() => {
-    const benefitsData = getJobBenefitsData();
-    setBenefits(benefitsData);
-  }, [profileData]);
+    if (!isEditing) {
+      setBenefits(viewBenefits);
+    }
+  }, [viewBenefits, isEditing]);
 
   const handleEdit = () => {
     setIsEditing(true);
-    const benefitsData = getJobBenefitsData();
-    setBenefits([...benefitsData]);
+    setBenefits(viewBenefits);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    const benefitsData = getJobBenefitsData();
-    setBenefits([...benefitsData]);
+    setBenefits(viewBenefits);
     setNewBenefit({
-      benefit_type: 'health_insurance',
-      importance: 'preferred',
-      notes: ''
+      benefit_type: "health_insurance",
+      importance: "preferred",
+      notes: "",
     });
   };
 
   const handleSave = () => {
-    // Sanitize data before sending
-    const sanitizedBenefits = benefits.map(benefit => ({
-      ...benefit,
-      notes: (benefit.notes || '').substring(0, 200) // Limit notes to 200 chars as per backend schema
+    // ✅ Sanitize exactly like before
+    const sanitizedBenefits = benefits.map((b) => ({
+      ...b,
+      notes: (b.notes || "").substring(0, 200),
     }));
-    
+
     updateJobBenefits(sanitizedBenefits, {
       onSuccess: () => {
-        setIsEditing(false);
+        // ✅ Keep context updated so view mode reflects changes immediately
         setProfileData({
           ...profileData,
           job_benefits: [...sanitizedBenefits],
         });
+
+        // ✅ Also update local state + exit edit mode
+        setBenefits(sanitizedBenefits);
+        setIsEditing(false);
       },
       onError: (error) => {
         console.error("API Error:", error);
-      }
+      },
     });
   };
 
   const handleAddBenefit = () => {
     if (newBenefit.benefit_type.trim()) {
-      setBenefits([...benefits, { ...newBenefit }]);
+      setBenefits((prev) => [...prev, { ...newBenefit }]);
       setNewBenefit({
-        benefit_type: 'health_insurance',
-        importance: 'preferred',
-        notes: ''
+        benefit_type: "health_insurance",
+        importance: "preferred",
+        notes: "",
       });
     }
   };
 
   const handleRemoveBenefit = (index: number) => {
-    setBenefits(benefits.filter((_, i) => i !== index));
+    setBenefits((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleBenefitChange = (index: number, field: keyof JobBenefitData, value: string) => {
-    const updatedBenefits = [...benefits];
-    updatedBenefits[index] = { ...updatedBenefits[index], [field]: value };
-    setBenefits(updatedBenefits);
+    setBenefits((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
-  const getImportanceColor = (importance: string) => {
+  const getImportancePill = (importance: string) => {
     switch (importance) {
-      case 'required': return 'bg-red-100 text-red-800';
-      case 'preferred': return 'bg-blue-100 text-blue-800';
-      case 'nice_to_have': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "required":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "preferred":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "nice_to_have":
+        return "bg-gray-50 text-gray-700 border-gray-200";
+      default:
+        return "bg-gray-50 text-gray-700 border-gray-200";
     }
   };
 
   const getBenefitIcon = (benefitType: string) => {
     switch (benefitType) {
-      case 'health_insurance': return '🏥';
-      case 'dental_insurance': return '🦷';
-      case 'vision_insurance': return '👁️';
-      case 'retirement_401k': return '💰';
-      case 'paid_time_off': return '🏖️';
-      case 'flexible_hours': return '⏰';
-      case 'remote_work': return '🏠';
-      case 'professional_development': return '📚';
-      case 'gym_membership': return '💪';
-      case 'stock_options': return '📈';
-      case 'bonus_structure': return '💎';
-      case 'parental_leave': return '👶';
-      case 'mental_health_support': return '🧠';
-      case 'life_insurance': return '🛡️';
-      case 'disability_insurance': return '♿';
-      case 'commuter_benefits': return '🚌';
-      case 'food_allowance': return '🍽️';
-      case 'education_reimbursement': return '🎓';
-      case 'conference_allowance': return '🎤';
-      case 'wellness_programs': return '🌱';
-      case 'childcare_assistance': return '🧸';
-      case 'relocation_assistance': return '📦';
-      case 'phone_internet_allowance': return '📱';
-      case 'coworking_space_access': return '💼';
-      case 'sabbatical_leave': return '🌍';
-      case 'pet_insurance': return '🐕';
-      case 'legal_assistance': return '⚖️';
-      case 'employee_discounts': return '🏷️';
-      case 'team_building_events': return '🎉';
-      case 'flexible_pto': return '📅';
-      default: return '🎁';
+      case "health_insurance":
+        return HeartPulse;
+      case "dental_insurance":
+        return Tooth;
+      case "vision_insurance":
+        return Eye;
+      case "retirement_401k":
+        return PiggyBank;
+      case "paid_time_off":
+        return Plane;
+      case "flexible_pto":
+        return Plane;
+      case "flexible_hours":
+        return Clock;
+      case "remote_work":
+        return Home;
+      case "professional_development":
+        return GraduationCap;
+      case "gym_membership":
+        return Dumbbell;
+      case "stock_options":
+        return TrendingUp;
+      case "bonus_structure":
+        return BadgeDollarSign;
+      case "parental_leave":
+        return Baby;
+      case "mental_health_support":
+        return Brain;
+      case "life_insurance":
+        return Shield;
+      case "disability_insurance":
+        return Accessibility;
+      case "commuter_benefits":
+        return Bus;
+      case "food_allowance":
+        return Utensils;
+      case "education_reimbursement":
+        return GraduationCap;
+      case "conference_allowance":
+        return Briefcase;
+      case "wellness_programs":
+        return Sparkles;
+      case "childcare_assistance":
+        return Baby;
+      case "relocation_assistance":
+        return Package;
+      case "phone_internet_allowance":
+        return Phone;
+      case "coworking_space_access":
+        return Laptop;
+      case "sabbatical_leave":
+        return MapPin;
+      case "legal_assistance":
+        return Scale;
+      case "employee_discounts":
+        return Tag;
+      case "team_building_events":
+        return Gift;
+      default:
+        return Gift;
     }
   };
 
-  const formatBenefitType = (type: string) => {
-    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
+  const formatBenefitType = (type: string) =>
+    String(type || "").replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
-  const hasContent = getJobBenefitsData().length > 0;
+  const hasContent = viewBenefits.length > 0;
+
+  const benefitOptions = [
+    { value: "health_insurance", label: "Health Insurance" },
+    { value: "dental_insurance", label: "Dental Insurance" },
+    { value: "vision_insurance", label: "Vision Insurance" },
+    { value: "retirement_401k", label: "Retirement 401k" },
+    { value: "paid_time_off", label: "Paid Time Off" },
+    { value: "flexible_pto", label: "Flexible PTO" },
+    { value: "flexible_hours", label: "Flexible Hours" },
+    { value: "remote_work", label: "Remote Work" },
+    { value: "professional_development", label: "Professional Development" },
+    { value: "gym_membership", label: "Gym Membership" },
+    { value: "stock_options", label: "Stock Options" },
+    { value: "bonus_structure", label: "Bonus Structure" },
+    { value: "parental_leave", label: "Parental Leave" },
+    { value: "mental_health_support", label: "Mental Health Support" },
+    { value: "life_insurance", label: "Life Insurance" },
+    { value: "disability_insurance", label: "Disability Insurance" },
+    { value: "commuter_benefits", label: "Commuter Benefits" },
+    { value: "food_allowance", label: "Food Allowance" },
+    { value: "education_reimbursement", label: "Education Reimbursement" },
+    { value: "conference_allowance", label: "Conference Allowance" },
+    { value: "wellness_programs", label: "Wellness Programs" },
+    { value: "childcare_assistance", label: "Childcare Assistance" },
+    { value: "relocation_assistance", label: "Relocation Assistance" },
+    { value: "phone_internet_allowance", label: "Phone/Internet Allowance" },
+    { value: "coworking_space_access", label: "Coworking Access" },
+    { value: "sabbatical_leave", label: "Sabbatical Leave" },
+    { value: "legal_assistance", label: "Legal Assistance" },
+    { value: "employee_discounts", label: "Employee Discounts" },
+    { value: "team_building_events", label: "Team Building Events" },
+    { value: "other", label: "Other" },
+  ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-sm border border-gray-200 p-6 mb-6"
+      className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Preferred Job Benefits</h3>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+            <Gift className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm lg:text-lg font-semibold text-gray-900 leading-tight">
+              Preferred Job Benefits
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">What matters most to you in an offer</p>
+          </div>
         </div>
-        
+
         {!isEditing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
-            <Edit2 className="w-2 h-2 lg:w-4 lg:h-4" />
+            <Edit2 className="w-4 h-4" />
             Edit
           </button>
         ) : (
@@ -183,18 +298,18 @@ const JobBenefitsSection: React.FC = () => {
             <button
               onClick={handleCancel}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              <X className="w-2 h-2 lg:w-4 lg:h-4" />
+              <X className="w-4 h-4" />
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isUpdating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Check className="w-2 h-2 lg:w-4 lg:h-4" />
-              {isUpdating ? 'Saving...' : 'Save'}
+              <Check className="w-4 h-4" />
+              {isUpdating ? "Saving..." : "Save"}
             </button>
           </div>
         )}
@@ -205,39 +320,59 @@ const JobBenefitsSection: React.FC = () => {
         <div>
           {hasContent ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {getJobBenefitsData().map((benefit: any, index: number) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-sm border border-gray-200"
-                >
-                  <span className="text-lg">{getBenefitIcon(benefit.benefit_type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-900 text-xs lg:text-sm">
-                        {formatBenefitType(benefit.benefit_type)}
-                      </h4>
-                      <span className={`px-2 py-1 rounded-full text-[9px] lg:text-xs font-medium ${getImportanceColor(benefit.importance)}`}>
-                        {benefit.importance.replace('_', ' ')}
-                      </span>
+              {viewBenefits.map((benefit: any, index: number) => {
+                const Icon = getBenefitIcon(benefit.benefit_type);
+                const importanceLabel = String(benefit.importance || "preferred").replace(/_/g, " ");
+
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="group flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-200 hover:bg-white transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 group-hover:border-blue-200">
+                      <Icon className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
                     </div>
-                    {benefit.notes && (
-                      <p className="text-gray-600 text-[10px] lg:text-xs">{benefit.notes}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-gray-900 text-sm truncate">
+                            {formatBenefitType(benefit.benefit_type)}
+                          </h4>
+
+                          {benefit.notes ? (
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                              {benefit.notes}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-1">No notes</p>
+                          )}
+                        </div>
+
+                        <span
+                          className={[
+                            "shrink-0 px-2 py-0.5 rounded-full border text-[10px] lg:text-xs font-medium capitalize",
+                            getImportancePill(benefit.importance),
+                          ].join(" ")}
+                        >
+                          {importanceLabel}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+            <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
+              <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center mb-3">
                 <Plus className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-xs lg:text-sm">Add your preferred job benefits</p>
-              <button
-                onClick={handleEdit}
-                className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
-              >
-                Job benefits
+              <p className="text-gray-600 text-sm">Add your preferred job benefits</p>
+              <button onClick={handleEdit} className="mt-3 text-blue-600 text-sm font-medium hover:text-blue-700">
+                Add benefits
               </button>
             </div>
           )}
@@ -245,134 +380,177 @@ const JobBenefitsSection: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {/* Existing Benefits */}
-          {benefits.map((benefit, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-sm">
+          <AnimatePresence>
+            {benefits.map((benefit, index) => {
+              const Icon = getBenefitIcon(benefit.benefit_type);
+
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-200 transition-colors">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4 text-gray-700" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {formatBenefitType(benefit.benefit_type)}
+                          </p>
+                          <p className="text-xs text-gray-500">Benefit {index + 1}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleRemoveBenefit(index)}
+                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Benefit Type</label>
+                        <select
+                          value={benefit.benefit_type}
+                          onChange={(e) => handleBenefitChange(index, "benefit_type", e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                        >
+                          {benefitOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Importance</label>
+                        <select
+                          value={benefit.importance}
+                          onChange={(e) => handleBenefitChange(index, "importance", e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                        >
+                          <option value="required">Required</option>
+                          <option value="preferred">Preferred</option>
+                          <option value="nice_to_have">Nice to Have</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-gray-700">Notes</label>
+                          <span className="text-xs text-gray-400">{(benefit.notes || "").length}/200</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={benefit.notes || ""}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 200) {
+                              handleBenefitChange(index, "notes", e.target.value);
+                            }
+                          }}
+                          maxLength={200}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                          placeholder="Any details (ex: private insurance, budget, etc.)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+
+          {/* Add New Benefit */}
+          <div className="p-4 rounded-xl border-2 border-dashed border-gray-300 bg-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                <Plus className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Add a benefit</p>
+                <p className="text-xs text-gray-500">Pick a type, set importance, add a note</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Benefit Type</label>
                 <select
-                  value={benefit.benefit_type}
-                  onChange={(e) => handleBenefitChange(index, 'benefit_type', e.target.value)}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  value={newBenefit.benefit_type}
+                  onChange={(e) => setNewBenefit({ ...newBenefit, benefit_type: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 >
-                  <option value="health_insurance">Health Insurance</option>
-                  <option value="remote_work">Remote Work</option>
-                  <option value="flexible_hours">Flexible Hours</option>
-                  <option value="professional_development">Professional Development</option>
-                  <option value="stock_options">Stock Options</option>
-                  <option value="paid_time_off">Paid Time Off</option>
-                  <option value="gym_membership">Gym Membership</option>
-                  <option value="retirement_401k">Retirement 401k</option>
-                  <option value="bonus_structure">Bonus Structure</option>
-                  <option value="other">Other</option>
+                  {benefitOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Importance</label>
                 <select
-                  value={benefit.importance}
-                  onChange={(e) => handleBenefitChange(index, 'importance', e.target.value)}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  value={newBenefit.importance}
+                  onChange={(e) => setNewBenefit({ ...newBenefit, importance: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 >
                   <option value="required">Required</option>
                   <option value="preferred">Preferred</option>
                   <option value="nice_to_have">Nice to Have</option>
                 </select>
               </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-gray-700">Notes</label>
+                  <span className="text-xs text-gray-400">{(newBenefit.notes || "").length}/200</span>
+                </div>
                 <input
                   type="text"
-                  value={benefit.notes || ''}
+                  value={newBenefit.notes || ""}
                   onChange={(e) => {
                     if (e.target.value.length <= 200) {
-                      handleBenefitChange(index, 'notes', e.target.value);
+                      setNewBenefit({ ...newBenefit, notes: e.target.value });
                     }
                   }}
                   maxLength={200}
-                  className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="Additional details..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  placeholder="Optional"
                 />
-                <span className="text-xs text-gray-400">{(benefit.notes || '').length}/200</span>
               </div>
-              
-              <div className="flex items-end">
+
+              <div className="md:col-span-4">
                 <button
-                  onClick={() => handleRemoveBenefit(index)}
-                  className="w-full px-2 py-1 text-red-600 hover:bg-red-50 rounded text-xs lg:text-sm flex items-center justify-center gap-1"
+                  onClick={handleAddBenefit}
+                  className="w-full mt-1 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
                 >
-                  <Trash2 className="w-3 h-3" />
-                  Remove
+                  <Plus className="w-4 h-4" />
+                  Add Benefit
                 </button>
               </div>
-            </div>
-          ))}
-
-          {/* Add New Benefit */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border-2 border-dashed border-gray-300 rounded-sm">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Benefit Type</label>
-              <select
-                value={newBenefit.benefit_type}
-                onChange={(e) => setNewBenefit({...newBenefit, benefit_type: e.target.value})}
-                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              >
-                <option value="health_insurance">Health Insurance</option>
-                <option value="remote_work">Remote Work</option>
-                <option value="flexible_hours">Flexible Hours</option>
-                <option value="professional_development">Professional Development</option>
-                <option value="stock_options">Stock Options</option>
-                <option value="paid_time_off">Paid Time Off</option>
-                <option value="gym_membership">Gym Membership</option>
-                <option value="retirement_401k">Retirement 401k</option>
-                <option value="bonus_structure">Bonus Structure</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Importance</label>
-              <select
-                value={newBenefit.importance}
-                onChange={(e) => setNewBenefit({...newBenefit, importance: e.target.value})}
-                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              >
-                <option value="required">Required</option>
-                <option value="preferred">Preferred</option>
-                <option value="nice_to_have">Nice to Have</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-              <input
-                type="text"
-                value={newBenefit.notes || ''}
-                onChange={(e) => {
-                  if (e.target.value.length <= 200) {
-                    setNewBenefit({...newBenefit, notes: e.target.value});
-                  }
-                }}
-                maxLength={200}
-                className="w-full px-2 py-1 text-xs lg:text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="Additional details..."
-              />
-              <span className="text-xs text-gray-400">{(newBenefit.notes || '').length}/200</span>
-            </div>
-            
-            <div className="flex items-end">
-              <button
-                onClick={handleAddBenefit}
-                className="w-full px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs lg:text-sm flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                Add
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </motion.div>
   );
 };

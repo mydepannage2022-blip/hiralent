@@ -2,45 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles,
-  Search,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Zap,
-  TrendingUp,
-  Award,
-  Eye,
-  Edit,
-  Trash2,
-  BarChart3,
-  Grid3x3,
-  List,
-  X,
-  SlidersHorizontal,
-  XCircle,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Network,
-  Globe,
-  Code2,
-  Database,
-  ExternalLink,
-  ArrowRight,
-  Link as LinkIcon,
-  Plus,
-  Trash,
-  Copy,
-  AlertTriangle,
-  Shield,
-  Lock,
-  Filter,
-  ChevronDown,
-  Library,
-  User,
-  Menu,
+  Sparkles, Search, CheckCircle2, Clock, FileText, Zap, TrendingUp, Award, Eye, Edit, Trash2,
+  BarChart3, Grid3x3, List, X, SlidersHorizontal, XCircle, ChevronLeft, ChevronRight, ChevronsLeft,
+  ChevronsRight, Network, Globe, Code2, Database, ExternalLink, ArrowRight, Link as LinkIcon, Plus,
+  Trash, Copy, AlertTriangle, Shield, Lock, Filter, ChevronDown, Library, User, Menu, Brain, Layers,
 } from "lucide-react";
 import NextLink from "next/link";
 
@@ -69,6 +34,8 @@ interface Question {
   successRate?: number;
   vectorStored?: boolean;
   vectorId?: string;
+  imageUrl?: string | null;      // diagram image URL from /generate-with-diagram
+  diagramUrl?: string | null;    // (optional if your backend uses another key)
 }
 
 const pill = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px]  tracking-wide border";
@@ -105,7 +72,9 @@ const AiGenerateModal: React.FC<{
     type: "coding" | "mcq";
     tags: string[];
     testCaseCount: number;
+    withDiagram: boolean;
   }) => Promise<void>;
+
   generating: boolean;
 }> = ({ open, onClose, onGenerate, generating }) => {
   const [topic, setTopic] = useState("");
@@ -113,6 +82,8 @@ const AiGenerateModal: React.FC<{
   const [type, setType] = useState<"coding" | "mcq">("coding");
   const [tagsInput, setTagsInput] = useState("");
   const [testCaseCount, setTestCaseCount] = useState(4);
+  const [withDiagram, setWithDiagram] = useState(false);
+
 
   const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
   const canSubmit = topic.trim().length >= 2;
@@ -124,6 +95,8 @@ const AiGenerateModal: React.FC<{
       setType("coding");
       setTagsInput("");
       setTestCaseCount(4);
+      setWithDiagram(false);
+
     }
   }, [open]);
 
@@ -260,6 +233,27 @@ const AiGenerateModal: React.FC<{
               <p className="text-[9px] text-gray-500 mt-0.5">Number of sample test cases</p>
             </div>
           )}
+          {type === "coding" && (
+          <div className="flex items-center justify-between p-2 rounded-sm border border-gray-200 bg-white">
+            <div>
+              <div className="text-[10px] text-gray-800">Generate with diagram</div>
+              <div className="text-[9px] text-gray-500">
+                Calls <span className="font-mono">/generate-with-diagram</span>
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={withDiagram}
+                onChange={(e) => setWithDiagram(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-[#1B73E8] focus:ring-[#1B73E8]"
+              />
+              <span className="text-[10px] text-gray-700">Enable</span>
+            </label>
+          </div>
+        )}
+
 
           <div className={`p-2 rounded-sm border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
             <div className="flex items-start gap-1.5">
@@ -275,7 +269,7 @@ const AiGenerateModal: React.FC<{
           <button onClick={onClose} className="px-3 py-1.5 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
           <button
             disabled={!canSubmit || generating}
-            onClick={() => onGenerate({ topic, difficulty, type, tags, testCaseCount })}
+            onClick={() => onGenerate({ topic, difficulty, type, tags, testCaseCount, withDiagram })}
             className={`px-4 py-1.5 rounded-sm  text-[11px] text-white transition-all ${
               generating || !canSubmit
                 ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
@@ -300,7 +294,7 @@ const AiGenerateModal: React.FC<{
   );
 };
 
-// AiBatchModal (keep your original)
+// AiBatchModal (UPDATED)
 const AiBatchModal: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -309,6 +303,11 @@ const AiBatchModal: React.FC<{
     difficulty: "easy" | "medium" | "hard";
     countPerTopic: number;
     type: "coding" | "mcq";
+    withDiagram: boolean;        // ✅ added
+    testCaseCount: number;       // ✅ added
+    tags: string[];              // ✅ added
+    instructions: string;        // ✅ added
+    uniqueVariants: boolean;     // ✅ added
   }) => Promise<void>;
   generating: boolean;
 }> = ({ open, onClose, onGenerate, generating }) => {
@@ -317,8 +316,25 @@ const AiBatchModal: React.FC<{
   const [countPerTopic, setCountPerTopic] = useState<number>(2);
   const [type, setType] = useState<"coding" | "mcq">("coding");
 
+  // ✅ NEW
+  const [withDiagram, setWithDiagram] = useState(false);
+  const [testCaseCount, setTestCaseCount] = useState(4);
+  const [tagsInput, setTagsInput] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [uniqueVariants, setUniqueVariants] = useState(true);
+
   const topics = topicsInput.split(/[\n,]/g).map(t => t.trim()).filter(Boolean);
-  const canSubmit = topics.length > 0 && countPerTopic >= 1;
+
+  const tags = tagsInput
+    .split(",")
+    .map(t => t.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  const canSubmit =
+    topics.length > 0 &&
+    countPerTopic >= 1 &&
+    (type === "mcq" || (testCaseCount >= 2 && testCaseCount <= 8));
 
   useEffect(() => {
     if (!open) {
@@ -326,85 +342,259 @@ const AiBatchModal: React.FC<{
       setDifficulty("medium");
       setCountPerTopic(2);
       setType("coding");
+      setWithDiagram(false);
+      setTestCaseCount(4);
+      setTagsInput("");
+      setInstructions("");
+      setUniqueVariants(true);
     }
   }, [open]);
+
+  // If user switches to MCQ, disable diagram/testCases UI logic
+  useEffect(() => {
+    if (type === "mcq") {
+      setWithDiagram(false);
+    }
+  }, [type]);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} />
-      <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`${panel} relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col`}>
-        <div className={`px-4 py-3 ${type === "mcq" ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600" : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"} text-white transition-all duration-300 flex-shrink-0`}>
+      <motion.div
+        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`${panel} relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col`}
+      >
+        <div
+          className={`px-4 py-3 ${
+            type === "mcq"
+              ? "bg-gradient-to-r from-purple-600 via-pink-600 to-red-600"
+              : "bg-gradient-to-r from-[#1B73E8] via-[#1557B0] to-[#0D47A1]"
+          } text-white flex-shrink-0`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-white/20 rounded-sm flex items-center justify-center"><Sparkles className="w-3.5 h-3.5 text-white" /></div>
-              <div><h3 className="text-sm font-bold">Generate Batch {type === "mcq" ? "MCQs" : "Coding"}</h3><p className="text-[9px] text-blue-100">Multiple topics, bulk generation</p></div>
+              <div className="w-7 h-7 bg-white/20 rounded-sm flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">Generate Batch {type === "mcq" ? "MCQs" : "Coding"}</h3>
+                <p className="text-[9px] text-white/80">Multiple topics, bulk generation</p>
+              </div>
             </div>
-            <button onClick={onClose} className="p-1 rounded-sm hover:bg-white/10" aria-label="Close"><X className="w-4 h-4 text-white" /></button>
+            <button onClick={onClose} className="p-1 rounded-sm hover:bg-white/10" aria-label="Close">
+              <X className="w-4 h-4 text-white" />
+            </button>
           </div>
         </div>
 
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
+          {/* Type */}
           <div>
-            <label className="text-[10px]  text-gray-800 mb-1 block">Question Type *</label>
+            <label className="text-[10px] text-gray-800 mb-1 block">Question Type *</label>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setType("coding")} className={`px-3 py-1.5 rounded-sm border-2  text-[11px] transition-all ${type === "coding" ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
-                <div className="flex items-center justify-center gap-1"><Code2 className="w-4 h-4" />Coding</div>
+              <button
+                onClick={() => setType("coding")}
+                className={`px-3 py-1.5 rounded-sm border-2 text-[11px] transition-all ${
+                  type === "coding"
+                    ? "border-[#1B73E8] bg-blue-50 text-[#1B73E8]"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <Code2 className="w-4 h-4" />
+                  Coding
+                </div>
               </button>
-              <button onClick={() => setType("mcq")} className={`px-3 py-1.5 rounded-sm border-2  text-[11px] transition-all ${type === "mcq" ? "border-purple-600 bg-purple-50 text-purple-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
-                <div className="flex items-center justify-center gap-1"><FileText className="w-4 h-4" />MCQ</div>
+
+              <button
+                onClick={() => setType("mcq")}
+                className={`px-3 py-1.5 rounded-sm border-2 text-[11px] transition-all ${
+                  type === "mcq"
+                    ? "border-purple-600 bg-purple-50 text-purple-700"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <FileText className="w-4 h-4" />
+                  MCQ
+                </div>
               </button>
             </div>
           </div>
 
+          {/* Topics */}
           <div>
-            <label className="text-[10px]  text-gray-800">Topics * <span className="font-normal text-gray-500">(comma or newline)</span></label>
+            <label className="text-[10px] text-gray-800">
+              Topics * <span className="font-normal text-gray-500">(comma or newline)</span>
+            </label>
             <textarea
               value={topicsInput}
               onChange={(e) => setTopicsInput(e.target.value)}
-              placeholder={type === "mcq" ? `accounting, marketing, nursing` : `python, javascript, java`}
+              placeholder={type === "mcq" ? "accounting, marketing, nursing" : "python arrays, react hooks, sql joins"}
               rows={3}
-              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8] transition-all"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
             />
-            {topics.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {topics.map((t) => (
-                  <span key={t} className={`px-2 py-0.5 rounded text-[9px] font-medium border ${type === "mcq" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-[#1B73E8] border-blue-100"}`}>#{t}</span>
-                ))}
-              </div>
-            )}
           </div>
 
+          {/* Difficulty + Per topic */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px]  text-gray-800">Difficulty</label>
-              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)} className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]">
+              <label className="text-[10px] text-gray-800">Difficulty</label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as any)}
+                className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
+              >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
             </div>
+
             <div>
-              <label className="text-[10px]  text-gray-800">Per topic</label>
-              <input type="number" min={1} max={20} value={countPerTopic} onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))} className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]" />
+              <label className="text-[10px] text-gray-800">Per topic</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={countPerTopic}
+                onChange={(e) => setCountPerTopic(Math.max(1, Math.min(20, +e.target.value || 1)))}
+                className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
+              />
             </div>
           </div>
 
+          {/* ✅ Coding-only controls */}
+          {type === "coding" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-800">Test cases</label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={8}
+                    value={testCaseCount}
+                    onChange={(e) => setTestCaseCount(Math.max(2, Math.min(8, +e.target.value || 2)))}
+                    className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
+                  />
+                  <p className="text-[9px] text-gray-500 mt-0.5">Number of sample test cases</p>
+                </div>
+
+                <div className="flex items-end">
+                  <div className="w-full flex items-center justify-between p-2 rounded-sm border border-gray-200 bg-white">
+                    <div>
+                      <div className="text-[10px] text-gray-800">Generate with diagram</div>
+                      <div className="text-[9px] text-gray-500">
+                        Calls <span className="font-mono">/generate-with-diagram</span>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={withDiagram}
+                      onChange={(e) => setWithDiagram(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-[#1B73E8] focus:ring-[#1B73E8]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-sm border border-gray-200 bg-white">
+                <div>
+                  <div className="text-[10px] text-gray-800">Make each question unique</div>
+                  <div className="text-[9px] text-gray-500">Adds variant focus per item (edge cases, constraints…)</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={uniqueVariants}
+                  onChange={(e) => setUniqueVariants(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-[#1B73E8] focus:ring-[#1B73E8]"
+                />
+              </div>
+            </>
+          )}
+
+          {/* ✅ Tags */}
+          <div>
+            <label className="text-[10px] text-gray-800">
+              Tags <span className="font-normal text-gray-500">(optional)</span>
+            </label>
+            <input
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="e.g., arrays, dp, sql, react"
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
+            />
+            {tags.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {tags.map((t) => (
+                  <span key={t} className="px-2 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-[#1B73E8] border border-blue-100">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ✅ Instructions */}
+          <div>
+            <label className="text-[10px] text-gray-800">
+              Instructions <span className="font-normal text-gray-500">(optional)</span>
+            </label>
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              rows={3}
+              placeholder={
+                type === "coding"
+                  ? "Example: Include constraints, mention time complexity target, avoid trivial cases, add at least one tricky edge case."
+                  : "Example: Keep options close, add explanation, avoid obvious answers."
+              }
+              className="mt-1 w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-[#1B73E8]"
+            />
+          </div>
+
+          {/* Summary */}
           <div className={`p-2 rounded-sm border ${type === "mcq" ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
             <div className="flex items-start gap-1.5">
-              <Sparkles className={`w-3 h-3 mt-0.5 flex-shrink-0 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
-              <div className={`text-[9px] leading-relaxed ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}><span className="font-bold">Total:</span> {countPerTopic} × {topics.length} = {topics.length * countPerTopic} questions</div>
+              <Sparkles className={`w-3 h-3 mt-0.5 ${type === "mcq" ? "text-purple-600" : "text-blue-600"}`} />
+              <div className={`text-[9px] ${type === "mcq" ? "text-purple-900" : "text-blue-900"}`}>
+                <span className="font-bold">Total:</span> {countPerTopic} × {topics.length} = {topics.length * countPerTopic} questions
+              </div>
             </div>
           </div>
         </div>
 
         <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2 flex-shrink-0">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-3 py-1.5 rounded-sm border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px]">
+            Cancel
+          </button>
+
           <button
             disabled={!canSubmit || generating}
-            onClick={() => onGenerate({ topics, difficulty, countPerTopic, type })}
-            className={`px-4 py-1.5 rounded-sm  text-[11px] text-white transition-all ${
+            onClick={() =>
+              onGenerate({
+                topics,
+                difficulty,
+                countPerTopic,
+                type,
+                withDiagram,
+                testCaseCount,
+                tags,
+                instructions,
+                uniqueVariants,
+              })
+            }
+            className={`px-4 py-1.5 rounded-sm text-[11px] text-white transition-all ${
               generating || !canSubmit
                 ? `${type === "mcq" ? "bg-purple-400" : "bg-[#1B73E8]/60"} cursor-not-allowed`
                 : type === "mcq"
@@ -418,7 +608,12 @@ const AiBatchModal: React.FC<{
 
         <AnimatePresence>
           {generating && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
+            >
               <div className={`w-8 h-8 border-3 ${type === "mcq" ? "border-purple-200 border-t-purple-600" : "border-blue-200 border-t-[#1B73E8]"} rounded-full animate-spin`} />
             </motion.div>
           )}
@@ -427,6 +622,7 @@ const AiBatchModal: React.FC<{
     </div>
   );
 };
+
 
 // Pagination (keep your original)
 const Pagination: React.FC<{
@@ -1126,16 +1322,337 @@ const VettingResultsModal: React.FC<{
     </div>
   );
 };
+// PatternScraperModal Component - Add this after VettingResultsModal and before ActionsMenu
 
+const PatternScraperModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onScrapeAndGenerate: (payload: {
+    urls: string[];
+    platform: "stackoverflow" | "leetcode" | "github";
+    difficulties: ("easy" | "medium" | "hard")[];
+    limit: number;
+  }) => Promise<void>;
+  processing: boolean;
+  token?: string | null;
+}> = ({ open, onClose, onScrapeAndGenerate, processing, token }) => {
+  const [urlsInput, setUrlsInput] = useState("");
+  const [platform, setPlatform] = useState<"stackoverflow" | "leetcode" | "github">("leetcode");
+  const [selectedDifficulties, setSelectedDifficulties] = useState<Set<"easy" | "medium" | "hard">>(
+    new Set(["easy", "medium", "hard"])
+  );
+  const [questionsPerPattern, setQuestionsPerPattern] = useState(3);
+
+  const urls = urlsInput
+    .split("\n")
+    .map((u) => u.trim())
+    .filter((u) => u.length > 0 && (u.startsWith("http://") || u.startsWith("https://")));
+  
+  const canSubmit = urls.length > 0 && selectedDifficulties.size > 0;
+
+  useEffect(() => {
+    if (!open) {
+      setUrlsInput("");
+      setPlatform("leetcode");
+      setSelectedDifficulties(new Set(["easy", "medium", "hard"]));
+      setQuestionsPerPattern(3);
+    }
+  }, [open]);
+
+  const toggleDifficulty = (diff: "easy" | "medium" | "hard") => {
+    setSelectedDifficulties((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(diff)) {
+        newSet.delete(diff);
+      } else {
+        newSet.add(diff);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddSampleUrls = () => {
+    const samples =
+      platform === "stackoverflow"
+        ? `https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
+https://stackoverflow.com/questions/419163/what-does-if-name-main-do`
+        : platform === "leetcode"
+        ? `https://leetcode.com/problems/two-sum/
+https://leetcode.com/problems/add-two-numbers/
+https://leetcode.com/problems/longest-substring-without-repeating-characters/`
+        : `https://github.com/TheAlgorithms/Python
+https://github.com/kdn251/interviews`;
+    setUrlsInput(samples);
+  };
+
+  if (!open) return null;
+
+  const platformInfo = {
+    stackoverflow: { label: "StackOverflow", color: "orange", icon: Code2 },
+    leetcode: { label: "LeetCode", color: "amber", icon: Code2 },
+    github: { label: "GitHub", color: "gray", icon: Code2 },
+  };
+
+  const currentPlatform = platformInfo[platform];
+  const totalQuestions = urls.length * questionsPerPattern * selectedDifficulties.size;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        className="absolute inset-0 bg-[#0D47A1]/50 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`${panel} relative w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col`}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+                <Brain className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">Pattern Scrape & Generate</h3>
+                <p className="text-[10px] text-purple-100">
+                  Extract patterns, then AI generates questions
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-sm hover:bg-white/10 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
+          {/* Platform Selection */}
+          <div>
+            <label className="text-[11px]  text-gray-800 mb-1.5 block">
+              Select Platform
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["leetcode", "stackoverflow", "github"] as const).map((p) => {
+                const info = platformInfo[p];
+                const IconComponent = info.icon;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPlatform(p)}
+                    className={`px-3 py-2.5 rounded-xl border-2  text-[11px] transition-all ${
+                      platform === p
+                        ? `border-${info.color}-500 bg-${info.color}-50 text-${info.color}-700`
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <IconComponent className="w-4 h-4" />
+                      <span className="text-[10px]">{info.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* URLs Input */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px]  text-gray-800">
+                Question URLs{" "}
+                <span className="text-gray-500 font-normal">(one per line)</span>
+              </label>
+              <button
+                onClick={handleAddSampleUrls}
+                className="text-[10px]  text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              >
+                <Copy className="w-3 h-3" />
+                Add Samples
+              </button>
+            </div>
+            <textarea
+              value={urlsInput}
+              onChange={(e) => setUrlsInput(e.target.value)}
+              placeholder={`Paste ${currentPlatform.label} URLs here...\n\nExample:\nhttps://${platform}.com/...`}
+              rows={6}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2.5 text-[11px] font-mono outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+            />
+            {urls.length > 0 && (
+              <div className="mt-2 p-2 bg-green-50 rounded-sm border border-green-200">
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                  <span className=" text-green-900">
+                    {urls.length} URL{urls.length > 1 ? "s" : ""} ready
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Difficulty Selection */}
+          <div>
+            <label className="text-[11px]  text-gray-800 mb-1.5 block">
+              Generate Difficulties
+            </label>
+            <div className="flex gap-2">
+              {(["easy", "medium", "hard"] as const).map((diff) => {
+                const isSelected = selectedDifficulties.has(diff);
+                const colors = {
+                  easy: "emerald",
+                  medium: "amber",
+                  hard: "rose",
+                };
+                const color = colors[diff];
+
+                return (
+                  <button
+                    key={diff}
+                    onClick={() => toggleDifficulty(diff)}
+                    className={`flex-1 px-3 py-2 rounded-sm border-2  text-[11px] transition-all ${
+                      isSelected
+                        ? `border-${color}-500 bg-${color}-50 text-${color}-700 shadow-sm`
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      <span className="capitalize">{diff}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Questions per Pattern */}
+          <div>
+            <label className="text-[11px]  text-gray-800 mb-1 block">
+              Questions per Pattern per Difficulty
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              value={questionsPerPattern}
+              onChange={(e) =>
+                setQuestionsPerPattern(Math.max(1, Math.min(5, +e.target.value || 1)))
+              }
+              className="w-24 rounded-sm border border-gray-200 bg-white px-3 py-2 text-[11px] outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <p className="text-[9px] text-gray-500 mt-1">
+              Each URL will generate {questionsPerPattern} question
+              {questionsPerPattern > 1 ? "s" : ""} per difficulty
+            </p>
+          </div>
+
+          {/* Info Box */}
+          <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+            <div className="flex items-start gap-2 mb-2">
+              <Brain className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+              <div className="text-[10px] text-indigo-900 leading-relaxed">
+                <span className="font-bold">How it works:</span>
+                <ol className="mt-1 ml-3 list-decimal space-y-1">
+                  <li>Scrape URLs to extract algorithm patterns</li>
+                  <li>AI analyzes patterns (domain, constraints, structure)</li>
+                  <li>Generate {questionsPerPattern}× questions per difficulty variant</li>
+                  <li>Auto-store in vector DB with deduplication</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary */}
+          {canSubmit && (
+            <div className="p-3 bg-purple-50 rounded-sm border border-purple-200">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-purple-600" />
+                <div className="text-[11px] text-purple-900">
+                  <span className="font-bold">Expected Output:</span> {urls.length} patterns
+                  × {questionsPerPattern} questions × {selectedDifficulties.size}{" "}
+                  {selectedDifficulties.size > 1 ? "difficulties" : "difficulty"} ={" "}
+                  <span className="font-bold text-purple-700">{totalQuestions} total questions</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-[11px] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!canSubmit || processing}
+            onClick={() =>
+              onScrapeAndGenerate({
+                urls,
+                platform,
+                difficulties: Array.from(selectedDifficulties),
+                limit: questionsPerPattern,
+              })
+            }
+            className={`px-4 py-1.5 rounded-xl  text-[11px] text-white transition-all ${
+              processing || !canSubmit
+                ? "bg-purple-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow"
+            }`}
+          >
+            {processing ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              `Generate ${totalQuestions} Questions`
+            )}
+          </button>
+        </div>
+
+        {/* Processing Overlay */}
+        <AnimatePresence>
+          {processing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center"
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
+                <div className="text-sm  text-gray-900">Extracting Patterns...</div>
+                <div className="text-[10px] text-gray-600 mt-1">
+                  Then generating questions
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+};
 // ACTIONS MENU (from new design - keep this)
 const ActionsMenu: React.FC<{
   onAiGenerate: () => void;
   onAiBatch: () => void;
   onImportWeb: () => void;
-  onImportUrl: () => void;
+  onPatternScrape: () => void;
   generating: boolean;
   importing: boolean;
-}> = ({ onAiGenerate, onAiBatch, onImportWeb, onImportUrl, generating, importing }) => {
+}> = ({ onAiGenerate, onAiBatch, onImportWeb, onPatternScrape, generating, importing }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -1187,31 +1704,19 @@ const ActionsMenu: React.FC<{
 
             <div className="my-1 border-t border-gray-100" />
 
-            <button
-              onClick={() => { onImportWeb(); setIsOpen(false); }}
-              disabled={importing}
-              className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-3 disabled:opacity-50"
-            >
-              <div className="w-8 h-8 bg-orange-100 rounded-sm flex items-center justify-center">
-                <Network className="w-4 h-4 text-orange-600" />
-              </div>
-              <div>
-                <div className="text-xs text-gray-900">Import from Web</div>
-                <div className="text-[10px] text-gray-500">Auto scrape platforms</div>
-              </div>
-            </button>
 
-            <button
-              onClick={() => { onImportUrl(); setIsOpen(false); }}
+
+           <button
+              onClick={() => { onPatternScrape(); setIsOpen(false); }}
               disabled={importing}
               className="w-full px-4 py-2.5 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 disabled:opacity-50"
             >
               <div className="w-8 h-8 bg-purple-100 rounded-sm flex items-center justify-center">
-                <LinkIcon className="w-4 h-4 text-purple-600" />
+                <Brain className="w-4 h-4 text-purple-600" />
               </div>
               <div>
-                <div className="text-xs text-gray-900">Import from URL</div>
-                <div className="text-[10px] text-gray-500">Custom URLs</div>
+                <div className="text-xs text-gray-900">Pattern Scrape</div>
+                <div className="text-[10px] text-gray-500">Extract & generate</div>
               </div>
             </button>
           </motion.div>
@@ -1242,6 +1747,8 @@ const QuestionBankPage: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [showSourceSelector, setShowSourceSelector] = useState(false);
   const [showUrlScraper, setShowUrlScraper] = useState(false);
+  const [showPatternScraper, setShowPatternScraper] = useState(false);
+  const [patternProcessing, setPatternProcessing] = useState(false);
   const [vectorHealth, setVectorHealth] = useState<boolean>(true);
   
   // Vetting states (keep all your original vetting states)
@@ -1441,12 +1948,15 @@ const QuestionBankPage: React.FC = () => {
     type: "coding" | "mcq";
     tags: string[];
     testCaseCount: number;
+    withDiagram: boolean;
   }) => {
     if (!requireAuth()) return;
     setGenerating(true);
     try {
       const endpoint = payload.type === "mcq" 
         ? "http://localhost:5000/api/questions/generate-mcq"
+        : payload.withDiagram
+        ? "http://localhost:5000/api/questions/generate-with-diagram"
         : "http://localhost:5000/api/questions/generate";
 
       const response = await fetch(endpoint, {
@@ -1488,58 +1998,159 @@ const QuestionBankPage: React.FC = () => {
     setGenerating(false);
   };
 
-  const handleAiBatchGenerate = async (payload: {
-    topics: string[];
-    difficulty: "easy" | "medium" | "hard";
-    countPerTopic: number;
-    type: "coding" | "mcq";
-  }) => {
-    if (!requireAuth()) return;
-    setBatchGenerating(true);
-    try {
-      const endpoint = payload.type === "mcq"
-        ? "http://localhost:5000/api/questions/generate-mcq-batch"
-        : "http://localhost:5000/api/questions/generate-batch";
+const VARIANT_HINTS = [
+  "focus on edge cases",
+  "use tricky constraints",
+  "optimize for time complexity",
+  "include unusual input patterns",
+  "require careful parsing",
+  "ensure multiple valid approaches",
+  "avoid trivial solution",
+  "include large input constraints",
+];
 
-      const requestBody = payload.type === "mcq"
-        ? {
-            topics: payload.topics,
-            difficulty: payload.difficulty,
-            count_per_topic: payload.countPerTopic,
-          }
-        : {
-            topics: payload.topics,
-            difficulty: payload.difficulty,
-            countPerTopic: payload.countPerTopic,
-          };
+const handleAiBatchGenerate = async (payload: {
+  topics: string[];
+  difficulty: "easy" | "medium" | "hard";
+  countPerTopic: number;
+  type: "coding" | "mcq";
+  withDiagram: boolean;
+  testCaseCount: number;
+  tags: string[];
+  instructions: string;
+  uniqueVariants: boolean;
+}) => {
+  if (!requireAuth()) return;
 
-      const res = await fetch(endpoint, {
+  setBatchGenerating(true);
+  try {
+    // ✅ MCQ batch endpoint
+    if (payload.type === "mcq") {
+      const res = await fetch("http://localhost:5000/api/questions/generate-mcq-batch", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          topics: payload.topics,
+          difficulty: payload.difficulty,
+          count_per_topic: payload.countPerTopic,
+          // optional extras (ignored if backend doesn't use them)
+          skillTags: payload.tags,
+          instructions: payload.instructions,
+        }),
       });
 
       const data = await res.json();
-
       if (data.success && Array.isArray(data.questions)) {
         const normalized = data.questions.map((q: any) => ({
           ...q,
           aiGenerated: true,
-          source: q.source || (payload.type === "mcq" ? "ai_gemini_mcq" : "ai_gemini"),
-          type: payload.type,
+          source: q.source || "ai_gemini_mcq",
+          type: "mcq",
+          skillTags: payload.tags?.length
+            ? Array.from(new Set([...(q.skillTags || []), ...payload.tags]))
+            : q.skillTags || [],
         })) as Question[];
 
         setQuestions((prev) => [...normalized, ...prev]);
         setBatchOpen(false);
-      } else {
-        throw new Error(data.error || data.details || "Invalid batch response");
+        return;
       }
-    } catch (e: any) {
-      console.error(e);
-      alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
+
+      throw new Error(data.error || data.details || "Invalid batch response");
     }
+
+    // ✅ CODING with diagram -> loop single calls (no batch endpoint)
+    if (payload.withDiagram) {
+      const created: Question[] = [];
+
+      for (const topic of payload.topics) {
+        for (let i = 0; i < payload.countPerTopic; i++) {
+          const hint = payload.uniqueVariants ? VARIANT_HINTS[(i + topic.length) % VARIANT_HINTS.length] : "";
+          const specificTopic = hint ? `${topic} (${hint})` : topic;
+
+          const res = await fetch("http://localhost:5000/api/questions/generate-with-diagram", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              topic: specificTopic,
+              difficulty: payload.difficulty,
+              type: "coding",
+              skillTags: payload.tags,
+              testCaseCount: payload.testCaseCount,
+              instructions: payload.instructions, // if backend supports
+            }),
+          });
+
+          const data = await res.json();
+          if (data?.success && data?.question) {
+            created.push({
+              ...data.question,
+              aiGenerated: true,
+              source: data.question.source || "ai_gemini_with_diagram",
+              type: "coding",
+              skillTags: payload.tags?.length
+                ? Array.from(new Set([...(data.question.skillTags || []), ...payload.tags]))
+                : data.question.skillTags || [],
+            });
+          }
+        }
+      }
+
+      if (created.length) {
+        setQuestions((prev) => [...created, ...prev]);
+        setBatchOpen(false);
+        return;
+      }
+
+      throw new Error("No questions were generated (diagram batch)");
+    }
+
+    // ✅ CODING normal batch endpoint
+    const res = await fetch("http://localhost:5000/api/questions/generate-batch", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        topics: payload.topics,
+        difficulty: payload.difficulty,
+        countPerTopic: payload.countPerTopic,
+        skillTags: payload.tags,
+        instructions: payload.instructions,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.success && Array.isArray(data.questions)) {
+      const normalized = data.questions.map((q: any, idx: number) => {
+        const hint = payload.uniqueVariants ? VARIANT_HINTS[idx % VARIANT_HINTS.length] : "";
+        return {
+          ...q,
+          aiGenerated: true,
+          source: q.source || "ai_gemini",
+          type: "coding",
+          // keep tags merged
+          skillTags: payload.tags?.length
+            ? Array.from(new Set([...(q.skillTags || []), ...payload.tags]))
+            : q.skillTags || [],
+          // optional: store hint for traceability
+          // generationHint: hint,
+        };
+      }) as Question[];
+
+      setQuestions((prev) => [...normalized, ...prev]);
+      setBatchOpen(false);
+      return;
+    }
+
+    throw new Error(data.error || data.details || "Invalid batch response");
+  } catch (e: any) {
+    console.error(e);
+    alert(`Batch generation failed: ${e.message || "Network/Server error"}`);
+  } finally {
     setBatchGenerating(false);
-  };
+  }
+};
+
+
 
   const handleImportScraped = async (source: string = 'stackoverflow', maxPages: number = 3) => {
     if (!requireAuth()) return;
@@ -1635,7 +2246,61 @@ const QuestionBankPage: React.FC = () => {
       setImporting(false);
     }
   };
-
+const handlePatternScrapeAndGenerate = async (payload: {
+  urls: string[];
+  platform: "stackoverflow" | "leetcode" | "github";
+  difficulties: ("easy" | "medium" | "hard")[];
+  limit: number;
+}) => {
+  if (!requireAuth()) return;
+  
+  setPatternProcessing(true);
+  setShowPatternScraper(false);
+  
+  try {
+    // ✅ Single endpoint call - no more separate scrape + generate
+    const response = await fetch("http://localhost:5000/api/questions/pattern-scrape-and-generate", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        urls: payload.urls,
+        platform: payload.platform,
+        difficulties: payload.difficulties,
+        limit: payload.limit,
+      }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      alert(
+        `✅ Pattern Generation Complete!\n\n` +
+        `📊 Results:\n` +
+        `• Patterns processed: ${data.generation.processedPatterns}\n` +
+        `• Questions created: ${data.generation.created}\n` +
+        `• Skipped (duplicates): ${data.generation.skipped}\n` +
+        `• Failed: ${data.generation.failed}\n` +
+        `• Difficulties: ${data.generation.difficultyVariants.join(", ")}\n\n` +
+        `All questions are approved and added to the library!`
+      );
+      await loadQuestions();
+    } else {
+      throw new Error(data.error || "Pattern workflow failed");
+    }
+  } catch (error: any) {
+    console.error("Pattern scrape & generate failed:", error);
+    alert(
+      `❌ Pattern Generation Failed\n\n` +
+      `Error: ${error.message || "Unknown error"}\n\n` +
+      `Make sure:\n` +
+      `• Backend is running on port 5000\n` +
+      `• Python AI service is running on port 8000\n` +
+      `• URLs are valid and accessible`
+    );
+  } finally {
+    setPatternProcessing(false);
+  }
+};
   // Selection handlers (from new design)
   const toggleQuestionSelection = (questionId: string) => {
     setSelectedQuestions(prev => {
@@ -1920,7 +2585,7 @@ const QuestionBankPage: React.FC = () => {
                     onAiGenerate={() => setAiModalOpen(true)}
                     onAiBatch={() => setBatchOpen(true)}
                     onImportWeb={() => setShowSourceSelector(true)}
-                    onImportUrl={() => setShowUrlScraper(true)}
+                    onPatternScrape={() => setShowPatternScraper(true)}
                     generating={generating}
                     importing={importing}
                   />
@@ -2359,7 +3024,12 @@ const QuestionBankPage: React.FC = () => {
 
       {/* KEEP ALL YOUR EXISTING MODALS */}
       <AiGenerateModal open={aiModalOpen} onClose={() => setAiModalOpen(false)} onGenerate={handleAiGenerate} generating={generating} />
-      <AiBatchModal open={batchOpen} onClose={() => setBatchOpen(false)} onGenerate={handleAiBatchGenerate} generating={batchGenerating} />
+      <AiBatchModal
+        open={batchOpen}
+        onClose={() => setBatchOpen(false)}
+        onGenerate={handleAiBatchGenerate}
+        generating={batchGenerating}
+      />
 
       {showEditor && (
         <QuestionEditor question={editingQuestion || undefined} onSave={handleSaveQuestion} onCancel={() => setShowEditor(false)} mode={editorMode} />
@@ -2458,8 +3128,52 @@ const QuestionBankPage: React.FC = () => {
 
       {/* URL Scraper Modal */}
       <UrlScraperModal open={showUrlScraper} onClose={() => setShowUrlScraper(false)} onScrape={handleScrapeUrls} scraping={importing} token={token} />
+        {/* ✅ ADD PATTERN SCRAPER MODAL HERE */}
+<PatternScraperModal
+  open={showPatternScraper}
+  onClose={() => setShowPatternScraper(false)}
+  onScrapeAndGenerate={handlePatternScrapeAndGenerate}
+  processing={patternProcessing}
+  token={token}
+/>
+
+{/*  ADD PATTERN PROCESSING OVERLAY HERE */}
+<AnimatePresence>
+  {patternProcessing && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20 backdrop-blur-sm flex items-center justify-center"
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className={`${panel} px-6 py-5 max-w-sm`}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+            <div className="w-10 h-10 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+            <Brain className="absolute inset-0 m-auto w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <div className="text-gray-900 text-sm">Pattern Generation...</div>
+            <div className="text-gray-600 text-[10px] mt-0.5">
+              Extracting patterns & creating questions
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500">
+          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+          AI analyzing algorithm patterns...
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
     </div>
   );
 };
+
 
 export default QuestionBankPage;

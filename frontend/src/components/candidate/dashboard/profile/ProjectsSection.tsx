@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Edit2, FolderGit2, X, Check, Plus, Trash2, ExternalLink } from "lucide-react";
+import {
+  Edit2,
+  FolderGit2,
+  X,
+  Check,
+  Plus,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { useUpdateProjects } from "@/src/lib/profile/profile.queries";
 import { useProfile } from "@/src/context/ProfileContext";
 
@@ -13,10 +21,20 @@ interface Project {
   technologies: string[];
   project_url?: string;
   github_url?: string;
-  start_date?: string;
-  end_date?: string;
+  start_date?: string | null;
+  end_date?: string | null;
   is_ongoing?: boolean;
   status?: string;
+}
+
+type ProjectForm = Project & { _key: string };
+
+function safeJSONParse(value: string) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function parseProjects(value: any): Project[] {
@@ -24,48 +42,95 @@ function parseProjects(value: any): Project[] {
   if (Array.isArray(value)) return value as Project[];
 
   if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? (parsed as Project[]) : [];
-    } catch (e) {
-      console.error("Failed to parse projects JSON:", e);
-      return [];
-    }
+    const parsed = safeJSONParse(value);
+    return Array.isArray(parsed) ? (parsed as Project[]) : [];
   }
+
   return [];
+}
+
+function makeKey() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function makeEmptyProject(): ProjectForm {
+  return {
+    _key: makeKey(),
+    name: "",
+    description: "",
+    technologies: [],
+    project_url: "",
+    github_url: "",
+    start_date: "",
+    end_date: "",
+    is_ongoing: false,
+  };
+}
+
+function toFormProjects(input: Project[]): ProjectForm[] {
+  return (input ?? []).map((p) => ({
+    ...p,
+    _key: p.id || makeKey(),
+    technologies: Array.isArray(p.technologies) ? p.technologies : [],
+    start_date: p.start_date ?? "",
+    end_date: p.end_date ?? "",
+    project_url: p.project_url ?? "",
+    github_url: p.github_url ?? "",
+    is_ongoing: !!p.is_ongoing,
+  }));
+}
+
+function toPayloadProjects(input: ProjectForm[]): Project[] {
+  return (input ?? []).map((p) => ({
+    id: p.id,
+    name: (p.name ?? "").trim(),
+    description: (p.description ?? "").trim(),
+    technologies: Array.isArray(p.technologies)
+      ? p.technologies.map((t) => String(t).trim()).filter(Boolean)
+      : [],
+    project_url: (p.project_url ?? "").trim(),
+    github_url: (p.github_url ?? "").trim(),
+    start_date: p.start_date ? String(p.start_date) : "",
+    end_date: p.end_date ? String(p.end_date) : "",
+    is_ongoing: !!p.is_ongoing,
+    status: p.status ? String(p.status) : undefined,
+  }));
 }
 
 const ProjectsSection = () => {
   const { profileData, refetch } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
 
-  // ✅ Always normalize to array (because DB stores JSON string sometimes)
   const parsedProjects = useMemo(() => {
     return parseProjects((profileData as any)?.projects);
-  }, [profileData]);
+  }, [(profileData as any)?.projects]);
 
-  const [projects, setProjects] = useState<Project[]>(parsedProjects);
+  const [projects, setProjects] = useState<ProjectForm[]>(() =>
+    toFormProjects(parsedProjects)
+  );
 
-  // ✅ Sync when profileData changes (autofill/apply/refetch)
+  // Sync when profileData changes (but do NOT overwrite while editing)
   useEffect(() => {
-    if (!isEditing) setProjects(parsedProjects);
+    if (!isEditing) setProjects(toFormProjects(parsedProjects));
   }, [parsedProjects, isEditing]);
 
   const { mutate: updateProjects, isPending } = useUpdateProjects();
 
   const handleEdit = () => {
     setIsEditing(true);
-    setProjects(parsedProjects);
+    setProjects(toFormProjects(parsedProjects));
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setProjects(parsedProjects);
+    setProjects(toFormProjects(parsedProjects));
   };
 
   const handleSave = () => {
+    const payload = toPayloadProjects(projects);
+
     updateProjects(
-      { projects }, // send array, backend can stringify
+      { projects: payload },
       {
         onSuccess: () => {
           setIsEditing(false);
@@ -75,40 +140,44 @@ const ProjectsSection = () => {
     );
   };
 
-  const handleAddProject = () => {
-    setProjects((prev) => [
-      ...prev,
-      {
-        name: "",
-        description: "",
-        technologies: [],
-        project_url: "",
-        github_url: "",
-        start_date: "",
-        end_date: "",
-        is_ongoing: false,
-      },
-    ]);
-  };
-
-  const handleRemoveProject = (index: number) => {
-    setProjects((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleProjectChange = (index: number, field: keyof Project, value: any) => {
+  // ✅ This is the FIX: entering edit mode and adding an empty project immediately
+  const handleStartAdd = () => {
+    setIsEditing(true);
     setProjects((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
+      // if we already have projects in state, keep them
+      const base = prev.length ? prev : toFormProjects(parsedProjects);
+      // if still empty -> add first blank one
+      if (!base.length) return [makeEmptyProject()];
+      // otherwise just append a new one
+      return [...base, makeEmptyProject()];
     });
   };
 
-  const handleTechnologiesChange = (index: number, value: string) => {
+  const handleAddProject = () => {
+    setProjects((prev) => [...prev, makeEmptyProject()]);
+  };
+
+  const handleRemoveProject = (key: string) => {
+    setProjects((prev) => prev.filter((p) => p._key !== key));
+  };
+
+  const handleProjectChange = (
+    key: string,
+    field: keyof ProjectForm,
+    value: any
+  ) => {
+    setProjects((prev) =>
+      prev.map((p) => (p._key === key ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const handleTechnologiesChange = (key: string, value: string) => {
     const technologies = value
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    handleProjectChange(index, "technologies", technologies);
+
+    handleProjectChange(key, "technologies", technologies);
   };
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
@@ -125,23 +194,39 @@ const ProjectsSection = () => {
           <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
             <FolderGit2 className="w-3 h-3 lg:w-4 lg:h-4 text-purple-600" />
           </div>
-          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Projects</h3>
+          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">
+            Projects
+          </h3>
         </div>
 
         {!isEditing ? (
-          <button
-            onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" />
-            Edit
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Optional: quick add even when not editing */}
+            <button
+              onClick={handleStartAdd}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              type="button"
+            >
+              <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
+              Add
+            </button>
+
+            <button
+              onClick={handleEdit}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              type="button"
+            >
+              <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" />
+              Edit
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <button
               onClick={handleCancel}
               disabled={isPending}
               className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              type="button"
             >
               <X className="w-3 h-3 lg:w-4 lg:h-4" />
               Cancel
@@ -150,6 +235,7 @@ const ProjectsSection = () => {
               onClick={handleSave}
               disabled={isPending}
               className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              type="button"
             >
               <Check className="w-3 h-3 lg:w-4 lg:h-4" />
               {isPending ? "Saving..." : "Save"}
@@ -163,9 +249,9 @@ const ProjectsSection = () => {
         <div>
           {hasProjects ? (
             <div className="space-y-4">
-              {projects.map((project, index) => (
+              {projects.map((project) => (
                 <motion.div
-                  key={index}
+                  key={project._key}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="p-4 bg-gray-50 rounded-lg border border-gray-200"
@@ -208,11 +294,12 @@ const ProjectsSection = () => {
                     </p>
                   ) : null}
 
-                  {Array.isArray(project.technologies) && project.technologies.length > 0 ? (
+                  {Array.isArray(project.technologies) &&
+                  project.technologies.length > 0 ? (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {project.technologies.map((tech, techIndex) => (
                         <span
-                          key={techIndex}
+                          key={`${project._key}_${tech}_${techIndex}`}
                           className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium"
                         >
                           {tech}
@@ -233,11 +320,11 @@ const ProjectsSection = () => {
                       {project.is_ongoing
                         ? "Present"
                         : project.end_date
-                          ? new Date(project.end_date).toLocaleDateString("en-US", {
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "Present"}
+                        ? new Date(project.end_date).toLocaleDateString("en-US", {
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "Present"}
                     </p>
                   ) : null}
                 </motion.div>
@@ -252,8 +339,9 @@ const ProjectsSection = () => {
                 Add your projects to showcase your work
               </p>
               <button
-                onClick={handleEdit}
+                onClick={handleStartAdd}
                 className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
+                type="button"
               >
                 Add project
               </button>
@@ -265,7 +353,7 @@ const ProjectsSection = () => {
           <AnimatePresence>
             {projects.map((project, index) => (
               <motion.div
-                key={index}
+                key={project._key}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -276,8 +364,9 @@ const ProjectsSection = () => {
                     Project {index + 1}
                   </h4>
                   <button
-                    onClick={() => handleRemoveProject(index)}
+                    onClick={() => handleRemoveProject(project._key)}
                     className="text-red-600 hover:text-red-700 p-1"
+                    type="button"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -291,7 +380,9 @@ const ProjectsSection = () => {
                     <input
                       type="text"
                       value={project.name}
-                      onChange={(e) => handleProjectChange(index, "name", e.target.value)}
+                      onChange={(e) =>
+                        handleProjectChange(project._key, "name", e.target.value)
+                      }
                       className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="e.g., E-commerce Platform"
                     />
@@ -304,7 +395,7 @@ const ProjectsSection = () => {
                     <textarea
                       value={project.description}
                       onChange={(e) =>
-                        handleProjectChange(index, "description", e.target.value)
+                        handleProjectChange(project._key, "description", e.target.value)
                       }
                       rows={3}
                       className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
@@ -318,8 +409,14 @@ const ProjectsSection = () => {
                     </label>
                     <input
                       type="text"
-                      value={Array.isArray(project.technologies) ? project.technologies.join(", ") : ""}
-                      onChange={(e) => handleTechnologiesChange(index, e.target.value)}
+                      value={
+                        Array.isArray(project.technologies)
+                          ? project.technologies.join(", ")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleTechnologiesChange(project._key, e.target.value)
+                      }
                       className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="e.g., React, Node.js, Docker"
                     />
@@ -334,7 +431,7 @@ const ProjectsSection = () => {
                         type="url"
                         value={project.project_url || ""}
                         onChange={(e) =>
-                          handleProjectChange(index, "project_url", e.target.value)
+                          handleProjectChange(project._key, "project_url", e.target.value)
                         }
                         className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         placeholder="https://..."
@@ -349,7 +446,7 @@ const ProjectsSection = () => {
                         type="url"
                         value={project.github_url || ""}
                         onChange={(e) =>
-                          handleProjectChange(index, "github_url", e.target.value)
+                          handleProjectChange(project._key, "github_url", e.target.value)
                         }
                         className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         placeholder="https://github.com/..."
@@ -364,9 +461,9 @@ const ProjectsSection = () => {
                       </label>
                       <input
                         type="date"
-                        value={project.start_date || ""}
+                        value={(project.start_date as string) || ""}
                         onChange={(e) =>
-                          handleProjectChange(index, "start_date", e.target.value)
+                          handleProjectChange(project._key, "start_date", e.target.value)
                         }
                         className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
@@ -378,11 +475,11 @@ const ProjectsSection = () => {
                       </label>
                       <input
                         type="date"
-                        value={project.end_date || ""}
+                        value={(project.end_date as string) || ""}
                         onChange={(e) =>
-                          handleProjectChange(index, "end_date", e.target.value)
+                          handleProjectChange(project._key, "end_date", e.target.value)
                         }
-                        disabled={project.is_ongoing}
+                        disabled={!!project.is_ongoing}
                         className="w-full px-3 py-2 text-xs lg:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
                       />
                     </div>
@@ -391,10 +488,11 @@ const ProjectsSection = () => {
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={project.is_ongoing || false}
+                          checked={!!project.is_ongoing}
                           onChange={(e) => {
-                            handleProjectChange(index, "is_ongoing", e.target.checked);
-                            if (e.target.checked) handleProjectChange(index, "end_date", "");
+                            const checked = e.target.checked;
+                            handleProjectChange(project._key, "is_ongoing", checked);
+                            if (checked) handleProjectChange(project._key, "end_date", "");
                           }}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
@@ -409,6 +507,7 @@ const ProjectsSection = () => {
 
           <button
             onClick={handleAddProject}
+            type="button"
             className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-xs lg:text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />

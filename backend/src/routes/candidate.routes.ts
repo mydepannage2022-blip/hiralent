@@ -31,8 +31,15 @@ import {
   deleteLinkController,
   updateJobBenefitsController,
   bulkUpdateProfileController,
-  uploadApplicationResumeController
+  uploadApplicationResumeController,
+  updateProjectsController,
+  getLanguagesController,
+  updateLanguagesController,
+  addLanguageController,
+  deleteLanguageController,
+  updateLanguageAtIndexController,
 } from '../controller/candidate/profile.controller';
+import { bulkCertificationsSchema, addCertificationSchema } from "../validation/certification.schema";
 
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
@@ -73,7 +80,12 @@ import {
   updateLinksSchema,
   socialLinkSchema,
   updateJobBenefitsSchema,
-  bulkProfileUpdateSchema
+  bulkProfileUpdateSchema,
+  updateProjectsSchema,
+  updateLanguagesSchema,
+  addLanguageSchema,
+  updateLanguageAtIndexSchema,
+
 } from '../validation/candidate.schema';
 import { startAssessmentSchema } from '../validation/assessment.validation';
 
@@ -112,6 +124,7 @@ import {
   addCertificationController,
   listCertificationsController,
   deleteCertificationController,
+  bulkUpsertCertificationsController,
 } from '../controller/candidate/profile/certification.controller';
 
 import {
@@ -293,6 +306,13 @@ router.put(
   updateJobBenefitsController
 );
 
+//Projects data
+router.put(
+  '/profile/projects',
+  [checkAuth, validateBody(updateProjectsSchema)],
+  updateProjectsController
+);
+
 // Bulk Profile Update
 router.put(
   '/profile/bulk',
@@ -398,18 +418,27 @@ router.post('/profile/badges/evaluate', checkAuth, evaluateBadgesController);
 // CERTIFICATIONS ROUTES
 // ============================
 
-// List candidate certifications
-router.get('/profile/certifications', checkAuth, listCertificationsController);
+// List
+router.get("/profile/certifications", checkAuth, listCertificationsController);
 
-// Add certification
-router.post('/profile/certifications', checkAuth, addCertificationController);
-
-// Delete certification
-router.delete(
-  '/profile/certifications/:certificationId',
+// Add single
+router.post(
+  "/profile/certifications",
   checkAuth,
-  deleteCertificationController
+  validateBody(addCertificationSchema),
+  addCertificationController
 );
+
+// ✅ Bulk save (matches your UI Save button)
+router.put(
+  "/profile/certifications",
+  checkAuth,
+  validateBody(bulkCertificationsSchema),
+  bulkUpsertCertificationsController
+);
+
+// Delete
+router.delete("/profile/certifications/:certificationId", checkAuth, deleteCertificationController);
 
 // ============================
 // AUTOFILL ROUTES
@@ -426,6 +455,32 @@ router.post('/profile/autofill/apply', checkAuth, applyAutofillController);
 
 export default router;
 
+// ============================
+// LANGUAGES ROUTES
+// ============================
+
+router.get("/profile/languages", checkAuth, getLanguagesController);
+
+router.put(
+  "/profile/languages",
+  [checkAuth, validateBody(updateLanguagesSchema)],
+  updateLanguagesController
+);
+
+router.post(
+  "/profile/languages",
+  [checkAuth, validateBody(addLanguageSchema)],
+  addLanguageController
+);
+
+router.delete("/profile/languages/:index", checkAuth, deleteLanguageController);
+
+// optional PATCH
+router.patch(
+  "/profile/languages/:index",
+  [checkAuth, validateBody(updateLanguageAtIndexSchema)],
+  updateLanguageAtIndexController
+);
 
 
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Edit2, User, X, Check, Plus, Mail, Linkedin, Github } from "lucide-react";
+import { Edit2, User, X, Check, Plus, Mail, Linkedin, Github, Phone, MapPin } from "lucide-react";
 import { IoLocationOutline } from "react-icons/io5";
 import Select from "react-select";
 import { useUpdateBasicInfo } from "@/src/lib/profile/profile.queries";
@@ -13,25 +13,43 @@ import { locationOptions } from "@/src/constants/groupedLocationOptions";
 const customSelectStyles = {
   control: (provided: any, state: any) => ({
     ...provided,
-    border: state.isFocused ? "2px solid #3B82F6" : "1px solid #D1D5DB",
+    border: state.isFocused ? "2px solid #3B82F6" : "1px solid #e5e7eb",
     borderRadius: "8px",
-    minHeight: "42px",
-    boxShadow: state.isFocused ? "0 0 0 1px #3B82F6" : "none",
+    minHeight: "44px",
+    boxShadow: "none",
     "&:hover": { borderColor: "#3B82F6" },
+    transition: "all 0.2s ease",
   }),
-  placeholder: (provided: any) => ({ ...provided, color: "#9CA3AF" }),
-  singleValue: (provided: any) => ({ ...provided, color: "#111827" }),
+  placeholder: (provided: any) => ({
+    ...provided,
+    color: "#9ca3af",
+    fontSize: "14px",
+  }),
+  singleValue: (provided: any) => ({
+    ...provided,
+    color: "#111827",
+    fontWeight: "500",
+  }),
   option: (provided: any, state: any) => ({
     ...provided,
-    backgroundColor: state.isSelected ? "#3B82F6" : state.isFocused ? "#EBF4FF" : "white",
+    backgroundColor: state.isSelected ? "#3B82F6" : state.isFocused ? "#f0f9ff" : "white",
     color: state.isSelected ? "white" : "#111827",
-    "&:hover": { backgroundColor: state.isSelected ? "#3B82F6" : "#EBF4FF" },
+    padding: "10px 16px",
+    fontSize: "14px",
+    "&:hover": {
+      backgroundColor: state.isSelected ? "#3B82F6" : "#f0f9ff",
+    },
+  }),
+  menu: (provided: any) => ({
+    ...provided,
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    border: "1px solid #e5e7eb",
+    zIndex: 50,
   }),
 };
 
 /* ---------------- Robust normalizers ---------------- */
-
-// remove trailing punctuation often present in extracted text
 const cleanRaw = (val: string) =>
   (val || "")
     .trim()
@@ -56,15 +74,9 @@ const normalizeGithubUrl = (val: string) => {
   const raw = cleanRaw(val);
   if (!raw) return "";
 
-  // already full url
   if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+  if (/github\.com/i.test(raw)) return ensureHttps(raw).replace(/\/+$/g, "");
 
-  // contains github.com (with or without www)
-  if (/github\.com/i.test(raw)) {
-    return ensureHttps(raw).replace(/\/+$/g, "");
-  }
-
-  // username (@user or user)
   const username = raw.replace(/^@/g, "").trim();
   if (!username) return "";
   return `https://github.com/${username}`.replace(/\/+$/g, "");
@@ -74,29 +86,14 @@ const normalizeLinkedinUrl = (val: string) => {
   const raw = cleanRaw(val);
   if (!raw) return "";
 
-  // already full url
   if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/g, "");
+  if (/linkedin\.com/i.test(raw)) return ensureHttps(raw).replace(/\/+$/g, "");
+  if (/^in\//i.test(raw)) return `https://www.linkedin.com/${raw}`.replace(/\/+$/g, "");
 
-  // contains linkedin.com
-  if (/linkedin\.com/i.test(raw)) {
-    return ensureHttps(raw).replace(/\/+$/g, "");
-  }
-
-  // starts with "in/slug"
-  if (/^in\//i.test(raw)) {
-    return `https://www.linkedin.com/${raw}`.replace(/\/+$/g, "");
-  }
-
-  // slug only (or @slug)
-  const slug = raw
-    .replace(/^@/g, "")
-    .trim()
-    .replace(/[^a-zA-Z0-9-_]/g, "");
-
+  const slug = raw.replace(/^@/g, "").trim().replace(/[^a-zA-Z0-9-_]/g, "");
   if (!slug) return "";
   return `https://www.linkedin.com/in/${slug}`.replace(/\/+$/g, "");
 };
-
 /* ---------------------------------------------------- */
 
 const Personal = () => {
@@ -104,13 +101,29 @@ const Personal = () => {
   const { profileData, refetch } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Prefer autofill-extracted personal_info, fallback to auth user/profileData
   const extractedPI = (profileData as any)?.personal_info || {};
 
-  const fullName = useMemo(() => user?.full_name || "", [user?.full_name]);
-  const firstName = useMemo(() => fullName.split(" ")[0] || "", [fullName]);
-  const lastName = useMemo(() => fullName.split(" ").slice(1).join(" ") || "", [fullName]);
+  // ✅ Prefer stored first/last name if backend provides it, else fallback to user.full_name split
+  const rawFullName = useMemo(() => (user?.full_name || "").trim(), [user?.full_name]);
 
+  const derivedFirst = useMemo(() => {
+    const fromPI = String(extractedPI.first_name || "").trim();
+    if (fromPI) return fromPI;
+    return rawFullName.split(" ")[0] || "";
+  }, [extractedPI.first_name, rawFullName]);
+
+  const derivedLast = useMemo(() => {
+    const fromPI = String(extractedPI.last_name || "").trim();
+    if (fromPI) return fromPI;
+    return rawFullName.split(" ").slice(1).join(" ") || "";
+  }, [extractedPI.last_name, rawFullName]);
+
+  // ✅ Build a display full name (view)
+  const displayFullName = useMemo(() => {
+    const combined = `${derivedFirst} ${derivedLast}`.trim();
+    return combined || rawFullName || "";
+  }, [derivedFirst, derivedLast, rawFullName]);
+ 
   const phone = useMemo(
     () => extractedPI.phone || user?.phone_number || "",
     [extractedPI.phone, user?.phone_number]
@@ -121,7 +134,6 @@ const Personal = () => {
     [profileData?.location, extractedPI.location]
   );
 
-  // email / linkedin / github
   const email = useMemo(() => extractedPI.email || user?.email || "", [extractedPI.email, user?.email]);
 
   const linkedin = useMemo(
@@ -141,8 +153,14 @@ const Personal = () => {
     [location]
   );
 
+  // ✅ Form data includes first_name + last_name (this is what you were missing)
   const [formData, setFormData] = useState({
-    full_name: fullName,
+    first_name: derivedFirst,
+    last_name: derivedLast,
+
+    // keep full_name for backwards compatibility with your backend
+    full_name: displayFullName,
+
     phone_number: phone,
     location,
     about_me: aboutMe,
@@ -153,10 +171,13 @@ const Personal = () => {
 
   const [selectedLocation, setSelectedLocation] = useState<any>(selectedLocationOption);
 
-  // Sync when autofill updates profile
   useEffect(() => {
+    const combined = `${derivedFirst} ${derivedLast}`.trim() || rawFullName || "";
+
     setFormData({
-      full_name: fullName,
+      first_name: derivedFirst,
+      last_name: derivedLast,
+      full_name: combined,
       phone_number: phone,
       location,
       about_me: aboutMe,
@@ -166,14 +187,18 @@ const Personal = () => {
     });
 
     setSelectedLocation(locationOptions.find((o) => o.label === location) || null);
-  }, [fullName, phone, location, aboutMe, email, linkedin, github]);
+  }, [derivedFirst, derivedLast, rawFullName, phone, location, aboutMe, email, linkedin, github]);
 
   const { mutate: updateBasicInfo, isPending } = useUpdateBasicInfo();
 
   const handleEdit = () => {
     setIsEditing(true);
+    const combined = `${derivedFirst} ${derivedLast}`.trim() || rawFullName || "";
+
     setFormData({
-      full_name: fullName,
+      first_name: derivedFirst,
+      last_name: derivedLast,
+      full_name: combined,
       phone_number: phone,
       location,
       about_me: aboutMe,
@@ -181,16 +206,26 @@ const Personal = () => {
       linkedin,
       github,
     });
+
     setSelectedLocation(selectedLocationOption);
   };
 
   const handleCancel = () => setIsEditing(false);
 
   const handleSave = () => {
+    const combinedFullName = `${(formData.first_name || "").trim()} ${(formData.last_name || "").trim()}`
+      .trim()
+      .replace(/\s+/g, " ");
+
     const updatedFormData = {
       ...formData,
+      full_name: combinedFullName,
       location: selectedLocation?.label || "",
       personal_info: {
+        // ✅ store first/last so it’s not lost even if user.full_name is weird
+        first_name: (formData.first_name || "").trim(),
+        last_name: (formData.last_name || "").trim(),
+
         email: formData.email,
         phone: formData.phone_number,
         github: formData.github,
@@ -209,274 +244,385 @@ const Personal = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+
+      // ✅ If first/last changes, keep full_name in sync (so backend still receives it)
+      if (name === "first_name" || name === "last_name") {
+        const combined = `${(next.first_name || "").trim()} ${(next.last_name || "").trim()}`
+          .trim()
+          .replace(/\s+/g, " ");
+        next.full_name = combined;
+      }
+
+      return next;
+    });
   };
 
   const hasAboutContent = aboutMe && aboutMe.trim().length > 0;
-
-  // computed final URLs for display
   const emailHref = useMemo(() => normalizeEmail(email), [email]);
   const linkedinHref = useMemo(() => normalizeLinkedinUrl(linkedin), [linkedin]);
   const githubHref = useMemo(() => normalizeGithubUrl(github), [github]);
+
+  // ✅ View values (from derived fields)
+  const firstName = derivedFirst;
+  const lastName = derivedLast;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+      transition={{ duration: 0.3 }}
+      className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <User className="w-3 h-3 lg:w-4 lg:h-4 text-blue-600" />
+      <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
+              <User className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
+              <p className="text-sm text-gray-500">Basic details and contact information</p>
+            </div>
           </div>
-          <h3 className="text-xs lg:text-lg font-semibold text-gray-900">Personal Information</h3>
-        </div>
 
-        {!isEditing ? (
-          <button
-            onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" />
-            Edit
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
+          {!isEditing ? (
             <button
-              onClick={handleCancel}
-              disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              onClick={handleEdit}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
             >
-              <X className="w-3 h-3 lg:w-4 lg:h-4" />
-              Cancel
+              <Edit2 className="w-4 h-4" />
+              Edit
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isPending}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <Check className="w-3 h-3 lg:w-4 lg:h-4" />
-              {isPending ? "Saving..." : "Save"}
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancel}
+                disabled={isPending}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isPending}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                {isPending ? "Saving..." : "Save"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
-      {!isEditing ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">First name</label>
-              <p className="text-xs lg:text-sm text-gray-900">{firstName || "Add"}</p>
-            </div>
-
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Last name</label>
-              <p className="text-xs lg:text-sm text-gray-900">{lastName || "Add"}</p>
-            </div>
-
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-              <p className="text-xs lg:text-sm text-gray-900">{phone || "Add"}</p>
-            </div>
-
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-1">Location</label>
-              <p className="text-xs lg:text-sm text-gray-900">{location || "Add"}</p>
-            </div>
-          </div>
-
-          {/* Contact row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Email */}
-            <a
-              href={emailHref || undefined}
-              className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3 hover:bg-gray-100 transition-colors"
-            >
-              <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                <Mail className="w-4 h-4 text-gray-700" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Email</p>
-                {/* show full email */}
-                <p className="text-xs lg:text-sm text-gray-900 break-all">{email || "Add"}</p>
-              </div>
-            </a>
-
-            {/* LinkedIn */}
-            <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                <Linkedin className="w-4 h-4 text-gray-700" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">LinkedIn</p>
-                {linkedinHref ? (
-                  <a
-                    href={linkedinHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 break-all block"
-                  >
-                    {linkedin}
-                  </a>
-                ) : (
-                  <p className="text-xs lg:text-sm text-gray-900 break-all">{linkedin || "Add"}</p>
-                )}
-              </div>
-            </div>
-
-            {/* GitHub */}
-            <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                <Github className="w-4 h-4 text-gray-700" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">GitHub</p>
-                {githubHref ? (
-                  <a
-                    href={githubHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 break-all block"
-                  >
-                    {github}
-                  </a>
-                ) : (
-                  <p className="text-xs lg:text-sm text-gray-900 break-all">{github || "Add"}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <User className="w-3 h-3 lg:w-4 lg:h-4 text-green-600" />
-              </div>
-              <h4 className="text-xs lg:text-lg font-semibold text-gray-900">About me</h4>
-            </div>
-
-            {hasAboutContent ? (
-              <p className="text-xs lg:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{aboutMe}</p>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <Plus className="w-6 h-6 text-gray-400" />
+      <div className="p-6">
+        {!isEditing ? (
+          <div className="space-y-8">
+            {/* Basic Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center">
+                    <User className="w-3 h-3 text-blue-600" />
+                  </div>
+                  First Name
                 </div>
-                <p className="text-gray-500 text-xs lg:text-sm">Add something about yourself</p>
-                <button
+                <p className={`text-sm font-medium ${firstName ? "text-gray-900" : "text-gray-400"}`}>
+                  {firstName || "Not provided"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center">
+                    <User className="w-3 h-3 text-blue-600" />
+                  </div>
+                  Last Name
+                </div>
+                <p className={`text-sm font-medium ${lastName ? "text-gray-900" : "text-gray-400"}`}>
+                  {lastName || "Not provided"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center">
+                    <Phone className="w-3 h-3 text-blue-600" />
+                  </div>
+                  Mobile
+                </div>
+                <p className={`text-sm font-medium ${phone ? "text-gray-900" : "text-gray-400"}`}>
+                  {phone || "Not provided"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center">
+                    <MapPin className="w-3 h-3 text-blue-600" />
+                  </div>
+                  Location
+                </div>
+                <p className={`text-sm font-medium ${location ? "text-gray-900" : "text-gray-400"}`}>
+                  {location || "Not provided"}
+                </p>
+              </div>
+            </div>
+
+            {/* Contact Cards */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <h3 className="text-sm font-semibold text-gray-900">Contact & Profiles</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-200 transition-colors bg-blue-50/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 border border-blue-100 rounded-lg flex items-center justify-center bg-white">
+                      <Mail className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">Email</p>
+                      {email ? (
+                        <a
+                          href={emailHref}
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors break-all"
+                        >
+                          {email}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-400">Add email</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-200 transition-colors bg-blue-50/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 border border-blue-100 rounded-lg flex items-center justify-center bg-white">
+                      <Linkedin className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">LinkedIn</p>
+                      {linkedinHref ? (
+                        <a
+                          href={linkedinHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors break-all"
+                        >
+                          {linkedinHref.replace("https://", "")}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-400">Add profile</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-200 transition-colors bg-blue-50/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 border border-blue-100 rounded-lg flex items-center justify-center bg-white">
+                      <Github className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">GitHub</p>
+                      {githubHref ? (
+                        <a
+                          href={githubHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors break-all"
+                        >
+                          {githubHref.replace("https://", "")}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-400">Add profile</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* About Section */}
+            <div className="border-t border-gray-100 pt-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <User className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">About Me</h3>
+                  <p className="text-sm text-gray-500">Personal introduction and summary</p>
+                </div>
+              </div>
+
+              {hasAboutContent ? (
+                <div className="border border-gray-200 rounded-lg p-5 bg-emerald-50/20">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{aboutMe}</p>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-300 transition-colors cursor-pointer"
                   onClick={handleEdit}
-                  className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
                 >
-                  About me
-                </button>
-              </div>
-            )}
+                  <div className="w-12 h-12 border border-gray-200 rounded-full flex items-center justify-center mb-4 bg-gray-50">
+                    <Plus className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 text-sm mb-2">Add something about yourself</p>
+                  <button className="text-blue-600 text-sm font-medium hover:text-blue-700">About me</button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Full Name</label>
-              <input
-                type="text"
-                name="full_name"
-                value={formData.full_name}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="Enter your full name"
-              />
+        ) : (
+          <div className="space-y-8">
+            {/* Edit Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ✅ NEW: First name */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">First Name</label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Enter your first name"
+                />
+              </div>
+
+              {/* ✅ NEW: Last name */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">Last Name</label>
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Enter your last name"
+                />
+              </div>
+
+              {/* ✅ Keep phone */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">Mobile Number</label>
+                <input
+                  type="tel"
+                  name="phone_number"
+                  value={formData.phone_number}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Enter your mobile number"
+                />
+              </div>
+
+              {/* ✅ Keep email */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="e.g., john@example.com"
+                />
+              </div>
+
+              {/* ✅ Keep GitHub */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-900">GitHub</label>
+                <input
+                  type="text"
+                  name="github"
+                  value={formData.github}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="e.g., github.com/username"
+                />
+              </div>
+
+              {/* ✅ Keep LinkedIn */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium text-gray-900">LinkedIn</label>
+                <input
+                  type="text"
+                  name="linkedin"
+                  value={formData.linkedin}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="e.g., linkedin.com/in/username"
+                />
+              </div>
+
+              {/* ✅ Keep Location */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium text-gray-900">Location</label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                    <IoLocationOutline className="text-gray-400" />
+                  </div>
+                  <div className="pl-12">
+                    <Select
+                      options={locationOptions}
+                      value={selectedLocation}
+                      onChange={(option) => setSelectedLocation(option)}
+                      placeholder="Select your location"
+                      isSearchable={true}
+                      className="w-full"
+                      styles={customSelectStyles}
+                      menuPortalTarget={document.body}
+                      menuPosition="fixed"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
-              <input
-                type="tel"
-                name="phone_number"
-                value={formData.phone_number}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="Enter your mobile number"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., yousrra@gmail.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">GitHub</label>
-              <input
-                type="text"
-                name="github"
-                value={formData.github}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., github.com/username OR username"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
-              <input
-                type="text"
-                name="linkedin"
-                value={formData.linkedin}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                placeholder="e.g., linkedin.com/in/slug OR slug"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">Location</label>
+            {/* About Me Section */}
+            <div className="border-t border-gray-100 pt-8">
+              <div className="space-y-2 mb-6">
+                <label className="block text-sm font-medium text-gray-900">About me</label>
+                <p className="text-sm text-gray-500">Write a brief introduction about yourself</p>
+              </div>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
-                  <IoLocationOutline className="text-xs lg:text-lg text-gray-400" />
-                </div>
-                <div className="pl-10">
-                  <Select
-                    options={locationOptions}
-                    value={selectedLocation}
-                    onChange={(option) => setSelectedLocation(option)}
-                    placeholder="Select your location"
-                    isSearchable={true}
-                    className="w-full"
-                    styles={customSelectStyles}
-                    menuPortalTarget={document.body}
-                    menuPosition="fixed"
-                  />
+                <textarea
+                  name="about_me"
+                  value={formData.about_me}
+                  onChange={handleInputChange}
+                  rows={6}
+                  maxLength={500}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors resize-none"
+                  placeholder="Tell us about your background, skills, and interests..."
+                />
+                <div className="absolute bottom-3 right-3">
+                  <span
+                    className={`text-xs ${
+                      formData.about_me.length >= 500 ? "text-red-500" : "text-gray-500"
+                    }`}
+                  >
+                    {formData.about_me.length}/500
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="border-t border-gray-200 pt-6">
-            <label className="block text-xs lg:text-sm font-medium text-gray-700 mb-2">About me</label>
-            <textarea
-              name="about_me"
-              value={formData.about_me}
-              onChange={handleInputChange}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-none"
-              placeholder="Tell us about yourself..."
-            />
-            <p className="text-xs text-gray-500 mt-1">{formData.about_me.length}/500 characters</p>
+            {/* (Optional) Helper text showing what will be saved */}
+            <div className="text-xs text-gray-500">
+              Saving as full name:{" "}
+              <span className="font-medium text-gray-700">{formData.full_name || "—"}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   );
 };
