@@ -2631,7 +2631,3 @@ async generateQuestionsFromPatternsForUser(params: {
 
 
 }
-  
-
-  
-

@@ -1,10 +1,12 @@
-// frontend/src/components/candidate/dashboard/jobs/JobCard.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Clock, TrendingUp, Briefcase } from "lucide-react";
-import type { CandidateJobListItemDTO } from "../../../../types/candidate.jobs.types";
+import type {
+  CandidateJobListItemDTO,
+  EligibilityResult,
+} from "../../../../types/candidate.jobs.types";
 import EligibilityBadge from "./EligibilityBadge";
 import EligibilityReasons from "./EligibilityReasons";
 import ApplyModal from "./ApplyModal";
@@ -19,17 +21,34 @@ function scoreClass(score: number) {
 export default function JobCard({
   item,
   showMatchScore = false,
+  eligibilityOverride,
+  eligibilityLoading = false,
+  isApplied = false, // ✅ NEW PROP
 }: {
   item: CandidateJobListItemDTO;
   showMatchScore?: boolean;
+  eligibilityOverride?: EligibilityResult;
+  eligibilityLoading?: boolean;
+  isApplied?: boolean; // ✅ NEW PROP
 }) {
   const router = useRouter();
   const [openApply, setOpenApply] = useState(false);
 
+  // ✅ local state to instantly switch UI after successful apply
+  const [applied, setApplied] = useState<boolean>(!!isApplied);
+
+  // ✅ if parent (DB) says applied (after refresh), sync it
+  useEffect(() => {
+    if (isApplied) setApplied(true);
+  }, [isApplied]);
+
   const matchScore = item.match_score;
   const hasMatchScore = showMatchScore && typeof matchScore === "number";
 
-  const canApply = item.eligibility?.eligible;
+  const eligibility = eligibilityOverride ?? item.eligibility;
+
+  // ✅ disable apply if already applied
+  const canApply = !!eligibility?.eligible && !eligibilityLoading && !applied;
 
   const subtitle = useMemo(() => {
     const parts: string[] = [];
@@ -52,7 +71,13 @@ export default function JobCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <EligibilityBadge eligibility={item.eligibility} />
+          {eligibility ? (
+            <EligibilityBadge eligibility={eligibility} />
+          ) : (
+            <span className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-gray-50 text-gray-600 border-gray-200">
+              Checking…
+            </span>
+          )}
 
           {hasMatchScore && (
             <span
@@ -83,28 +108,35 @@ export default function JobCard({
         {!!item.required_skills?.length && (
           <div className="flex items-center gap-1.5">
             <Briefcase className="w-4 h-4" />
-            <span>{item.required_skills.slice(0, 3).join(", ")}{item.required_skills.length > 3 ? "…" : ""}</span>
+            <span>
+              {item.required_skills.slice(0, 3).join(", ")}
+              {item.required_skills.length > 3 ? "…" : ""}
+            </span>
           </div>
         )}
       </div>
 
-      {!canApply && <EligibilityReasons reasons={item.eligibility?.reasons ?? []} />}
+      {!!eligibility && !eligibility.eligible && (
+        <EligibilityReasons reasons={eligibility.reasons ?? []} />
+      )}
 
       <div className="mt-4 flex items-center justify-between pt-4 border-t border-gray-100">
         <button
           onClick={() => router.push(`/candidate/dashboard/jobs/${item.job_id}`)}
           className="text-sm font-medium text-blue-600 hover:text-blue-700"
         >
-          View details
+          View details →
         </button>
 
         <button
           onClick={() => setOpenApply(true)}
           disabled={!canApply}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
-          title={!canApply ? "Not eligible" : "Apply"}
+          className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed
+            ${applied ? "bg-gray-100 text-gray-600 border border-gray-200" : "bg-blue-600 text-white hover:bg-blue-700"}
+          `}
+          title={!canApply ? (applied ? "Applied" : "Not eligible") : "Apply"}
         >
-          Apply
+          {applied ? "Applied" : "Apply"}
         </button>
       </div>
 
@@ -113,7 +145,8 @@ export default function JobCard({
         onClose={() => setOpenApply(false)}
         jobId={item.job_id}
         jobTitle={item.title}
-        eligibility={item.eligibility}
+        eligibility={eligibility}
+        onApplied={() => setApplied(true)} // ✅ instantly set applied after apply success
       />
     </div>
   );

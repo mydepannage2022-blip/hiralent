@@ -8,7 +8,10 @@ export default function CandidatesTabs() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const isInternal = pathname?.includes("/company/dashboard/candidates/internal") || pathname === "/company/dashboard/candidates";
+  const isInternal =
+    pathname?.includes("/company/dashboard/candidates/internal") ||
+    pathname === "/company/dashboard/candidates";
+
   const isExternal = pathname?.includes("/company/dashboard/candidates/external");
 
   return (

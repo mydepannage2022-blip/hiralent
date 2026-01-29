@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
   Building,
-  Target,
   Shield,
   Clock,
   AlertTriangle,
-  FileText,
   BarChart3,
   Layers,
   Trash2,
@@ -21,9 +19,11 @@ import {
   Edit,
   Sparkles,
   GripVertical,
-  Settings,
-  MoreVertical,
   Eye,
+  ExternalLink,
+  User,
+  ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -88,7 +88,7 @@ interface CompanyJob {
 }
 
 /* =============================
-   Questions (inline like HackerRank)
+   Questions
 ============================= */
 
 type QuestionRow = {
@@ -126,8 +126,12 @@ function clampText(s: string, max = 70) {
   return clean.slice(0, max).trimEnd() + "…";
 }
 
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
+
 /* =============================
-   Form Types (same as management)
+   Form Types
 ============================= */
 
 interface AssessmentFormData {
@@ -182,10 +186,11 @@ const ScrollShadow: React.FC<{
 );
 
 /* =============================
-   API (same endpoints/payload shaping)
+   API
 ============================= */
 
-const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE =
+  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
 
 const assessmentService = {
   async getOne(token: string, assessmentId: string) {
@@ -202,10 +207,9 @@ const assessmentService = {
     if (!listRes.ok) throw new Error("Failed to load assessment");
 
     const listJson = await listRes.json();
-    const list: EmployerAssessment[] =
-      Array.isArray(listJson)
-        ? listJson
-        : listJson.data || listJson.assessments || listJson.result || [];
+    const list: EmployerAssessment[] = Array.isArray(listJson)
+      ? listJson
+      : listJson.data || listJson.assessments || listJson.result || [];
 
     const found = list.find((a) => a.assessment_id === assessmentId);
     if (!found) throw new Error("Assessment not found");
@@ -267,12 +271,18 @@ const assessmentService = {
     return response.json().catch(() => ({}));
   },
 
-  // ✅ same generate endpoint (was used in your old summary component)
+  // auto-generate (existing)
   async generateQuestions(token: string, assessmentId: string) {
-    const res = await fetch(`${API_BASE}/employer-assessments/${assessmentId}/generate-questions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    });
+    const res = await fetch(
+      `${API_BASE}/employer-assessments/${assessmentId}/generate-questions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!res.ok) {
       const txt = await res.text();
@@ -281,11 +291,83 @@ const assessmentService = {
     return res.json();
   },
 
-  // ✅ load questions attached (to render rows inline)
-  async getQuestions(token: string, assessmentId: string): Promise<QuestionsApiResponse> {
-    const res = await fetch(`${API_BASE}/employer-assessments/${assessmentId}/questions`, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    });
+  // load attached questions
+  async getQuestions(
+    token: string,
+    assessmentId: string
+  ): Promise<QuestionsApiResponse> {
+    const res = await fetch(
+      `${API_BASE}/employer-assessments/${assessmentId}/questions`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+    return res.json();
+  },
+
+  // manual attach (kept — used by My Questions page after selection)
+  async attachManual(token: string, assessmentId: string, questionIds: string[]) {
+    const res = await fetch(
+      `${API_BASE}/employer-assessments/${assessmentId}/questions/attach`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question_ids: questionIds, mode: "append" }),
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+    return res.json();
+  },
+
+  // detach
+  async detach(token: string, assessmentId: string, questionId: string) {
+    const res = await fetch(
+      `${API_BASE}/employer-assessments/${assessmentId}/questions/${questionId}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+    return res.json();
+  },
+
+  // reorder
+  async reorder(
+    token: string,
+    assessmentId: string,
+    orderedQuestionIds: string[]
+  ) {
+    const res = await fetch(
+      `${API_BASE}/employer-assessments/${assessmentId}/questions/reorder`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ordered_question_ids: orderedQuestionIds }),
+      }
+    );
 
     if (!res.ok) {
       const txt = await res.text();
@@ -350,7 +432,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const [formData, setFormData] = useState<AssessmentFormData>(emptyAssessmentForm);
+  const [formData, setFormData] = useState<AssessmentFormData>(
+    emptyAssessmentForm
+  );
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -373,7 +457,8 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
       time_limit: String(assessment.time_limit ?? 60),
       total_questions: String(assessment.total_questions ?? 20),
       passing_score:
-        assessment.passing_score !== null && assessment.passing_score !== undefined
+        assessment.passing_score !== null &&
+        assessment.passing_score !== undefined
           ? String(assessment.passing_score)
           : "70",
       status: assessment.status || "DRAFT",
@@ -414,7 +499,11 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
     e.preventDefault();
     if (!assessment) return;
 
-    if (!formData.title.trim() || !formData.job_id || !formData.description.trim()) {
+    if (
+      !formData.title.trim() ||
+      !formData.job_id ||
+      !formData.description.trim()
+    ) {
       alert("Please fill all required fields (Job, Title, Description).");
       return;
     }
@@ -471,7 +560,10 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <motion.div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <motion.div
         initial={{ scale: 0.9, y: 20, opacity: 0 }}
@@ -492,7 +584,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               </motion.div>
               <div>
                 <h2 className="text-xl">Edit Assessment</h2>
-                <p className="text-blue-100 text-sm">Update assessment settings and skills to evaluate</p>
+                <p className="text-blue-100 text-sm">
+                  Update assessment settings and skills to evaluate
+                </p>
               </div>
             </div>
 
@@ -508,13 +602,21 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
         </div>
 
         <ScrollShadow className="max-h-[60vh] overflow-y-auto p-6 custom-scrollbar">
-          <form id="edit-assessment-form" onSubmit={handleSubmit} className="space-y-6">
+          <form
+            id="edit-assessment-form"
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Job *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Job *
+                </label>
                 <select
                   value={formData.job_id}
-                  onChange={(e) => setFormData((p) => ({ ...p, job_id: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, job_id: e.target.value }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -529,11 +631,15 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Assessment Title *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Assessment Title *
+                </label>
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, title: e.target.value }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Frontend Technical Assessment"
                   required
@@ -542,10 +648,14 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Assessment Description *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Assessment Description *
+              </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, description: e.target.value }))
+                }
                 rows={5}
                 className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 required
@@ -554,7 +664,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Type
+                </label>
                 <select
                   value={formData.assessment_type}
                   onChange={(e) =>
@@ -573,7 +685,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Difficulty</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Difficulty
+                </label>
                 <select
                   value={formData.difficulty}
                   onChange={(e) =>
@@ -592,7 +706,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Status
+                </label>
                 <select
                   value={formData.status}
                   onChange={(e) =>
@@ -615,34 +731,52 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Skill Category</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Skill Category
+                </label>
                 <input
                   type="text"
                   value={formData.skill_category}
-                  onChange={(e) => setFormData((p) => ({ ...p, skill_category: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      skill_category: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Frontend, Backend..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Time Limit (min)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Time Limit (min)
+                </label>
                 <input
                   type="number"
                   min={5}
                   value={formData.time_limit}
-                  onChange={(e) => setFormData((p) => ({ ...p, time_limit: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, time_limit: e.target.value }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Total Questions</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Total Questions
+                </label>
                 <input
                   type="number"
                   min={1}
                   value={formData.total_questions}
-                  onChange={(e) => setFormData((p) => ({ ...p, total_questions: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      total_questions: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -650,19 +784,28 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Passing Score (%)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Passing Score (%)
+                </label>
                 <input
                   type="number"
                   min={0}
                   max={100}
                   value={formData.passing_score}
-                  onChange={(e) => setFormData((p) => ({ ...p, passing_score: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      passing_score: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Key Skills</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Key Skills
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -694,7 +837,11 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                       >
                         <Tag className="w-3 h-3" />
                         <span className="text-sm font-medium">{skill}</span>
-                        <button type="button" onClick={() => removeSkill(skill)} className="hover:text-red-600">
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill)}
+                          className="hover:text-red-600"
+                        >
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -746,10 +893,139 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
 };
 
 /* =============================
+   ✅ My Questions Picker Modal (Beautiful)
+   - NO library
+   - Only action is redirect to /questions?attachTo=...&source=my
+============================= */
+
+function MyQuestionsAttachModal({
+  open,
+  onClose,
+  onExplore,
+  attachedCount,
+  plannedCount,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onExplore: () => void;
+  attachedCount: number;
+  plannedCount: number;
+}) {
+  if (!open) return null;
+
+  const remaining = Math.max(0, plannedCount - attachedCount);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <motion.div
+        initial={{ scale: 0.96, y: 10, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.96, y: 10, opacity: 0 }}
+        transition={{ type: "spring", damping: 24 }}
+        className="relative w-full max-w-xl bg-white rounded-sm shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="p-6 text-white bg-gradient-to-r from-[#1B73E8] to-[#1557B0]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-sm bg-white/15 grid place-items-center">
+                <User className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xl leading-none">Add questions</div>
+                <div className="text-blue-100 text-sm">
+                  Choose from <b>Your Question Bank</b> and attach to this assessment.
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-sm hover:bg-white/10 transition"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Mini stats */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-sm bg-white/10 p-3">
+              <div className="text-xs text-blue-100">Planned</div>
+              <div className="text-lg font-semibold">{plannedCount}</div>
+            </div>
+            <div className="rounded-sm bg-white/10 p-3">
+              <div className="text-xs text-blue-100">Attached</div>
+              <div className="text-lg font-semibold">{attachedCount}</div>
+            </div>
+            <div className="rounded-sm bg-white/10 p-3">
+              <div className="text-xs text-blue-100">Remaining</div>
+              <div className="text-lg font-semibold">{remaining}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          <div className="rounded-sm border border-gray-200 bg-slate-50 p-4">
+            <div className="text-[#0D2A5B] font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Recommended flow
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-gray-700">
+              <li>• Open <b>My Questions</b></li>
+              <li>• Select questions you created (or saved)</li>
+              <li>• Click <b>Attach</b> to link them to this assessment</li>
+            </ul>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            Tip: You can search, filter, and bulk attach from the Question Bank.
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={onExplore}
+            className="px-4 py-2 rounded-sm text-white inline-flex items-center gap-2"
+            style={{ background: LOGO_BLUE }}
+          >
+            Explore My Questions
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* =============================
    Main Component
 ============================= */
 
-export default function AssessmentDetails({ assessmentId }: { assessmentId: string }) {
+export default function AssessmentDetails({
+  assessmentId,
+}: {
+  assessmentId: string;
+}) {
   const router = useRouter();
   const { token } = useAuth();
 
@@ -762,12 +1038,20 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // ✅ inline questions state (HackerRank-style)
+  // questions state
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [generating, setGenerating] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  // ✅ only My Questions modal
+  const [showMyQuestionsModal, setShowMyQuestionsModal] = useState(false);
+
+  // drag state (native HTML5 dnd)
+  const draggingIdRef = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const plannedCount = assessment?.total_questions || 0;
   const attachedCount = assessment?.question_ids?.length || 0;
@@ -781,7 +1065,9 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
       const data = await assessmentService.getOne(token, assessmentId);
       const normalized: EmployerAssessment = {
         ...data,
-        extracted_skills: Array.isArray(data.extracted_skills) ? data.extracted_skills : [],
+        extracted_skills: Array.isArray(data.extracted_skills)
+          ? data.extracted_skills
+          : [],
         question_ids: Array.isArray(data.question_ids) ? data.question_ids : [],
       };
       setAssessment(normalized);
@@ -807,11 +1093,53 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
       id: q.id ?? q.question_id ?? String(idx),
       title: q.title ?? q.name ?? "Untitled question",
       type: q.type ?? q.category ?? "General",
-      // if your backend has question.time_limit or duration, it will show; else fallback null
       time: q.time ?? q.duration ?? q.time_limit ?? null,
       skills: safeArray<string>(q.skillTags ?? q.skills ?? q.tags ?? []),
       score: q.score ?? q.points ?? null,
       difficulty: q.difficulty ?? q.level ?? null,
+    }));
+  };
+
+  const sortByAssessmentOrder = (rows: QuestionRow[], order: string[]) => {
+    const pos = new Map<string, number>();
+    order.forEach((id, i) => pos.set(id, i));
+    return [...rows].sort((a, b) => {
+      const pa = pos.has(a.id) ? pos.get(a.id)! : 999999;
+      const pb = pos.has(b.id) ? pos.get(b.id)! : 999999;
+      return pa - pb;
+    });
+  };
+
+  const buildSections = (rows: QuestionRow[]) => {
+    const hasSkills = rows.some((q) => (q.skills || []).length > 0);
+
+    if (!hasSkills) {
+      return [
+        {
+          key: assessment?.skill_category || "General",
+          label: assessment?.skill_category || "General",
+          rows,
+          time: null as number | null,
+        },
+      ];
+    }
+
+    // group by first skill tag
+    const map = new Map<string, QuestionRow[]>();
+    rows.forEach((q) => {
+      const key =
+        q.skills && q.skills[0]
+          ? q.skills[0]
+          : assessment?.skill_category || "General";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(q);
+    });
+
+    return Array.from(map.entries()).map(([key, grouped]) => ({
+      key,
+      label: key,
+      rows: grouped,
+      time: null as number | null,
     }));
   };
 
@@ -821,13 +1149,17 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
     setQuestionsError(null);
 
     try {
-      const data = await assessmentService.getQuestions(token, assessment.assessment_id);
+      const data = await assessmentService.getQuestions(
+        token,
+        assessment.assessment_id
+      );
       const raw = safeArray<any>(data?.result?.questions);
-      const mapped = mapQuestions(raw);
+      let mapped = mapQuestions(raw);
 
+      // ✅ enforce current assessment order
+      mapped = sortByAssessmentOrder(mapped, assessment.question_ids || []);
       setQuestions(mapped);
 
-      // default open first section if any
       const sections = buildSections(mapped);
       if (sections.length > 0) {
         setOpenSections((prev) => {
@@ -853,7 +1185,6 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, assessmentId]);
 
-  // load questions when assessment exists (so they appear directly like HackerRank)
   useEffect(() => {
     if (!token || !assessment?.assessment_id) return;
     loadQuestions();
@@ -895,48 +1226,135 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
     }
   };
 
-  // ✅ build HR-like sections
-  const buildSections = (rows: QuestionRow[]) => {
-    // If you have skills, group by skill-category-like section
-    // else single section based on assessment.skill_category
-    const hasSkills = rows.some((q) => (q.skills || []).length > 0);
+  const detachQuestion = async (questionId: string) => {
+    if (!token || !assessment) return;
+    if (!confirm("Remove this question from the assessment?")) return;
 
-    if (!hasSkills) {
-      return [
-        {
-          key: assessment?.skill_category || "General",
-          label: assessment?.skill_category || "General",
-          rows,
-          time: null as number | null,
-        },
-      ];
+    try {
+      await assessmentService.detach(token, assessment.assessment_id, questionId);
+      await loadOne();
+      await loadQuestions();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to detach question");
     }
-
-    // group by first skill tag
-    const map = new Map<string, QuestionRow[]>();
-    rows.forEach((q) => {
-      const key = (q.skills && q.skills[0]) ? q.skills[0] : (assessment?.skill_category || "General");
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(q);
-    });
-
-    return Array.from(map.entries()).map(([key, grouped]) => ({
-      key,
-      label: key,
-      rows: grouped,
-      time: null as number | null,
-    }));
   };
-
-  const sections = useMemo(() => buildSections(questions), [questions]);
 
   const goQuestionDetails = (questionId: string) => {
-    // ✅ Change this route to your real question details route.
-    // Common patterns:
-    // - /company/dashboard/questionBank/{id}
-    // - /company/dashboard/questionBank/questions/{id}
-    router.push(`/company/dashboard/questionBank/${questionId}`);
+    router.push(`/company/dashboard/questions/${questionId}`);
   };
+
+  // ✅ mouse-drag reorder
+  const reorderLocal = (fromId: string, toId: string) => {
+    if (!assessment) return;
+    if (fromId === toId) return;
+
+    const current = assessment.question_ids || questions.map((q) => q.id);
+    const ids = [...current];
+
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from === -1 || to === -1) return;
+
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
+
+    setAssessment((prev) => (prev ? { ...prev, question_ids: ids } : prev));
+
+    const qMap = new Map(questions.map((x) => [x.id, x] as const));
+    const nextQuestions = ids
+      .map((id) => qMap.get(id))
+      .filter(Boolean) as QuestionRow[];
+    setQuestions(nextQuestions);
+  };
+
+  const persistReorder = async (orderedIds: string[]) => {
+    if (!token || !assessment) return;
+    setReordering(true);
+    try {
+      await assessmentService.reorder(token, assessment.assessment_id, orderedIds);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to reorder");
+      await loadOne();
+      await loadQuestions();
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const onDragStartRow = (id: string) => (e: React.DragEvent) => {
+    draggingIdRef.current = id;
+    try {
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.effectAllowed = "move";
+    } catch {}
+  };
+
+  const onDragOverRow = (id: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverId(id);
+    try {
+      e.dataTransfer.dropEffect = "move";
+    } catch {}
+  };
+
+  const onDropRow = (id: string) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    const fromId =
+      draggingIdRef.current ||
+      (() => {
+        try {
+          return e.dataTransfer.getData("text/plain");
+        } catch {
+          return "";
+        }
+      })();
+
+    draggingIdRef.current = null;
+    setDragOverId(null);
+
+    if (!fromId || !assessment) return;
+
+    reorderLocal(fromId, id);
+
+    const base =
+      assessment.question_ids && assessment.question_ids.length
+        ? [...assessment.question_ids]
+        : questions.map((q) => q.id);
+
+    const ids = [...base];
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(id);
+    if (from !== -1 && to !== -1) {
+      ids.splice(from, 1);
+      ids.splice(to, 0, fromId);
+      await persistReorder(ids);
+      return;
+    }
+
+    await persistReorder(uniq(questions.map((q) => q.id)));
+  };
+
+  const onDragEnd = () => {
+    draggingIdRef.current = null;
+    setDragOverId(null);
+  };
+
+  // ✅ Add flow: ONLY My Questions
+  const openAddQuestions = () => setShowMyQuestionsModal(true);
+
+  const goExploreMyQuestions = () => {
+    setShowMyQuestionsModal(false);
+    router.push(
+      `/company/dashboard/questions?attachTo=${encodeURIComponent(
+        assessmentId
+      )}&source=my`
+    );
+  };
+
+  const sections = useMemo(
+    () => buildSections(questions),
+    [questions, assessment?.skill_category]
+  );
 
   if (!token) {
     return (
@@ -949,7 +1367,9 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl text-[#0D2A5B]">Login required</h2>
-          <p className="text-[#334b7a] mt-2">Please sign in to view assessment details.</p>
+          <p className="text-[#334b7a] mt-2">
+            Please sign in to view assessment details.
+          </p>
         </div>
       </div>
     );
@@ -963,6 +1383,10 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
         .custom-scrollbar::-webkit-scrollbar-thumb { background: ${LOGO_BLUE}; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1557B0; }
         .custom-scrollbar { scrollbar-width: thin; scrollbar-color: ${LOGO_BLUE} #f1f5f9; }
+
+        .row-drag-over { outline: 2px solid rgba(27,115,232,0.35); outline-offset: -2px; }
+        .grab-handle { cursor: grab; }
+        .grab-handle:active { cursor: grabbing; }
       `}</style>
 
       <AnimatePresence>
@@ -974,6 +1398,19 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
             jobs={jobs}
             onClose={() => setShowEditModal(false)}
             onSubmit={submitEdit}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ✅ Only modal now */}
+      <AnimatePresence>
+        {assessment && (
+          <MyQuestionsAttachModal
+            open={showMyQuestionsModal}
+            onClose={() => setShowMyQuestionsModal(false)}
+            onExplore={goExploreMyQuestions}
+            attachedCount={attachedCount}
+            plannedCount={plannedCount}
           />
         )}
       </AnimatePresence>
@@ -1007,7 +1444,11 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-xl text-gray-900 mb-2">Error</h3>
             <p className="text-gray-600 mb-4">{error}</p>
-            <button onClick={loadOne} className="text-white px-6 py-2 rounded-lg" style={{ background: LOGO_BLUE }}>
+            <button
+              onClick={loadOne}
+              className="text-white px-6 py-2 rounded-lg"
+              style={{ background: LOGO_BLUE }}
+            >
               Try Again
             </button>
           </div>
@@ -1018,34 +1459,44 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
         ) : (
           <>
             {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={`${panel} overflow-hidden`}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`${panel} overflow-hidden`}
+            >
               <div className="h-1" />
 
               <div className="p-6">
                 <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`${pill} ${
-                      assessment.status === "ACTIVE"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : assessment.status === "DRAFT"
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : assessment.status === "COMPLETED"
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                        : "bg-slate-50 text-slate-700 border-slate-200"
-                    }`}
-                  >
-                    {formatEnumNice(assessment.status)}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`${pill} ${
+                        assessment.status === "ACTIVE"
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : assessment.status === "DRAFT"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : assessment.status === "COMPLETED"
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          : "bg-slate-50 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {formatEnumNice(assessment.status)}
+                    </span>
 
-                  <span className={`${pill} bg-blue-50 text-blue-700 border-blue-200`}>
-                    {formatEnumNice(assessment.assessment_type)}
-                  </span>
+                    <span className={`${pill} bg-blue-50 text-blue-700 border-blue-200`}>
+                      {formatEnumNice(assessment.assessment_type)}
+                    </span>
 
-                  <span className={`${pill} bg-slate-50 text-slate-700 border-slate-200`}>
-                    {formatEnumNice(assessment.difficulty)}
-                  </span>
-                </div>
+                    <span className={`${pill} bg-slate-50 text-slate-700 border-slate-200`}>
+                      {formatEnumNice(assessment.difficulty)}
+                    </span>
+
+                    {reordering && (
+                      <span className={`${pill} bg-slate-50 text-slate-700 border-slate-200`}>
+                        Saving order…
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex gap-2 flex-wrap justify-end">
                     <button
@@ -1075,9 +1526,6 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   </div>
                 </div>
 
-                {/* Pills + meta */}
-
-
                 <h3 className="mt-3 text-xl text-[#0D2A5B]">{assessment.title}</h3>
 
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
@@ -1093,7 +1541,8 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-gray-500" />
-                    {assessment.total_questions} questions · {assessment.time_limit} min · Passing {assessment.passing_score ?? 70}%
+                    {assessment.total_questions} questions · {assessment.time_limit} min · Passing{" "}
+                    {assessment.passing_score ?? 70}%
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-500" />
@@ -1129,7 +1578,9 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
 
                 {!assessment.extracted_skills?.length ? (
                   <div className="rounded-sm p-4 border border-dashed border-gray-300 bg-white text-center">
-                    <p className="text-sm text-gray-600">No skills yet. Use Edit to add skills.</p>
+                    <p className="text-sm text-gray-600">
+                      No skills yet. Use Edit to add skills.
+                    </p>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -1146,9 +1597,7 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
               </div>
             </div>
 
-            {/* =============================
-               QUESTIONS (HackerRank-like inline UI)
-            ============================== */}
+            {/* QUESTIONS */}
             <div className={`${panel} mt-5 overflow-hidden`}>
               <div className="p-5">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -1160,6 +1609,14 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   </div>
 
                   <div className="flex gap-2 flex-wrap md:justify-end">
+                    <button
+                      onClick={openAddQuestions}
+                      className="px-4 py-2.5 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center gap-2"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add questions
+                    </button>
+
                     <button
                       onClick={attachQuestions}
                       disabled={generating}
@@ -1195,78 +1652,57 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                   </div>
                 )}
 
-                {/* Sections */}
                 <div className="mt-4 space-y-3">
                   {loadingQuestions ? (
-                    <div className="py-10 text-center text-sm text-gray-600">Loading questions…</div>
+                    <div className="py-10 text-center text-sm text-gray-600">
+                      Loading questions…
+                    </div>
                   ) : sections.length === 0 ? (
                     <div className="rounded-sm border border-dashed border-gray-300 bg-white p-6 text-center">
                       <div className="text-sm text-gray-700">No questions attached yet</div>
                       <div className="text-sm text-gray-600 mt-1">
-                        Click <b>Attach questions</b> to auto-fill this assessment.
+                        Click <b>Add questions</b> to choose from your Question Bank, or{" "}
+                        <b>Attach questions</b> to auto-fill.
                       </div>
                     </div>
                   ) : (
-                    sections.map((section, idx) => {
+                    sections.map((section) => {
                       const isOpen = !!openSections[section.key];
                       const minutesText =
                         section.time !== null ? `${section.time} mins` : "—";
 
                       return (
-                        <div key={section.key} className="rounded-sm border border-gray-200 bg-white overflow-hidden">
-                          {/* Section header like HackerRank */}
+                        <div
+                          key={section.key}
+                          className="rounded-sm border border-gray-200 bg-white overflow-hidden"
+                        >
+                          {/* Section header */}
                           <button
                             type="button"
                             onClick={() =>
-                              setOpenSections((p) => ({ ...p, [section.key]: !p[section.key] }))
+                              setOpenSections((p) => ({
+                                ...p,
+                                [section.key]: !p[section.key],
+                              }))
                             }
                             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="text-left">
-                                <div className="text-[#0D2A5B]">
-                                  {section.label}{" "}
-                                  <span className="text-gray-400 font-black">({section.rows.length})</span>
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  Picks all questions
-                                </div>
+                            <div className="text-left">
+                              <div className="text-[#0D2A5B] font-semibold">
+                                {section.label}{" "}
+                                <span className="text-gray-400 font-black">
+                                  ({section.rows.length})
+                                </span>
                               </div>
+                              <div className="text-xs text-gray-500">Picks all questions</div>
                             </div>
 
-                            <div className="flex items-center gap-4">
-                              <div className="text-sm text-gray-500 flex items-center gap-2">
-                                <Clock className="w-3 h-3" />
-                                {minutesText}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                  className="p-2 rounded-lg hover:bg-gray-100"
-                                  title="Section settings"
-                                >
-                                  <Settings className="w-4 h-4 text-gray-500" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                  className="p-2 rounded-lg hover:bg-gray-100"
-                                  title="More"
-                                >
-                                <MoreVertical className="w-4 h-4 text-gray-500" />
-                                </button>
-                              </div>
+                            <div className="text-sm text-gray-500 flex items-center gap-2">
+                              <Clock className="w-3 h-3" />
+                              {minutesText}
                             </div>
                           </button>
 
-                          {/* Section body (table-like rows) */}
                           <AnimatePresence initial={false}>
                             {isOpen && (
                               <motion.div
@@ -1276,82 +1712,112 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
                                 transition={{ duration: 0.2 }}
                                 className="border-t border-gray-200"
                               >
-                                {/* Header row */}
-                                <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 text-xs font-black text-gray-500 bg-slate-50">
-                                  <div className="col-span-4">Questions</div>
-                                  <div className="col-span-2">Type</div>
-                                  <div className="col-span-1">Time</div>
-                                  <div className="col-span-3">Skills</div>
-                                  <div className="col-span-1">Score</div>
-                                  <div className="col-span-1 text-right">Action</div>
-                                </div>
-
-                                <div className="divide-y divide-gray-100">
-                                  {section.rows.map((q) => (
-                                    <div
-                                      key={q.id}
-                                      className="px-4 py-3 hover:bg-slate-50 transition-colors"
-                                    >
-                                      {/* mobile stacked + desktop grid */}
-                                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 items-center">
-                                        <div className="md:col-span-4 flex items-start gap-2">
-                                          <GripVertical className="w-4 h-4 text-gray-300 mt-1 hidden md:block" />
-                                          <button
-                                            onClick={() => goQuestionDetails(q.id)}
-                                            className="text-left"
+                                <div className="overflow-x-auto">
+                                  <table className="w-full">
+                                    <thead className="bg-slate-50">
+                                      <tr className="text-xs font-black text-gray-500">
+                                        <th className="text-left px-4 py-3 w-10"></th>
+                                        <th className="text-left px-4 py-3">Question</th>
+                                        <th className="text-left px-4 py-3 w-32">Type</th>
+                                        <th className="text-left px-4 py-3 w-20">Time</th>
+                                        <th className="text-left px-4 py-3">Skills</th>
+                                        <th className="text-left px-4 py-3 w-20">Score</th>
+                                        <th className="text-right px-4 py-3 w-52">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                      {section.rows.map((qRow) => {
+                                        const isOver = dragOverId === qRow.id;
+                                        return (
+                                          <tr
+                                            key={qRow.id}
+                                            className={`hover:bg-slate-50 transition ${
+                                              isOver ? "row-drag-over" : ""
+                                            }`}
+                                            onDragOver={onDragOverRow(qRow.id)}
+                                            onDrop={onDropRow(qRow.id)}
+                                            onDragEnd={onDragEnd}
                                           >
-                                            <div className="text-[#0D2A5B] hover:text-blue-700">
-                                              {clampText(q.title, 90)}
-                                            </div>
-                                            {q.difficulty ? (
-                                              <div className="text-xs text-gray-500 mt-0.5">
-                                                {String(q.difficulty)}
-                                              </div>
-                                            ) : null}
-                                          </button>
-                                        </div>
-
-                                        <div className="md:col-span-2 text-sm text-gray-700">
-                                          {q.type || "—"}
-                                        </div>
-
-                                        <div className="md:col-span-1 text-sm text-gray-700">
-                                          {q.time ? `${q.time}m` : "—"}
-                                        </div>
-
-                                        <div className="md:col-span-3">
-                                          <div className="flex flex-wrap gap-1.5">
-                                            {(q.skills || []).slice(0, 3).map((s) => (
-                                              <span
-                                                key={s}
-                                                className="px-2 py-1 rounded-sm text-[11px] font-semibold border border-gray-200 bg-white text-gray-600"
+                                            <td className="px-4 py-3 align-top">
+                                              <div
+                                                className="inline-flex items-center justify-center rounded-sm border border-gray-200 bg-white w-8 h-8 grab-handle"
+                                                title="Drag to reorder"
+                                                draggable
+                                                onDragStart={onDragStartRow(qRow.id)}
                                               >
-                                                {s}
-                                              </span>
-                                            ))}
-                                            {(q.skills || []).length > 3 && (
-                                              <span className="px-2 py-1 rounded-sm text-[11px] font-black border border-gray-200 bg-slate-50 text-gray-500">
-                                                +{(q.skills || []).length - 3}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
+                                                <GripVertical className="w-4 h-4 text-gray-400" />
+                                              </div>
+                                            </td>
 
-                                        <div className="md:col-span-1 text-sm text-gray-700">
-                                          {q.score ?? "—"}
-                                        </div>
+                                            <td className="px-4 py-3">
+                                              <button
+                                                onClick={() => goQuestionDetails(qRow.id)}
+                                                className="text-left"
+                                              >
+                                                <div className="text-[#0D2A5B] font-medium hover:text-blue-700">
+                                                  {clampText(qRow.title, 120)}
+                                                </div>
+                                                {qRow.difficulty ? (
+                                                  <div className="text-xs text-gray-500 mt-0.5">
+                                                    {String(qRow.difficulty)}
+                                                  </div>
+                                                ) : null}
+                                              </button>
+                                            </td>
 
-                                        <div className="md:col-span-1 flex md:justify-end">
-                                          <button
-                                            onClick={() => goQuestionDetails(q.id)}
-                                            className="px-3 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700"
-                                          >
-                                            Open
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
+                                            <td className="px-4 py-3 text-sm text-gray-700">
+                                              {qRow.type || "—"}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-sm text-gray-700">
+                                              {qRow.time ? `${qRow.time}m` : "—"}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                              <div className="flex flex-wrap gap-1.5">
+                                                {(qRow.skills || []).slice(0, 4).map((s) => (
+                                                  <span
+                                                    key={s}
+                                                    className="px-2 py-1 rounded-sm text-[11px] font-semibold border border-gray-200 bg-white text-gray-600"
+                                                  >
+                                                    {s}
+                                                  </span>
+                                                ))}
+                                                {(qRow.skills || []).length > 4 && (
+                                                  <span className="px-2 py-1 rounded-sm text-[11px] font-black border border-gray-200 bg-slate-50 text-gray-500">
+                                                    +{(qRow.skills || []).length - 4}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </td>
+
+                                            <td className="px-4 py-3 text-sm text-gray-700">
+                                              {qRow.score ?? "—"}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                              <div className="flex justify-end gap-2">
+                                                <button
+                                                  onClick={() => goQuestionDetails(qRow.id)}
+                                                  className="px-3 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700 inline-flex items-center gap-2"
+                                                >
+                                                  <ExternalLink className="w-4 h-4" />
+                                                  Open
+                                                </button>
+
+                                                <button
+                                                  onClick={() => detachQuestion(qRow.id)}
+                                                  className="px-3 py-2 rounded-sm border border-rose-200 bg-rose-50 hover:bg-rose-100 text-sm text-rose-700"
+                                                >
+                                                  Remove
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
                                 </div>
                               </motion.div>
                             )}
@@ -1364,7 +1830,6 @@ export default function AssessmentDetails({ assessmentId }: { assessmentId: stri
               </div>
             </div>
 
-            {/* Analytics modal (keep separate as you wanted) */}
             <AnimatePresence>
               {showAnalyticsModal && token && assessment && (
                 <AssessmentAnalyticsModal

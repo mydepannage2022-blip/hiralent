@@ -39,3 +39,12 @@ export function useApplyToJob() {
     },
   });
 }
+
+export function useMyApplicationsList(enabled = true) {
+  return useQuery({
+    queryKey: ["candidate", "applications", "my-list"],
+    queryFn: () => apiListMyApplications(),
+    enabled,
+    staleTime: 30_000,
+  });
+}

@@ -14,6 +14,10 @@ import {
   remove,
   generateQuestionsForAssessment,
   listAssessmentQuestions,
+  updateAssessmentQuestionOverrideController,
+  attachQuestionsManualController,
+  detachQuestionController,
+  reorderAssessmentQuestionsController,
 } from '../controller/company/employerAssessment.controller';
 
 const router = Router();
@@ -34,6 +38,20 @@ router.post('/chatbot/message', sendChatbotMessage);
 // ---- Question generation (Wafaa link) ----
 router.get('/:assessment_id/questions', listAssessmentQuestions);
 router.post('/:assessment_id/generate-questions', generateQuestionsForAssessment);
+router.post(
+  "/:assessment_id/questions/attach",
+  attachQuestionsManualController
+);
+
+router.delete(
+  "/:assessment_id/questions/:question_id",
+  detachQuestionController
+);
+
+router.patch(
+  "/:assessment_id/questions/reorder",
+  reorderAssessmentQuestionsController
+);
 
 // ---- Read ----
 router.get('/:assessment_id', getById);                 // get one by id
@@ -43,5 +61,10 @@ router.get('/', list);                                  // list by company (opti
 router.put('/', update);                                // update fields / optional regenerate
 router.patch('/status', updateStatus);                  // update only status
 router.delete('/', remove);                             // delete by assessment_id
+
+router.patch(
+  "/:assessment_id/questions/:question_id/override",
+  updateAssessmentQuestionOverrideController
+);
 
 export default router;

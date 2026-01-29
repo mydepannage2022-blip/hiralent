@@ -8,9 +8,43 @@ import {
   Trash, Copy, AlertTriangle, Shield, Lock, Filter, ChevronDown, Library, User, Menu, Brain, Layers,
 } from "lucide-react";
 import NextLink from "next/link";
-
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "../questionbank/QuestionEditor";
+
+type AssessmentMini = {
+  assessment_id: string;
+  title?: string | null;
+  name?: string | null;
+};
+
+function getToken() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+}
+
+async function fetchAssessment(assessmentId: string): Promise<AssessmentMini | null> {
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const token = getToken();
+
+  const res = await fetch(`${base}/api/v1/employer-assessments/${assessmentId}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+
+  // adapte selon ton shape exact (parfois data.result / data.data)
+  const a = data?.result ?? data;
+  return {
+    assessment_id: a.assessment_id ?? a.id ?? assessmentId,
+    title: a.title ?? a.name ?? null,
+    name: a.name ?? null,
+  };
+}
 
 interface Question {
   id: string;
@@ -46,6 +80,7 @@ const StatusSelect: React.FC<{
   onChange: (next: "pending_review" | "approved" | "rejected") => void;
   compact?: boolean;
 }> = ({ value, onChange, compact }) => {
+  
   return (
     <select
       value={value}
@@ -1764,6 +1799,14 @@ const QuestionBankPage: React.FC = () => {
   const [questionSource, setQuestionSource] = useState<"mine" | "library">("mine");
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  //Me Ihssane added this : 
+  const router = useRouter();
+const searchParams = useSearchParams();
+
+const attachTo = searchParams?.get("attachTo") ?? null;  // string | null
+const sourceParam = searchParams?.get("source") ?? null; // string | null
+const isAttachMode = !!attachTo;
+const [assessment, setAssessment] = useState<AssessmentMini | null>(null);
 
   const authHeaders = (extra: HeadersInit = {}): HeadersInit => ({
     "Content-Type": "application/json",
@@ -1778,6 +1821,78 @@ const QuestionBankPage: React.FC = () => {
     }
     return true;
   };
+
+// I'm Ihssane I added this : 
+useEffect(() => {
+  let cancelled = false;
+
+  async function run() {
+    if (!attachTo) {
+      setAssessment(null);
+      return;
+    }
+    const a = await fetchAssessment(attachTo);
+    if (!cancelled) setAssessment(a);
+  }
+
+  run();
+  return () => {
+    cancelled = true;
+  };
+}, [attachTo]);
+
+const attachSelectedToAssessment = async () => {
+  if (!token) {
+    alert("You need to log in first.");
+    return;
+  }
+  if (!attachTo) return;
+
+  const ids = Array.from(selectedQuestions);
+  if (ids.length === 0) {
+    alert("Select at least one question.");
+    return;
+  }
+
+  try {
+const url = `http://localhost:5000/api/v1/employer-assessments/${attachTo}/questions/attach`;
+console.log("ATTACH URL =>", url);
+
+const res = await fetch(url, {
+  method: "POST",
+  headers: authHeaders(),
+  body: JSON.stringify({ questionIds: ids }),
+});
+
+console.log("RESPONSE URL =>", res.url, "STATUS =>", res.status);
+
+
+
+const contentType = res.headers.get("content-type") || "";
+const raw = await res.text();
+
+let data: any = null;
+if (contentType.includes("application/json")) {
+  data = JSON.parse(raw);
+} else {
+  // ✅ ton erreur actuelle vient d'ici (HTML = <!DOCTYPE...)
+  throw new Error(`Non-JSON response (${res.status}): ${raw.slice(0, 120)}`);
+}
+
+if (!res.ok || !data?.success) {
+  throw new Error(data?.error || `Attach failed (HTTP ${res.status})`);
+}
+
+
+    alert(`✅ Attached ${data.attachedCount ?? ids.length} question(s)`);
+    setSelectedQuestions(new Set());
+
+    // retourne vers la page assessment
+    router.push(`/company/dashboard/assessmentManagement/${attachTo}`);
+  } catch (e: any) {
+    alert(e?.message || "Network error while attaching questions.");
+  }
+};
 
   // Add a useEffect to check vector engine health
   useEffect(() => {
@@ -2484,6 +2599,48 @@ const handlePatternScrapeAndGenerate = async (payload: {
     <div className="bg-gray-50 h-full">
       <div className="">
 
+{attachTo && (
+  <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 flex items-center justify-between">
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="h-9 w-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+        <LinkIcon className="h-5 w-5" />
+      </div>
+
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-blue-900">
+          Attach mode
+        </div>
+
+        <div className="text-sm text-blue-900/80 truncate">
+          Assessment:&nbsp;
+          <span className="font-semibold">
+            {assessment?.title || "Loading..."}
+          </span>
+          <span className="text-blue-900/50">
+            {" "}• {selectedQuestions.size} selected
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 shrink-0">
+      <button
+        className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-100"
+        onClick={() => router.push("/company/dashboard/questions")}
+      >
+        Cancel
+      </button>
+
+      <button
+        className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        disabled={selectedQuestions.size === 0}
+        onClick={attachSelectedToAssessment}
+      >
+        Attach ({selectedQuestions.size})
+      </button>
+    </div>
+  </div>
+)}
 
         <div className="flex w-full gap-4 justify-between items-center mt-4">
         
