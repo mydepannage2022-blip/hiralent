@@ -3,6 +3,7 @@
 import { Request, Response } from 'express';
 import * as profileService from '../../services/profile.service';
 import { APIResponse, SocialLink } from '../../types/candidate.types';
+import { badgeService } from '../../../src/services/candidate/profile/badge.service';
 
 // ==================== BASIC INFO CONTROLLER ====================
 

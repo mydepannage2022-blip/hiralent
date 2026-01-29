@@ -5,6 +5,7 @@ import { useProfile } from "@/src/context/ProfileContext";
 import React from 'react'
 import { useQueryClient } from '@tanstack/react-query'; 
 import toast from 'react-hot-toast';
+import { BadgeSection } from '@/src/components/candidate/dashboard/profile/badges/BadgeSection';
 
 // Lazy load all components
 const Meta = dynamic(() => import('@/src/components/candidate/dashboard/profile/Meta'), {
@@ -129,6 +130,8 @@ const CandidateProfilePage = () => {
       {/* Left Column - Main Profile Sections */}
       <div className='w-full lg:w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-2 lg:gap-4 p-1 lg:p-3'>
         <Meta />
+        <BadgeSection />
+
         
         <div className="w-full">
           <Personal />

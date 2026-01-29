@@ -17,7 +17,11 @@
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
     "generate:batch": "ts-node src/scripts/batch-generate-questions.ts",
     "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\"",
-    "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\""
+    "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\"",
+    "seed:badges": "tsx prisma/seeds/badges.seed.ts",
+    "evaluate:badges": "tsx src/scripts/evaluate-all-badges.ts"
+
+
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
