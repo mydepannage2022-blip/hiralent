@@ -2,14 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import CandidatesTabs from "@/src/components/company/dashboard/candidates/CandidatesTabs";
-
 import {
   useCompanyJobsActive,
   useInternalCandidatesHydrated,
   useInternalRanking,
 } from "@/src/lib/company/candidates.queries";
-
 import InternalCandidateCard from "@/src/components/company/dashboard/candidates/InternalCandidateCard";
+
+function normalizeFit(score?: number | null) {
+  if (score == null) return null;
+  // handle 0..1 or 0..100
+  const v = score <= 1 ? score * 100 : score;
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
 
 export default function InternalCandidatesPage() {
   const { data: jobs = [], isLoading: jobsLoading } = useCompanyJobsActive();
@@ -18,12 +23,18 @@ export default function InternalCandidatesPage() {
   const [search, setSearch] = useState("");
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
 
-  // ✅ auto-select first job
+  // auto-select first job
   useEffect(() => {
     if (!jobId && jobs.length > 0) setJobId(jobs[0].job_id);
   }, [jobs, jobId]);
 
-  const rankingQuery = useInternalRanking({ jobId, search, minScore });
+  const rankingQuery = useInternalRanking({
+    jobId,
+    // keep sending to API, even if backend ignores it
+    search,
+    minScore,
+  });
+
   const ranking = rankingQuery.data?.items ?? [];
 
   const candidateIds = useMemo(
@@ -33,10 +44,42 @@ export default function InternalCandidatesPage() {
 
   const { mapById, queries } = useInternalCandidatesHydrated(candidateIds);
 
+  // ✅ Client-side filtering (works even if backend ignores params)
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const min = typeof minScore === "number" ? minScore : 0;
+
+    return ranking.filter((c) => {
+      const full = mapById.get(String(c.candidate_id));
+
+      const name = (full?.full_name ?? c.full_name ?? "").toLowerCase();
+      const headline = (
+        full?.candidateProfile?.headline ??
+        full?.candidateProfile?.position ??
+        c.headline ??
+        ""
+      ).toLowerCase();
+
+      const skillsArr: string[] =
+        (full?.candidateProfile?.skills as any)?.map?.(String) ??
+        (c.skills ?? []).map(String);
+
+      const skills = skillsArr.join(" ").toLowerCase();
+
+      const fit = normalizeFit(c.fit_score) ?? 0;
+
+      const matchesSearch =
+        !q || name.includes(q) || headline.includes(q) || skills.includes(q);
+
+      const matchesScore = fit >= min;
+
+      return matchesSearch && matchesScore;
+    });
+  }, [ranking, mapById, search, minScore]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto space-y-4">
-        {/* ✅ Keep the same switch bar as External */}
         <CandidatesTabs />
 
         {/* Filters */}
@@ -92,8 +135,10 @@ export default function InternalCandidatesPage() {
           <div className="text-sm text-red-600">
             {String((rankingQuery.error as any)?.message ?? "Failed to load")}
           </div>
-        ) : ranking.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No candidates.</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            No candidates match your filters.
+          </div>
         ) : (
           <>
             {queries.some((q) => q.isLoading) && (
@@ -103,7 +148,7 @@ export default function InternalCandidatesPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ranking.map((c) => {
+              {filtered.map((c) => {
                 const id = String(c.candidate_id);
                 const full = mapById.get(id);
 
@@ -119,7 +164,7 @@ export default function InternalCandidatesPage() {
                         full?.candidateProfile?.position ??
                         c.headline ??
                         "—",
-                      skills: full?.candidateProfile?.skills ?? c.skills ?? [],
+                      skills: (full?.candidateProfile?.skills as any) ?? c.skills ?? [],
                       linkedin_url:
                         full?.linkedin_url ??
                         full?.candidateProfile?.linkedin_url ??
@@ -128,9 +173,8 @@ export default function InternalCandidatesPage() {
                         full?.candidateProfile?.profile_picture_url ?? null,
                       applied_count: c.applied_count ?? 0,
                     }}
-                    onInvite={(candidateId) =>
-                      console.log("Invite", candidateId)
-                    }
+                    onInvite={(candidateId) => console.log("Invite", candidateId)}
+                    onChat={(candidateId) => console.log("Chat", candidateId)}
                   />
                 );
               })}

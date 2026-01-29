@@ -2500,6 +2500,38 @@ async checkVariationEngineHealth(req: Request, res: Response) {
     return [];
   }
 
+  async cloneFromLibrary(req: any, res: any) {
+  const company_id = req.user.user_id;
+  const { libraryQuestionId } = req.body ?? {};
+
+  if (!libraryQuestionId) {
+    return res.status(400).json({
+      success: false,
+      error: "libraryQuestionId is required",
+    });
+  }
+
+  const cloned = await this.questionService.cloneFromLibrary({
+    company_id,
+    libraryQuestionId,
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: "Question cloned from library",
+    question: cloned,
+  });
+}
+async getMyQuestions(req: any, res: any) {
+  const company_id = req.user.user_id;
+
+  const items = await this.questionService.getMyQuestions(company_id);
+
+  return res.json({
+    success: true,
+    questions: items,
+  });
+}
 
 
 
