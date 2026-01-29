@@ -746,7 +746,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="p-6">
+            <form id="question-editor-form" onSubmit={handleSubmit} className="p-6">
               <AnimatePresence mode="wait">
                 {/* DETAILS */}
                 {activeTab === "details" && (
@@ -1295,6 +1295,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
                 <motion.button
                   type="submit"
+                  form="question-editor-form"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="px-6 py-2.5 text-sm bg-gradient-to-r from-[#1B73E8] to-[#1557B0] text-white rounded-sm hover:shadow-lg transition-all flex items-center gap-2"
@@ -1311,6 +1312,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     </>
                   )}
                 </motion.button>
+
               </div>
             </div>
           </div>
