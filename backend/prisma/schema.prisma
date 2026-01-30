@@ -116,6 +116,7 @@ model User {
   progressUpdatedBy         CandidateProgressTracker[] @relation("ProgressUpdatedBy")
 
   aiInterviewResults        AIInterviewResult[]       @relation("CandidateAIResults")
+  assignedInterviews        AIInterviewResult[]       @relation("AssignedInterviews")
   relocationCases           RelocationCase[]          @relation("CandidateRelocationCases")
   caseAssignments           CaseAssignment[]          @relation("AgentCaseAssignments")
   agencyReviews             AgencyReview[]            @relation("ClientReviews")
@@ -548,6 +549,41 @@ model AIInterviewResult {
   candidate_id   String
   application    JobApplication @relation(fields: [application_id], references: [application_id])
   candidate      User           @relation("CandidateAIResults", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  // AI Video Interview Fields
+  status              AIInterviewStatus @default(PENDING)
+  transcript          Json?             // Full conversation transcript [{role, content, timestamp}]
+  questions_asked     Json?             // Array of questions with metadata
+  responses           Json?             // Array of candidate responses with analysis
+  soft_skills         Json?             // Detected soft skills {communication, problemSolving, etc.}
+  sentiment_analysis  Json?             // Sentiment data {overall, perResponse[]}
+  duration_seconds    Int?              // Total interview duration
+  total_questions     Int?              // Number of questions asked
+  qualification       AIQualification?  // Final result: QUALIFIED or NOT_QUALIFIED
+  started_at          DateTime?         // When interview started
+  completed_at        DateTime?         // When interview completed
+  job_id              String?           // Reference to the job being interviewed for
+
+  // Recruiter Assignment Fields
+  scheduled_date      DateTime?         // When the interview is scheduled for
+  assigned_by         String?           // Recruiter user_id who assigned the interview
+  assigned_at         DateTime?         // When the interview was assigned
+  assignedByUser      User?             @relation("AssignedInterviews", fields: [assigned_by], references: [user_id])
+}
+
+enum AIInterviewStatus {
+  PENDING       // Interview created but not started
+  IN_PROGRESS   // Candidate is currently in the interview
+  COMPLETED     // Interview finished successfully
+  FAILED        // Technical failure or error
+  EXPIRED       // Interview link expired
+  CANCELLED     // Interview was cancelled
+}
+
+enum AIQualification {
+  QUALIFIED
+  NOT_QUALIFIED
+  PENDING_REVIEW
 }
 
 model SkillAssessment {

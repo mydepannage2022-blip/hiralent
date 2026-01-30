@@ -73,13 +73,29 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
         const parsed = JSON.parse(text);
         return parsed;
       } catch (parseErr: any) {
+        console.log('JSON parse error:', parseErr.message);
+        console.log('Attempting to repair JSON...');
+        console.log('Problematic JSON (first 500 chars):', text.substring(0, 500));
+
         let repairedText = text
           .replace(/,(\s*[}\]])/g, '$1')
           .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-          .replace(/:\s*([^",\[\]{}\s][^,}\]]*[^",}\]\s])([,}\]])/g, ':"$1"$2');
-        
-        const repairParsed = JSON.parse(repairedText);
-        return repairParsed;
+          .replace(/:\s*([^",\[\]{}\s][^,}\]]*[^",}\]\s])([,}\]])/g, ':"$1"$2')
+          .replace(/,\s*,/g, ',')
+          .replace(/\[\s*,/g, '[')
+          .replace(/,\s*\]/g, ']')
+          .replace(/{\s*,/g, '{')
+          .replace(/,\s*}/g, '}');
+
+        try {
+          const repairParsed = JSON.parse(repairedText);
+          console.log('✅ JSON repair successful');
+          return repairParsed;
+        } catch (repairErr: any) {
+          console.error('❌ JSON repair failed:', repairErr.message);
+          console.error('Repaired JSON (first 500 chars):', repairedText.substring(0, 500));
+          throw parseErr;
+        }
       }
       
     } catch (err: any) {

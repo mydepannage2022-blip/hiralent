@@ -16,6 +16,7 @@ import {
   BookOpen,    // add for Question Bank
   Clock,       //  add for Review Queue
   Users,
+  Video,       // add for AI Interviews
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
@@ -40,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
     { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
+    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
 
     // ✅ NEW SECTIONS
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
@@ -57,6 +59,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
     { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
+    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
 
     // ✅ NEW SECTIONS (also in postJobMenu)
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },

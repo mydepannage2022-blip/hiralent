@@ -104,10 +104,17 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
   // Dynamic page titles
   const getPageInfo = () => {
-    if (pathname.startsWith('/candidate/dashboard/skills-assessment')) {
+    if (pathname?.startsWith('/candidate/dashboard/skills-assessment')) {
       return {
         title: 'Skills Assessment',
         description: 'Access and manage your skills assessments',
+      };
+    }
+
+    if (pathname?.startsWith('/candidate/dashboard/interviews')) {
+      return {
+        title: 'AI Interviews',
+        description: 'Complete your AI-powered video interviews',
       };
     }
 

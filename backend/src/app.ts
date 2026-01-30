@@ -62,6 +62,7 @@ import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes
 import matchingInternalRoutes from "./routes/internal/matching.routes";
 import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
 import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
+import interviewRoutes from "./routes/interview.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -122,9 +123,10 @@ app.use('/api/v1/subscription', subscriptionRoutes);
 
 
 
-//Candidate (jobs+assessments)
+//Candidate (jobs+assessments+interviews)
 app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
 app.use("/api/v1/candidate", jobApplicationsRoutes);
+app.use('/api/v1/interviews', interviewRoutes);
 app.use("/internal/matching/candidate", internalCandidateRoutes);
 app.use("/internal/matching/company", internalCompanyRoutes);
 app.use("/internal/matching", matchingInternalRoutes);
