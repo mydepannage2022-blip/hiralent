@@ -1,369 +1,746 @@
 # app/diagram_generator/diagram_generator.py
 """
-Génère du code Mermaid pour les diagrammes en utilisant Gemini AI
+Generate COMPLETE Mermaid code for diagrams.
+
+Enhancement:
+- After ER generation, automatically append explicit UML-style multiplicities
+  to relationship labels based on crowfoot symbols (||, o|, |{, o{).
 """
 
 import os
-import json
 import re
+import logging
 from typing import Dict, Optional
+
 import google.generativeai as genai
+
+logger = logging.getLogger(__name__)
 
 
 class DiagramGenerator:
-    """Génère du code Mermaid pour différents types de diagrammes"""
-    
+    """Generates COMPLETE Mermaid code for different diagram types."""
+
     def __init__(self):
-        """Initialize Gemini AI"""
-        api_key = os.getenv('GEMINI_API_KEY')
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment")
-        
+
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
-    
+        self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+
     async def generate_diagram_code(
         self,
         question_data: Dict,
-        diagram_type: str
+        diagram_type: str,
+        max_retries: int = 2
     ) -> Optional[str]:
         """
-        Génère du code Mermaid pour un diagramme
-        
-        Args:
-            question_data: Données de la question
-            diagram_type: 'er', 'class', 'sequence', 'tree', 'architecture', 'flowchart'
-        
-        Returns:
-            Code Mermaid (string) ou None si échec
+        Generate Mermaid code for a diagram type.
         """
         prompt = self._build_prompt(question_data, diagram_type)
-        
-        try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config={
-                    'temperature': 0.3,  # Bas pour consistance
-                    'top_p': 0.8,
-                    'top_k': 40,
-                }
-            )
-            
-            mermaid_code = self._extract_mermaid_code(response.text)
-            
-            if not mermaid_code:
-                print(f"⚠️ No valid Mermaid code extracted from response")
-                return None
-            
-            # Validation basique
-            if not self._validate_mermaid(mermaid_code, diagram_type):
-                print(f"⚠️ Invalid Mermaid syntax detected")
-                return None
-            
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempt {attempt + 1}/{max_retries}: generating diagram")
+
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": 0.4,
+                        "top_p": 0.95,
+                        "top_k": 40,
+                        "candidate_count": 1,
+                    }
+                )
+
+                mermaid_code = self._extract_mermaid_code(response.text)
+
+                if not mermaid_code:
+                    logger.warning(f"Attempt {attempt + 1}: no Mermaid code extracted")
+                    continue
+
+                if diagram_type == "er":
+                    mermaid_code = self._clean_mermaid_er_syntax(mermaid_code)
+
+                    entity_count = len(re.findall(r'^\s*\w+\s*\{', mermaid_code, re.MULTILINE))
+                    logger.info(f"Generated {entity_count} entities")
+
+                    if entity_count < 5:
+                        logger.warning(f"Only {entity_count} entities; using enhanced template fallback")
+                        mermaid_code = self._get_enhanced_fallback_template(question_data)
+
+                    # Ensure all entities have attributes
+                    if not self._validate_er_completeness(mermaid_code):
+                        logger.warning("Some entities incomplete; fixing...")
+                        mermaid_code = self._fix_incomplete_entities(mermaid_code)
+
+                    # ✅ NEW: append explicit multiplicities to relationship labels
+                    mermaid_code = self._append_multiplicity_to_relationship_labels(mermaid_code)
+
+                if not self._validate_mermaid(mermaid_code, diagram_type):
+                    logger.error(f"Attempt {attempt + 1}: invalid Mermaid syntax")
+                    continue
+
+                logger.info(f"Success on attempt {attempt + 1}")
+                return mermaid_code
+
+            except Exception as e:
+                logger.error(f"Attempt {attempt + 1} error: {e}", exc_info=True)
+                if attempt == max_retries - 1:
+                    if diagram_type == "er":
+                        logger.info("Using fallback template as last resort")
+                        mermaid_code = self._get_enhanced_fallback_template(question_data)
+                        mermaid_code = self._append_multiplicity_to_relationship_labels(mermaid_code)
+                        return mermaid_code
+                    return None
+
+        if diagram_type == "er":
+            mermaid_code = self._get_enhanced_fallback_template(question_data)
+            mermaid_code = self._append_multiplicity_to_relationship_labels(mermaid_code)
             return mermaid_code
-            
-        except Exception as e:
-            print(f"❌ Error generating diagram: {e}")
-            return None
-    
+
+        return None
+
     def _build_prompt(self, question_data: Dict, diagram_type: str) -> str:
-        """Construit le prompt selon le type de diagramme"""
-        
-        title = question_data.get('title', '')
-        problem_statement = question_data.get('problemStatement', '')
-        
+        title = question_data.get("title", "")
+
         base_instructions = """
 You are an expert at creating technical diagrams using Mermaid syntax.
 
-CRITICAL RULES:
-1. Return ONLY Mermaid code, no explanations
-2. Do NOT use markdown code blocks (no ```mermaid)
-3. Start directly with the diagram type keyword
-4. Keep it clean, professional, and readable
-5. Use proper Mermaid syntax only
-        """
-        
-        if diagram_type == 'er':
+RULES:
+1. Return ONLY Mermaid code
+2. No markdown code blocks
+3. Start with diagram type keyword
+4. Complete all entities
+"""
+
+        if diagram_type == "er":
             return f"""{base_instructions}
 
-TASK: Generate an ER Diagram (Entity-Relationship) for this SQL/Database question.
+CREATE COMPLETE ER DIAGRAM for: {title}
 
-Question Title: {title}
-Problem Statement: {problem_statement}
+MUST INCLUDE ALL 6+ TABLES:
+1. CATEGORY - product categories
+2. PRODUCT - items for sale
+3. CUSTOMER - user accounts
+4. ORDER - purchase orders
+5. ORDER_ITEM - order line items
+6. PAYMENT - transactions
+(OPTIONAL) CUSTOMER_ADDRESS if addresses are mentioned.
 
-Requirements:
-- Use Mermaid erDiagram syntax
-- Show all tables mentioned in the problem
-- Include primary keys (PK) and foreign keys (FK)
-- Show relationships with correct cardinality (||--o{{, }}o--||, etc.)
-- Include relevant column types
-- Keep column names concise
-
-Example format:
+FORMAT (COPY THIS STRUCTURE):
 erDiagram
+    CATEGORY ||--o{{ PRODUCT : contains
     CUSTOMER ||--o{{ ORDER : places
-    ORDER ||--|{{ LINE-ITEM : contains
+    CUSTOMER ||--o{{ CUSTOMER_ADDRESS : has
+    ORDER ||--|{{ ORDER_ITEM : contains
+    PRODUCT ||--o{{ ORDER_ITEM : includes
+    ORDER ||--|| PAYMENT : has
+
+    CATEGORY {{
+        int category_id PK
+        string name
+        text description
+        datetime created_at
+    }}
+
+    PRODUCT {{
+        int product_id PK
+        int category_id FK
+        string name
+        decimal price
+        int stock
+        datetime created_at
+    }}
+
     CUSTOMER {{
         int customer_id PK
-        string name
+        string first_name
+        string last_name
         string email
+        string phone
+        datetime created_at
     }}
+
     ORDER {{
         int order_id PK
         int customer_id FK
         date order_date
+        decimal total
+        string status
+        datetime created_at
     }}
 
-Return ONLY the Mermaid code, starting with 'erDiagram'.
-"""
-        
-        elif diagram_type == 'class':
-            return f"""{base_instructions}
-
-TASK: Generate a UML Class Diagram for this OOP/Backend question.
-
-Question Title: {title}
-Problem Statement: {problem_statement}
-
-Requirements:
-- Use Mermaid classDiagram syntax
-- Show all classes mentioned
-- Include key attributes and methods
-- Show inheritance (--|>), composition (--*), aggregation (--o)
-- Use proper visibility (+public, -private, #protected)
-
-Example format:
-classDiagram
-    class Animal {{
-        +String name
-        +int age
-        +makeSound()
+    ORDER_ITEM {{
+        int item_id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal price
     }}
-    class Dog {{
-        +String breed
-        +bark()
+
+    PAYMENT {{
+        int payment_id PK
+        int order_id FK
+        decimal amount
+        string method
+        datetime date
+        string status
     }}
-    Animal <|-- Dog
 
-Return ONLY the Mermaid code, starting with 'classDiagram'.
+Generate ALL tables with 4-8 attributes each.
+Return ONLY Mermaid code.
 """
-        
-        elif diagram_type == 'sequence':
-            return f"""{base_instructions}
+        return base_instructions
 
-TASK: Generate a Sequence Diagram for this API/Backend flow question.
+    # ---------------------------
+    # ✅ NEW: Multiplicity helper
+    # ---------------------------
 
-Question Title: {title}
-Problem Statement: {problem_statement}
+    def _crowfoot_to_multiplicity(self, token: str) -> str:
+        """
+        Map Mermaid ER crowfoot endpoint token to UML multiplicity text.
 
-Requirements:
-- Use Mermaid sequenceDiagram syntax
-- Show all actors/systems involved
-- Include request/response flows
-- Add notes for important steps
-- Show async operations if relevant
+        Tokens (Mermaid ER):
+        - "||" => exactly one
+        - "o|" => zero or one
+        - "|{" => one or many
+        - "o{" => zero or many
+        """
+        mapping = {
+            "||": "1..1",
+            "o|": "0..1",
+            "|{": "1..*",
+            "o{": "0..*",
+        }
+        return mapping.get(token, "?")
 
-Example format:
-sequenceDiagram
-    participant Client
-    participant API
-    participant Database
-    
-    Client->>API: POST /login
-    API->>Database: Validate credentials
-    Database-->>API: User found
-    API-->>Client: JWT token
+    def _append_multiplicity_to_relationship_labels(self, mermaid_code: str) -> str:
+        """
+        For ER diagrams, append explicit UML multiplicities to relationship labels.
 
-Return ONLY the Mermaid code, starting with 'sequenceDiagram'.
+        Example:
+          CUSTOMER ||--o{ ORDER : places
+        becomes:
+          CUSTOMER ||--o{ ORDER : "places (1..1 → 0..*)"
+
+        Rules:
+        - Only touches relationship lines (outside entity blocks)
+        - If label already contains "→" or "1.."/"0.." pattern, it won't append again
+        - If label is missing, it creates one like "(1..1 → 0..*)"
+        - Keeps Mermaid syntax valid (quotes label if needed)
+        """
+        lines = mermaid_code.splitlines()
+        out = []
+
+        inside_entity = False
+
+        # relationship line regex:
+        #   ENTITY_A <left>--<right> ENTITY_B : label(optional)
+        rel_re = re.compile(
+            r"""^\s*
+            (?P<a>\w+)\s+
+            (?P<left>\|\||o\||\|\{|o\{)
+            -- 
+            (?P<right>\|\||o\||\|\{|o\{)
+            \s+(?P<b>\w+)
+            (?:\s*:\s*(?P<label>.+))?
+            \s*$""",
+            re.VERBOSE,
+        )
+
+        multiplicity_hint_re = re.compile(r"(?:\d\.\.\d|\d\.\.\*|0\.\.\*|1\.\.\*|→)")
+
+        for line in lines:
+            s = line.strip()
+
+            # Detect entity block boundaries
+            if re.match(r"^\w+\s*\{$", s):
+                inside_entity = True
+                out.append(line)
+                continue
+            if inside_entity and s == "}":
+                inside_entity = False
+                out.append(line)
+                continue
+
+            if inside_entity:
+                out.append(line)
+                continue
+
+            m = rel_re.match(line)
+            if not m:
+                out.append(line)
+                continue
+
+            a = m.group("a")
+            b = m.group("b")
+            left = m.group("left")
+            right = m.group("right")
+            label = (m.group("label") or "").strip()
+
+            left_mul = self._crowfoot_to_multiplicity(left)
+            right_mul = self._crowfoot_to_multiplicity(right)
+            suffix = f"({left_mul} → {right_mul})"
+
+            # If already has multiplicity info, do nothing
+            if label and multiplicity_hint_re.search(label):
+                out.append(line)
+                continue
+
+            # Clean label: remove surrounding quotes if any
+            if label.startswith('"') and label.endswith('"') and len(label) >= 2:
+                label = label[1:-1].strip()
+
+            if label:
+                new_label = f'{label} {suffix}'
+            else:
+                new_label = suffix
+
+            # Always quote label to be safe (spaces, arrows, etc.)
+            new_line = f"    {a} {left}--{right} {b} : \"{new_label}\""
+            out.append(new_line)
+
+        return "\n".join(out)
+
+    # ---------------------------
+    # Fallback templates
+    # ---------------------------
+
+    def _get_enhanced_fallback_template(self, question_data: Dict) -> str:
+        title = question_data.get("title", "").lower()
+        problem = question_data.get("problemStatement", "").lower()
+
+        is_ecommerce = any(w in (title + " " + problem) for w in ["ecommerce", "e-commerce", "shop", "store", "product", "order"])
+        is_library = any(w in (title + " " + problem) for w in ["library", "book", "author", "borrow"])
+        is_hospital = any(w in (title + " " + problem) for w in ["hospital", "patient", "doctor", "appointment"])
+
+        if is_library:
+            return self._get_library_template()
+        if is_hospital:
+            return self._get_hospital_template()
+        if is_ecommerce:
+            return self._get_ecommerce_template()
+
+        return self._get_ecommerce_template()
+
+    def _get_ecommerce_template(self) -> str:
+        return """erDiagram
+    CATEGORY ||--o{ PRODUCT : contains
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER ||--o{ CUSTOMER_ADDRESS : has
+    ORDER ||--|{ ORDER_ITEM : contains
+    PRODUCT ||--o{ ORDER_ITEM : included_in
+    ORDER ||--|| PAYMENT : has
+
+    CATEGORY {
+        int category_id PK
+        string category_name
+        text description
+        int parent_category_id FK
+        boolean is_active
+        datetime created_at
+    }
+
+    PRODUCT {
+        int product_id PK
+        int category_id FK
+        string product_name
+        text description
+        decimal price
+        int stock_quantity
+        string sku
+        datetime created_at
+    }
+
+    CUSTOMER {
+        int customer_id PK
+        string first_name
+        string last_name
+        string email
+        string phone_number
+        string password_hash
+        datetime created_at
+    }
+
+    CUSTOMER_ADDRESS {
+        int address_id PK
+        int customer_id FK
+        string street_address
+        string city
+        string state
+        string zip_code
+        string country
+        boolean is_default
+    }
+
+    ORDER {
+        int order_id PK
+        int customer_id FK
+        int shipping_address_id FK
+        date order_date
+        decimal total_amount
+        string order_status
+        datetime created_at
+    }
+
+    ORDER_ITEM {
+        int order_item_id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+        decimal subtotal
+    }
+
+    PAYMENT {
+        int payment_id PK
+        int order_id FK
+        decimal amount
+        string payment_method
+        string transaction_id
+        datetime payment_date
+        string payment_status
+    }
 """
-        
-        elif diagram_type == 'tree':
-            return f"""{base_instructions}
 
-TASK: Generate a Tree/Graph visualization for this algorithm question.
+    def _get_library_template(self) -> str:
+        return """erDiagram
+    AUTHOR ||--o{ BOOK : writes
+    CATEGORY ||--o{ BOOK : contains
+    MEMBER ||--o{ LOAN : borrows
+    BOOK ||--o{ LOAN : loaned_in
+    MEMBER ||--o{ RESERVATION : makes
+    BOOK ||--o{ RESERVATION : reserved
 
-Question Title: {title}
-Problem Statement: {problem_statement}
+    AUTHOR {
+        int author_id PK
+        string first_name
+        string last_name
+        date birth_date
+        string nationality
+        text biography
+        datetime created_at
+    }
 
-Requirements:
-- Use Mermaid graph TD (top-down) or LR (left-right) syntax
-- Show the data structure clearly
-- Label nodes with values
-- Use appropriate arrows for relationships
+    CATEGORY {
+        int category_id PK
+        string category_name
+        text description
+        datetime created_at
+    }
 
-Example format:
-graph TD
-    A[5] --> B[3]
-    A --> C[8]
-    B --> D[1]
-    B --> E[4]
+    BOOK {
+        int book_id PK
+        int author_id FK
+        int category_id FK
+        string title
+        string isbn
+        int publication_year
+        int total_copies
+        int available_copies
+        datetime created_at
+    }
 
-Return ONLY the Mermaid code, starting with 'graph TD' or 'graph LR'.
+    MEMBER {
+        int member_id PK
+        string first_name
+        string last_name
+        string email
+        string phone
+        date membership_date
+        string membership_type
+        datetime created_at
+    }
+
+    LOAN {
+        int loan_id PK
+        int member_id FK
+        int book_id FK
+        date loan_date
+        date due_date
+        date return_date
+        string status
+    }
+
+    RESERVATION {
+        int reservation_id PK
+        int member_id FK
+        int book_id FK
+        datetime reservation_date
+        string status
+    }
 """
-        
-        elif diagram_type == 'architecture':
-            return f"""{base_instructions}
 
-TASK: Generate a System Architecture Diagram for this design question.
+    def _get_hospital_template(self) -> str:
+        return """erDiagram
+    PATIENT ||--o{ APPOINTMENT : schedules
+    DOCTOR ||--o{ APPOINTMENT : attends
+    APPOINTMENT ||--o{ PRESCRIPTION : results_in
+    DOCTOR ||--o{ PRESCRIPTION : writes
+    PATIENT ||--o{ MEDICAL_RECORD : has
+    DEPARTMENT ||--o{ DOCTOR : employs
 
-Question Title: {title}
-Problem Statement: {problem_statement}
+    PATIENT {
+        int patient_id PK
+        string first_name
+        string last_name
+        date date_of_birth
+        string gender
+        string phone
+        string email
+        string address
+        datetime created_at
+    }
 
-Requirements:
-- Use Mermaid flowchart syntax
-- Show all components (load balancer, servers, database, cache, etc.)
-- Indicate data flow with arrows
-- Group related components in subgraphs
+    DOCTOR {
+        int doctor_id PK
+        int department_id FK
+        string first_name
+        string last_name
+        string specialization
+        string license_number
+        string phone
+        string email
+        datetime created_at
+    }
 
-Example format:
-flowchart TD
-    LB[Load Balancer]
-    LB --> S1[Server 1]
-    LB --> S2[Server 2]
-    S1 --> DB[(Database)]
-    S2 --> DB
+    DEPARTMENT {
+        int department_id PK
+        string department_name
+        string location
+        string phone
+        datetime created_at
+    }
 
-Return ONLY the Mermaid code, starting with 'flowchart TD' or 'flowchart LR'.
+    APPOINTMENT {
+        int appointment_id PK
+        int patient_id FK
+        int doctor_id FK
+        datetime appointment_date
+        string reason
+        string status
+        text notes
+    }
+
+    PRESCRIPTION {
+        int prescription_id PK
+        int appointment_id FK
+        int doctor_id FK
+        int patient_id FK
+        datetime prescription_date
+        text medication
+        text dosage
+        text instructions
+    }
+
+    MEDICAL_RECORD {
+        int record_id PK
+        int patient_id FK
+        datetime record_date
+        text diagnosis
+        text treatment
+        text notes
+    }
 """
-        
-        else:  # flowchart
-            return f"""{base_instructions}
 
-TASK: Generate a Flowchart for this algorithm/logic question.
+    # ---------------------------
+    # Extract + Validate
+    # ---------------------------
 
-Question Title: {title}
-Problem Statement: {problem_statement}
-
-Requirements:
-- Use Mermaid flowchart syntax
-- Show decision points with diamonds {{{{ }}}}
-- Show process steps with rectangles [ ]
-- Include start/end nodes
-
-Example format:
-flowchart TD
-    Start([Start])
-    Start --> Check{{"Is n > 0?"}}
-    Check -->|Yes| Process[Process data]
-    Check -->|No| End([End])
-    Process --> End
-
-Return ONLY the Mermaid code, starting with 'flowchart TD'.
-"""
-    
     def _extract_mermaid_code(self, response_text: str) -> Optional[str]:
-        """Extrait le code Mermaid de la réponse"""
-        # Enlever les markdown code blocks si présents
         response_text = response_text.strip()
-        
-        # Pattern 1: Code dans ```mermaid ... ```
-        pattern1 = r'```(?:mermaid)?\s*\n([\s\S]+?)\n```'
+
+        pattern1 = r"```(?:mermaid)?\s*\n([\s\S]+?)\n```"
         match = re.search(pattern1, response_text)
         if match:
             return match.group(1).strip()
-        
-        # Pattern 2: Code direct (pas de markdown)
-        # Vérifier si commence par un mot-clé Mermaid
-        mermaid_keywords = ['erDiagram', 'classDiagram', 'sequenceDiagram', 'graph', 'flowchart', 'stateDiagram']
+
+        mermaid_keywords = ["erDiagram", "classDiagram", "sequenceDiagram", "graph", "flowchart", "stateDiagram"]
         for keyword in mermaid_keywords:
             if response_text.startswith(keyword):
                 return response_text.strip()
-        
-        # Pattern 3: Chercher le premier keyword dans le texte
+
         for keyword in mermaid_keywords:
             if keyword in response_text:
-                # Extraire du keyword jusqu'à la fin
                 start_idx = response_text.index(keyword)
                 return response_text[start_idx:].strip()
-        
+
         return None
-    
+
     def _validate_mermaid(self, code: str, diagram_type: str) -> bool:
-        """Validation basique de la syntaxe Mermaid"""
         if not code or len(code) < 10:
             return False
-        
-        # Vérifier que le code commence par le bon type
+
         type_keywords = {
-            'er': 'erDiagram',
-            'class': 'classDiagram',
-            'sequence': 'sequenceDiagram',
-            'tree': 'graph',
-            'architecture': 'flowchart',
-            'flowchart': 'flowchart'
+            "er": "erDiagram",
+            "class": "classDiagram",
+            "sequence": "sequenceDiagram",
+            "tree": "graph",
+            "architecture": "flowchart",
+            "flowchart": "flowchart",
         }
-        
-        expected_keyword = type_keywords.get(diagram_type, '')
-        if not code.strip().startswith(expected_keyword):
-            return False
-        
-        # Vérifications basiques de syntaxe
-        # (Plus de validations peuvent être ajoutées)
-        
-        return True
+
+        expected_keyword = type_keywords.get(diagram_type, "")
+        return code.strip().startswith(expected_keyword)
+
+    # ---------------------------
+    # ER Sanitizer + Completeness
+    # ---------------------------
+
     def _clean_mermaid_er_syntax(self, mermaid_code: str) -> str:
-        """
-        Clean invalid Mermaid ER syntax by removing constraints
-        """
-        logger.info("🧹 Cleaning Mermaid ER syntax...")
-        
-        # Remove common constraint keywords that break Mermaid
-        invalid_keywords = [
-            r'\s+UNIQUE',
-            r'\s+NOT NULL',
-            r'\s+NULL',
-            r'\s+DEFAULT\s+\S+',
-            r'\s+CHECK\s*\([^)]+\)',
-            r'\s+AUTO_INCREMENT',
-            r'\s+SERIAL',
-        ]
-        
-        cleaned = mermaid_code
-        
-        for pattern in invalid_keywords:
-            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
-        
-        # Also remove any text after } on the same line
-        cleaned = re.sub(r'(\})\s*[^\n]+', r'\1', cleaned)
-        
-        logger.info("✅ Mermaid syntax cleaned")
+        logger.info("Cleaning Mermaid ER syntax...")
+
+        cleaned = re.sub(
+            r"\s+(UNIQUE|NOT NULL|NULL|DEFAULT\s+\S+|CHECK\s*\([^)]+\)|AUTO_INCREMENT|SERIAL|PRIMARY KEY|FOREIGN KEY)\b",
+            "",
+            mermaid_code,
+            flags=re.IGNORECASE,
+        )
+
+        cleaned = re.sub(r"(\})\s+[^\n]+", r"\1", cleaned)
+        cleaned = re.sub(r"\}\s*(\w+\s*\{)", r"}\n\n\1", cleaned)
+
+        lines = cleaned.splitlines()
+        out = []
+        inside_entity = False
+        entity_name = None
+
+        for line in lines:
+            s = line.strip()
+
+            if not s:
+                if not inside_entity:
+                    out.append("")
+                continue
+
+            entity_start_match = re.match(r"^(\w+)\s*\{$", s)
+            if entity_start_match:
+                if inside_entity:
+                    out.append("    }")
+                    out.append("")
+
+                entity_name = entity_start_match.group(1)
+                inside_entity = True
+                out.append(f"    {entity_name} {{")
+                continue
+
+            if s == "}":
+                if inside_entity:
+                    inside_entity = False
+                    entity_name = None
+                    out.append("    }")
+                    out.append("")
+                continue
+
+            if not inside_entity:
+                if any(rel in s for rel in ["||--o{", "||--|{", "}|--|{", "||--||", "o|--||", "o{--||", "--"]):
+                    out.append(f"    {s}")
+                elif s.startswith("erDiagram"):
+                    out.append(s)
+                continue
+
+            # inside entity attributes
+            line = re.sub(r"\s+(FK|PK)\s+\w+\s*\{.*$", r" \1", line)
+            line = line.replace("{", "").replace("}", "")
+            line = re.sub(r"\s{2,}", " ", line)
+            line = re.sub(r"(--|#).*$", "", line)
+
+            s = line.strip()
+            if s:
+                parts = s.split()
+                if len(parts) >= 2:
+                    cleaned_parts = []
+                    for j, part in enumerate(parts):
+                        if j < 2:
+                            cleaned_parts.append(part)
+                        elif part in ["PK", "FK"]:
+                            cleaned_parts.append(part)
+                    out.append(f"        {' '.join(cleaned_parts)}")
+
+        if inside_entity:
+            out.append("    }")
+            out.append("")
+
+        cleaned = "\n".join(out)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned
-    
-    async def generate_er_diagram(self, topic: str, context: str = "") -> str:
-        """
-        Generate ER diagram with syntax cleaning
-        """
-        logger.info(f"🎨 Generating ER diagram for: {topic}")
-        
-        try:
-            # Generate with Gemini
-            prompt = self._generate_er_diagram_prompt(topic, context)
-            
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=2048
-                )
-            )
-            
-            mermaid_code = response.text.strip()
-            
-            # ✅ CLEAN the generated code
-            mermaid_code = self._clean_mermaid_er_syntax(mermaid_code)
-            
-            # Remove markdown code blocks if present
-            mermaid_code = re.sub(r'```mermaid\n?', '', mermaid_code)
-            mermaid_code = re.sub(r'```\n?', '', mermaid_code)
-            mermaid_code = mermaid_code.strip()
-            
-            logger.info(f"✅ ER diagram generated ({len(mermaid_code)} chars)")
-            
-            return mermaid_code
-            
-        except Exception as e:
-            logger.error(f"❌ Error generating ER diagram: {e}")
-            raise
+
+    def _validate_er_completeness(self, mermaid_code: str) -> bool:
+        lines = mermaid_code.splitlines()
+        inside_entity = False
+        current_entity = None
+        entity_attributes = {}
+
+        for line in lines:
+            s = line.strip()
+
+            entity_match = re.match(r"^(\w+)\s*\{$", s)
+            if entity_match:
+                current_entity = entity_match.group(1)
+                inside_entity = True
+                entity_attributes[current_entity] = []
+                continue
+
+            if s == "}":
+                inside_entity = False
+                current_entity = None
+                continue
+
+            if inside_entity and s and current_entity:
+                parts = s.split()
+                if len(parts) >= 2:
+                    entity_attributes[current_entity].append(s)
+
+        empty_entities = [e for e, attrs in entity_attributes.items() if len(attrs) == 0]
+        if empty_entities:
+            logger.warning(f"Empty entities: {empty_entities}")
+            return False
+        return True
+
+    def _fix_incomplete_entities(self, mermaid_code: str) -> str:
+        lines = mermaid_code.splitlines()
+        out = []
+        inside_entity = False
+        current_entity = None
+        entity_has_attributes = False
+
+        for line in lines:
+            s = line.strip()
+
+            entity_match = re.match(r"^(\w+)\s*\{$", s)
+            if entity_match:
+                if inside_entity and not entity_has_attributes and current_entity:
+                    out.append(f"        int {current_entity.lower()}_id PK")
+                    out.append("        string name")
+                    out.append("        datetime created_at")
+                    out.append("    }")
+                    out.append("")
+
+                current_entity = entity_match.group(1)
+                inside_entity = True
+                entity_has_attributes = False
+                out.append(line)
+                continue
+
+            if s == "}":
+                if inside_entity and not entity_has_attributes and current_entity:
+                    out.append(f"        int {current_entity.lower()}_id PK")
+                    out.append("        string name")
+                    out.append("        datetime created_at")
+
+                inside_entity = False
+                current_entity = None
+                entity_has_attributes = False
+                out.append(line)
+                continue
+
+            if inside_entity and s:
+                entity_has_attributes = True
+
+            out.append(line)
+
+        return "\n".join(out)
 
 
 # Singleton instance

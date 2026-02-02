@@ -209,7 +209,11 @@ export default function AgencyCaseDetailPage() {
           : "",
         housing_notes: caseData.notes || "",
       });
-
+      console.log("🔍 Utilities from backend:", {
+      utility_water: caseData.utility_water,
+      utility_electricity: caseData.utility_electricity,
+      utility_internet: caseData.utility_internet,
+    });
       setUtilityStatus({
         utility_water: caseData.utility_water || "pending",
         utility_electricity: caseData.utility_electricity || "pending",
@@ -397,9 +401,12 @@ export default function AgencyCaseDetailPage() {
         throw new Error(errorData.message || "Failed to update utility status");
       }
 
+      const responseData = await response.json();
+      console.log("✅ Backend response:", responseData);
+
       setUtilityStatus(updatedUtilities);
       toast.success("Utility status updated!");
-      fetchCase();
+      
     } catch (err) {
       console.error("Update utility error:", err);
       toast.error(

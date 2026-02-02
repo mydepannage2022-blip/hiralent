@@ -1,178 +1,153 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { MapPin, Briefcase, Clock, TrendingUp, Building2 } from 'lucide-react';
-import { Job, JobRecommendation } from '@/src/lib/jobs/jobs.api';
-import { createConversation } from '@/src/lib/message/message.api';
+import React, { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { MapPin, Clock, TrendingUp, Briefcase } from "lucide-react";
+import type {
+  CandidateJobListItemDTO,
+  EligibilityResult,
+} from "../../../../types/candidate.jobs.types";
+import EligibilityBadge from "./EligibilityBadge";
+import EligibilityReasons from "./EligibilityReasons";
+import ApplyModal from "./ApplyModal";
 
-interface JobCardProps {
-  job: Job;
-  matchScore?: number;
-  showMatchScore?: boolean;
+function scoreClass(score: number) {
+  if (score >= 80) return "bg-green-100 text-green-800 border-green-200";
+  if (score >= 60) return "bg-blue-100 text-blue-800 border-blue-200";
+  if (score >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+  return "bg-gray-100 text-gray-800 border-gray-200";
 }
 
-
-const JobCard: React.FC<JobCardProps> = ({ job, matchScore, showMatchScore = false }) => {
+export default function JobCard({
+  item,
+  showMatchScore = false,
+  eligibilityOverride,
+  eligibilityLoading = false,
+  isApplied = false, // ✅ NEW PROP
+}: {
+  item: CandidateJobListItemDTO;
+  showMatchScore?: boolean;
+  eligibilityOverride?: EligibilityResult;
+  eligibilityLoading?: boolean;
+  isApplied?: boolean; // ✅ NEW PROP
+}) {
   const router = useRouter();
+  const [openApply, setOpenApply] = useState(false);
 
-  const [isMessaging, setIsMessaging] = useState(false);
+  // ✅ local state to instantly switch UI after successful apply
+  const [applied, setApplied] = useState<boolean>(!!isApplied);
 
-  
-  const handleMessageCompany = async () => {
-    if (!job.company_id) {
-      alert('Company information not available');
-      return;
-    }
+  // ✅ if parent (DB) says applied (after refresh), sync it
+  useEffect(() => {
+    if (isApplied) setApplied(true);
+  }, [isApplied]);
 
-    setIsMessaging(true);
-    try {
-      const response = await createConversation({
-        participant_id: job.company_id,
-      });
-      
-      if (response.success && response.data?.conversation_id) {
-        router.push(`/candidate/dashboard/messages?conversation=${response.data.conversation_id}`);
-      } else {
-        alert('Failed to start conversation');
-      }
-    } catch (error) {
-      console.error('Message error:', error);
-      alert('Failed to start conversation');
-    } finally {
-      setIsMessaging(false);
-    }
-  };
+  const matchScore = item.match_score;
+  const hasMatchScore = showMatchScore && typeof matchScore === "number";
 
+  const eligibility = eligibilityOverride ?? item.eligibility;
 
-  const handleClick = () => {
-    router.push(`/job/jobdetails/${job.job_id}`);
-  };
+  // ✅ disable apply if already applied
+  const canApply = !!eligibility?.eligible && !eligibilityLoading && !applied;
 
-  const getMatchScoreColor = (score: number) => {
-    if (score >= 80) return 'bg-green-100 text-green-800 border-green-200';
-    if (score >= 60) return 'bg-blue-100 text-blue-800 border-blue-200';
-    if (score >= 40) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-gray-100 text-gray-800 border-gray-200';
-  };
+  const subtitle = useMemo(() => {
+    const parts: string[] = [];
+    if (item.location) parts.push(item.location);
+    if (item.experience_level) parts.push(item.experience_level);
+    return parts.join(" • ");
+  }, [item.location, item.experience_level]);
 
   return (
-    <div
-      onClick={handleClick}
-      className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-blue-300"
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4 flex-1">
-          {/* Company Logo */}
-          <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            {job.companyProfile?.logo_url ? (
-              <img
-                src={job.companyProfile.logo_url}
-                alt={job.companyProfile.company_name || 'Company'}
-                className="w-12 h-12 object-contain rounded"
-              />
-            ) : (
-              <Building2 className="w-8 h-8 text-gray-400" />
-            )}
-          </div>
-
-          {/* Job Info */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
-              {job.title}
-            </h3>
-            <p className="text-sm text-gray-600 truncate">
-              {job.companyProfile?.company_name || job.company?.full_name || 'Company'}
-            </p>
-          </div>
+    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="min-w-0">
+          <h3
+            onClick={() => router.push(`/candidate/dashboard/jobs/${item.job_id}`)}
+            className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:underline"
+          >
+            {item.title}
+          </h3>
+          <p className="text-sm text-gray-600 truncate">{subtitle || "—"}</p>
         </div>
 
-        {/* Match Score Badge */}
-        {showMatchScore && matchScore !== undefined && (
-          <div
-            className={`px-3 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1 ${getMatchScoreColor(
-              matchScore
-            )}`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            {Math.round(matchScore)}% Match
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {eligibility ? (
+            <EligibilityBadge eligibility={eligibility} />
+          ) : (
+            <span className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-gray-50 text-gray-600 border-gray-200">
+              Checking…
+            </span>
+          )}
+
+          {hasMatchScore && (
+            <span
+              className={`px-3 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1 ${scoreClass(
+                matchScore!
+              )}`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              {Math.round(matchScore!)}% Match
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Job Details */}
-      <div className="flex flex-wrap items-center gap-3 mb-4 text-sm text-gray-600">
-        {job.location && (
+      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-3">
+        {item.location && (
           <div className="flex items-center gap-1.5">
             <MapPin className="w-4 h-4" />
-            <span>{job.location}</span>
+            <span>{item.location}</span>
           </div>
         )}
-
-        {job.job_type && (
-          <div className="flex items-center gap-1.5">
-            <Briefcase className="w-4 h-4" />
-            <span>{job.job_type}</span>
-          </div>
-        )}
-
-        {job.experience_level && (
+        {item.experience_level && (
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4" />
-            <span>{job.experience_level}</span>
+            <span>{item.experience_level}</span>
+          </div>
+        )}
+        {!!item.required_skills?.length && (
+          <div className="flex items-center gap-1.5">
+            <Briefcase className="w-4 h-4" />
+            <span>
+              {item.required_skills.slice(0, 3).join(", ")}
+              {item.required_skills.length > 3 ? "…" : ""}
+            </span>
           </div>
         )}
       </div>
 
-      {/* Description Preview */}
-      {job.description && (
-        <p className="text-sm text-gray-700 mb-4 line-clamp-2">
-          {job.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
-        </p>
+      {!!eligibility && !eligibility.eligible && (
+        <EligibilityReasons reasons={eligibility.reasons ?? []} />
       )}
 
-{/* Footer */}
-<div className="flex items-center justify-between pt-4 border-t border-gray-100">
-  {/* Salary */}
-  <div className="text-sm">
-    {job.salary_range ? (
-      <span className="font-semibold text-gray-900">{job.salary_range}</span>
-    ) : (
-      <span className="text-gray-500">Salary not disclosed</span>
-    )}
-  </div>
+      <div className="mt-4 flex items-center justify-between pt-4 border-t border-gray-100">
+        <button
+          onClick={() => router.push(`/candidate/dashboard/jobs/${item.job_id}`)}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          View details →
+        </button>
 
-  {/* Right Side */}
-  <div className="flex items-center gap-3">
-    {/* Tags */}
-    {job.remote_option && (
-      <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full">
-        {job.remote_option}
-      </span>
-    )}
-    {job.visa_sponsored && (
-      <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
-        Visa Sponsored
-      </span>
-    )}
+        <button
+          onClick={() => setOpenApply(true)}
+          disabled={!canApply}
+          className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed
+            ${applied ? "bg-gray-100 text-gray-600 border border-gray-200" : "bg-blue-600 text-white hover:bg-blue-700"}
+          `}
+          title={!canApply ? (applied ? "Applied" : "Not eligible") : "Apply"}
+        >
+          {applied ? "Applied" : "Apply"}
+        </button>
+      </div>
 
-    {/* Message Button */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        handleMessageCompany();
-      }}
-      disabled={isMessaging}
-      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-    >
-      {isMessaging ? 'Loading...' : 'Message'}
-    </button>
-  </div>
-</div>
-
+      <ApplyModal
+        open={openApply}
+        onClose={() => setOpenApply(false)}
+        jobId={item.job_id}
+        jobTitle={item.title}
+        eligibility={eligibility}
+        onApplied={() => setApplied(true)} // ✅ instantly set applied after apply success
+      />
     </div>
   );
-};
-
-export default JobCard;
+}

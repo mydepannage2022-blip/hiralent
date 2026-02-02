@@ -15,6 +15,7 @@ export enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE = "JOB_DESCRIPTION_PARSE",
   CHATBOT_GUIDED = "CHATBOT_GUIDED",
   MANUAL = "MANUAL",
+  TEMPLATE = "TEMPLATE",
 }
 
 export interface JobDescriptionParseRequest {
@@ -243,6 +244,7 @@ export interface EmployerAssessment {
   assessment_id: string;
   company_id: string;
   job_id: string;
+  template_id?: string;
   title: string;
   description: string;
   status: EmployerAssessmentStatus;
@@ -291,6 +293,11 @@ export interface CreateEmployerAssessmentRequest {
   status?: EmployerAssessmentStatus;
   question_ids?: string[];
   settings?: any;
+}
+
+export interface CreateEmployerAssessmentFromTemplateRequest {
+  job_id: string;
+  template_id: string;
 }
 
 export interface AssessmentCandidateProgress {

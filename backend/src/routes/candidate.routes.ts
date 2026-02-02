@@ -31,8 +31,15 @@ import {
   deleteLinkController,
   updateJobBenefitsController,
   bulkUpdateProfileController,
-  uploadApplicationResumeController
+  uploadApplicationResumeController,
+  updateProjectsController,
+  getLanguagesController,
+  updateLanguagesController,
+  addLanguageController,
+  deleteLanguageController,
+  updateLanguageAtIndexController,
 } from '../controller/candidate/profile.controller';
+import { bulkCertificationsSchema, addCertificationSchema } from "../validation/certification.schema";
 
 import { uploadCVMiddleware, handleUploadError } from '../middlewares/uploadCV.middleware';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
@@ -73,7 +80,12 @@ import {
   updateLinksSchema,
   socialLinkSchema,
   updateJobBenefitsSchema,
-  bulkProfileUpdateSchema
+  bulkProfileUpdateSchema,
+  updateProjectsSchema,
+  updateLanguagesSchema,
+  addLanguageSchema,
+  updateLanguageAtIndexSchema,
+
 } from '../validation/candidate.schema';
 import { startAssessmentSchema } from '../validation/assessment.validation';
 
@@ -96,6 +108,30 @@ import {
   getIntegrationServicesController
 } from '../controller/candidate/candidate.agency.controller';
 
+// scoring / badges / certifications / autofill controllers
+import {
+  calculateScoreController,
+  getScoreController,
+  getScoreHistoryController,
+} from '../controller/candidate/profile/scoring.controller';
+
+import {
+  evaluateBadgesController,
+  listBadgesController,
+} from '../controller/candidate/profile/badge.controller';
+
+import {
+  addCertificationController,
+  listCertificationsController,
+  deleteCertificationController,
+  bulkUpsertCertificationsController,
+} from '../controller/candidate/profile/certification.controller';
+
+import {
+  createAutofillPreviewController,
+  confirmAutofillMappingController,
+  applyAutofillController,
+} from '../controller/candidate/profile/autofill.controller';
 const router = Router();
 
 router.get('/health', healthCheckController);
@@ -270,6 +306,13 @@ router.put(
   updateJobBenefitsController
 );
 
+//Projects data
+router.put(
+  '/profile/projects',
+  [checkAuth, validateBody(updateProjectsSchema)],
+  updateProjectsController
+);
+
 // Bulk Profile Update
 router.put(
   '/profile/bulk',
@@ -346,8 +389,98 @@ router.get(
   getIntegrationServicesController
 );
 
+
+
+// ============================
+// PROFILE SCORING ROUTES
+// ============================
+
+// Get current score (cached)
+router.get('/profile/score', checkAuth, getScoreController);
+
+// Recalculate score now
+router.post('/profile/score/recalculate', checkAuth, calculateScoreController);
+
+// Score history
+router.get('/profile/score/history', checkAuth, getScoreHistoryController);
+
+// ============================
+// BADGES ROUTES
+// ============================
+
+// List all badges + earned status
+router.get('/profile/badges', checkAuth, listBadgesController);
+
+// Force evaluate + award/revoke badges
+router.post('/profile/badges/evaluate', checkAuth, evaluateBadgesController);
+
+// ============================
+// CERTIFICATIONS ROUTES
+// ============================
+
+// List
+router.get("/profile/certifications", checkAuth, listCertificationsController);
+
+// Add single
+router.post(
+  "/profile/certifications",
+  checkAuth,
+  validateBody(addCertificationSchema),
+  addCertificationController
+);
+
+// ✅ Bulk save (matches your UI Save button)
+router.put(
+  "/profile/certifications",
+  checkAuth,
+  validateBody(bulkCertificationsSchema),
+  bulkUpsertCertificationsController
+);
+
+// Delete
+router.delete("/profile/certifications/:certificationId", checkAuth, deleteCertificationController);
+
+// ============================
+// AUTOFILL ROUTES
+// ============================
+
+// Create autofill preview session (requires document_id in body)
+router.post('/profile/autofill/preview', checkAuth, createAutofillPreviewController);
+
+// Confirm mapping (session_id + mapping_id + confirmed_value?)
+router.post('/profile/autofill/confirm', checkAuth, confirmAutofillMappingController);
+
+// Apply confirmed fields (session_id)
+router.post('/profile/autofill/apply', checkAuth, applyAutofillController);
+
 export default router;
 
+// ============================
+// LANGUAGES ROUTES
+// ============================
+
+router.get("/profile/languages", checkAuth, getLanguagesController);
+
+router.put(
+  "/profile/languages",
+  [checkAuth, validateBody(updateLanguagesSchema)],
+  updateLanguagesController
+);
+
+router.post(
+  "/profile/languages",
+  [checkAuth, validateBody(addLanguageSchema)],
+  addLanguageController
+);
+
+router.delete("/profile/languages/:index", checkAuth, deleteLanguageController);
+
+// optional PATCH
+router.patch(
+  "/profile/languages/:index",
+  [checkAuth, validateBody(updateLanguageAtIndexSchema)],
+  updateLanguageAtIndexController
+);
 
 
 
@@ -394,6 +527,21 @@ POST   /profile/links              - Add single social link
 DELETE /profile/links/:index       - Delete link by index
 PUT    /profile/job-benefits       - Update job benefits preferences
 PUT    /profile/bulk               - Bulk update multiple sections
+
+
+
+PROFILE INTELLIGENCE ROUTES (10):
+GET    /profile/score                    - Get current candidate score
+POST   /profile/score/recalculate        - Calculate + persist candidate score
+GET    /profile/score/history            - Get score history
+GET    /profile/badges                   - List badges + earned status
+POST   /profile/badges/evaluate          - Evaluate + award/revoke badges
+GET    /profile/certifications           - List certifications
+POST   /profile/certifications           - Add certification
+DELETE /profile/certifications/:id       - Delete certification
+POST   /profile/autofill/preview         - Create autofill preview session
+POST   /profile/autofill/confirm         - Confirm a mapping field
+POST   /profile/autofill/apply           - Apply confirmed fields to profile
 
 TOTAL: 31 API ENDPOINTS
 */

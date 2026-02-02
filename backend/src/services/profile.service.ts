@@ -20,10 +20,14 @@ import {
   SocialLink,
   JobBenefit,
   CandidateServiceError,
-  APIResponse
+  APIResponse,
+  UpdateProjectsInput, 
+  ProjectsUpdateResult,
 } from "../types/candidate.types";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
+import axios from "axios";
+import { processDocumentAsync } from "./candidate/documentProcessor.service";
 
 import {
   processSkillsUpdate,
@@ -32,7 +36,8 @@ import {
   validateProfileData
 } from "./candidate/profileSection.service";
 import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
-
+import path from 'path';
+import { triggerCandidateMatching } from "./matching/candidate-outbox.service"; // I added This line (Ihssane)
 const prisma = new PrismaClient();
 
 export const updateBasicInfo = async (
@@ -87,6 +92,13 @@ export const updateBasicInfo = async (
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
+if (updatedFields.includes("about_me")) {
+  await triggerCandidateMatching(candidateId, "updateBasicInfo").catch(e =>
+    console.warn("Failed to trigger matching:", e)
+  );
+}
+
+
     return {
       success: true,
       message: `Successfully updated ${updatedFields.join(', ')}`,
@@ -107,6 +119,10 @@ export const updateSkills = async (
     
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+
+   await triggerCandidateMatching(candidateId, "updateSkills").catch(e => 
+      console.warn("Failed to trigger matching:", e)
+   );
 
     return {
       success: true,
@@ -154,7 +170,10 @@ export const addSkill = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+   await triggerCandidateMatching(candidateId, "addSkill").catch(e => 
+      console.warn("Failed to trigger matching:", e)
+  );
     return {
       success: true,
       message: `Successfully added skill: ${data.skill_name}`,
@@ -192,6 +211,9 @@ export const deleteSkill = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+    await triggerCandidateMatching(candidateId, "deleteSkill").catch(e =>
+  console.warn("Failed to trigger matching:", e)
+);
 
     return {
       success: true,
@@ -213,6 +235,11 @@ export const updateExperience = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+    
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "updateExperience").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+);
 
     return {
       success: true,
@@ -259,7 +286,10 @@ export const addExperience = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "addExperience").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+);
     return {
       success: true,
       message: `Successfully added experience: ${data.job_title} at ${data.company}`,
@@ -280,7 +310,10 @@ export const updateEducation = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "updateEducation").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+); 
     return {
       success: true,
       message: `Successfully updated ${data.education.length} education entries`,
@@ -326,7 +359,10 @@ export const addEducation = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+     // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "addEducation").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+); 
     return {
       success: true,
       message: `Successfully added education: ${data.degree} from ${data.institution}`,
@@ -345,28 +381,28 @@ export const updateLinks = async (
   try {
     await validateProfileData({ links: data.links });
 
+    const links = normalizeLinks(data.links || []);
+
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
-      update: {
-        links: JSON.stringify(data.links),
-        updated_at: new Date()
-      },
-      create: {
-        candidate_id: candidateId,
-        links: JSON.stringify(data.links)
-      }
+      update: { links: JSON.stringify(links), updated_at: new Date() },
+      create: { candidate_id: candidateId, links: JSON.stringify(links) }
     });
+
+    const { calculateProfileCompleteness } = await import("./candidate.service");
+    await calculateProfileCompleteness(candidateId);
 
     return {
       success: true,
-      message: `Successfully updated ${data.links.length} social links`,
-      links_count: data.links.length
+      message: `Successfully updated ${links.length} social links`,
+      links_count: links.length
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating links:", error);
     throw new Error(`Failed to update links: ${error.message || "Unknown error"}`);
   }
 };
+
 
 export const addLink = async (
   candidateId: string,
@@ -386,10 +422,11 @@ export const addLink = async (
       }
     }
 
-    const existingLink = links.find(link => link.platform === linkData.platform);
-    if (existingLink) {
-      throw new Error(`${linkData.platform} link already exists`);
-    }
+    const p = normalizePlatform(linkData.platform);
+    const u = canonicalizeUrl(linkData.url);
+    const exists = links.some(l => normalizePlatform(l.platform) === p && canonicalizeUrl(l.url).toLowerCase() === u.toLowerCase());
+    if (exists) throw new Error("Link already exists");
+
 
     links.push(linkData);
 
@@ -543,70 +580,373 @@ export const bulkUpdateProfile = async (
     throw new Error(`Failed to update profile: ${error.message || "Unknown error"}`);
   }
 };
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || process.env.MATCHING_AI_BASE_URL;
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+
+async function triggerResumeExtraction(params: {
+  candidateId: string;
+  documentId: string;
+  filePath: string;
+  fileType: string;
+}) {
+  const { candidateId, documentId, filePath, fileType } = params;
+
+  if (!AI_SERVICE_URL) {
+    throw new Error("AI_SERVICE_URL (or MATCHING_AI_BASE_URL) is not set");
+  }
+
+  // ✅ CHANGE THIS PATH to match your ai-service endpoint
+  // Example: /resume/extract or /api/v1/resume/extract etc.
+  const url = `${AI_SERVICE_URL}/resume/extract`;
+
+  const headers: Record<string, string> = {};
+  if (INTERNAL_SERVICE_KEY) headers["x-internal-key"] = INTERNAL_SERVICE_KEY;
+
+  const res = await axios.post(
+    url,
+    {
+      candidate_id: candidateId,
+      document_id: documentId,
+      file_path: filePath,
+      file_type: fileType,
+    },
+    { headers, timeout: 120000 }
+  );
+
+  return res.data;
+}
 
 export const uploadApplicationResume = async (
   candidateId: string,
   file: Express.Multer.File
-): Promise<APIResponse<{ resume_application_url: string; file_name: string }>> => {
-  try {
-    if (!candidateId) {
-      throw new Error("Candidate ID is required");
-    }
+) => {
+  let tempFilePath: string | null = null;
 
-    if (!file || !fs.existsSync(file.path)) {
+  try {
+    if (!candidateId) throw new Error("Candidate ID is required");
+    if (!file || !file.path || !fs.existsSync(file.path)) {
       throw new Error("File not found after upload");
     }
 
+    tempFilePath = file.path;
+
+    const uploadDir = path.join(process.cwd(), "uploads", "resumes", "application");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    // Delete old local resume (only if stored as /uploads/...)
     const existingProfile = await prisma.candidateProfile.findUnique({
       where: { candidate_id: candidateId },
       select: { resume_application_url: true },
     });
 
-    const oldApplicationResumeUrl = existingProfile?.resume_application_url;
+    if (existingProfile?.resume_application_url?.startsWith("/uploads/")) {
+      const oldFilePath = path.join(
+        process.cwd(),
+        existingProfile.resume_application_url.replace(/^\//, "")
+      );
+      if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
+    }
 
-    const cloudinaryResult = await cloudinary.uploader.upload(file.path, {
-      folder: "hiralent-candidate/application-resumes",
-      public_id: `application_resume_${candidateId}_${Date.now()}`,
-      resource_type: "raw",
-      access_mode: 'public',
-      type: 'upload'
-    });
+    // Build safe extension
+    const extWithDot = path.extname(file.originalname || "").toLowerCase();
+    const safeExt = extWithDot && extWithDot.length <= 6 ? extWithDot : ".pdf";
+    const ext = safeExt.replace(".", "");
 
-    const updatedProfile = await prisma.candidateProfile.upsert({
+    const filename = `application_resume_${candidateId}_${Date.now()}.${ext}`;
+    const destinationPath = path.join(uploadDir, filename);
+
+    // Move file to final location
+    fs.renameSync(tempFilePath, destinationPath);
+    tempFilePath = null;
+
+    // Store as relative URL
+    const fileUrl = `/uploads/resumes/application/${filename}`;
+
+    // Save into CandidateProfile
+    await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
-      update: {
-        resume_application_url: cloudinaryResult.secure_url,
-        updated_at: new Date(),
-      },
-      create: {
-        candidate_id: candidateId,
-        resume_application_url: cloudinaryResult.secure_url,
-      },
+      update: { resume_application_url: fileUrl, updated_at: new Date() },
+      create: { candidate_id: candidateId, resume_application_url: fileUrl },
     });
 
-    cleanupTempFile(file.path);
+    // ✅ Create CandidateDocument (ONLY fields that exist in schema)
+    const doc = await prisma.candidateDocument.create({
+      data: {
+        candidate_id: candidateId,
+        file_name: file.originalname,
+        file_path: destinationPath,
+        file_type: ext.toUpperCase(), // schema = String, keep it simple ("PDF", "DOCX", etc.)
+        file_size: file.size,
+        upload_status: "uploaded",      // REQUIRED
+        extraction_status: "pending",   // optional in schema but good to set
+      },
+      select: { document_id: true },
+    });
 
-    if (oldApplicationResumeUrl && oldApplicationResumeUrl !== cloudinaryResult.secure_url) {
-      await cleanupOldApplicationResume(candidateId, oldApplicationResumeUrl);
+
+    //  Kick off extraction in background (so the upload API responds immediately)
+// Kick off extraction in background + trigger matching after success
+setImmediate(() => {
+  processDocumentAsync(doc.document_id, candidateId, destinationPath)
+    .then(() => triggerCandidateMatching(candidateId, "application_resume_extracted"))
+    .catch((e) =>
+      console.error("❌ processDocumentAsync(application) failed:", e?.message || e)
+    );
+});
+
+    
+
+    // Optional: create SkillExtraction row if your table exists
+    const hasSkillExtraction = (prisma as any).skillExtraction?.create;
+    if (hasSkillExtraction) {
+      await (prisma as any).skillExtraction.create({
+        data: {
+          candidate_id: candidateId,
+          document_id: doc.document_id,
+          status: "pending",
+          ai_provider: "gemini",
+        },
+      });
     }
 
     return {
       success: true,
       data: {
-        resume_application_url: cloudinaryResult.secure_url,
+        resume_application_url: fileUrl,
         file_name: file.originalname,
+        document_id: doc.document_id,
       },
       message: "Application resume uploaded successfully",
     };
-
-  } catch (error) {
-    console.error("Service error - Application resume upload:", error);
-
-    if (file && fs.existsSync(file.path)) {
-      cleanupTempFile(file.path);
-    }
-
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`Application resume upload failed: ${errorMessage}`);
+  } catch (error: any) {
+    if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    throw new Error(`Application resume upload failed: ${error?.message || "Unknown error"}`);
   }
 };
+
+export const updateProjects = async (
+  candidateId: string,
+  data: UpdateProjectsInput
+): Promise<ProjectsUpdateResult> => {
+  try {
+    await validateProfileData({ projects: data.projects }); // optional; only if your validateProfileData supports it
+
+    await prisma.candidateProfile.upsert({
+      where: { candidate_id: candidateId },
+      update: {
+        projects: JSON.stringify(data.projects),
+        updated_at: new Date(),
+      },
+      create: {
+        candidate_id: candidateId,
+        projects: JSON.stringify(data.projects),
+      },
+    });
+
+    const { calculateProfileCompleteness } = await import("./candidate.service");
+    await calculateProfileCompleteness(candidateId);
+
+    return {
+      success: true,
+      message: `Successfully updated ${data.projects.length} projects`,
+      projects_count: data.projects.length,
+    };
+  } catch (error: any) {
+    console.error("Error updating projects:", error);
+    throw new Error(`Failed to update projects: ${error.message || "Unknown error"}`);
+  }
+};
+
+type LanguageData = {
+  language: string;
+  proficiency: "native" | "fluent" | "advanced" | "intermediate" | "basic";
+};
+
+function parseJsonArray<T>(value: any): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value as T[];
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeLanguages(arr: any[]): LanguageData[] {
+  return arr
+    .map((x) => ({
+      language: String(x?.language ?? "").trim(),
+      proficiency: (String(x?.proficiency ?? "intermediate") as LanguageData["proficiency"]),
+    }))
+    .filter((x) => x.language.length > 0)
+    .map((x) => ({
+      ...x,
+      proficiency: (["native", "fluent", "advanced", "intermediate", "basic"].includes(x.proficiency)
+        ? x.proficiency
+        : "intermediate") as LanguageData["proficiency"],
+    }));
+}
+
+//  GET
+export async function getLanguages(candidateId: string) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const languages = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+  return { languages };
+}
+
+//  PUT (bulk replace)
+export async function updateLanguages(candidateId: string, languagesInput: LanguageData[]) {
+  const languages = normalizeLanguages(languagesInput ?? []);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(languages), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(languages) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully updated ${languages.length} languages`,
+    languages_count: languages.length,
+    languages,
+  };
+}
+
+//  POST (add one)
+export async function addLanguage(candidateId: string, input: LanguageData) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  // avoid duplicates by language name (case-insensitive)
+  const exists = current.some((l) => l.language.toLowerCase() === input.language.trim().toLowerCase());
+  if (exists) throw new Error("Language already exists");
+
+  const next = normalizeLanguages([...current, input]);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully added language: ${input.language}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+
+//  DELETE (remove by index)
+export async function deleteLanguage(candidateId: string, index: number) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  if (index < 0 || index >= current.length) {
+    throw new Error("Language index out of range");
+  }
+
+  const removed = current[index];
+  const next = current.filter((_, i) => i !== index);
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully deleted language: ${removed.language}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+
+//  OPTIONAL: PATCH (update one entry by index)
+export async function updateLanguageAtIndex(
+  candidateId: string,
+  index: number,
+  patch: Partial<LanguageData>
+) {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: { languages: true },
+  });
+
+  const current = normalizeLanguages(parseJsonArray<LanguageData>(profile?.languages));
+
+  if (index < 0 || index >= current.length) {
+    throw new Error("Language index out of range");
+  }
+
+  const updated = { ...current[index], ...patch };
+  const next = [...current];
+  next[index] = normalizeLanguages([updated])[0] ?? current[index];
+
+  await prisma.candidateProfile.upsert({
+    where: { candidate_id: candidateId },
+    update: { languages: JSON.stringify(next), updated_at: new Date() },
+    create: { candidate_id: candidateId, languages: JSON.stringify(next) },
+  });
+
+  const { calculateProfileCompleteness } = await import("./candidate.service");
+  await calculateProfileCompleteness(candidateId);
+
+  return {
+    success: true,
+    message: `Successfully updated language #${index + 1}`,
+    languages_count: next.length,
+    languages: next,
+  };
+}
+const cleanStr = (v?: string | null) => String(v ?? "").trim();
+
+const normalizePlatform = (p?: string) => cleanStr(p).toLowerCase() || "other";
+
+const canonicalizeUrl = (u?: string) => cleanStr(u).replace(/\/+$/g, "");
+
+function normalizeLinks(raw: any[]): SocialLink[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const normalized = arr
+    .map((x) => ({
+      platform: normalizePlatform(x?.platform) as any,
+      url: canonicalizeUrl(x?.url),
+      display_name: cleanStr(x?.display_name),
+    }))
+    .filter((x) => !!x.url);
+
+  const seen = new Set<string>();
+  return normalized.filter((x) => {
+    const key = `${x.platform}::${x.url.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}

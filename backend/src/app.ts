@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
 
 dotenv.config();
 const app = express();
@@ -55,6 +56,17 @@ import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
 import schedulerRoutes from "./routes/scraping/scraping.routes";
 import internalRoutes from "./routes/internal.routes";
+import candidateJobsRoutes from "./routes/candidate/jobs.routes";
+import internalCandidateRoutes from "./routes/internal/candidate/candidateSnapshot.routes";
+import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes";
+import matchingInternalRoutes from "./routes/internal/matching.routes";
+import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
+import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
+import externalCandidatesRoutes from "./routes/company.externalCandidates.routes";
+import companyInternalCandidatesRoutes from "./routes/company.internalCandidates.routes";
+import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
+import companyNotificationsRoutes from "./routes/company.notifications.routes";
+import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -76,6 +88,7 @@ app.use((req, res, next) => {
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
+app.use('/api/v1/questions', questionRoutes); // ✅ alias pour l'UI
 
 // Submission endpoints (create, fetch)
 app.use('/api/v1/submissions', submissionsRoutes);
@@ -108,14 +121,46 @@ app.use('/api/v1', insightsRoutes);
 
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
+app.use("/api/v1", assessmentTemplateRoutes);
 app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
 
+
+
+//Candidate (jobs+assessments)
+app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
+app.use("/api/v1/candidate", jobApplicationsRoutes);
+app.use("/internal/matching/candidate", internalCandidateRoutes);
+app.use("/internal/matching/company", internalCompanyRoutes);
+app.use("/internal/matching", matchingInternalRoutes);
+app.use("/api/v1", companyCandidateRankingRoutes);
+
+
 //Scraping Candidates
 app.use("/internal", internalRoutes);
+app.use("/api/v1", externalCandidatesRoutes);
+app.use("/api/v1", companyInternalCandidatesRoutes);
 
+// Notifications
+app.use("/api/v1", candidateNotificationsRoutes);
+app.use("/api/v1", companyNotificationsRoutes);
+
+//candidate cv
+// Serve uploaded files statically
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+      }
+    },
+  })
+);
 
 app.get('/', (req: Request, res: Response) => {
   res.send("Backend running successfully");

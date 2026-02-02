@@ -2500,11 +2500,134 @@ async checkVariationEngineHealth(req: Request, res: Response) {
     return [];
   }
 
+  // In QuestionController class, add this method:
+
+/**
+ * Generate questions from patterns for a specific user
+ */
+async generateQuestionsFromPatternsForUser(params: {
+  patterns: any[];
+  userId: string;
+  difficulties: ("easy" | "medium" | "hard")[];
+  limit: number;
+}): Promise<{
+  created: number;
+  skipped: number;
+  failed: number;
+  difficultyVariants: string[];
+  userQuestions: number;
+  questionIds: string[];
+}> {
+  const { patterns, userId, difficulties, limit } = params;
+  
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  const createdQuestionIds: string[] = [];
+  
+  // Limit the number of patterns to process
+  const patternsToProcess = patterns.slice(0, Math.min(patterns.length, limit));
+  
+  console.log(`👤 [USER GENERATION] Creating questions for user ${userId} from ${patternsToProcess.length} patterns`);
+  
+  for (const pattern of patternsToProcess) {
+    try {
+      // Generate question variations for each difficulty
+      for (const difficulty of difficulties) {
+        try {
+          // Call AI service to generate a question from this pattern
+          const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+          
+          const response = await fetch(`${AI_SERVICE_URL}/generate-question-from-pattern`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              pattern,
+              difficulty,
+              user_context: `Generate for user ${userId}`,
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error(`❌ [AI SERVICE] Failed to generate question for pattern: ${pattern.source_id}`);
+            failed++;
+            continue;
+          }
+          
+          const aiData = await response.json();
+          
+          if (!aiData.success || !aiData.question) {
+            console.error(`❌ [AI SERVICE] Invalid response for pattern: ${pattern.source_id}`);
+            failed++;
+            continue;
+          }
+          
+          // Create question in database FOR THE USER
+          const questionData = {
+            title: aiData.question.title || `Pattern-based: ${pattern.pattern} (${difficulty})`,
+            description: aiData.question.description || "Generated from pattern analysis",
+            problemStatement: aiData.question.problem_statement || "",
+            difficulty: difficulty,
+            skillTags: pattern.tags || [],
+            type: "coding",
+            status: "pending_review" as const, // User questions start as pending
+            createdBy: userId, // Link to user
+            aiGenerated: true,
+            source: "pattern_generation_user",
+            isLibraryQuestion: false, // NOT library question
+            generatedFromPattern: true,
+            patternKey: pattern.pattern,
+            patternDifficultyVariant: difficulty,
+            canonicalSolution: aiData.question.solution || "",
+            testCases: aiData.question.test_cases || {},
+            metadata: {
+              pattern_source: pattern.source,
+              pattern_id: pattern.source_id,
+              generated_at: new Date().toISOString(),
+              for_user: userId,
+            },
+          };
+          
+          // Check for duplicates before creating
+          const existingQuestion = await this.questionService.findByTitle(questionData.title);
+          
+          if (existingQuestion && existingQuestion.createdBy === userId) {
+            console.log(`⚠️ [DUPLICATE] Skipping duplicate question for user ${userId}: ${questionData.title}`);
+            skipped++;
+            continue;
+          }
+          
+          // Create the question using the existing service
+          const question = await this.questionService.createQuestion(questionData);
+          
+          created++;
+          createdQuestionIds.push(question.id);
+          
+          console.log(`✅ [CREATED] Question "${questionData.title}" for user ${userId}`);
+          
+        } catch (patternError: any) {
+          console.error(`❌ [PATTERN PROCESSING] Error for pattern ${pattern.source_id}:`, patternError.message);
+          failed++;
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ [GENERATION] Failed to process pattern:`, error.message);
+      failed++;
+    }
+  }
+  
+  return {
+    created,
+    skipped,
+    failed,
+    difficultyVariants: difficulties,
+    userQuestions: created,
+    questionIds: createdQuestionIds,
+  };
+}
 
 
 
 }
-  
-
-  
-

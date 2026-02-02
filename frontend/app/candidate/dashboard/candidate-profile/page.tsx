@@ -1,10 +1,12 @@
 "use client"
 import dynamic from 'next/dynamic';
-import { useAuth } from '@/src/context/AuthContext'
 import { useProfileCompleteness } from '@/src/lib/profile/profile.queries'
+import { useProfile } from "@/src/context/ProfileContext";
 import React from 'react'
+import { useQueryClient } from '@tanstack/react-query'; 
+import toast from 'react-hot-toast';
 
-// Lazy load all heavy components
+// Lazy load all components
 const Meta = dynamic(() => import('@/src/components/candidate/dashboard/profile/Meta'), {
   loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl mb-4"></div>
 });
@@ -43,18 +45,59 @@ const JobBenefitsSection = dynamic(() => import('@/src/components/candidate/dash
   loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl mb-4"></div>
 });
 
-const page = () => {
-  const { user } = useAuth();
-  const { data: profileData, isLoading, error } = useProfileCompleteness();
+const ProjectsSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/ProjectsSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-xl mb-4"></div>
+});
 
-  // Transform data for each section
-  const aboutMeData = {
-    description: user?.profile?.about_me || '',
+const CertificationsSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/CertificationsSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl mb-4"></div>
+});
+
+const LanguagesSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/LanguagesSection'), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl mb-4"></div>
+});
+
+const CandidateProfilePage = () => {
+  const queryClient = useQueryClient();
+  const { refetch: refetchProfile, loading: profileLoading, forceRefresh, dataVersion } = useProfile();
+  const { refetch: refetchCompleteness, isLoading, error } = useProfileCompleteness();
+
+  const handleAutofillApplied = async () => {
+    console.log('🔄 handleAutofillApplied: Starting refresh...');
+    
+    try {
+      // ✅ Clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('profileData');
+        localStorage.removeItem('profileCompleteness');
+      }
+      
+      // ✅ Invalidate ALL profile-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['profileCompleteness'] }),
+        queryClient.invalidateQueries({ queryKey: ['profileData'] })
+      ]);
+      
+      // ✅ Wait for backend
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // ✅ Force ProfileContext refresh
+      await forceRefresh();
+      
+      // ✅ Refetch completeness
+      await refetchCompleteness();
+      
+      toast.success('Profile updated successfully!');
+      console.log('✅ handleAutofillApplied: Refresh complete');
+      
+    } catch (error) {
+      console.error('❌ handleAutofillApplied error:', error);
+      toast.error('Failed to refresh profile');
+    }
   };
 
-  const jobBenefitsData = profileData?.data?.job_benefits || [];
-
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
       <div className="w-full flex justify-center items-center min-h-[400px]">
         <div className="text-center">
@@ -82,23 +125,19 @@ const page = () => {
   }
 
   return (
-    <div className='w-full flex flex-col lg:flex-row justify-start items-start gap-3'>
+    <div key={`profile-page-${dataVersion}`} className='w-full flex flex-col lg:flex-row justify-start items-start gap-3'>
       {/* Left Column - Main Profile Sections */}
-      <div className='w-full  lg: w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-2 lg:gap-4 p-1 lg:p-3'>
-        {/* Existing Meta Component */}
+      <div className='w-full lg:w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-2 lg:gap-4 p-1 lg:p-3'>
         <Meta />
         
-        {/* Personal Information Section */}
         <div className="w-full">
           <Personal />
         </div>
         
-        {/* Professional Skills Section */}
         <div className="w-full">
           <SkillsSection/>
         </div>
         
-        {/* Work Experience Section */}
         <div className="w-full flex flex-col lg:flex-row gap-4">
           <div className='w-full lg:w-1/2'>
             <ExperienceSection/>
@@ -107,26 +146,35 @@ const page = () => {
             <EducationSection/>
           </div>
         </div>
+
+        <div className="w-full">
+          <ProjectsSection />
+        </div>
+
+        <div className="w-full">
+          <CertificationsSection />
+        </div>
+
+        <div className="w-full">
+          <LanguagesSection />
+        </div>
         
-        {/* Social Links Section */}
         <div className="w-full">
           <LinksSection/>
         </div>
         
-        {/* Job Benefits Section */}
         <div className="w-full">
           <JobBenefitsSection />
         </div>
-            </div>
+      </div>
       
       {/* Right Column - Resume Related Components */}
       <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>
-        {/* <ResumeQuality /> */}
-        <ResumeUpload/>
+        <ResumeUpload onAutofillApplied={handleAutofillApplied} />
         <ResumeLink />
       </div>
     </div>
   )
 }
 
-export default page
+export default CandidateProfilePage;

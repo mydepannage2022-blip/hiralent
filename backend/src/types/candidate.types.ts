@@ -45,14 +45,67 @@ export interface ExtractedEducation {
   field: string;
 }
 
-export interface AIExtractionResult {
-  headline: string;
-  skills: ExtractedSkill[];
-  experience: ExtractedExperience[];
-  education: ExtractedEducation[];
-  languages: ExtractedLanguage[];  // Add this line
-  summary: string;
-}
+export type AIExtractionResult = {
+  headline?: string;
+  summary?: string;
+
+  personal_info?: {
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    location?: string;
+    city?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
+  };
+
+  skills?: Array<{
+    name: string;
+    category?: "technical" | "soft" | "language" | "tool" | "framework" | "domain";
+    proficiency?: "beginner" | "intermediate" | "advanced" | "expert";
+    years_experience?: number;
+  }>;
+
+  experience?: Array<{
+    title?: string;
+    company?: string;
+    location?: string;
+    start_date?: string; // "YYYY-MM" or "YYYY"
+    end_date?: string;   // "YYYY-MM" | "YYYY" | "present"
+    responsibilities?: string[];
+    technologies?: string[];
+  }>;
+
+  education?: Array<{
+    degree?: string;
+    institution?: string;
+    field?: string;
+    year?: string;
+    start_year?: string;
+    end_year?: string;
+  }>;
+
+  projects?: Array<{
+    name?: string;
+    description?: string;
+    technologies?: string[];
+    link?: string;
+  }>;
+
+  certifications?: Array<{
+    name?: string;
+    issuer?: string;
+    year?: string;
+    credential_url?: string;
+  }>;
+
+  languages?: Array<{
+    name?: string;
+    level?: string; // native, fluent, professional, intermediate, basic
+  }>;
+};
+
 
 // Add new interface after AIExtractionResult:
 export interface ExtractedLanguage {
@@ -578,3 +631,25 @@ export interface SkillsUpdateResult {
   skills: PopulatedSkill[];
   total_skills_count: number;
 }
+export type ProjectData = {
+  id?: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  project_url?: string;
+  github_url?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_ongoing?: boolean;
+  status?: string;
+};
+
+export type UpdateProjectsInput = {
+  projects: ProjectData[];
+};
+
+export type ProjectsUpdateResult = {
+  success: boolean;
+  message: string;
+  projects_count: number;
+};

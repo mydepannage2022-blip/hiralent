@@ -123,20 +123,29 @@ export const getCaseById = async (req: Request, res: Response) => {
           take: 10,
         },
         embassy_submission: true,
-
         integrationServices: {
           orderBy: {
-            created_at: 'asc'
-          }
+            created_at: "asc",
+          },
         },
         integrationAgency: {
           select: {
             agency_id: true,
             name: true,
             email: true,
-            phone: true
-          }
-        }
+            phone: true,
+          },
+        },
+        // Include housing data
+        housing_details: true,
+        housingAgency: {
+          select: {
+            agency_id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
       },
     });
 
@@ -147,9 +156,30 @@ export const getCaseById = async (req: Request, res: Response) => {
       });
     }
 
+    // FLATTEN THE RESPONSE - Merge housing fields to top level
     return res.status(200).json({
       success: true,
-      data: caseData,
+      data: {
+        ...caseData,
+        // Merge housing fields to top level
+        housing_type: caseData.housing_details?.housing_type,
+        housing_address: caseData.housing_details?.housing_address,
+        monthly_rent_mad: caseData.housing_details?.monthly_rent_mad,
+        agency_fee_amount: caseData.housing_details?.agency_fee_amount,
+        lease_start_date: caseData.housing_details?.lease_start_date,
+        lease_end_date: caseData.housing_details?.lease_end_date,
+        housing_contract_url: caseData.housing_details?.housing_contract_url,
+        utility_water: caseData.housing_details?.utility_water,
+        utility_electricity: caseData.housing_details?.utility_electricity,
+        utility_internet: caseData.housing_details?.utility_internet,
+        arrival_date: caseData.housing_details?.arrival_date,
+        flight_number: caseData.housing_details?.flight_number,
+        airport_pickup_required:
+          caseData.housing_details?.airport_pickup_required,
+        arrival_notes: caseData.housing_details?.arrival_notes,
+        // Remove nested object
+        housing_details: undefined,
+      },
     });
   } catch (error) {
     console.error("Get case error:", error);
@@ -371,7 +401,10 @@ export const deleteCaseDocument = async (req: Request, res: Response) => {
 };
 
 // Confirm document replacement
-export const confirmDocumentReplacement = async (req: Request, res: Response) => {
+export const confirmDocumentReplacement = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const userId = req.user?.user_id;
     const { caseId } = req.params;
@@ -452,7 +485,10 @@ export const confirmDocumentReplacement = async (req: Request, res: Response) =>
 };
 
 // Cancel document replacement (delete new doc, keep old)
-export const cancelDocumentReplacement = async (req: Request, res: Response) => {
+export const cancelDocumentReplacement = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const userId = req.user?.user_id;
     const { caseId, documentId } = req.params;
@@ -497,13 +533,15 @@ export const cancelDocumentReplacement = async (req: Request, res: Response) => 
 
     // Extract key from URL and delete from MinIO
     const url = new URL(document.file_path);
-    const key = url.pathname.split('/').slice(2).join('/');
+    const key = url.pathname.split("/").slice(2).join("/");
 
     try {
-      await s3Client.send(new DeleteObjectCommand({
-        Bucket: "hiralent-uploads",
-        Key: key,
-      }));
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: "hiralent-uploads",
+          Key: key,
+        })
+      );
       console.log("✅ Deleted from MinIO");
     } catch (err) {
       console.error("MinIO delete error:", err);

@@ -7,6 +7,8 @@ import {
   isActiveRelocationCase,
   isCompletedVisaCase,
   isCompletedRelocationCase,
+  isCompletedIntegrationCase,
+  isActiveIntegrationCase,
 } from "../../constants/caseStatuses";
 
 const prisma = new PrismaClient();
@@ -159,18 +161,6 @@ export const createCase = async (req: Request, res: Response) => {
             email: true,
           },
         },
-      },
-    });
-
-    // Create initial case assignment
-    await prisma.caseAssignment.create({
-      data: {
-        case_id: newCase.case_id,
-        agency_id: agencyId,
-        agent_id: agencyUserId,
-        assigned_at: new Date(),
-        status: "active",
-        notes: "Initial case creation",
       },
     });
 
@@ -335,28 +325,53 @@ export const listCases = async (req: Request, res: Response) => {
         },
       });
     }
-    // RELOCATION/INTEGRATION agencies: Show cases assigned to them
-    else if (
-      user.agency?.type === "RELOCATION" ||
-      user.agency?.type === "INTEGRATION"
-    ) {
-      // Get case IDs from assignments
-      const assignments = await prisma.caseAssignment.findMany({
-        where: {
-          agency_id: user.agency_id,
-          status: "active",
+    // RELOCATION agencies: Show cases assigned via housing_agency_id
+    else if (user.agency?.type === "RELOCATION") {
+      const where: any = {
+        housing_agency_id: user.agency_id, // Direct query
+      };
+
+      if (status && status !== "all") {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { case_number: { contains: search as string, mode: "insensitive" } },
+          {
+            candidate: {
+              full_name: { contains: search as string, mode: "insensitive" },
+            },
+          },
+          {
+            candidate: {
+              email: { contains: search as string, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      cases = await prisma.relocationCase.findMany({
+        where,
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+            },
+          },
         },
-        select: {
-          case_id: true,
+        orderBy: {
+          created_at: "desc",
         },
       });
-
-      const caseIds = assignments.map((a) => a.case_id);
-
+    }
+    // INTEGRATION agencies: Show cases assigned via integration_agency_id
+    else if (user.agency?.type === "INTEGRATION") {
       const where: any = {
-        case_id: {
-          in: caseIds,
-        },
+        integration_agency_id: user.agency_id, // Direct query
       };
 
       if (status && status !== "all") {
@@ -445,25 +460,13 @@ export const getCaseById = async (req: Request, res: Response) => {
     if (user.agency?.type === "VISA") {
       whereClause.agency_id = user.agency_id;
     }
-    // RELOCATION/INTEGRATION agencies: Check caseAssignment
-    else if (
-      user.agency?.type === "RELOCATION" ||
-      user.agency?.type === "INTEGRATION"
-    ) {
-      const assignment = await prisma.caseAssignment.findFirst({
-        where: {
-          case_id: id,
-          agency_id: user.agency_id,
-          status: "active",
-        },
-      });
-
-      if (!assignment) {
-        return res.status(404).json({
-          success: false,
-          message: "Case not found or not assigned to your agency",
-        });
-      }
+    // RELOCATION agency: Check housing_agency_id
+    else if (user.agency?.type === "RELOCATION") {
+      whereClause.housing_agency_id = user.agency_id;
+    }
+    // INTEGRATION agency: Check integration_agency_id
+    else if (user.agency?.type === "INTEGRATION") {
+      whereClause.integration_agency_id = user.agency_id;
     }
 
     const caseData = await prisma.relocationCase.findFirst({
@@ -496,6 +499,7 @@ export const getCaseById = async (req: Request, res: Response) => {
             type: true,
           },
         },
+        housing_details: true,
       },
     });
 
@@ -508,10 +512,29 @@ export const getCaseById = async (req: Request, res: Response) => {
 
     const viewingAgencyType = user.agency?.type || null;
 
+    // FLATTEN THE RESPONSE:
     return res.status(200).json({
       success: true,
       data: {
         ...caseData,
+        // Merge housing fields to top level
+        housing_type: caseData.housing_details?.housing_type,
+        housing_address: caseData.housing_details?.housing_address,
+        monthly_rent_mad: caseData.housing_details?.monthly_rent_mad,
+        agency_fee_amount: caseData.housing_details?.agency_fee_amount,
+        lease_start_date: caseData.housing_details?.lease_start_date,
+        lease_end_date: caseData.housing_details?.lease_end_date,
+        housing_contract_url: caseData.housing_details?.housing_contract_url,
+        utility_water: caseData.housing_details?.utility_water,
+        utility_electricity: caseData.housing_details?.utility_electricity,
+        utility_internet: caseData.housing_details?.utility_internet,
+        arrival_date: caseData.housing_details?.arrival_date,
+        flight_number: caseData.housing_details?.flight_number,
+        airport_pickup_required:
+          caseData.housing_details?.airport_pickup_required,
+        arrival_notes: caseData.housing_details?.arrival_notes,
+        // Remove nested object
+        housing_details: undefined,
         viewing_agency_type: viewingAgencyType,
       },
     });
@@ -585,32 +608,47 @@ export const getClients = async (req: Request, res: Response) => {
       });
     }
     // ============================================
-    // RELOCATION AGENCY - Get assigned cases
+    // RELOCATION AGENCY - Get cases via housing_agency_id
     // ============================================
     else if (agencyType === "RELOCATION") {
-      const assignments = await prisma.caseAssignment.findMany({
+      cases = await prisma.relocationCase.findMany({
         where: {
-          agency_id: user.agency_id,
-          status: "active",
+          housing_agency_id: user.agency_id, // Direct query
         },
         include: {
-          case_details: {
-            include: {
-              candidate: {
-                select: {
-                  user_id: true,
-                  email: true,
-                  full_name: true,
-                  phone_number: true,
-                  created_at: true,
-                },
-              },
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+              created_at: true,
             },
           },
         },
       });
-
-      cases = assignments.map((a) => a.case_details);
+    }
+    // ============================================
+    // INTEGRATION AGENCY - Get cases via integration_agency_id
+    // ============================================
+    else if (agencyType === "INTEGRATION") {
+      cases = await prisma.relocationCase.findMany({
+        where: {
+          integration_agency_id: user.agency_id, // Direct query
+        },
+        include: {
+          candidate: {
+            select: {
+              user_id: true,
+              email: true,
+              full_name: true,
+              phone_number: true,
+              created_at: true,
+            },
+          },
+          integrationServices: true, // Include services for completion check
+        },
+      });
     }
 
     // ============================================
@@ -648,16 +686,28 @@ export const getClients = async (req: Request, res: Response) => {
       // Using helper functions instead of hardcoded status checks
       if (agencyType === "VISA") {
         const embassyStatus = c.embassy_submission?.status;
+        const housingAssigned = c.housing_agency_id !== null; // Add this
 
-        if (isCompletedVisaCase(c.status, embassyStatus)) {
+        if (isCompletedVisaCase(c.status, embassyStatus, housingAssigned)) {
+          // Add 3rd param
           client.completedCases += 1;
-        } else if (isActiveVisaCase(c.status, embassyStatus)) {
+        } else if (isActiveVisaCase(c.status, embassyStatus, housingAssigned)) {
+          // Add 3rd param
           client.activeCases += 1;
         }
       } else if (agencyType === "RELOCATION") {
         if (isCompletedRelocationCase(c.status)) {
           client.completedCases += 1;
         } else if (isActiveRelocationCase(c.status)) {
+          client.activeCases += 1;
+        }
+      } else if (agencyType === "INTEGRATION") {
+        // Add this
+        const services = c.integrationServices || [];
+
+        if (isCompletedIntegrationCase(services)) {
+          client.completedCases += 1;
+        } else if (isActiveIntegrationCase(services)) {
           client.activeCases += 1;
         }
       }
