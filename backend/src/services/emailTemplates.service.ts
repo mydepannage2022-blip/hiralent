@@ -101,7 +101,7 @@ export const getInterviewAssignedEmailTemplate = (
       <div class="container">
         <div class="header">
           <div class="logo">HIRALENT</div>
-          <h1 style="color: #111827; margin-bottom: 8px;">AI Interview Scheduled! 🎯</h1>
+          <h1 style="color: #111827; margin-bottom: 8px;">AI Interview Scheduled! </h1>
         </div>
 
         <p>Dear ${candidateName},</p>
@@ -125,7 +125,7 @@ export const getInterviewAssignedEmailTemplate = (
         </div>
 
         <div class="text-center">
-          <a href="${interviewLink}" class="button">Go to Interview</a>
+          <a href="${interviewLink}" class="button" style="color: white;">Go to Interview</a>
         </div>
 
         <div class="tips-box">

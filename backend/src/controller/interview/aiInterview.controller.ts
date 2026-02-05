@@ -9,7 +9,12 @@ import {
   getInterviewDetails,
   getCandidateInterviews,
   getRecruiterInterviews,
+  uploadInterviewVideo,
+  getInterviewVideoUrl,
 } from '../../services/interview/aiInterview.service';
+import { s3GetObjectStream } from '../../lib/s3';
+import prisma from '../../lib/prisma';
+import jwt from 'jsonwebtoken';
 
 /**
  * Create a new AI interview session
@@ -348,6 +353,159 @@ export const getMyInterviewsController = async (req: Request, res: Response) => 
     return res.json({ success: true, data: result });
   } catch (err: any) {
     console.error('Get my interviews error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+};
+
+// ==================== Video Upload Routes ====================
+
+/**
+ * Upload interview video recording
+ * POST /api/v1/interviews/:interviewId/upload-video
+ */
+export const uploadVideoController = async (req: Request, res: Response) => {
+  try {
+    const candidateId = req.user?.user_id;
+    if (!candidateId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const interviewId = req.params.interviewId as string;
+    if (!interviewId) {
+      return res.status(400).json({ success: false, error: 'interviewId is required' });
+    }
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No video file provided' });
+    }
+
+    console.log(`📹 Uploading video for interview ${interviewId}, size: ${req.file.size} bytes`);
+
+    const result = await uploadInterviewVideo({
+      interviewId,
+      candidateId,
+      videoBuffer: req.file.buffer,
+      mimeType: req.file.mimetype,
+      fileSize: req.file.size,
+    });
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('Upload video error:', err);
+
+    if (err.message === 'Interview not found') {
+      return res.status(404).json({ success: false, error: err.message });
+    }
+    if (err.message === 'Unauthorized access to interview') {
+      return res.status(403).json({ success: false, error: err.message });
+    }
+    if (err.message?.includes('Cannot upload video')) {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+};
+
+/**
+ * Get signed URL for video playback (recruiter only)
+ * GET /api/v1/interviews/:interviewId/video-url
+ */
+export const getVideoUrlController = async (req: Request, res: Response) => {
+  try {
+    const userRole = req.user?.role;
+
+    // Only recruiters/admins can access video URLs
+    if (!userRole || !['superadmin', 'company_admin', 'agency_admin'].includes(userRole)) {
+      return res.status(403).json({ success: false, error: 'Access denied. Recruiter role required.' });
+    }
+
+    const interviewId = req.params.interviewId as string;
+    if (!interviewId) {
+      return res.status(400).json({ success: false, error: 'interviewId is required' });
+    }
+
+    const result = await getInterviewVideoUrl(interviewId);
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('Get video URL error:', err);
+
+    if (err.message === 'Interview not found') {
+      return res.status(404).json({ success: false, error: err.message });
+    }
+    if (err.message === 'No video recording available') {
+      return res.status(404).json({ success: false, error: err.message });
+    }
+
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+};
+
+/**
+ * Stream video directly from S3 (bypasses CORS issues)
+ * GET /api/v1/interviews/:interviewId/video-stream
+ * Uses Authorization header from checkAuth middleware
+ */
+export const streamVideoController = async (req: Request, res: Response) => {
+  try {
+    // Get user from checkAuth middleware
+    const userRole = req.user?.role;
+
+    // Debug logging
+    console.log('🎬 Video stream request:', {
+      hasReqUser: !!req.user,
+      userRole,
+      userId: req.user?.user_id,
+      interviewId: req.params.interviewId,
+    });
+
+    // Only recruiters/admins can access videos
+    if (!userRole || !['superadmin', 'company_admin', 'agency_admin'].includes(userRole)) {
+      console.error('❌ Access denied - invalid role:', userRole);
+      return res.status(403).json({ success: false, error: 'Access denied. Recruiter role required.' });
+    }
+
+    const interviewId = req.params.interviewId as string;
+    if (!interviewId) {
+      return res.status(400).json({ success: false, error: 'interviewId is required' });
+    }
+
+    // Get the video key from the interview
+    const interview = await prisma.aIInterviewResult.findUnique({
+      where: { interview_id: interviewId },
+      select: { video_url: true },
+    });
+
+    if (!interview) {
+      return res.status(404).json({ success: false, error: 'Interview not found' });
+    }
+
+    if (!interview.video_url) {
+      return res.status(404).json({ success: false, error: 'No video recording available' });
+    }
+
+    // Stream the video from S3
+    const { body, contentType, contentLength } = await s3GetObjectStream(interview.video_url);
+
+    if (!body) {
+      return res.status(404).json({ success: false, error: 'Video file not found in storage' });
+    }
+
+    // Set response headers for video streaming
+    res.setHeader('Content-Type', contentType || 'video/webm');
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    // Pipe the S3 stream to the response
+    // @ts-ignore - body is a Readable stream
+    body.pipe(res);
+  } catch (err: any) {
+    console.error('Stream video error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
   }
 };

@@ -162,3 +162,79 @@ export const endInterview = async (
   }
   return response.data.data!;
 };
+
+// ==================== Video API Functions ====================
+
+/**
+ * Upload interview video recording
+ * POST /api/v1/interviews/:interviewId/upload-video
+ */
+export const uploadInterviewVideo = async (
+  interviewId: string,
+  videoBlob: Blob,
+  onProgress?: (progress: number) => void
+): Promise<{ videoUrl: string }> => {
+  // Ensure the blob has the correct MIME type
+  const mimeType = videoBlob.type && videoBlob.type.startsWith('video/') ? videoBlob.type : 'video/webm';
+  const fileName = `interview_${interviewId}.webm`;
+  const videoFile = new File([videoBlob], fileName, { type: mimeType });
+
+  console.log(`📤 Uploading video: size=${(videoFile.size / 1024 / 1024).toFixed(2)}MB, type=${videoFile.type}, originalType=${videoBlob.type}`);
+
+  const formData = new FormData();
+  formData.append('video', videoFile);
+
+  const token = localStorage.getItem('authToken');
+
+  // Use native fetch instead of axios for more reliable FormData handling
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/upload-video`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type - browser sets it automatically with boundary
+      },
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+  }
+
+  const data: ApiResponse<{ videoUrl: string }> = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to upload video');
+  }
+
+  console.log('✅ Video upload successful');
+  return data.data!;
+};
+
+/**
+ * Get signed URL for video playback (recruiter only)
+ * GET /api/v1/interviews/:interviewId/video-url
+ */
+export const getInterviewVideoUrl = async (
+  interviewId: string
+): Promise<{ signedUrl: string; expiresIn: number }> => {
+  const response = await interviewApi.get<ApiResponse<{ signedUrl: string; expiresIn: number }>>(
+    `/interviews/${interviewId}/video-url`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.error || 'Failed to get video URL');
+  }
+  return response.data.data!;
+};
+
+/**
+ * Get video streaming URL (bypasses CORS)
+ * Returns a URL that streams through our backend
+ */
+export const getInterviewVideoStreamUrl = (interviewId: string): string => {
+  const token = localStorage.getItem('authToken');
+  // Append token as query param for streaming endpoint
+  return `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/video-stream?token=${token}`;
+};

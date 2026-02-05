@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,17 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Video,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  Loader2,
+  RotateCcw,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 import { useInterviewDetails } from "@/src/lib/interview/interview.queries";
 import type { InterviewDetailedResult } from "@/src/types/interview.types";
@@ -36,14 +47,14 @@ const InterviewDetailsModal: React.FC<InterviewDetailsModalProps> = ({
   interviewId,
 }) => {
   const { data, isLoading, error } = useInterviewDetails(interviewId);
-  const [activeTab, setActiveTab] = useState<"overview" | "transcript">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "transcript" | "video">("overview");
 
   if (!open) return null;
 
   const modalContent = (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -61,7 +72,7 @@ const InterviewDetailsModal: React.FC<InterviewDetailsModalProps> = ({
             className="relative w-full max-w-6xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="relative bg-gradient-to-r from-[#001F3F] to-[#003366] text-white px-6 py-5">
+            <div className="relative bg-linear-to-r from-[#001F3F] to-[#003366] text-white px-6 py-5">
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -97,6 +108,17 @@ const InterviewDetailsModal: React.FC<InterviewDetailsModalProps> = ({
               >
                 Full Transcript
               </button>
+              <button
+                onClick={() => setActiveTab("video")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === "video"
+                    ? "border-[#001F3F] text-[#001F3F]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Video className="w-4 h-4" />
+                Video Recording
+              </button>
             </div>
 
             {/* Content */}
@@ -115,6 +137,7 @@ const InterviewDetailsModal: React.FC<InterviewDetailsModalProps> = ({
                 <>
                   {activeTab === "overview" && <OverviewTab data={data} />}
                   {activeTab === "transcript" && <TranscriptTab data={data} />}
+                  {activeTab === "video" && <VideoTab interviewId={interviewId} interviewDuration={data.duration} />}
                 </>
               ) : null}
             </div>
@@ -163,7 +186,7 @@ const OverviewTab: React.FC<{ data: InterviewDetailedResult }> = ({ data }) => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Overall Score */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-blue-500 rounded-lg">
               <TrendingUp className="w-5 h-5 text-white" />
@@ -176,10 +199,10 @@ const OverviewTab: React.FC<{ data: InterviewDetailedResult }> = ({ data }) => {
         {/* Qualification */}
         <div className={`rounded-xl p-5 border ${
           data.qualification === "QUALIFIED"
-            ? "bg-gradient-to-br from-green-50 to-green-100 border-green-200"
+            ? "bg-linear-to-br from-green-50 to-green-100 border-green-200"
             : data.qualification === "NOT_QUALIFIED"
-            ? "bg-gradient-to-br from-red-50 to-red-100 border-red-200"
-            : "bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200"
+            ? "bg-linear-to-br from-red-50 to-red-100 border-red-200"
+            : "bg-linear-to-br from-yellow-50 to-yellow-100 border-yellow-200"
         }`}>
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${
@@ -217,7 +240,7 @@ const OverviewTab: React.FC<{ data: InterviewDetailedResult }> = ({ data }) => {
         </div>
 
         {/* Duration */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200">
+        <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-purple-500 rounded-lg">
               <Clock className="w-5 h-5 text-white" />
@@ -246,16 +269,39 @@ const OverviewTab: React.FC<{ data: InterviewDetailedResult }> = ({ data }) => {
 
           {/* Fit Score */}
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Role Fit Score</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-700">Role Fit Score</p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                data.evaluation.fitScore >= 70
+                  ? 'bg-green-100 text-green-700'
+                  : data.evaluation.fitScore >= 40
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+              }`}>
+                {data.evaluation.fitScore >= 70 ? 'Good Fit' : data.evaluation.fitScore >= 40 ? 'Average' : 'Low Fit'}
+              </span>
+            </div>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#001F3F] rounded-full transition-all"
+                  className={`h-full rounded-full transition-all ${
+                    data.evaluation.fitScore >= 70
+                      ? 'bg-green-500'
+                      : data.evaluation.fitScore >= 40
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                  }`}
                   style={{ width: `${data.evaluation.fitScore}%` }}
                 />
               </div>
-              <span className="font-semibold text-[#001F3F]">
-                {data.evaluation.fitScore}/100
+              <span className={`font-bold text-lg ${
+                data.evaluation.fitScore >= 70
+                  ? 'text-green-600'
+                  : data.evaluation.fitScore >= 40
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+              }`}>
+                {data.evaluation.fitScore}
               </span>
             </div>
           </div>
@@ -463,6 +509,384 @@ const TranscriptTab: React.FC<{ data: InterviewDetailedResult }> = ({ data }) =>
           <p className="text-gray-700 pl-11">{entry.content}</p>
         </div>
       ))}
+    </div>
+  );
+};
+
+// ==================== Video Tab ====================
+
+// Helper to format seconds as MM:SS or HH:MM:SS
+const formatTime = (seconds: number): string => {
+  if (!seconds || !isFinite(seconds) || seconds < 0) return "0:00";
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+const VideoTab: React.FC<{ interviewId: string; interviewDuration?: number }> = ({
+  interviewId,
+  interviewDuration,
+}) => {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [videoBlob, setVideoBlob] = useState<string | null>(null);
+  const videoBlobRef = useRef<string | null>(null);
+
+  // Video player state
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  // Use interview duration from database, fallback to video metadata
+  const [duration, setDuration] = useState(interviewDuration || 0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isHovering, setIsHovering] = useState(false);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch video
+  useEffect(() => {
+    const fetchVideo = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          setError("Authentication required. Please log in again.");
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/video-stream`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (!response.ok) {
+          const msg =
+            response.status === 404
+              ? "Video not found."
+              : response.status === 403
+              ? "Permission denied."
+              : `Failed to load video (${response.status})`;
+          setError(msg);
+          setIsLoading(false);
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        if (videoBlobRef.current) URL.revokeObjectURL(videoBlobRef.current);
+        videoBlobRef.current = url;
+        setVideoBlob(url);
+      } catch {
+        setError("Failed to load video. Check your connection.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVideo();
+    return () => {
+      if (videoBlobRef.current) {
+        URL.revokeObjectURL(videoBlobRef.current);
+        videoBlobRef.current = null;
+      }
+    };
+  }, [interviewId]);
+
+  // Auto-hide controls
+  useEffect(() => {
+    if (isPlaying && !isHovering) {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+    } else {
+      setShowControls(true);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [isPlaying, isHovering]);
+
+  // Video events
+  const handleTimeUpdate = useCallback(() => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+      // Try to get duration from video if not set
+      if (!duration && videoRef.current.duration && isFinite(videoRef.current.duration)) {
+        setDuration(videoRef.current.duration);
+      }
+    }
+  }, [duration]);
+
+  const handleLoadedMetadata = useCallback(() => {
+    if (videoRef.current?.duration && isFinite(videoRef.current.duration) && !interviewDuration) {
+      setDuration(videoRef.current.duration);
+    }
+  }, [interviewDuration]);
+
+  const togglePlay = useCallback(() => {
+    if (videoRef.current) {
+      if (isPlaying) videoRef.current.pause();
+      else videoRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  }, [isPlaying]);
+
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (progressRef.current && videoRef.current && duration > 0) {
+        const rect = progressRef.current.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const newTime = pct * duration;
+        videoRef.current.currentTime = newTime;
+        setCurrentTime(newTime);
+      }
+    },
+    [duration]
+  );
+
+  const toggleMute = useCallback(() => {
+    if (videoRef.current) {
+      if (isMuted) {
+        videoRef.current.volume = volume || 0.5;
+        setIsMuted(false);
+      } else {
+        videoRef.current.volume = 0;
+        setIsMuted(true);
+      }
+    }
+  }, [isMuted, volume]);
+
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    if (videoRef.current) videoRef.current.volume = v;
+    setIsMuted(v === 0);
+  }, []);
+
+  const skip = useCallback(
+    (sec: number) => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + sec));
+      }
+    },
+    [duration]
+  );
+
+  const toggleFullscreen = useCallback(() => {
+    if (containerRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        containerRef.current.requestFullscreen();
+      }
+    }
+  }, []);
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+          <Video className="w-10 h-10 text-blue-300" />
+        </div>
+        <p className="text-gray-700 font-medium mb-2">Video Not Available</p>
+        <p className="text-sm text-gray-500 text-center max-w-md">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Video Container */}
+      <div
+        ref={containerRef}
+        className="relative bg-linear-to-b from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+        onMouseMove={() => setShowControls(true)}
+      >
+        {/* Aspect ratio wrapper */}
+        <div className="aspect-video">
+          {/* Loading */}
+          {isLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-linear-to-b from-gray-800 to-gray-900 z-10">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-blue-500/20 rounded-full" />
+                <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" />
+              </div>
+              <p className="text-gray-400 text-sm mt-4 font-medium">Loading interview recording...</p>
+            </div>
+          )}
+
+          {/* Video */}
+          {videoBlob && (
+            <video
+              ref={videoRef}
+              src={videoBlob}
+              className="w-full h-full object-contain cursor-pointer"
+              onClick={togglePlay}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onDurationChange={handleLoadedMetadata}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+              onError={() => setError("Failed to play video.")}
+              preload="metadata"
+            />
+          )}
+
+          {/* Center Play Button */}
+          {videoBlob && !isPlaying && !isLoading && (
+            <div
+              className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/20"
+              onClick={togglePlay}
+            >
+              <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl hover:bg-blue-500 hover:scale-110 transition-all duration-200 ring-4 ring-blue-600/30">
+                <Play className="w-9 h-9 text-white ml-1.5" fill="white" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Controls Container */}
+        {videoBlob && (
+          <div
+            className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
+              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          >
+            {/* Gradient Background */}
+            <div className="absolute inset-0 bg-linear-to-t from-black via-black/70 to-transparent" />
+
+            {/* Controls Content */}
+            <div className="relative px-4 pb-4 pt-12">
+              {/* Progress Bar */}
+              <div
+                ref={progressRef}
+                className="group/progress mb-4 cursor-pointer"
+                onClick={handleProgressClick}
+              >
+                {/* Track Background */}
+                <div className="relative h-1.5 group-hover/progress:h-2 transition-all duration-200 rounded-full overflow-hidden bg-white/20">
+                  {/* Buffered (lighter) */}
+                  <div className="absolute inset-y-0 left-0 bg-white/30 rounded-full" style={{ width: '100%' }} />
+                  {/* Progress (blue) */}
+                  <div
+                    className="absolute inset-y-0 left-0 bg-linear-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-100"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Controls Row */}
+              <div className="flex items-center justify-between">
+                {/* Left Controls */}
+                <div className="flex items-center gap-2">
+                  {/* Play/Pause */}
+                  <button
+                    onClick={togglePlay}
+                    className="w-11 h-11 flex items-center justify-center text-white bg-white/10 hover:bg-white/20 rounded-full transition-all"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-5 h-5" fill="white" />
+                    ) : (
+                      <Play className="w-5 h-5 ml-0.5" fill="white" />
+                    )}
+                  </button>
+
+                  {/* Skip Buttons */}
+                  <button
+                    onClick={() => skip(-10)}
+                    className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                    title="Rewind 10s"
+                  >
+                    <SkipBack className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => skip(10)}
+                    className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                    title="Forward 10s"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                  </button>
+
+                  {/* Volume Control */}
+                  <div className="flex items-center gap-1 ml-2 group/vol">
+                    <button
+                      onClick={toggleMute}
+                      className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                    >
+                      {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    </button>
+                    <div className="w-0 group-hover/vol:w-24 overflow-hidden transition-all duration-300">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={isMuted ? 0 : volume}
+                        onChange={handleVolumeChange}
+                        className="w-20 h-1 ml-1 accent-blue-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Time Display */}
+                  <div className="text-white text-sm ml-3 font-medium tracking-wide">
+                    <span className="text-white">{formatTime(currentTime)}</span>
+                    <span className="text-white/50 mx-2">/</span>
+                    <span className="text-white/70">{formatTime(duration)}</span>
+                  </div>
+                </div>
+
+                {/* Right Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleFullscreen}
+                    className="w-10 h-10 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                    title="Fullscreen"
+                  >
+                    <Maximize className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Video Info Card */}
+      <div className="flex items-center justify-between p-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+            <Video className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="text-gray-900 font-semibold">Interview Recording</p>
+            <p className="text-sm text-gray-500">
+              {duration > 0 ? (
+                <>Total Duration: <span className="font-medium text-blue-600">{formatTime(duration)}</span></>
+              ) : (
+                "Loading duration..."
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span>Secure Stream</span>
+        </div>
+      </div>
     </div>
   );
 };

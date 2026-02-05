@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
+import { uploadVideo } from '../middlewares/uploadVideo.middleware';
 import {
   createInterviewController,
   assignInterviewController,
@@ -10,11 +11,14 @@ import {
   getInterviewDetailsController,
   getCompanyInterviewsController,
   getMyInterviewsController,
+  uploadVideoController,
+  getVideoUrlController,
+  streamVideoController,
 } from '../controller/interview/aiInterview.controller';
 
 const router = Router();
 
-// All routes require authentication
+// All other routes require authentication via header
 router.use(checkAuth);
 
 // ==================== Recruiter Routes ====================
@@ -50,6 +54,14 @@ router.post('/:interviewId/respond', submitResponseController);
 // POST /api/v1/interviews/:interviewId/end
 router.post('/:interviewId/end', endInterviewController);
 
+// Upload interview video recording (candidate)
+// POST /api/v1/interviews/:interviewId/upload-video
+router.post('/:interviewId/upload-video', uploadVideo.single('video'), uploadVideoController);
+
+// Get signed URL for video playback (recruiter only)
+// GET /api/v1/interviews/:interviewId/video-url
+router.get('/:interviewId/video-url', getVideoUrlController);
+
 // Get interview status (limited info for candidates)
 // GET /api/v1/interviews/:interviewId
 router.get('/:interviewId', getInterviewController);
@@ -60,5 +72,9 @@ router.get('/:interviewId', getInterviewController);
 // GET /api/v1/interviews/:interviewId/details
 // Note: Access restricted to admins/recruiters in controller
 router.get('/:interviewId/details', getInterviewDetailsController);
+
+// Stream video - with checkAuth middleware (uses Authorization header)
+// GET /api/v1/interviews/:interviewId/video-stream
+router.get('/:interviewId/video-stream', streamVideoController);
 
 export default router;

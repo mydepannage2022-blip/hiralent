@@ -48,7 +48,7 @@ export default function InterviewRoomPage() {
   }, [interviewId, router]);
 
   const handleComplete = () => {
-    router.push(`/candidate/dashboard/interviews/${interviewId}/complete`);
+    router.push(`/candidate/dashboard/interviews/${interviewId}/complete?completed=true`);
   };
 
   const handleError = (errorMsg: string) => {

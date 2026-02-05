@@ -234,6 +234,7 @@ async function sendInterviewEmailNotification(params: {
 
 /**
  * Get all interviews for a candidate (their assigned interviews)
+ * Also performs lazy expiration check for PENDING interviews
  */
 export const getCandidateInterviews = async (candidateId: string): Promise<CandidateInterviewListItem[]> => {
   const interviews = await prisma.aIInterviewResult.findMany({
@@ -252,9 +253,44 @@ export const getCandidateInterviews = async (candidateId: string): Promise<Candi
     orderBy: { created_at: 'desc' },
   });
 
+  // Lazy expiration check: update any PENDING interviews that should be expired
+  const expiredIds: string[] = [];
+  // Lazy abandonment check: update any IN_PROGRESS interviews that were abandoned
+  const abandonedIds: string[] = [];
+
+  for (const interview of interviews) {
+    if (interview.status === 'PENDING' && isInterviewExpired(interview.scheduled_date)) {
+      expiredIds.push(interview.interview_id);
+    }
+    if (interview.status === 'IN_PROGRESS' && isInterviewAbandoned(interview.started_at)) {
+      abandonedIds.push(interview.interview_id);
+    }
+  }
+
+  if (expiredIds.length > 0) {
+    await prisma.aIInterviewResult.updateMany({
+      where: { interview_id: { in: expiredIds } },
+      data: { status: 'EXPIRED' },
+    });
+    console.log(`⏰ Lazy check: Marked ${expiredIds.length} interview(s) as EXPIRED for candidate ${candidateId}`);
+  }
+
+  if (abandonedIds.length > 0) {
+    await prisma.aIInterviewResult.updateMany({
+      where: { interview_id: { in: abandonedIds } },
+      data: { status: 'FAILED' },
+    });
+    console.log(`⏰ Lazy check: Marked ${abandonedIds.length} interview(s) as FAILED (abandoned) for candidate ${candidateId}`);
+  }
+
   return interviews.map(interview => ({
     interviewId: interview.interview_id,
-    status: interview.status as AIInterviewStatus,
+    // Return updated status for interviews we just marked
+    status: expiredIds.includes(interview.interview_id)
+      ? 'EXPIRED' as AIInterviewStatus
+      : abandonedIds.includes(interview.interview_id)
+        ? 'FAILED' as AIInterviewStatus
+        : interview.status as AIInterviewStatus,
     interviewType: interview.interview_type,
     scheduledDate: interview.scheduled_date || undefined,
     jobTitle: interview.application?.job?.title || 'Unknown Position',
@@ -267,6 +303,7 @@ export const getCandidateInterviews = async (candidateId: string): Promise<Candi
 
 /**
  * Get all interviews assigned by a recruiter/company
+ * Also performs lazy expiration check for PENDING interviews
  */
 export const getRecruiterInterviews = async (recruiterId: string, companyId?: string): Promise<RecruiterInterviewListItem[]> => {
   // Get interviews either assigned by this recruiter OR for jobs from this company
@@ -294,9 +331,44 @@ export const getRecruiterInterviews = async (recruiterId: string, companyId?: st
     orderBy: { created_at: 'desc' },
   });
 
+  // Lazy expiration check: update any PENDING interviews that should be expired
+  const expiredIds: string[] = [];
+  // Lazy abandonment check: update any IN_PROGRESS interviews that were abandoned
+  const abandonedIds: string[] = [];
+
+  for (const interview of interviews) {
+    if (interview.status === 'PENDING' && isInterviewExpired(interview.scheduled_date)) {
+      expiredIds.push(interview.interview_id);
+    }
+    if (interview.status === 'IN_PROGRESS' && isInterviewAbandoned(interview.started_at)) {
+      abandonedIds.push(interview.interview_id);
+    }
+  }
+
+  if (expiredIds.length > 0) {
+    await prisma.aIInterviewResult.updateMany({
+      where: { interview_id: { in: expiredIds } },
+      data: { status: 'EXPIRED' },
+    });
+    console.log(`⏰ Lazy check: Marked ${expiredIds.length} interview(s) as EXPIRED (recruiter view)`);
+  }
+
+  if (abandonedIds.length > 0) {
+    await prisma.aIInterviewResult.updateMany({
+      where: { interview_id: { in: abandonedIds } },
+      data: { status: 'FAILED' },
+    });
+    console.log(`⏰ Lazy check: Marked ${abandonedIds.length} interview(s) as FAILED (abandoned, recruiter view)`);
+  }
+
   return interviews.map(interview => ({
     interviewId: interview.interview_id,
-    status: interview.status as AIInterviewStatus,
+    // Return updated status for interviews we just marked
+    status: expiredIds.includes(interview.interview_id)
+      ? 'EXPIRED' as AIInterviewStatus
+      : abandonedIds.includes(interview.interview_id)
+        ? 'FAILED' as AIInterviewStatus
+        : interview.status as AIInterviewStatus,
     interviewType: interview.interview_type,
     scheduledDate: interview.scheduled_date || undefined,
     candidateName: interview.candidate?.full_name || 'Unknown',
@@ -336,6 +408,40 @@ export const startInterview = async (params: StartInterviewParams): Promise<Inte
 
   if (interview.candidate_id !== params.candidateId) {
     throw new Error('Unauthorized access to interview');
+  }
+
+  // Check if scheduled time has arrived (cannot start before scheduled time)
+  if (interview.status === 'PENDING' && interview.scheduled_date) {
+    const scheduledTime = new Date(interview.scheduled_date).getTime();
+    if (Date.now() < scheduledTime) {
+      throw new Error('This interview is not available yet. Please wait until the scheduled time.');
+    }
+  }
+
+  // Check if interview is expired (cannot start after 48h from scheduled time)
+  if (interview.status === 'PENDING' && isInterviewExpired(interview.scheduled_date)) {
+    await prisma.aIInterviewResult.update({
+      where: { interview_id: params.interviewId },
+      data: { status: 'EXPIRED' },
+    });
+    throw new Error('This interview has expired. Please contact the recruiter for a new interview.');
+  }
+
+  if (interview.status === 'EXPIRED') {
+    throw new Error('This interview has expired. Please contact the recruiter for a new interview.');
+  }
+
+  // Check if IN_PROGRESS interview was abandoned (24h since started)
+  if (interview.status === 'IN_PROGRESS' && isInterviewAbandoned(interview.started_at)) {
+    await prisma.aIInterviewResult.update({
+      where: { interview_id: params.interviewId },
+      data: { status: 'FAILED' },
+    });
+    throw new Error('This interview session has timed out. Please contact the recruiter for a new interview.');
+  }
+
+  if (interview.status === 'FAILED') {
+    throw new Error('This interview has failed or timed out. Please contact the recruiter for a new interview.');
   }
 
   // Handle IN_PROGRESS interviews (resume)
@@ -592,6 +698,14 @@ export const endInterview = async (params: EndInterviewParams): Promise<Intervie
       qualification: evaluation.qualification,
       score: evaluation.overallScore.toString(),
       feedback: evaluation.recommendation,
+      // Save full evaluation details (fitScore, strengths, etc.)
+      evaluation_details: {
+        fitScore: evaluation.fitScore,
+        strengths: evaluation.strengths,
+        areasForImprovement: evaluation.areasForImprovement,
+        redFlags: evaluation.redFlags,
+        confidenceInAssessment: evaluation.confidenceInAssessment,
+      } as any,
     },
   });
 
@@ -664,6 +778,15 @@ export const getInterviewDetails = async (interviewId: string): Promise<Intervie
     return null;
   }
 
+  // Get stored evaluation details or use defaults
+  const evalDetails = (interview as any).evaluation_details as {
+    fitScore?: number;
+    strengths?: string[];
+    areasForImprovement?: string[];
+    redFlags?: string[];
+    confidenceInAssessment?: string;
+  } | null;
+
   return {
     interviewId: interview.interview_id,
     status: interview.status as AIInterviewStatus,
@@ -677,11 +800,11 @@ export const getInterviewDetails = async (interviewId: string): Promise<Intervie
       qualification: interview.qualification as AIQualification,
       overallScore: parseInt(interview.score || '0'),
       recommendation: interview.feedback || '',
-      strengths: [],
-      areasForImprovement: [],
-      fitScore: 0,
-      redFlags: [],
-      confidenceInAssessment: 'medium',
+      strengths: evalDetails?.strengths || [],
+      areasForImprovement: evalDetails?.areasForImprovement || [],
+      fitScore: evalDetails?.fitScore || 0,
+      redFlags: evalDetails?.redFlags || [],
+      confidenceInAssessment: (evalDetails?.confidenceInAssessment as 'low' | 'medium' | 'high') || 'medium',
     },
     transcript: interview.transcript as unknown as TranscriptEntry[],
     questions: interview.questions_asked as unknown as InterviewQuestion[],
@@ -942,6 +1065,139 @@ export const generateFinalEvaluation = async (params: FinalEvaluationParams): Pr
   };
 };
 
+// ==================== Interview Expiration & Abandonment ====================
+
+/**
+ * Expiration window in hours (48 hours after scheduled date)
+ */
+const INTERVIEW_EXPIRATION_HOURS = 48;
+
+/**
+ * Abandonment window in hours (24 hours after started_at)
+ * If an interview is IN_PROGRESS for longer than this, mark as FAILED
+ */
+const INTERVIEW_ABANDONMENT_HOURS = 24;
+
+/**
+ * Check if a single interview is expired based on scheduled_date + expiration window
+ */
+export const isInterviewExpired = (scheduledDate: Date | null | undefined): boolean => {
+  if (!scheduledDate) return false;
+
+  const expirationTime = new Date(scheduledDate);
+  // Use milliseconds to properly handle fractional hours (setHours truncates decimals)
+  const expirationMs = INTERVIEW_EXPIRATION_HOURS * 60 * 60 * 1000;
+  expirationTime.setTime(expirationTime.getTime() + expirationMs);
+
+  return new Date() > expirationTime;
+};
+
+/**
+ * Check if an IN_PROGRESS interview is abandoned based on started_at + abandonment window
+ */
+export const isInterviewAbandoned = (startedAt: Date | null | undefined): boolean => {
+  if (!startedAt) return false;
+
+  const abandonmentTime = new Date(startedAt);
+  // Use milliseconds for consistency and to handle fractional hours properly
+  const abandonmentMs = INTERVIEW_ABANDONMENT_HOURS * 60 * 60 * 1000;
+  abandonmentTime.setTime(abandonmentTime.getTime() + abandonmentMs);
+
+  return new Date() > abandonmentTime;
+};
+
+/**
+ * Check and mark all expired interviews as EXPIRED
+ * Called by scheduler (runs every hour) and lazily on API requests
+ */
+export const checkAndExpireInterviews = async (): Promise<{ expiredCount: number }> => {
+  const now = new Date();
+  const cutoffDate = new Date(now);
+  // Use milliseconds to properly handle fractional hours
+  const expirationMs = INTERVIEW_EXPIRATION_HOURS * 60 * 60 * 1000;
+  cutoffDate.setTime(cutoffDate.getTime() - expirationMs);
+
+  // Find all PENDING interviews where scheduled_date + 48h has passed
+  const expiredInterviews = await prisma.aIInterviewResult.updateMany({
+    where: {
+      status: 'PENDING',
+      scheduled_date: {
+        lt: cutoffDate, // scheduled_date is more than 48h ago
+      },
+    },
+    data: {
+      status: 'EXPIRED',
+    },
+  });
+
+  if (expiredInterviews.count > 0) {
+    console.log(`⏰ Marked ${expiredInterviews.count} interview(s) as EXPIRED`);
+  }
+
+  return { expiredCount: expiredInterviews.count };
+};
+
+/**
+ * Check and mark all abandoned IN_PROGRESS interviews as FAILED
+ * Called by scheduler (runs every hour)
+ */
+export const checkAndFailAbandonedInterviews = async (): Promise<{ failedCount: number }> => {
+  const now = new Date();
+  const cutoffDate = new Date(now);
+  // Use milliseconds for consistency
+  const abandonmentMs = INTERVIEW_ABANDONMENT_HOURS * 60 * 60 * 1000;
+  cutoffDate.setTime(cutoffDate.getTime() - abandonmentMs);
+
+  // Find all IN_PROGRESS interviews where started_at + 24h has passed
+  const abandonedInterviews = await prisma.aIInterviewResult.updateMany({
+    where: {
+      status: 'IN_PROGRESS',
+      started_at: {
+        lt: cutoffDate, // started_at is more than 24h ago
+      },
+    },
+    data: {
+      status: 'FAILED',
+    },
+  });
+
+  if (abandonedInterviews.count > 0) {
+    console.log(`⏰ Marked ${abandonedInterviews.count} abandoned interview(s) as FAILED`);
+  }
+
+  return { failedCount: abandonedInterviews.count };
+};
+
+/**
+ * Check if a specific interview is expired and update its status if needed
+ * Returns true if the interview was/is expired
+ */
+export const checkAndExpireSingleInterview = async (interviewId: string): Promise<boolean> => {
+  const interview = await prisma.aIInterviewResult.findUnique({
+    where: { interview_id: interviewId },
+    select: { status: true, scheduled_date: true },
+  });
+
+  if (!interview) return false;
+
+  // Already expired or completed
+  if (interview.status !== 'PENDING') {
+    return interview.status === 'EXPIRED';
+  }
+
+  // Check if should expire
+  if (isInterviewExpired(interview.scheduled_date)) {
+    await prisma.aIInterviewResult.update({
+      where: { interview_id: interviewId },
+      data: { status: 'EXPIRED' },
+    });
+    console.log(`⏰ Interview ${interviewId} marked as EXPIRED (lazy check)`);
+    return true;
+  }
+
+  return false;
+};
+
 // ==================== Utility Functions ====================
 
 function getMostCommon<T>(arr: T[]): T | undefined {
@@ -964,3 +1220,85 @@ function getMostCommon<T>(arr: T[]): T | undefined {
 
   return mostCommon;
 }
+
+// ==================== Video Upload Functions ====================
+
+import { s3PutObject, s3SignedUrl } from '../../lib/s3';
+
+interface UploadVideoParams {
+  interviewId: string;
+  candidateId: string;
+  videoBuffer: Buffer;
+  mimeType: string;
+  fileSize: number;
+}
+
+/**
+ * Upload interview video recording to S3/MinIO
+ */
+export const uploadInterviewVideo = async (params: UploadVideoParams): Promise<{ videoUrl: string }> => {
+  const { interviewId, candidateId, videoBuffer, mimeType, fileSize } = params;
+
+  // Verify interview exists and belongs to candidate
+  const interview = await prisma.aIInterviewResult.findUnique({
+    where: { interview_id: interviewId },
+  });
+
+  if (!interview) {
+    throw new Error('Interview not found');
+  }
+
+  if (interview.candidate_id !== candidateId) {
+    throw new Error('Unauthorized access to interview');
+  }
+
+  // Only allow upload for completed or in-progress interviews
+  if (!['COMPLETED', 'IN_PROGRESS'].includes(interview.status)) {
+    throw new Error(`Cannot upload video. Interview status: ${interview.status}`);
+  }
+
+  // Generate unique filename - always use .webm since that's what MediaRecorder produces
+  // Browser may send wrong MIME type (text/plain), so force correct type
+  const timestamp = Date.now();
+  const key = `interviews/${interviewId}/recording_${timestamp}.webm`;
+  const correctMimeType = 'video/webm';
+
+  console.log(`📤 Uploading video to S3: ${key} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+
+  // Upload to S3/MinIO with correct content type
+  await s3PutObject(key, videoBuffer, correctMimeType);
+
+  // Update interview with video URL
+  await prisma.aIInterviewResult.update({
+    where: { interview_id: interviewId },
+    data: { video_url: key },
+  });
+
+  console.log(`✅ Video uploaded successfully: ${key}`);
+
+  return { videoUrl: key };
+};
+
+/**
+ * Get signed URL for video playback (recruiter access)
+ */
+export const getInterviewVideoUrl = async (interviewId: string): Promise<{ signedUrl: string; expiresIn: number }> => {
+  const interview = await prisma.aIInterviewResult.findUnique({
+    where: { interview_id: interviewId },
+    select: { video_url: true },
+  });
+
+  if (!interview) {
+    throw new Error('Interview not found');
+  }
+
+  if (!interview.video_url) {
+    throw new Error('No video recording available');
+  }
+
+  // Generate signed URL (10 minutes TTL)
+  const expiresIn = 600; // seconds
+  const signedUrl = await s3SignedUrl(interview.video_url, expiresIn);
+
+  return { signedUrl, expiresIn };
+};

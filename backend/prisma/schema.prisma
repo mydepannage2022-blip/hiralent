@@ -560,6 +560,7 @@ model AIInterviewResult {
   duration_seconds    Int?              // Total interview duration
   total_questions     Int?              // Number of questions asked
   qualification       AIQualification?  // Final result: QUALIFIED or NOT_QUALIFIED
+  evaluation_details  Json?             // Full evaluation: {fitScore, strengths, areasForImprovement, redFlags, confidenceInAssessment}
   started_at          DateTime?         // When interview started
   completed_at        DateTime?         // When interview completed
   job_id              String?           // Reference to the job being interviewed for

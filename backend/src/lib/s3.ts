@@ -37,3 +37,15 @@ export async function s3SignedUrl(key: string, seconds?: number) {
   const cmd = new GetObjectCommand({ Bucket: s3Bucket, Key: key });
   return awsGetSignedUrl(s3, cmd, { expiresIn: ttl });
 }
+
+/**
+ * Get object as a stream (for video streaming)
+ */
+export async function s3GetObjectStream(key: string) {
+  const res = await s3.send(new GetObjectCommand({ Bucket: s3Bucket, Key: key }));
+  return {
+    body: res.Body,
+    contentType: res.ContentType,
+    contentLength: res.ContentLength,
+  };
+}

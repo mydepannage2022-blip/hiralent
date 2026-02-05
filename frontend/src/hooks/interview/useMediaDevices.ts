@@ -10,6 +10,7 @@ interface MediaDevicesState {
   audioDevices: MediaDeviceInfo[];
   selectedVideoDeviceId: string | null;
   selectedAudioDeviceId: string | null;
+  isCameraEnabled: boolean;
 }
 
 interface UseMediaDevicesReturn extends MediaDevicesState {
@@ -30,6 +31,7 @@ export function useMediaDevices(): UseMediaDevicesReturn {
     audioDevices: [],
     selectedVideoDeviceId: null,
     selectedAudioDeviceId: null,
+    isCameraEnabled: true,
   });
 
   const streamRef = useRef<MediaStream | null>(null);
@@ -129,6 +131,30 @@ export function useMediaDevices(): UseMediaDevicesReturn {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+
+      // Monitor video track for camera being disabled
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        setState(prev => ({ ...prev, isCameraEnabled: videoTrack.enabled }));
+
+        // Listen for track being ended (camera physically disconnected or permissions revoked)
+        videoTrack.onended = () => {
+          console.log('📹 Camera track ended');
+          setState(prev => ({ ...prev, isCameraEnabled: false }));
+        };
+
+        // Listen for track being muted (some browsers use this)
+        videoTrack.onmute = () => {
+          console.log('📹 Camera track muted');
+          setState(prev => ({ ...prev, isCameraEnabled: false }));
+        };
+
+        videoTrack.onunmute = () => {
+          console.log('📹 Camera track unmuted');
+          setState(prev => ({ ...prev, isCameraEnabled: true }));
+        };
+      }
+
       return stream;
     } catch (err: any) {
       console.error('Failed to get media stream:', err);

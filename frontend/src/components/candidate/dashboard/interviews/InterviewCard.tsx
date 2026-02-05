@@ -33,8 +33,20 @@ const InterviewCard: React.FC<InterviewCardProps> = ({ interview, onStart, onVie
     });
   };
 
-  const canStart = interview.status === 'PENDING' || interview.status === 'IN_PROGRESS';
+  // Check if the scheduled time has arrived
+  const isScheduledTimeReached = () => {
+    if (!interview.scheduledDate) return true; // No scheduled date means can start anytime
+    const scheduledTime = new Date(interview.scheduledDate).getTime();
+    const now = Date.now();
+    return now >= scheduledTime;
+  };
+
+  const statusAllowsStart = interview.status === 'PENDING' || interview.status === 'IN_PROGRESS';
+  const timeAllowsStart = isScheduledTimeReached();
+  const canStart = statusAllowsStart && timeAllowsStart;
+  const isWaitingForScheduledTime = statusAllowsStart && !timeAllowsStart;
   const isCompleted = interview.status === 'COMPLETED';
+  const isFailed = interview.status === 'FAILED';
   const isExpiredOrCancelled = interview.status === 'EXPIRED' || interview.status === 'CANCELLED';
 
   return (
@@ -89,6 +101,18 @@ const InterviewCard: React.FC<InterviewCardProps> = ({ interview, onStart, onVie
           </button>
         )}
 
+        {isWaitingForScheduledTime && (
+          <div className="text-center py-2">
+            <div className="flex items-center justify-center gap-2 text-amber-600 mb-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-medium">Not Available Yet</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Available on {formatDate(interview.scheduledDate)} at {formatTime(interview.scheduledDate)}
+            </p>
+          </div>
+        )}
+
         {isCompleted && (
           <button
             onClick={onView}
@@ -97,6 +121,12 @@ const InterviewCard: React.FC<InterviewCardProps> = ({ interview, onStart, onVie
             <Eye className="w-4 h-4" />
             View Details
           </button>
+        )}
+
+        {isFailed && (
+          <div className="text-center text-sm text-red-500 py-2">
+            This interview session has timed out
+          </div>
         )}
 
         {isExpiredOrCancelled && (
