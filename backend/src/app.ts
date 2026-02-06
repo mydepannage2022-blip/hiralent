@@ -63,6 +63,11 @@ import matchingInternalRoutes from "./routes/internal/matching.routes";
 import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
 import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
 import interviewRoutes from "./routes/interview.routes";
+import externalCandidatesRoutes from "./routes/company.externalCandidates.routes";
+import companyInternalCandidatesRoutes from "./routes/company.internalCandidates.routes";
+import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
+import companyNotificationsRoutes from "./routes/company.notifications.routes";
+import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -84,6 +89,7 @@ app.use((req, res, next) => {
 
 //Question Bank
 app.use('/api/questions', questionRoutes);
+app.use('/api/v1/questions', questionRoutes); // ✅ alias pour l'UI
 
 // Submission endpoints (create, fetch)
 app.use('/api/v1/submissions', submissionsRoutes);
@@ -116,6 +122,7 @@ app.use('/api/v1', insightsRoutes);
 
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
+app.use("/api/v1", assessmentTemplateRoutes);
 app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
@@ -135,7 +142,12 @@ app.use("/api/v1", companyCandidateRankingRoutes);
 
 //Scraping Candidates
 app.use("/internal", internalRoutes);
+app.use("/api/v1", externalCandidatesRoutes);
+app.use("/api/v1", companyInternalCandidatesRoutes);
 
+// Notifications
+app.use("/api/v1", candidateNotificationsRoutes);
+app.use("/api/v1", companyNotificationsRoutes);
 
 //candidate cv
 // Serve uploaded files statically

@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { CiSearch } from 'react-icons/ci';
 import { IoIosNotificationsOutline } from "react-icons/io";
@@ -22,7 +23,9 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 }) => {
   const { user } = useAuth();
   const { profileData } = useProfile();
-  const pathname = usePathname();
+
+  // ✅ FIX: pathname can be null in Next.js types
+  const pathname = usePathname() ?? "";
 
   // ✅ Notification modal state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -59,7 +62,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     },
     {
       id: '5',
-      title: `Google's service, offered free of charge, instantly translates words, phrases, and web pages between English and over 100 other languages.`,
+      title: `Google's service, offered free of charge, instantly translates words, phrases, and web pages between English and over 100 other languages.`,
       tag: 'Message',
       time: '22:14 AM',
       read: true
@@ -102,19 +105,29 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       </SmartLink>
     );
 
-  // Dynamic page titles
+  // ✅ Dynamic page titles
   const getPageInfo = () => {
-    if (pathname?.startsWith('/candidate/dashboard/skills-assessment')) {
+    // ✅ Skills Assessment dynamic route
+    if (pathname.startsWith('/candidate/dashboard/skills-assessment')) {
       return {
         title: 'Skills Assessment',
         description: 'Access and manage your skills assessments',
       };
     }
 
-    if (pathname?.startsWith('/candidate/dashboard/interviews')) {
+    if (pathname.startsWith('/candidate/dashboard/interviews')) {
       return {
         title: 'AI Interviews',
         description: 'Complete your AI-powered video interviews',
+      };
+    }
+
+    // ✅ Application details: /candidate/dashboard/applications/[appId]
+    // IMPORTANT: must be BEFORE switch
+    if (pathname.startsWith('/candidate/dashboard/applications/')) {
+      return {
+        title: 'My applications',
+        description: 'Track your applications, status changes, and timeline events.',
       };
     }
 
@@ -124,41 +137,56 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           title: 'Dashboard',
           description: 'Updating your information will offer you the most relevant content',
         };
+
       case '/candidate/dashboard/candidate-profile':
         return {
           title: 'Profile',
           description: 'Manage and update your professional profile information',
         };
+
       case '/candidate/dashboard/messages':
         return {
           title: 'Messages',
           description: 'View and manage your conversations with employers',
         };
+
       case '/candidate/dashboard/jobs':
         return {
           title: 'Jobs',
           description: 'Browse and apply to job opportunities tailored for you',
         };
+
+      // ✅ Applications list
+      case '/candidate/dashboard/applications':
+        return {
+          title: 'My applications',
+          description: 'Track your applications, status changes, and timeline events.',
+        };
+
       case '/candidate/dashboard/cases':
         return {
           title: 'Cases',
           description: 'View and manage your Cases',
         };
+
       case '/candidate/dashboard/notifications':
         return {
           title: 'Notifications',
           description: 'Stay updated with important alerts and updates',
         };
+
       case '/candidate/dashboard/settings':
         return {
           title: 'Settings',
           description: 'Customize your account preferences and privacy settings',
         };
+
       case '/candidate/dashboard/analytics':
         return {
           title: 'Analytics',
           description: 'Track your job search progress and performance metrics',
         };
+
       default:
         return {
           title: 'Dashboard',

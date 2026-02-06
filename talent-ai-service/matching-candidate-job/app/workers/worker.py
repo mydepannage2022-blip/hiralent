@@ -5,6 +5,7 @@ import time
 import logging
 import hashlib
 from typing import Any, Dict, List, Tuple
+from types import SimpleNamespace  # ✅ FIX for "SimpleNamespace is not defined"
 
 from app.core.settings import settings
 from app.workers.queue import dequeue, requeue_with_backoff, send_to_dlq, requeue_same
@@ -39,7 +40,10 @@ def _normalize_job_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
 def _normalize_candidate_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
     profile = snap.get("candidateProfile") or {}
     structured = snap.get("candidateSkills") or []
-    pc = snap.get("profileCompleteness") or {}
+    
+    # ✅ FIX: profileCompleteness is an ARRAY, take the first element
+    pc_list = snap.get("profileCompleteness") or []
+    pc = pc_list[0] if isinstance(pc_list, list) and len(pc_list) > 0 else {}
 
     skills = set()
 
@@ -60,7 +64,7 @@ def _normalize_candidate_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
         "experience": profile.get("experience"),
         "education": profile.get("education"),
         "resume_url": profile.get("resume_url") or profile.get("resume_application_url"),
-        "profile_score": pc.get("overall_score"),
+        "profile_score": pc.get("overall_score") if pc else None,  # ✅ Safe access
         "city": profile.get("city"),
         "location": profile.get("location"),
         **snap,
@@ -130,9 +134,9 @@ def _rank_jobs(items: List[Dict[str, Any]], cand: Dict[str, Any]) -> List[Dict[s
         sm = _skill_match(job, cand)
         it["skill_match"] = sm
 
-        final_score = (0.75 * vector_score) + (0.25 * sm)   # 0..1
+        final_score = (0.75 * vector_score) + (0.25 * sm)  # 0..1
         it["final_score"] = final_score
-        it["match_score"] = round(final_score * 100, 2)     # ✅ 0..100
+        it["match_score"] = round(final_score * 100, 2)  # 0..100
 
     items.sort(key=lambda x: x["final_score"], reverse=True)
     return items
@@ -145,34 +149,37 @@ def _rank_candidates(items: List[Dict[str, Any]], job: Dict[str, Any]) -> List[D
         sm = _skill_match(job, cand)
         it["skill_match"] = sm
 
-        final_score = (0.75 * vector_score) + (0.25 * sm)   # 0..1
+        final_score = (0.75 * vector_score) + (0.25 * sm)  # 0..1
         it["final_score"] = final_score
-        it["match_score"] = round(final_score * 100, 2)     # ✅ 0..100
+        it["match_score"] = round(final_score * 100, 2)  # 0..100
 
     items.sort(key=lambda x: x["final_score"], reverse=True)
     return items
 
 
-
 def _extract_candidate_payload(hit) -> Dict[str, Any]:
-    payload = hit.payload or {}
-    return payload
+    return hit.payload or {}
 
 
 def process_task(task: dict) -> None:
     t = task["type"]
     p = task["payload"]
 
+    # ✅ FIX (NO logic change): normalize payload then build an object with attributes for text_builders
     if t == "INDEX_JOB":
-        text = job_text(type("Obj", (), p))
+        snap = _normalize_job_snapshot(p)
+        text = job_text(SimpleNamespace(**snap))
         vec = embed(text)
-        upsert(settings.QDRANT_COLLECTION_JOBS, p["job_id"], vec, p)
+        upsert(settings.QDRANT_COLLECTION_JOBS, str(snap["job_id"]), vec, snap)
         return
 
     if t == "INDEX_CANDIDATE":
-        text = candidate_text(type("Obj", (), p))
+        cand = _normalize_candidate_snapshot(p)
+        if not cand.get("candidate_id"):
+            raise ValueError("Candidate payload missing candidate_id after normalization")
+        text = candidate_text(SimpleNamespace(**cand))
         vec = embed(text)
-        upsert(settings.QDRANT_COLLECTION_CANDIDATES, p["candidate_id"], vec, p)
+        upsert(settings.QDRANT_COLLECTION_CANDIDATES, str(cand["candidate_id"]), vec, cand)
         return
 
     if t == "PROCESS_EVENT":
@@ -196,7 +203,7 @@ def process_task(task: dict) -> None:
             raw = get_job_snapshot(entity_id)
             snap = _normalize_job_snapshot(raw)
 
-            text = job_text(type("Obj", (), snap))
+            text = job_text(SimpleNamespace(**snap))
             ehash = _hash_text(text)
             vec = embed(text)
 
@@ -219,11 +226,14 @@ def process_task(task: dict) -> None:
                     if not cand_id:
                         continue
 
+                    # ✅ keep candidate payload consistent (normalized) for eligibility + skill_match
+                    cand_norm = _normalize_candidate_snapshot(cand_payload)
+
                     top200.append(
                         {
                             "candidate_id": str(cand_id),
                             "vector_score": float(h.score or 0.0),
-                            "candidate": cand_payload,
+                            "candidate": cand_norm,
                         }
                     )
 
@@ -231,8 +241,8 @@ def process_task(task: dict) -> None:
 
                 filtered: List[Dict[str, Any]] = []
                 for it in top200:
-                    cand = it["candidate"]
-                    is_eligible, reason_codes, missing_skills = _eligibility(snap, cand)
+                    cand_norm = it["candidate"]
+                    is_eligible, reason_codes, missing_skills = _eligibility(snap, cand_norm)
                     it["is_eligible"] = is_eligible
                     it["reason_codes"] = reason_codes
                     it["missing_skills"] = missing_skills
@@ -278,7 +288,7 @@ def process_task(task: dict) -> None:
             if not cand.get("candidate_id"):
                 raise ValueError("Candidate snapshot missing candidate_id after normalization")
 
-            text = candidate_text(type("Obj", (), cand))
+            text = candidate_text(SimpleNamespace(**cand))
             ehash = _hash_text(text)
             vec = embed(text)
 
@@ -302,11 +312,13 @@ def process_task(task: dict) -> None:
                 top200: List[Dict[str, Any]] = []
                 for h in hits:
                     job_payload = h.payload or {}
+                    job_norm = _normalize_job_snapshot(job_payload)
+
                     top200.append(
                         {
-                            "job_id": str(job_payload.get("job_id") or h.id),
+                            "job_id": str(job_norm.get("job_id") or h.id),
                             "vector_score": float(h.score or 0.0),
-                            "job": job_payload,
+                            "job": job_norm,
                         }
                     )
 
@@ -314,8 +326,8 @@ def process_task(task: dict) -> None:
 
                 filtered: List[Dict[str, Any]] = []
                 for it in top200:
-                    job = it["job"]
-                    is_eligible, reason_codes, missing_skills = _eligibility(job, cand)
+                    job_norm = it["job"]
+                    is_eligible, reason_codes, missing_skills = _eligibility(job_norm, cand)
                     it["is_eligible"] = is_eligible
                     it["reason_codes"] = reason_codes
                     it["missing_skills"] = missing_skills
@@ -348,6 +360,13 @@ def process_task(task: dict) -> None:
                             "ai_reasoning": None,
                         }
                     )
+                # ✅ ADD THESE LOGS BEFORE THE UPSERT
+                import json
+                log.info(f"📤 Upserting {len(recos)} recommendations for candidate {cand['candidate_id']}")
+                if recos:
+                    log.info(f"📤 Sample recommendation: {json.dumps(recos[0], indent=2)}")
+                else:
+                    log.warning(f"⚠️ No recommendations found for candidate {cand['candidate_id']}")
 
                 upsert_job_recommendations(candidate_id=str(cand["candidate_id"]), items=recos)
 

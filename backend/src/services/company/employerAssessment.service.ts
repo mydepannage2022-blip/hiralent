@@ -245,6 +245,7 @@ function mapPrismaAssessment(a: any): EmployerAssessment {
     assessment_id: a.assessment_id,
     company_id: a.company_id,
     job_id: a.job_id,
+    template_id: a.template_id ?? undefined, // ✅ NEW
     title: a.title,
     description: a.description,
     status: a.status,

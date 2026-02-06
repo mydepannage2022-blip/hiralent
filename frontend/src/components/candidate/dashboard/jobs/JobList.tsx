@@ -1,19 +1,45 @@
-// frontend/src/components/candidate/dashboard/jobs/JobList.tsx
 "use client";
 
 import React from "react";
 import { Loader2 } from "lucide-react";
 import type { CandidateJobListItemDTO } from "../../../../types/candidate.jobs.types";
 import JobCard from "./JobCard";
+import { useCandidateJobEligibility } from "@/src/lib/candidate/jobs.queries";
+
+function JobCardWithEligibility({
+  item,
+  showMatchScore,
+  isApplied,
+}: {
+  item: CandidateJobListItemDTO;
+  showMatchScore?: boolean;
+  isApplied?: boolean;
+}) {
+  const q = useCandidateJobEligibility(item.job_id, { enabled: !!item.job_id });
+
+  return (
+    <JobCard
+      item={item}
+      showMatchScore={showMatchScore}
+      eligibilityOverride={q.data ?? undefined}
+      eligibilityLoading={q.isLoading}
+      isApplied={!!isApplied} // ✅ NEW
+    />
+  );
+}
 
 export default function JobList({
   items,
   isLoading,
   showMatchScore = false,
+  eligibilityMode = "useItem",
+  appliedJobIds, // ✅ NEW
 }: {
   items: CandidateJobListItemDTO[];
   isLoading: boolean;
   showMatchScore?: boolean;
+  eligibilityMode?: "useItem" | "fetch";
+  appliedJobIds?: Set<string>; // ✅ NEW
 }) {
   if (isLoading) {
     return (
@@ -34,9 +60,25 @@ export default function JobList({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {items.map((it) => (
-        <JobCard key={it.job_id} item={it} showMatchScore={showMatchScore} />
-      ))}
+      {items.map((it) => {
+        const isApplied = appliedJobIds?.has(it.job_id) ?? false;
+
+        return eligibilityMode === "fetch" ? (
+          <JobCardWithEligibility
+            key={it.job_id}
+            item={it}
+            showMatchScore={showMatchScore}
+            isApplied={isApplied} // ✅ NEW
+          />
+        ) : (
+          <JobCard
+            key={it.job_id}
+            item={it}
+            showMatchScore={showMatchScore}
+            isApplied={isApplied} // ✅ NEW
+          />
+        );
+      })}
     </div>
   );
 }

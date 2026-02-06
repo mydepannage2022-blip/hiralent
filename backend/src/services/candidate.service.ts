@@ -28,6 +28,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { processDocumentAsync } from "./candidate/documentProcessor.service";
 import { cleanupOldResume, cleanupTempFile, cleanupOldProfilePicture } from "./candidate/cleanup.service";
 
+import { triggerCandidateMatching } from "./matching/candidate-outbox.service";
+
 const prisma = new PrismaClient();
 cloudinary.config({
   cloudinary_url: process.env.CLOUDINARY_URL,
@@ -87,8 +89,12 @@ export const uploadAndProcessCV = async (
       },
     });
 
-    // Process document asynchronously (extract text, parse skills, etc.)
-    processDocumentAsync(document.document_id, candidateId, destinationPath);
+// Kick off extraction in background + trigger matching after success
+setImmediate(() => {
+  processDocumentAsync(document.document_id, candidateId, destinationPath)
+    .then(() => triggerCandidateMatching(candidateId, "cv_extracted"))
+    .catch((e) => console.error("Failed to process document or trigger matching:", e));
+});
 
     console.log(`✅ CV uploaded successfully for candidate: ${candidateId}`);
 
@@ -193,97 +199,6 @@ export const hasExistingResume = async (candidateId: string): Promise<boolean> =
   } catch (error) {
     console.error("Error checking existing resume:", error);
     return false;
-  }
-};
-
-export const getJobRecommendations = async (
-  candidateId: string,
-  limit: number = 20
-): Promise<JobRecommendation[]> => {
-  try {
-    const candidateVector = await prisma.candidateVector.findUnique({
-      where: { candidate_id: candidateId },
-    });
-
-    if (!candidateVector) {
-      throw new Error("Candidate vector not found. Please upload CV first.");
-    }
-
-    const combinedVector = candidateVector.combined_vector as number[];
-
-    const similarJobs = await findSimilarJobs(combinedVector, limit);
-
-    const candidateSkills = await prisma.candidateSkill.findMany({
-      where: { candidate_id: candidateId },
-    });
-
-    const recommendations: JobRecommendation[] = [];
-    for (const match of similarJobs) {
-      const jobId = match.metadata?.job_id;
-      if (!jobId) continue;
-
-      const job = await prisma.companyJob.findUnique({
-        where: { job_id: jobId },
-        include: {
-          company: { select: { full_name: true } },
-          agency: { select: { name: true } },
-        },
-      });
-
-      if (!job) continue;
-
-      const jobRequirements = {
-        title: job.title,
-        required_skills: job.required_skills,
-        description: job.description,
-        location: job.location,
-      };
-
-      const matchReasoning = await generateJobMatchReasoning(
-        candidateSkills,
-        jobRequirements
-      );
-
-      const existing = await prisma.jobRecommendation.findFirst({
-        where: {
-          candidate_id: candidateId,
-          job_id: jobId,
-        },
-      });
-
-      if (!existing) {
-        await prisma.jobRecommendation.create({
-          data: {
-            candidate_id: candidateId,
-            job_id: jobId,
-            match_score: match.score || 0,
-            skill_match: JSON.stringify(matchReasoning),
-            ai_reasoning: matchReasoning.reasoning,
-          },
-        });
-      }
-
-      recommendations.push({
-        job_id: jobId,
-        title: job.title,
-        company: job.company.full_name,
-        location: job.location,
-        salary_range: job.salary_range || undefined,
-        match_score: match.score || 0,
-        match_reasoning: matchReasoning,
-        created_at: job.created_at,
-      });
-    }
-
-    return recommendations;
-  } catch (error) {
-    console.error("Error getting job recommendations:", error);
-    const serviceError: CandidateServiceError = new Error(
-      "Failed to get job recommendations"
-    );
-    serviceError.code = "RECOMMENDATIONS_FAILED";
-    serviceError.statusCode = 500;
-    throw serviceError;
   }
 };
 
@@ -493,24 +408,32 @@ export const getProfileSummary = async (candidateId: string): Promise<CandidateP
     }));
 
     let profileCompleteness: ProfileCompletenessScore | undefined;
-    if (candidate.profileCompleteness) {
-      profileCompleteness = {
-        overall_score: candidate.profileCompleteness.overall_score,
-        basic_info_score: candidate.profileCompleteness.basic_info_score,
-        skills_score: candidate.profileCompleteness.skills_score,
-        experience_score: candidate.profileCompleteness.experience_score,
-        profile_picture_score: candidate.profileCompleteness.profile_picture_score,
-        education_score: candidate.profileCompleteness.education_score,
-        document_score: candidate.profileCompleteness.document_score,
-        headline_score: candidate.profileCompleteness.headline_score,
-        missing_fields: Array.isArray(candidate.profileCompleteness.missing_fields) 
-          ? candidate.profileCompleteness.missing_fields as string[]
-          : JSON.parse(candidate.profileCompleteness.missing_fields as string),
-        suggestions: Array.isArray(candidate.profileCompleteness.suggestions)
-          ? candidate.profileCompleteness.suggestions as string[]
-          : JSON.parse(candidate.profileCompleteness.suggestions as string)
-      };
-    }
+
+    // I changed this "if" because it generates errors 
+if (candidate.profileCompleteness && candidate.profileCompleteness.length > 0) {
+  // take latest one (your query should already order + take 1, but this is safe)
+  const pc = candidate.profileCompleteness[0];
+
+  profileCompleteness = {
+    overall_score: pc.overall_score,
+    basic_info_score: pc.basic_info_score,
+    skills_score: pc.skills_score,
+    experience_score: pc.experience_score,
+    profile_picture_score: pc.profile_picture_score,
+    education_score: pc.education_score,
+    document_score: pc.document_score,
+    headline_score: pc.headline_score,
+
+    // Json fields in Prisma are already objects/arrays (not strings)
+    missing_fields: Array.isArray(pc.missing_fields)
+      ? (pc.missing_fields as string[])
+      : [],
+    suggestions: Array.isArray(pc.suggestions)
+      ? (pc.suggestions as string[])
+      : [],
+  };
+}
+
 
     const summary: CandidateProfileSummary = {
       basic_info: basicInfo,
@@ -562,7 +485,9 @@ export const updateCandidateHeadline = async (
     calculateProfileCompleteness(candidateId).catch((error) => {
       console.warn("Failed to recalculate profile completeness:", error);
     });
-
+    await triggerCandidateMatching(candidateId, "updateHeadline").catch(e =>
+      console.warn("Failed to trigger matching:", e)
+    );
     return {
       success: true,
       headline: updatedProfile.headline || data.headline,

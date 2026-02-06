@@ -139,6 +139,7 @@ model User {
   companyAssessments EmployerAssessment[] @relation("CompanyAssessments")
   // Removed candidateAssessments (invalid inverse)
   // Removed competeChallenges (invalid inverse)
+  assessmentTemplatesCreated AssessmentTemplate[] @relation("UserAssessmentTemplatesCreated")
 
   conversationsParticipant1 Conversation[]    @relation("ConversationP1")
   conversationsParticipant2 Conversation[]    @relation("ConversationP2")
@@ -249,6 +250,8 @@ model Question {
   
   isLibraryQuestion Boolean @default(false)
   assessments AssessmentQuestion[]   //  NEW
+  templateAssessments AssessmentTemplateQuestion[] //Ihssane Puted This
+
 
   //  NEW (for pattern-generated questions)
   generatedFromPattern     Boolean @default(false)
@@ -962,16 +965,51 @@ model RolePermission {
   access_level  AccessLevel
 }
 
+enum NotificationAudience {
+  CANDIDATE
+  COMPANY
+  AGENCY
+  ADMIN
+}
+
+enum NotificationType {
+  APPLICATION_CONFIRMED
+  APPLICATION_STATUS_CHANGED
+  ASSESSMENT_INVITE
+  INTERVIEW_INVITE
+  GENERIC
+}
+
 model Notification {
   notification_id String   @id @default(uuid())
-  user_id         String
-  type            String
+
+  // target
+  audience        NotificationAudience @default(CANDIDATE)
+  recipient_id    String // user_id
+
+  // content
+  type            NotificationType
+  title           String
   message         String
-  is_read         Boolean  @default(false)
-  sent_via        String
+
+  // optional payload for UI routing and context
+  data            Json?
+  action_url      String?
+
+  // read state
+  read_at         DateTime?
+
+  // delivery info (optional, keep for future)
+  sent_via        String? // "in_app" | "email" | "whatsapp"
+
   created_at      DateTime @default(now())
-  user            User     @relation("UserNotifications", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  recipient       User     @relation("UserNotifications", fields: [recipient_id], references: [user_id], onDelete: Cascade)
+
+  @@index([recipient_id, audience, read_at])
+  @@index([created_at])
 }
+
 
 model SubscriptionPlan {
   plan_id                  String               @id @default(uuid())
@@ -1830,10 +1868,10 @@ model EmployerAssessment {
   time_limit      Int                      @default(60)
   total_questions Int                      @default(20)
   passing_score   Int?                     @default(70)
-  question_ids    String[]
+  question_ids    String[] @default([])
   settings        Json?
   creation_method  AssessmentCreationMethod
-  extracted_skills String[]
+  extracted_skills String[] @default([])
   enhanced_data    Json?
   auto_generated   Boolean                  @default(false)
 
@@ -1847,10 +1885,14 @@ model EmployerAssessment {
   // Removed candidateAssessments (invalid inverse; SkillAssessment has no employer link)
   competeChallenges CompeteChallenge[]
   questions            AssessmentQuestion[]   // 👈 NEW
+  template_id String?
+  template    AssessmentTemplate? @relation("EmployerAssessmentTemplate", fields: [template_id], references: [template_id], onDelete: SetNull)
 
   @@index([company_id])
   @@index([job_id])
   @@index([status])
+  @@index([template_id])
+
   @@map("employer_assessments")
 }
 
@@ -1859,6 +1901,7 @@ enum AssessmentCreationMethod {
   JOB_DESCRIPTION_PARSE
   CHATBOT_GUIDED
   MANUAL
+  TEMPLATE
 }
 
 model AssessmentQuestion {
@@ -1874,6 +1917,8 @@ model AssessmentQuestion {
 
   assessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
   question   Question           @relation(fields: [question_id], references: [id], onDelete: Restrict)
+  // ✅ NEW: per-assessment customization (company-side edits)
+  override      Json?
 
   @@unique([assessment_id, question_id])
   @@index([assessment_id])
@@ -2263,7 +2308,8 @@ model Certification {
   candidate_id     String
   name             String
   issuer           String
-  issue_date       DateTime
+  issue_date       DateTime?   //  make optional
+
   expiry_date      DateTime?
   credential_id    String?
   credential_url   String?
@@ -2291,4 +2337,79 @@ model ProfileEvent {
   @@index([candidate_id])
   @@index([event_type])
   @@index([timestamp])
+}
+
+//Global template layer (enums + models)
+
+enum AssessmentTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AssessmentTemplateProvider {
+  INTERNAL      // curated by you/admins
+  HACKERRANK    // imported style / mimicked
+  CUSTOM        // optional (created by company then saved as template later)
+}
+
+model AssessmentTemplate {
+  template_id      String                    @id @default(uuid())
+
+  title            String
+  description      String
+
+  // Same “metadata” you want to filter by
+  assessment_type  AssessmentType
+  skill_category   String
+  difficulty       DifficultyLevel
+  time_limit       Int                       @default(60)
+  total_questions  Int                       @default(20)
+  passing_score    Int?                      @default(70)
+
+  // For filtering/search
+  extracted_skills String[]                  @default([])
+  tags             String[]                  @default([])
+
+  // Optional advanced fields
+  settings         Json?
+  enhanced_data    Json?
+  provider         AssessmentTemplateProvider @default(INTERNAL)
+  status           AssessmentTemplateStatus   @default(DRAFT)
+
+  // Audit
+  created_by       String?   // user_id (admin/system)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  // Relations
+  questions        AssessmentTemplateQuestion[]
+  creator User? @relation("UserAssessmentTemplatesCreated", fields: [created_by], references: [user_id], onDelete: SetNull)
+  employerAssessments EmployerAssessment[] @relation("EmployerAssessmentTemplate")
+
+  @@index([status])
+  @@index([provider])
+  @@index([difficulty])
+  @@map("assessment_templates")
+}
+
+model AssessmentTemplateQuestion {
+  id           String   @id @default(uuid())
+  template_id  String
+  question_id  String
+
+  // Optional metadata (same spirit as AssessmentQuestion)
+  order        Int?
+  points       Int      @default(1)
+  section      String?
+  isReserve    Boolean  @default(false)
+
+  template AssessmentTemplate @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
+  question  Question          @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([template_id, question_id])
+  @@index([template_id])
+  @@index([question_id])
+
+  @@map("assessment_template_questions")
 }

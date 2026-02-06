@@ -588,19 +588,38 @@ const AssessmentsManagement: React.FC = () => {
               </select>
             </div>
                         {/* ✅ ONLY New Assessment button (bottom) */}
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setWizardOpen(true)}
-              className="text-white px-5 py-3 rounded-sm shadow-2xl z-50 flex items-center gap-2 text-sm font-semibold"
-              style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Plus className="w-4 h-4" />
-              New Assessment
-            </motion.button> 
+{/* ✅ Create actions */}
+<div className="flex items-center gap-2">
+  {/* Manual flow (existing) */}
+  <motion.button
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.97 }}
+    onClick={() => setWizardOpen(true)}
+    className="text-white px-5 py-3 rounded-sm shadow-2xl flex items-center gap-2 text-sm font-semibold"
+    style={{ background: LOGO_BLUE, boxShadow: "0 20px 50px rgba(27,115,232,0.25)" }}
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ delay: 0.2 }}
+  >
+    <Plus className="w-4 h-4" />
+    New (Manual)
+  </motion.button>
+
+  {/* Template flow (NEW) */}
+  <motion.button
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => router.push("/company/dashboard/assessmentManagement/templates")}
+    className="px-5 py-3 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 flex items-center gap-2 text-sm font-semibold"
+    initial={{ opacity: 0, y: 4 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.25 }}
+  >
+    <Layers className="w-4 h-4 text-gray-700" />
+    From Templates
+  </motion.button>
+</div>
+
           </div>
         </div>
 

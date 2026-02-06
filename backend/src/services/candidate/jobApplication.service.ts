@@ -1,4 +1,13 @@
-import { PrismaClient, JobApplicationStatus, JobApplicationEventType } from "@prisma/client";
+import {
+  PrismaClient,
+  JobApplicationStatus,
+  JobApplicationEventType,
+  NotificationAudience,
+  NotificationType,
+  JobApplicationEventStatus,
+} from "@prisma/client";
+
+import { NotificationService } from "../notification.service";
 
 type TriggerValue = "INTERVIEW_REQUIRED" | "ASSESSMENT_REQUIRED" | "NO_TRIGGER";
 
@@ -11,7 +20,6 @@ const triggerFromScore = (score: number): TriggerValue => {
 const safeSkillsArray = (raw: unknown): string[] => {
   if (Array.isArray(raw)) return raw.map((x) => String(x)).filter(Boolean);
   if (typeof raw === "string") {
-    // might be "a,b,c" or JSON string
     const s = raw.trim();
     if (!s) return [];
     if (s.startsWith("[") || s.startsWith("{")) {
@@ -29,7 +37,11 @@ const safeSkillsArray = (raw: unknown): string[] => {
 };
 
 export class JobApplicationService {
-  constructor(private prisma: PrismaClient) {}
+  private notifications: NotificationService;
+
+  constructor(private prisma: PrismaClient) {
+    this.notifications = new NotificationService(prisma);
+  }
 
   /**
    * Apply to a job (A4)
@@ -37,6 +49,7 @@ export class JobApplicationService {
    * - Create JobApplication(APPLIED)
    * - Store per-application scoring snapshot (A5)
    * - Create outbox events for status transitions (A4)
+   * - Create notification (A6)
    */
   async applyToJob(args: { candidateId: string; jobId: string; coverLetter?: string }) {
     const { candidateId, jobId, coverLetter } = args;
@@ -55,7 +68,6 @@ export class JobApplicationService {
         },
       }),
       this.prisma.profileCompleteness.findUnique({
-        // ✅ candidate_id is @unique in your schema => findUnique OK
         where: { candidate_id: candidateId },
         select: { overall_score: true, missing_fields: true },
       }),
@@ -132,18 +144,17 @@ export class JobApplicationService {
       },
     });
 
-    // ✅ safer default: if no rec row -> don't auto-claim eligible
     const eligible = rec?.is_eligible ?? false;
     const matchScore = rec?.match_score ?? 0;
 
     const computedTrigger: TriggerValue =
       (rec?.trigger as TriggerValue) ?? (eligible ? triggerFromScore(matchScore) : "NO_TRIGGER");
 
-    // scale: 0..100
+    // scale: 0..100 (you are using 80/60 thresholds)
     const relevanceScore = matchScore;
     const vectorScore = rec?.vector_score ?? null;
 
-    // 5) Transaction: create application + history + outbox events + mark recommendation applied
+    // 5) Transaction: create application + history + outbox events + mark recommendation applied + notify
     return this.prisma.$transaction(async (tx) => {
       // prevent duplicate apply (unique candidate_id+job_id)
       const existing = await tx.jobApplication.findUnique({
@@ -178,6 +189,20 @@ export class JobApplicationService {
         select: { application_id: true, status: true },
       });
 
+      // A6: in-app notification (application confirmation)
+      await tx.notification.create({
+        data: {
+          audience: NotificationAudience.CANDIDATE,
+          recipient_id: candidateId,
+          type: NotificationType.APPLICATION_CONFIRMED,
+          title: "Application sent ✅",
+          message: `Your application for "${job.title}" has been submitted.`,
+          action_url: "/candidate/dashboard/applications",
+          data: { jobId, applicationId: app.application_id },
+          sent_via: "in_app",
+        },
+      });
+
       // history snapshot (A5)
       await tx.jobApplicationScoreHistory.create({
         data: {
@@ -193,37 +218,47 @@ export class JobApplicationService {
         },
       });
 
-      // outbox events (A4)
-      await tx.jobApplicationEventOutbox.create({
-        data: {
-          application_id: app.application_id,
-          type: JobApplicationEventType.APPLIED_CREATED,
-          payload: { candidate_id: candidateId, job_id: jobId },
-          status: "PENDING",
-          dedupe_key: `APPLIED_CREATED:${app.application_id}`,
-        },
+      // outbox events (A4) — SAFE idempotent upsert by dedupe_key
+      const upsertOutbox = async (
+        dedupeKey: string,
+        type: JobApplicationEventType,
+        payload: any,
+      ) => {
+        return tx.jobApplicationEventOutbox.upsert({
+          where: { dedupe_key: dedupeKey },
+          update: {
+            payload,
+            status: JobApplicationEventStatus.PENDING,
+            attempts: 0,
+            last_error: null,
+          },
+          create: {
+            application_id: app.application_id,
+            type,
+            payload,
+            status: JobApplicationEventStatus.PENDING,
+            dedupe_key: dedupeKey,
+          },
+        });
+      };
+
+      await upsertOutbox(`APPLIED_CREATED:${app.application_id}`, JobApplicationEventType.APPLIED_CREATED, {
+        candidate_id: candidateId,
+        job_id: jobId,
       });
 
       if (computedTrigger === "INTERVIEW_REQUIRED") {
-        await tx.jobApplicationEventOutbox.create({
-          data: {
-            application_id: app.application_id,
-            type: JobApplicationEventType.INTERVIEW_REQUIRED,
-            payload: { trigger: computedTrigger, match_score: matchScore },
-            status: "PENDING",
-            dedupe_key: `INTERVIEW_REQUIRED:${app.application_id}`,
-          },
-        });
+        await upsertOutbox(
+          `INTERVIEW_REQUIRED:${app.application_id}`,
+          JobApplicationEventType.INTERVIEW_REQUIRED,
+          { trigger: computedTrigger, match_score: matchScore },
+        );
       } else if (computedTrigger === "ASSESSMENT_REQUIRED") {
-        await tx.jobApplicationEventOutbox.create({
-          data: {
-            application_id: app.application_id,
-            type: JobApplicationEventType.ASSESSMENT_REQUIRED,
-            payload: { trigger: computedTrigger, match_score: matchScore },
-            status: "PENDING",
-            dedupe_key: `ASSESSMENT_REQUIRED:${app.application_id}`,
-          },
-        });
+        await upsertOutbox(
+          `ASSESSMENT_REQUIRED:${app.application_id}`,
+          JobApplicationEventType.ASSESSMENT_REQUIRED,
+          { trigger: computedTrigger, match_score: matchScore },
+        );
       }
 
       // mark recommendation as applied (optional)
@@ -243,7 +278,7 @@ export class JobApplicationService {
 
   /**
    * =========================
-   * READ (A4-4)
+   * READ
    * GET /candidate/applications
    * =========================
    */
@@ -281,7 +316,7 @@ export class JobApplicationService {
 
   /**
    * =========================
-   * READ (A4-4)
+   * READ
    * GET /candidate/applications/:id/timeline
    * =========================
    */
