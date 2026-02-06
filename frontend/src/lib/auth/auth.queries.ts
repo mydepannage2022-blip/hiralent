@@ -81,7 +81,7 @@ export const useLogin = () => {
         if (data.user.role === 'candidate') {
           console.log('Redirecting to candidate dashboard');
           router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company_admin') {
+        } else if (data.user.role === 'company_admin' || data.user.role === 'company_member') {
           console.log('Redirecting to company dashboard');
           router.push('/company/dashboard');
         } else if (data.user.role === 'agency_admin') {

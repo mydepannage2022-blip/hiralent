@@ -159,6 +159,16 @@ model User {
   candidateGlobalScore CandidateGlobalScore?
   candidateGlobalScoreHistory CandidateGlobalScoreHistory[]
 
+    // Company Team Relations
+  ownedCompanyTeam           CompanyTeamMember[]     @relation("CompanyTeamMembers")
+  teamMemberships            CompanyTeamMember[]     @relation("UserTeamMemberships")
+  teamMembersInvited         CompanyTeamMember[]     @relation("TeamMemberInviter")
+  companyInvitationsSent     CompanyTeamInvitation[] @relation("SentInvitations")
+  companyInvitationsReceived CompanyTeamInvitation[] @relation("CompanyInvitations")
+  companyActivityLogs        CompanyActivityLog[]    @relation("CompanyActivityLogs")
+  activityActions            CompanyActivityLog[]    @relation("ActivityActor")
+
+
 }
 
 // Enhanced Company Profile (Previously RecruiterProfile)
@@ -2376,3 +2386,139 @@ model AssessmentTemplateQuestion {
 
   @@map("assessment_template_questions")
 }
+
+
+// ==================== COMPANY TEAM ENUMS ====================
+
+enum CompanyTeamRole {
+  owner
+  admin
+  hr_manager
+  recruiter
+  viewer
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  expired
+  cancelled
+}
+
+enum CompanyModule {
+  dashboard
+  jobs
+  candidates
+  assessments
+  questions
+  messages
+  settings
+  team
+  analytics
+  billing
+}
+
+// ==================== COMPANY TEAM MODELS ====================
+
+model CompanyTeamMember {
+  member_id     String          @id @default(uuid())
+  company_id    String
+  user_id       String
+  role          CompanyTeamRole @default(recruiter)
+  job_title     String?
+  department    String?
+  is_active     Boolean         @default(true)
+  invited_by    String?
+  joined_at     DateTime        @default(now())
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+
+  // Relations
+  company       User            @relation("CompanyTeamMembers", fields: [company_id], references: [user_id], onDelete: Cascade)
+  user          User            @relation("UserTeamMemberships", fields: [user_id], references: [user_id], onDelete: Cascade)
+  inviter       User?           @relation("TeamMemberInviter", fields: [invited_by], references: [user_id])
+  permissions   CompanyMemberPermission[]
+  activityLogs  CompanyActivityLog[]
+
+  @@unique([company_id, user_id])
+  @@index([company_id])
+  @@index([user_id])
+  @@index([role])
+}
+
+model CompanyTeamInvitation {
+  invitation_id      String           @id @default(uuid())
+  company_id         String
+  email              String
+  role               CompanyTeamRole  @default(recruiter)
+  job_title          String?
+  department         String?
+  token              String           @unique
+  token_hash         String
+  status             InvitationStatus @default(pending)
+  invited_by         String
+  expires_at         DateTime
+  accepted_at        DateTime?
+  cancelled_at       DateTime?
+  custom_permissions Json?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+
+  // Relations
+  company    User @relation("CompanyInvitations", fields: [company_id], references: [user_id], onDelete: Cascade)
+  inviter    User @relation("SentInvitations", fields: [invited_by], references: [user_id])
+
+  @@index([company_id])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+}
+
+model CompanyMemberPermission {
+  permission_id String        @id @default(uuid())
+  member_id     String
+  module        CompanyModule
+  can_view      Boolean       @default(false)
+  can_create    Boolean       @default(false)
+  can_edit      Boolean       @default(false)
+  can_delete    Boolean       @default(false)
+  can_manage    Boolean       @default(false)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  // Relations
+  member CompanyTeamMember @relation(fields: [member_id], references: [member_id], onDelete: Cascade)
+
+  @@unique([member_id, module])
+  @@index([member_id])
+  @@index([module])
+}
+
+model CompanyActivityLog {
+  log_id          String    @id @default(uuid())
+  company_id      String
+  member_id       String?
+  user_id         String
+  action          String
+  action_category String
+  resource_type   String?
+  resource_id     String?
+  resource_name   String?
+  details         Json?
+  ip_address      String?
+  user_agent      String?
+  created_at      DateTime  @default(now())
+
+  // Relations
+  company User               @relation("CompanyActivityLogs", fields: [company_id], references: [user_id], onDelete: Cascade)
+  member  CompanyTeamMember? @relation(fields: [member_id], references: [member_id], onDelete: SetNull)
+  actor   User               @relation("ActivityActor", fields: [user_id], references: [user_id])
+
+  @@index([company_id])
+  @@index([member_id])
+  @@index([user_id])
+  @@index([action])
+  @@index([action_category])
+  @@index([created_at])
+}
+
