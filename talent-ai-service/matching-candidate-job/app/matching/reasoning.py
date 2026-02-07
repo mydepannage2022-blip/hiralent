@@ -66,19 +66,16 @@ Return ONLY the final message text (no quotes, no extra text).
 
 
 def llm_reasoning(prompt: str) -> Optional[str]:
-    """
-    Uses Gemini ONLY to rewrite reasoning text (not for scoring).
-    Returns None if disabled or if any error happens.
-    """
     if not settings.GEMINI_API_KEY:
         return None
 
     try:
-        import google.generativeai as genai
+        from google.generativeai.client import configure
+        from google.generativeai.generative_models import GenerativeModel
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        configure(api_key=settings.GEMINI_API_KEY)
 
-        model = genai.GenerativeModel(
+        model = GenerativeModel(
             model_name=settings.GEMINI_MODEL or "gemini-2.0-flash",
             generation_config={
                 "temperature": 0.2,
@@ -89,14 +86,10 @@ def llm_reasoning(prompt: str) -> Optional[str]:
         res = model.generate_content(prompt)
         text = (res.text or "").strip()
 
-        # Safety: avoid huge essays if the model ignores instructions
-        if not text:
-            return None
-        if len(text) > 400:
+        if not text or len(text) > 400:
             return None
 
         return text
 
     except Exception:
-        # Never crash matching because of LLM
         return None

@@ -1,133 +1,116 @@
-import { useEffect, useMemo, useState } from "react";
+"use client";
+
+import { useQuery, useQueries } from "@tanstack/react-query";
+
+import type { Paginated, CompanyJobOption } from "./candidates.api";
+import type {
+  ExternalCandidateDetailsDTO,
+  ExternalCandidateListItemDTO,
+} from "@/src/types/company.candidates.external.types";
+
+import type {
+  InternalCandidateListItemDTO,
+  InternalCandidateFullProfileDTO,
+} from "@/src/types/company.candidates.internal.types";
+
 import {
   getExternalCandidateDetails,
   getInternalCandidateDetails,
+  getInternalRankingForJob,
+  listCompanyJobsActive,
   listExternalCandidates,
-  listInternalCandidates,
+  listExternalSources,
 } from "./candidates.api";
 
-export function useInternalCandidates(filters?: { q?: string; minScore?: number }) {
-  const [data, setData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-
-  const key = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
-
-  useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    listInternalCandidates(filters)
-      .then((res) => mounted && setData(res))
-      .catch((e) => mounted && setError(e))
-      .finally(() => mounted && setIsLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [key]);
-
-  return { data, isLoading, error };
+/** Jobs dropdown (ACTIVE only) */
+export function useCompanyJobsActive() {
+  return useQuery<CompanyJobOption[]>({
+    queryKey: ["company-jobs-active"],
+    queryFn: listCompanyJobsActive,
+  });
 }
 
-export function useExternalCandidates(filters?: { q?: string; minScore?: number; source?: string }) {
-  const [data, setData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-
-  const key = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
-
-  useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    listExternalCandidates(filters)
-      .then((res) => mounted && setData(res))
-      .catch((e) => mounted && setError(e))
-      .finally(() => mounted && setIsLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [key]);
-
-  return { data, isLoading, error };
+/** External sources dropdown */
+export function useExternalSources() {
+  return useQuery<{ sources: string[] }>({
+    queryKey: ["external-sources"],
+    queryFn: listExternalSources,
+  });
 }
 
-export function useInternalCandidateDetails(candidateId?: string) {
-  const [data, setData] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(!!candidateId);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    if (!candidateId) return;
-    let mounted = true;
-
-    setIsLoading(true);
-    setError(null);
-
-    getInternalCandidateDetails(candidateId)
-      .then((res) => mounted && setData(res))
-      .catch((e) => mounted && setError(e))
-      .finally(() => mounted && setIsLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [candidateId]);
-
-  return { data, isLoading, error };
-}
-
-export function useExternalCandidateDetails(sourceId?: string) {
-  const [data, setData] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(!!sourceId);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    if (!sourceId) return;
-    let mounted = true;
-
-    setIsLoading(true);
-    setError(null);
-
-    getExternalCandidateDetails(sourceId)
-      .then((res) => mounted && setData(res))
-      .catch((e) => mounted && setError(e))
-      .finally(() => mounted && setIsLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [sourceId]);
-
-  return { data, isLoading, error };
-}
-
-export async function getCandidatesRankingForJob(params: {
-  jobId: string;
-  pool: "internal" | "external";
+/** External list (scraped) */
+export function useExternalCandidates(filters: {
   q?: string;
-  minScore?: number;
   source?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
 }) {
-  const qs = new URLSearchParams();
-  qs.set("pool", params.pool);
-  if (params.q) qs.set("search", params.q);
-  if (params.minScore) qs.set("minScore", String(params.minScore));
-  if (params.pool === "external" && params.source) qs.set("source", params.source);
+  return useQuery<Paginated<ExternalCandidateListItemDTO>>({
+    queryKey: ["external-candidates", filters],
+    queryFn: () => listExternalCandidates(filters),
+    placeholderData: (prev) => prev,
+  });
+}
 
-  // IMPORTANT: adapte baseUrl selon ton wrapper
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/company/jobs/${params.jobId}/candidates-ranking?${qs.toString()}`,
-    { credentials: "include" } // ou Authorization header si tu l’utilises
-  );
+/** External details */
+export function useExternalCandidateDetails(sourceId?: string) {
+  return useQuery<ExternalCandidateDetailsDTO>({
+    queryKey: ["external-candidate-details", sourceId],
+    enabled: !!sourceId,
+    queryFn: () => getExternalCandidateDetails(String(sourceId)),
+  });
+}
 
-  if (!res.ok) throw new Error(await res.text());
-  const json = await res.json();
+/** Internal ranking (by job) */
+export function useInternalRanking(params: {
+  jobId?: string;
+  search?: string;
+  minScore?: number;
+}) {
+  return useQuery<{ items: InternalCandidateListItemDTO[] }>({
+    queryKey: ["internal-ranking", params],
+    enabled: !!params.jobId,
+    queryFn: () =>
+      getInternalRankingForJob({
+        jobId: String(params.jobId),
+        search: params.search,
+        minScore: params.minScore,
+      }),
+    placeholderData: (prev) => prev,
+  });
+}
 
-  // si backend renvoie {items:[]}
-  return json.items ?? json;
+/**
+ * ✅ Hydrate internal ranking cards
+ * For each candidate_id, fetch full profile using your new endpoint.
+ * This fixes: "— / No skills" on first page.
+ */
+export function useInternalCandidatesHydrated(candidateIds: string[]) {
+  const queries = useQueries({
+    queries: candidateIds.map((id) => ({
+      queryKey: ["internal-candidate-details", id],
+      queryFn: () => getInternalCandidateDetails(id),
+      enabled: !!id,
+      staleTime: 1000 * 60 * 5,
+    })),
+  });
+
+  const mapById = new Map<string, InternalCandidateFullProfileDTO>();
+
+  queries.forEach((q, idx) => {
+    const id = candidateIds[idx];
+    if (q.data && id) mapById.set(id, q.data);
+  });
+
+  return { queries, mapById };
+}
+
+/** Internal details page */
+export function useInternalCandidateDetails(candidateId?: string) {
+  return useQuery<InternalCandidateFullProfileDTO>({
+    queryKey: ["internal-candidate-details", candidateId],
+    enabled: !!candidateId,
+    queryFn: () => getInternalCandidateDetails(String(candidateId)),
+  });
 }

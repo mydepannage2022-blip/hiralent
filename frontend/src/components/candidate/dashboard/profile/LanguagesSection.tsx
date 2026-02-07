@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useMemo  } from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, Globe, X, Check, Plus, Trash2 } from 'lucide-react';
 import { useUpdateLanguages } from '@/src/lib/profile/profile.queries';
@@ -44,11 +44,18 @@ const LanguagesSection: React.FC = () => {
     }
     return [];
   };
+  const parsedLanguages = useMemo(() => {
+  return getLanguagesData();
+  }, [profileData?.languages]);
+
 
   useEffect(() => {
-    const languagesData = getLanguagesData();
-    setLanguages(languagesData);
-  }, [profileData]);
+    if (!isEditing) {
+      setLanguages(parsedLanguages);
+    }
+  }, [parsedLanguages, isEditing]);
+
+
 
   const handleEdit = () => {
     setIsEditing(true);

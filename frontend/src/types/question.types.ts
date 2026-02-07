@@ -28,4 +28,9 @@ export interface Question {
   views?: number;
   submissions?: number;
   successRate?: number;
+  hasDiagram?: boolean;
+  diagramType?: string | null;          // "uml" | "mermaid" | ...
+  diagramCode?: string | null;          // text source (e.g. mermaid)
+  diagramImageUrl?: string | null;      // URL to image
+  diagramMetadata?: any;
 }

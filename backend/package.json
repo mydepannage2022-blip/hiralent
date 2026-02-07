@@ -16,7 +16,7 @@
     "dev:test": "ts-node src/scripts/dev-test.ts",
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
     "generate:batch": "ts-node src/scripts/batch-generate-questions.ts",
-    "worker:dev": "nodemon --exec \"ts-node --transpile-only src/workers/run.worker.ts\"",
+    "worker:dev": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/run.worker.ts\"",
     "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\""
   },
   "prisma": {
@@ -92,7 +92,7 @@
     "@types/minio": "^7.1.0",
     "@types/mongodb": "^4.0.6",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.0.8",
+    "@types/node": "^24.10.9",
     "@types/node-fetch": "^2.6.13",
     "@types/nodemailer": "^6.4.17",
     "@types/passport": "^1.0.17",
