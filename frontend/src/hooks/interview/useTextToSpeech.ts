@@ -29,8 +29,8 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     isSupported: false,
     voices: [],
     selectedVoice: null,
-    rate: 1,
-    pitch: 1,
+    rate: 0.9,  // Slightly slower for natural sound
+    pitch: 1.1, // Slightly higher for warmer tone
   });
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -49,14 +49,39 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
       if (availableVoices.length > 0) {
-        // Prefer English voices
         const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
-        const defaultVoice = englishVoices[0] || availableVoices[0];
+
+        // Score voices to find the most natural-sounding one
+        const scoredVoices = englishVoices.map(voice => {
+          let score = 0;
+          const name = voice.name.toLowerCase();
+
+          // Prefer female voices (often sound more natural)
+          const femaleNames = ['samantha', 'karen', 'victoria', 'susan', 'zira',
+                               'hazel', 'fiona', 'moira', 'tessa', 'ava', 'allison'];
+          if (femaleNames.some(fn => name.includes(fn))) score += 10;
+          if (name.includes('female')) score += 8;
+
+          // Prefer neural/natural/premium voices
+          if (name.includes('neural') || name.includes('natural')) score += 15;
+          if (name.includes('premium') || name.includes('enhanced')) score += 12;
+
+          // Prefer US English
+          if (voice.lang === 'en-US') score += 3;
+
+          // Avoid robotic-sounding voices
+          if (name.includes('david') || name.includes('mark')) score -= 2;
+
+          return { voice, score };
+        });
+
+        scoredVoices.sort((a, b) => b.score - a.score);
+        const bestVoice = scoredVoices[0]?.voice || englishVoices[0] || availableVoices[0];
 
         setState(prev => ({
           ...prev,
           voices: availableVoices,
-          selectedVoice: prev.selectedVoice || defaultVoice,
+          selectedVoice: prev.selectedVoice || bestVoice,
         }));
       }
     };
