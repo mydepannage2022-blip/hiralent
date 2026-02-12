@@ -5,7 +5,8 @@
       "Bash(curl:*)",
       "Bash(grep:*)",
       "Bash(done)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

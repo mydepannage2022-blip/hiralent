@@ -1,0 +1,238 @@
+// frontend/src/components/company/dashboard/employer/ProfileHeader.tsx
+
+"use client";
+
+import React, { useRef, useState } from "react";
+import { Camera, X, Upload, Loader2 } from "lucide-react";
+import Image from "next/image";
+import {
+  useUploadCompanyLogo,
+  useUploadCompanyCover,
+  useRemoveCompanyLogo,
+  useRemoveCompanyCover,
+} from "@/src/lib/company/employer.queries";
+import type { CompanyProfile } from "@/src/types/employer.types";
+
+interface ProfileHeaderProps {
+  profile: CompanyProfile;
+}
+
+export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  const uploadLogoMutation = useUploadCompanyLogo();
+  const uploadCoverMutation = useUploadCompanyCover();
+  const removeLogoMutation = useRemoveCompanyLogo();
+  const removeCoverMutation = useRemoveCompanyCover();
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload
+    uploadLogoMutation.mutate(file, {
+      onSuccess: () => setLogoPreview(null),
+      onError: () => setLogoPreview(null),
+    });
+  };
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => setCoverPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    uploadCoverMutation.mutate(file, {
+      onSuccess: () => setCoverPreview(null),
+      onError: () => setCoverPreview(null),
+    });
+  };
+
+  const handleRemoveLogo = () => {
+    removeLogoMutation.mutate();
+  };
+
+  const handleRemoveCover = () => {
+    removeCoverMutation.mutate();
+  };
+
+  const displayLogo = logoPreview || profile.logo_url;
+  const displayCover = coverPreview || profile.cover_url;
+  const isLogoLoading = uploadLogoMutation.isPending || removeLogoMutation.isPending;
+  const isCoverLoading = uploadCoverMutation.isPending || removeCoverMutation.isPending;
+
+  return (
+    <div className="bg-white rounded-xl border border-[#EDEDED] overflow-hidden">
+      {/* Cover Image */}
+      <div className="relative h-[180px] bg-gradient-to-r from-[#005DDC] to-[#0046B3]">
+        {displayCover && (
+          <Image
+            src={displayCover}
+            alt="Cover"
+            fill
+            className="object-cover"
+          />
+        )}
+
+        {/* Cover overlay actions */}
+        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors group">
+          <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {displayCover && (
+              <button
+                onClick={handleRemoveCover}
+                disabled={isCoverLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
+              >
+                <X size={14} />
+                Remove
+              </button>
+            )}
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              disabled={isCoverLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
+            >
+              {isCoverLoading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Camera size={14} />
+              )}
+              {displayCover ? "Change" : "Add Cover"}
+            </button>
+          </div>
+        </div>
+
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleCoverChange}
+          className="hidden"
+        />
+      </div>
+
+      {/* Profile section */}
+      <div className="px-6 pb-5">
+        <div className="flex items-end gap-4 -mt-12">
+          {/* Logo */}
+          <div className="relative">
+            <div className="w-24 h-24 rounded-xl border-4 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center">
+              {displayLogo ? (
+                <Image
+                  src={displayLogo}
+                  alt={profile.name || "Company"}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#EFF5FF] flex items-center justify-center">
+                  <span className="text-[28px] font-bold text-[#005DDC]">
+                    {profile.name?.charAt(0)?.toUpperCase() || "C"}
+                  </span>
+                </div>
+              )}
+
+              {/* Logo loading overlay */}
+              {isLogoLoading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                  <Loader2 size={20} className="animate-spin text-[#005DDC]" />
+                </div>
+              )}
+            </div>
+
+            {/* Logo edit button */}
+            <button
+              onClick={() => logoInputRef.current?.click()}
+              disabled={isLogoLoading}
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#005DDC] rounded-full flex items-center justify-center text-white shadow-sm hover:bg-[#0046B3] transition-colors disabled:opacity-50"
+            >
+              <Camera size={14} />
+            </button>
+
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="hidden"
+            />
+          </div>
+
+          {/* Company info */}
+          <div className="flex-1 pb-1">
+            <h1 className="text-[20px] font-bold text-[#1a1a1a]">
+              {profile.name || "Your Company"}
+            </h1>
+            {profile.tagline && (
+              <p className="text-[13px] text-[#888] mt-0.5">{profile.tagline}</p>
+            )}
+          </div>
+
+          {/* Remove logo button */}
+          {displayLogo && !isLogoLoading && (
+            <button
+              onClick={handleRemoveLogo}
+              className="text-[12px] text-[#888] hover:text-[#dc2626] transition-colors"
+            >
+              Remove logo
+            </button>
+          )}
+        </div>
+
+        {/* Quick stats */}
+        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#EDEDED]">
+          {profile.industry && (
+            <div>
+              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+                Industry
+              </p>
+              <p className="text-[13px] font-medium text-[#333]">
+                {profile.industry}
+              </p>
+            </div>
+          )}
+          {profile.company_size && (
+            <div>
+              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+                Company Size
+              </p>
+              <p className="text-[13px] font-medium text-[#333]">
+                {profile.company_size}
+              </p>
+            </div>
+          )}
+          {profile.location && (
+            <div>
+              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+                Location
+              </p>
+              <p className="text-[13px] font-medium text-[#333]">
+                {profile.location}
+              </p>
+            </div>
+          )}
+          {profile.founded_year && (
+            <div>
+              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+                Founded
+              </p>
+              <p className="text-[13px] font-medium text-[#333]">
+                {profile.founded_year}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

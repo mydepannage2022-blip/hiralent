@@ -68,6 +68,8 @@ import candidateNotificationsRoutes from "./routes/candidate/notifications.route
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
 import teamRoutes from './routes/team.routes';
+import employerRoutes from './routes/employer.routes';
+
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -75,6 +77,7 @@ app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company/team', teamRoutes);
+app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
