@@ -102,16 +102,16 @@ export default function EmployerProfilePage() {
             Manage your company profile and public presence
           </p>
         </div>
-        {profile.slug && (
-          <Link
-            href={`/company/${profile.slug}`}
-            target="_blank"
-            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-[#005DDC] bg-[#EFF5FF] rounded-lg hover:bg-[#E0EDFF] transition-colors"
-          >
-            <Eye size={15} />
-            View Public Profile
-          </Link>
-        )}
+          {((profile as any).slug || profile.company_id) && (
+            <Link
+              href={`/company/${(profile as any).slug || profile.company_id}`}
+              target="_blank"
+              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-[#005DDC] bg-[#EFF5FF] rounded-lg hover:bg-[#E0EDFF] transition-colors"
+            >
+              <Eye size={15} />
+              View Public Profile
+            </Link>
+          )}
       </div>
 
       {/* Profile Header (Logo/Cover) */}

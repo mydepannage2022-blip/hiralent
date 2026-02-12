@@ -33,7 +33,7 @@ export default function BusinessDetailsForm({ profile }: BusinessDetailsFormProp
     setFormData({
       industry: profile.industry || "",
       company_size: profile.company_size || "",
-      company_type: profile.company_type || "",
+    company_type: (profile as any).company_type || profile.business_type || "",
       founded_year: profile.founded_year || undefined,
       registration_number: profile.registration_number || "",
       tax_id: profile.tax_id || "",

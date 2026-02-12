@@ -16,7 +16,10 @@ export default function PublicCompanyPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("about");
 
-  const { data: company, isLoading, isError } = usePublicCompanyProfile(slug);
+  const { data, isLoading, isError } = usePublicCompanyProfile(slug);
+  
+  // Extract profile from response
+  const profile = data?.profile;
 
   if (isLoading) {
     return (
@@ -33,7 +36,7 @@ export default function PublicCompanyPage() {
     );
   }
 
-  if (isError || !company) {
+  if (isError || !profile) {
     return (
       <div className="min-h-screen bg-[#F9F9F9] flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-sm border border-[#EDEDED] p-8 max-w-md w-full text-center">
@@ -65,7 +68,7 @@ export default function PublicCompanyPage() {
   return (
     <div className="min-h-screen bg-[#F9F9F9]">
       {/* Header */}
-      <PublicCompanyHeader company={company} />
+      <PublicCompanyHeader profile={profile} />
 
       {/* Content container */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
@@ -95,8 +98,8 @@ export default function PublicCompanyPage() {
 
           {/* Tab content */}
           <div className="p-6">
-            {activeTab === "about" && <PublicCompanyAbout company={company} />}
-            {activeTab === "jobs" && <PublicCompanyJobs companySlug={slug} />}
+            {activeTab === "about" && <PublicCompanyAbout profile={profile} />}
+            {activeTab === "jobs" && <PublicCompanyJobs slug={slug} companyName={profile?.company_name || profile?.display_name || ""} />}
           </div>
         </div>
 

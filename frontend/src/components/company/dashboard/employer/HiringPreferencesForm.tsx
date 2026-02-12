@@ -29,12 +29,13 @@ export default function HiringPreferencesForm({ profile }: HiringPreferencesForm
 
   useEffect(() => {
     setFormData({
-      work_types: profile.work_types || [],
-      benefits: profile.benefits || [],
-      culture_description: profile.culture_description || "",
-      tech_stack: profile.tech_stack || [],
+      work_types: (profile as any).work_types || [],
+      benefits: (profile as any).benefits || [],
+      culture_description: (profile as any).culture_description || "",
+      tech_stack: (profile as any).tech_stack || [],
     });
   }, [profile]);
+
 
   const handleCultureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, culture_description: e.target.value }));

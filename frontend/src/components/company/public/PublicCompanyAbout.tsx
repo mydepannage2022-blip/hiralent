@@ -20,10 +20,11 @@ interface PublicCompanyAboutProps {
 
 export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps) {
   const hasAbout = profile.description;
-  const hasCulture = profile.culture_description;
-  const hasBenefits = profile.benefits && profile.benefits.length > 0;
-  const hasTechStack = profile.tech_stack && profile.tech_stack.length > 0;
-  const hasWorkTypes = profile.work_types && profile.work_types.length > 0;
+  const hasCulture = (profile as any).culture_description;
+  const hasBenefits = (profile as any).benefits && (profile as any).benefits.length > 0;
+  const hasTechStack = (profile as any).tech_stack && (profile as any).tech_stack.length > 0;
+  const hasWorkTypes = (profile as any).work_types && (profile as any).work_types.length > 0;
+
 
   const hasAnyContent = hasAbout || hasCulture || hasBenefits || hasTechStack || hasWorkTypes;
 
@@ -45,7 +46,8 @@ export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps)
           <div className="flex items-center gap-2 mb-4">
             <Building2 size={18} color="#005DDC" />
             <h2 className="text-[16px] font-semibold text-[#1a1a1a]">
-              About {profile.name}
+              About {profile.company_name || profile.display_name}
+
             </h2>
           </div>
           <div className="prose prose-sm max-w-none">
@@ -66,7 +68,8 @@ export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps)
             </h2>
           </div>
           <p className="text-[14px] text-[#555] leading-relaxed whitespace-pre-line">
-            {profile.culture_description}
+            {(profile as any).culture_description}
+
           </p>
         </div>
       )}
@@ -84,7 +87,7 @@ export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps)
                 </h2>
               </div>
               <div className="flex flex-wrap gap-2">
-                {profile.work_types?.map((type) => (
+                {((profile as any).work_types as string[])?.map((type: string) => (
                   <span
                     key={type}
                     className="px-3 py-1.5 text-[13px] font-medium bg-[#EFF5FF] text-[#005DDC] rounded-lg"
@@ -106,7 +109,8 @@ export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps)
                 </h2>
               </div>
               <div className="flex flex-wrap gap-2">
-                {profile.benefits?.map((benefit) => (
+                {((profile as any).benefits as string[])?.map((benefit: string) => (
+
                   <span
                     key={benefit}
                     className="px-3 py-1.5 text-[13px] font-medium bg-[#F0FDF4] text-[#16a34a] rounded-lg"
@@ -130,7 +134,7 @@ export default function PublicCompanyAbout({ profile }: PublicCompanyAboutProps)
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {profile.tech_stack?.map((tech) => (
+            {((profile as any).tech_stack as string[])?.map((tech: string) => (
               <span
                 key={tech}
                 className="px-3 py-1.5 text-[13px] font-medium bg-[#F5F5F5] text-[#555] rounded-lg border border-[#EDEDED]"

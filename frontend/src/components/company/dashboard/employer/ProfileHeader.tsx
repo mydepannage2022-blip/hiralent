@@ -67,7 +67,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
   };
 
   const displayLogo = logoPreview || profile.logo_url;
-  const displayCover = coverPreview || profile.cover_url;
+  const displayCover = coverPreview || profile.banner_url || (profile as any).cover_url;
   const isLogoLoading = uploadLogoMutation.isPending || removeLogoMutation.isPending;
   const isCoverLoading = uploadCoverMutation.isPending || removeCoverMutation.isPending;
 
@@ -130,14 +130,14 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
               {displayLogo ? (
                 <Image
                   src={displayLogo}
-                  alt={profile.name || "Company"}
+                  alt={profile.company_name || profile.display_name || "Company"}
                   fill
                   className="object-cover"
                 />
               ) : (
                 <div className="w-full h-full bg-[#EFF5FF] flex items-center justify-center">
                   <span className="text-[28px] font-bold text-[#005DDC]">
-                    {profile.name?.charAt(0)?.toUpperCase() || "C"}
+                    {(profile.company_name || profile.display_name)?.charAt(0)?.toUpperCase() || "C"}
                   </span>
                 </div>
               )}
@@ -171,10 +171,10 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           {/* Company info */}
           <div className="flex-1 pb-1">
             <h1 className="text-[20px] font-bold text-[#1a1a1a]">
-              {profile.name || "Your Company"}
+              {profile.company_name || profile.display_name || "Your Company"}
             </h1>
-            {profile.tagline && (
-              <p className="text-[13px] text-[#888] mt-0.5">{profile.tagline}</p>
+            {(profile as any).tagline && (
+            <p className="text-[13px] text-[#888] mt-0.5">{(profile as any).tagline}</p>
             )}
           </div>
 
@@ -211,16 +211,17 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
               </p>
             </div>
           )}
-          {profile.location && (
-            <div>
-              <p className="text-[11px] text-[#999] uppercase tracking-wide">
-                Location
-              </p>
-              <p className="text-[13px] font-medium text-[#333]">
-                {profile.location}
-              </p>
-            </div>
-          )}
+        {(profile.headquarters || (profile as any).location) && (
+              <div>
+                <p className="text-[11px] text-[#999] uppercase tracking-wide">
+                  Location
+                </p>
+                <p className="text-[13px] font-medium text-[#333]">
+                  {profile.headquarters || (profile as any).location}
+                </p>
+              </div>
+            )}
+
           {profile.founded_year && (
             <div>
               <p className="text-[11px] text-[#999] uppercase tracking-wide">

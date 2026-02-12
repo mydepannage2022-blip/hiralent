@@ -65,14 +65,15 @@ export default function SocialLinksForm({ profile }: SocialLinksFormProps) {
 
   useEffect(() => {
     setFormData({
-      website_url: profile.website_url || "",
-      linkedin_url: profile.linkedin_url || "",
-      twitter_url: profile.twitter_url || "",
-      facebook_url: profile.facebook_url || "",
-      instagram_url: profile.instagram_url || "",
-      youtube_url: profile.youtube_url || "",
+      website_url: profile.website || (profile as any).website_url || "",
+      linkedin_url: profile.linkedin_profile || (profile as any).linkedin_url || "",
+      twitter_url: profile.twitter_handle || (profile as any).twitter_url || "",
+      facebook_url: profile.facebook_page || (profile as any).facebook_url || "",
+      instagram_url: (profile as any).instagram_url || "",
+      youtube_url: (profile as any).youtube_url || "",
     });
   }, [profile]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

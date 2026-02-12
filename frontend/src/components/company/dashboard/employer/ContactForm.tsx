@@ -26,22 +26,23 @@ export default function ContactForm({ profile }: ContactFormProps) {
 
   const updateMutation = useUpdateContact();
 
-  useEffect(() => {
-    setFormData({
-      contact_email: profile.contact_email || "",
-      contact_phone: profile.contact_phone || "",
-      location: profile.location || "",
-      address: profile.address || "",
-      city: profile.city || "",
-      state: profile.state || "",
-      country: profile.country || "",
-      postal_code: profile.postal_code || "",
-    });
-  }, [profile]);
+useEffect(() => {
+  setFormData({
+    contact_email: (profile as any).contact_email || "",
+    contact_phone: profile.contact_number || (profile as any).contact_phone || "",
+    location: (profile as any).location || profile.headquarters || "",
+    address: profile.full_address || (profile as any).address || "",
+    city: (profile as any).city || "",
+    state: (profile as any).state || "",
+    country: (profile as any).country || "",
+    postal_code: (profile as any).postal_code || "",
+  });
+}, [profile]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  setFormData((prev: UpdateContactPayload) => ({ ...prev, [name]: value }));
     setHasChanges(true);
   };
 

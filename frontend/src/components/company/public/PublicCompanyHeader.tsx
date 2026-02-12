@@ -26,28 +26,30 @@ interface PublicCompanyHeaderProps {
 }
 
 export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProps) {
-  const socialLinks = [
-    { key: "website_url", icon: Globe, label: "Website" },
-    { key: "linkedin_url", icon: Linkedin, label: "LinkedIn" },
-    { key: "twitter_url", icon: Twitter, label: "Twitter" },
-    { key: "facebook_url", icon: Facebook, label: "Facebook" },
-    { key: "instagram_url", icon: Instagram, label: "Instagram" },
-    { key: "youtube_url", icon: Youtube, label: "YouTube" },
-  ].filter((link) => profile[link.key as keyof CompanyProfile]);
+ const socialLinks = [
+  { key: "website", icon: Globe, label: "Website" },
+  { key: "linkedin_profile", icon: Linkedin, label: "LinkedIn" },
+  { key: "twitter_handle", icon: Twitter, label: "Twitter" },
+  { key: "facebook_page", icon: Facebook, label: "Facebook" },
+  { key: "instagram_url", icon: Instagram, label: "Instagram" },
+  { key: "youtube_url", icon: Youtube, label: "YouTube" },
+].filter((link) => (profile as any)[link.key]);
+
 
   return (
     <div className="bg-white rounded-xl border border-[#EDEDED] overflow-hidden">
       {/* Cover Image */}
       <div className="relative h-[200px] md:h-[240px] bg-gradient-to-r from-[#005DDC] to-[#0046B3]">
-        {profile.cover_url && (
-          <Image
-            src={profile.cover_url}
-            alt="Cover"
-            fill
-            className="object-cover"
-            priority
-          />
-        )}
+       {(profile.banner_url || (profile as any).cover_url) && (
+  <Image
+    src={profile.banner_url || (profile as any).cover_url}
+    alt="Cover"
+    fill
+    className="object-cover"
+    priority
+  />
+)}
+
       </div>
 
       {/* Profile Info */}
@@ -58,7 +60,7 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
             {profile.logo_url ? (
               <Image
                 src={profile.logo_url}
-                alt={profile.name || "Company"}
+                alt={profile.company_name || profile.display_name || "Company"}
                 width={128}
                 height={128}
                 className="object-cover w-full h-full"
@@ -66,7 +68,7 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
             ) : (
               <div className="w-full h-full bg-[#EFF5FF] flex items-center justify-center">
                 <span className="text-[40px] font-bold text-[#005DDC]">
-                  {profile.name?.charAt(0)?.toUpperCase() || "C"}
+                  {(profile.company_name || profile.display_name)?.charAt(0)?.toUpperCase() || "C"}
                 </span>
               </div>
             )}
@@ -78,15 +80,16 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-[24px] md:text-[28px] font-bold text-[#1a1a1a]">
-                    {profile.name}
+                    {profile.company_name || profile.display_name}
                   </h1>
-                  {profile.is_verified && (
+                  {profile.verified && (
                     <CheckCircle size={20} color="#16a34a" className="flex-shrink-0" />
                   )}
+
                 </div>
-                {profile.tagline && (
-                  <p className="text-[14px] text-[#666] mt-1">{profile.tagline}</p>
-                )}
+                  {(profile as any).tagline && (
+                    <p className="text-[14px] text-[#666] mt-1">{(profile as any).tagline}</p>
+                  )}
               </div>
 
               {/* Social Links - Desktop */}
@@ -120,12 +123,13 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
                   <span>{profile.industry}</span>
                 </div>
               )}
-              {profile.location && (
-                <div className="flex items-center gap-1.5 text-[13px] text-[#666]">
-                  <MapPin size={14} color="#888" />
-                  <span>{profile.location}</span>
-                </div>
-              )}
+            {(profile.headquarters || (profile as any).location) && (
+              <div className="flex items-center gap-1.5 text-[13px] text-[#666]">
+                <MapPin size={14} color="#888" />
+                <span>{profile.headquarters || (profile as any).location}</span>
+              </div>
+            )}
+
               {profile.company_size && (
                 <div className="flex items-center gap-1.5 text-[13px] text-[#666]">
                   <Users size={14} color="#888" />
@@ -165,20 +169,20 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
         </div>
 
         {/* Website CTA */}
-        {profile.website_url && (
-          <div className="mt-5 pt-5 border-t border-[#EDEDED]">
-            <a
-              href={profile.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-[#005DDC] bg-[#EFF5FF] rounded-lg hover:bg-[#E0EDFF] transition-colors"
-            >
-              <Globe size={15} />
-              Visit Website
-              <ExternalLink size={13} />
-            </a>
-          </div>
-        )}
+       {(profile.website || (profile as any).website_url) && (
+        <div className="mt-5 pt-5 border-t border-[#EDEDED]">
+          <a
+            href={profile.website || (profile as any).website_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-[#005DDC] bg-[#EFF5FF] rounded-lg hover:bg-[#E0EDFF] transition-colors"
+          >
+            <Globe size={15} />
+            Visit Website
+            <ExternalLink size={13} />
+          </a>
+        </div>
+      )}
       </div>
     </div>
   );

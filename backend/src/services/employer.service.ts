@@ -1,6 +1,6 @@
 // backend/src/services/employer.service.ts
 
-import { supabase } from "../config/supabase";
+import prisma from "../lib/prisma";
 import {
   CompanyProfile,
   PublicCompanyProfile,
@@ -13,16 +13,20 @@ import {
 } from "../types/employer.types";
 
 // Helper: Calculate profile completeness
-export const calculateProfileCompleteness = (profile: Partial<CompanyProfile>): number => {
+export const calculateProfileCompleteness = (profile: any): number => {
   let totalScore = 0;
 
   for (const section of PROFILE_SECTIONS) {
     let filledFields = 0;
 
     for (const field of section.fields) {
-      const value = (profile as any)[field];
-      if (value !== null && value !== undefined && value !== "" && 
-          !(Array.isArray(value) && value.length === 0)) {
+      const value = profile[field];
+      if (
+        value !== null &&
+        value !== undefined &&
+        value !== "" &&
+        !(Array.isArray(value) && value.length === 0)
+      ) {
         filledFields++;
       }
     }
@@ -36,241 +40,217 @@ export const calculateProfileCompleteness = (profile: Partial<CompanyProfile>): 
 
 // Helper: Get company_id from user_id
 export const getCompanyIdFromUserId = async (user_id: string): Promise<string> => {
-  // First check if user is company admin
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("id, role, company_id")
-    .eq("id", user_id)
-    .single();
+  // First check if user exists
+  const user = await prisma.user.findUnique({
+    where: { user_id },
+    select: { 
+      user_id: true, 
+      role: true,
+    },
+  });
 
-  if (userError || !userData) {
+  if (!user) {
     throw new Error("User not found");
   }
 
-  // If user has company_id (sub-account/HR), use that
-  if (userData.company_id) {
-    return userData.company_id;
+  // Check if user is a team member (sub-account/HR) via CompanyTeamMember table
+  const teamMembership = await prisma.companyTeamMember.findFirst({
+    where: { 
+      user_id: user_id,
+      is_active: true 
+    },
+    select: { company_id: true },
+  });
+
+  if (teamMembership) {
+    return teamMembership.company_id;
   }
 
-  // If user is company admin, find their company profile
-  const { data: companyProfile, error: profileError } = await supabase
-    .from("company_profiles")
-    .select("id")
-    .eq("user_id", user_id)
-    .single();
+  // If user is company_admin, their user_id IS the company_id
+  // (CompanyProfile.company_id references User.user_id)
+  const companyProfile = await prisma.companyProfile.findUnique({
+    where: { company_id: user_id },
+    select: { company_id: true },
+  });
 
-  if (profileError || !companyProfile) {
+  if (!companyProfile) {
     throw new Error("Company profile not found");
   }
 
-  return companyProfile.id;
+  return companyProfile.company_id;
 };
 
+
 // Get full company profile (for dashboard)
-export const getCompanyProfile = async (user_id: string): Promise<CompanyProfile> => {
+export const getCompanyProfile = async (user_id: string): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const profile = await prisma.companyProfile.findUnique({
+    where: { company_id },
+  });
 
-  if (error || !data) {
+  if (!profile) {
     throw new Error("Company profile not found");
   }
 
-  return data as CompanyProfile;
+  return profile;
 };
 
 // Update company info section
 export const updateCompanyInfo = async (
   user_id: string,
   payload: UpdateCompanyInfoPayload
-): Promise<CompanyProfile> => {
+): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  // If slug is being updated, check availability
-  if (payload.slug) {
-    const { data: existingSlug } = await supabase
-      .from("company_profiles")
-      .select("id")
-      .eq("slug", payload.slug)
-      .neq("id", company_id)
-      .single();
-
-    if (existingSlug) {
-      throw new Error("This slug is already taken");
-    }
+  const updateData: any = {};
+  
+  if (payload.company_name !== undefined) {
+    updateData.company_name = payload.company_name;
+    updateData.display_name = payload.company_name;
+  }
+  if (payload.description !== undefined) {
+    updateData.description = payload.description;
   }
 
-  // Get current profile for completeness calculation
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const updatedProfile = await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      ...updateData,
+      updated_at: new Date(),
+    },
+  });
 
-  const updatedData = { ...currentProfile, ...payload };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .update({
-      ...payload,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Update company info error:", error);
-    throw new Error("Failed to update company info");
-  }
-
-  return data as CompanyProfile;
+  return updatedProfile;
 };
 
 // Update contact section
 export const updateContact = async (
   user_id: string,
   payload: UpdateContactPayload
-): Promise<CompanyProfile> => {
+): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const updateData: any = {};
 
-  const updatedData = { ...currentProfile, ...payload };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .update({
-      ...payload,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Update contact error:", error);
-    throw new Error("Failed to update contact details");
+  if (payload.phone !== undefined) {
+    updateData.contact_number = payload.phone;
+  }
+  if (payload.location !== undefined) {
+    updateData.headquarters = payload.location;
+  }
+  if (payload.address !== undefined) {
+    updateData.full_address = payload.address;
   }
 
-  return data as CompanyProfile;
+  const updatedProfile = await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      ...updateData,
+      updated_at: new Date(),
+    },
+  });
+
+  return updatedProfile;
 };
 
 // Update business details section
 export const updateBusinessDetails = async (
   user_id: string,
   payload: UpdateBusinessDetailsPayload
-): Promise<CompanyProfile> => {
+): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const updateData: any = {};
 
-  const updatedData = { ...currentProfile, ...payload };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .update({
-      ...payload,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Update business details error:", error);
-    throw new Error("Failed to update business details");
+  if (payload.industry !== undefined) {
+    updateData.industry = payload.industry;
+  }
+  if (payload.company_size !== undefined) {
+    updateData.company_size = payload.company_size;
+  }
+  if (payload.company_type !== undefined) {
+    updateData.business_type = payload.company_type;
+  }
+  if (payload.founded_year !== undefined) {
+    updateData.founded_year = payload.founded_year;
+  }
+  if (payload.registration_number !== undefined) {
+    updateData.registration_number = payload.registration_number;
+  }
+  if (payload.tax_id !== undefined) {
+    updateData.tax_id = payload.tax_id;
   }
 
-  return data as CompanyProfile;
+  const updatedProfile = await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      ...updateData,
+      updated_at: new Date(),
+    },
+  });
+
+  return updatedProfile;
 };
 
 // Update hiring preferences section
 export const updateHiringPreferences = async (
   user_id: string,
   payload: UpdateHiringPreferencesPayload
-): Promise<CompanyProfile> => {
+): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const updateData: any = {};
 
-  const updatedData = { ...currentProfile, ...payload };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .update({
-      ...payload,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Update hiring preferences error:", error);
-    throw new Error("Failed to update hiring preferences");
+  if (payload.work_types !== undefined) {
+    updateData.remote_policy = payload.work_types?.join(",") || null;
+  }
+  if (payload.tech_stack !== undefined) {
+    updateData.typical_roles = payload.tech_stack;
   }
 
-  return data as CompanyProfile;
+  const updatedProfile = await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      ...updateData,
+      updated_at: new Date(),
+    },
+  });
+
+  return updatedProfile;
 };
 
 // Update social links section
 export const updateSocialLinks = async (
   user_id: string,
   payload: UpdateSocialLinksPayload
-): Promise<CompanyProfile> => {
+): Promise<any> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
+  const updateData: any = {};
 
-  const updatedData = { ...currentProfile, ...payload };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .update({
-      ...payload,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Update social links error:", error);
-    throw new Error("Failed to update social links");
+  if (payload.website !== undefined) {
+    updateData.website = payload.website;
+  }
+  if (payload.linkedin_url !== undefined) {
+    updateData.linkedin_profile = payload.linkedin_url;
+  }
+  if (payload.twitter_url !== undefined) {
+    updateData.twitter_handle = payload.twitter_url;
+  }
+  if (payload.facebook_url !== undefined) {
+    updateData.facebook_page = payload.facebook_url;
   }
 
-  return data as CompanyProfile;
+  const updatedProfile = await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      ...updateData,
+      updated_at: new Date(),
+    },
+  });
+
+  return updatedProfile;
 };
 
 // Upload logo
@@ -280,63 +260,17 @@ export const uploadLogo = async (
 ): Promise<{ logo_url: string }> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  // Delete old logo if exists
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("logo_url")
-    .eq("id", company_id)
-    .single();
-
-  if (currentProfile?.logo_url) {
-    const oldPath = currentProfile.logo_url.split("/").pop();
-    if (oldPath) {
-      await supabase.storage.from("company-assets").remove([`logos/${oldPath}`]);
-    }
-  }
-
-  // Upload new logo
   const fileExt = file.originalname.split(".").pop();
   const fileName = `${company_id}-${Date.now()}.${fileExt}`;
-  const filePath = `logos/${fileName}`;
+  const logo_url = `/uploads/logos/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("company-assets")
-    .upload(filePath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    console.error("Logo upload error:", uploadError);
-    throw new Error("Failed to upload logo");
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("company-assets")
-    .getPublicUrl(filePath);
-
-  const logo_url = urlData.publicUrl;
-
-  // Update profile with completeness recalculation
-  const { data: fullProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
-
-  const updatedData = { ...fullProfile, logo_url };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  // Update profile
-  await supabase
-    .from("company_profiles")
-    .update({
+  await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
       logo_url,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id);
+      updated_at: new Date(),
+    },
+  });
 
   return { logo_url };
 };
@@ -345,30 +279,13 @@ export const uploadLogo = async (
 export const removeLogo = async (user_id: string): Promise<void> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("*")
-    .eq("id", company_id)
-    .single();
-
-  if (currentProfile?.logo_url) {
-    const oldPath = currentProfile.logo_url.split("/").pop();
-    if (oldPath) {
-      await supabase.storage.from("company-assets").remove([`logos/${oldPath}`]);
-    }
-  }
-
-  const updatedData = { ...currentProfile, logo_url: null };
-  const profile_completeness = calculateProfileCompleteness(updatedData);
-
-  await supabase
-    .from("company_profiles")
-    .update({
+  await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
       logo_url: null,
-      profile_completeness,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id);
+      updated_at: new Date(),
+    },
+  });
 };
 
 // Upload cover image
@@ -378,52 +295,17 @@ export const uploadCover = async (
 ): Promise<{ cover_image_url: string }> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  // Delete old cover if exists
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("cover_image_url")
-    .eq("id", company_id)
-    .single();
-
-  if (currentProfile?.cover_image_url) {
-    const oldPath = currentProfile.cover_image_url.split("/").pop();
-    if (oldPath) {
-      await supabase.storage.from("company-assets").remove([`covers/${oldPath}`]);
-    }
-  }
-
-  // Upload new cover
   const fileExt = file.originalname.split(".").pop();
-  const fileName = `${company_id}-${Date.now()}.${fileExt}`;
-  const filePath = `covers/${fileName}`;
+  const fileName = `${company_id}-cover-${Date.now()}.${fileExt}`;
+  const cover_image_url = `/uploads/covers/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("company-assets")
-    .upload(filePath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    console.error("Cover upload error:", uploadError);
-    throw new Error("Failed to upload cover image");
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("company-assets")
-    .getPublicUrl(filePath);
-
-  const cover_image_url = urlData.publicUrl;
-
-  // Update profile
-  await supabase
-    .from("company_profiles")
-    .update({
-      cover_image_url,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id);
+  await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      banner_url: cover_image_url,
+      updated_at: new Date(),
+    },
+  });
 
   return { cover_image_url };
 };
@@ -432,26 +314,13 @@ export const uploadCover = async (
 export const removeCover = async (user_id: string): Promise<void> => {
   const company_id = await getCompanyIdFromUserId(user_id);
 
-  const { data: currentProfile } = await supabase
-    .from("company_profiles")
-    .select("cover_image_url")
-    .eq("id", company_id)
-    .single();
-
-  if (currentProfile?.cover_image_url) {
-    const oldPath = currentProfile.cover_image_url.split("/").pop();
-    if (oldPath) {
-      await supabase.storage.from("company-assets").remove([`covers/${oldPath}`]);
-    }
-  }
-
-  await supabase
-    .from("company_profiles")
-    .update({
-      cover_image_url: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", company_id);
+  await prisma.companyProfile.update({
+    where: { company_id },
+    data: {
+      banner_url: null,
+      updated_at: new Date(),
+    },
+  });
 };
 
 // Check slug availability
@@ -459,22 +328,25 @@ export const checkSlugAvailability = async (
   slug: string,
   exclude_company_id?: string
 ): Promise<{ available: boolean; suggestion?: string }> => {
-  let query = supabase
-    .from("company_profiles")
-    .select("id, slug")
-    .eq("slug", slug);
+  const whereClause: any = {
+    company_name: {
+      equals: slug,
+      mode: "insensitive",
+    },
+  };
 
   if (exclude_company_id) {
-    query = query.neq("id", exclude_company_id);
+    whereClause.company_id = { not: exclude_company_id };
   }
 
-  const { data } = await query.single();
+  const existing = await prisma.companyProfile.findFirst({
+    where: whereClause,
+  });
 
-  if (!data) {
+  if (!existing) {
     return { available: true };
   }
 
-  // Generate suggestion
   const suggestion = `${slug}-${Math.floor(Math.random() * 1000)}`;
   return { available: false, suggestion };
 };
@@ -482,42 +354,39 @@ export const checkSlugAvailability = async (
 // Get public company profile by slug
 export const getPublicCompanyProfile = async (
   slug: string
-): Promise<PublicCompanyProfile | null> => {
-  const { data, error } = await supabase
-    .from("company_profiles")
-    .select(`
-      id,
-      company_name,
-      slug,
-      tagline,
-      description,
-      logo_url,
-      cover_image_url,
-      location,
-      industry,
-      company_size,
-      company_type,
-      founded_year,
-      work_types,
-      benefits,
-      tech_stack,
-      culture_description,
-      website,
-      linkedin_url,
-      twitter_url,
-      facebook_url,
-      instagram_url,
-      youtube_url,
-      is_verified
-    `)
-    .eq("slug", slug)
-    .single();
+): Promise<any | null> => {
+  const profile = await prisma.companyProfile.findFirst({
+    where: {
+      OR: [
+        { company_id: slug },
+        { company_name: { equals: slug, mode: "insensitive" } },
+        { display_name: { equals: slug, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      company_id: true,
+      company_name: true,
+      display_name: true,
+      description: true,
+      logo_url: true,
+      banner_url: true,
+      headquarters: true,
+      industry: true,
+      company_size: true,
+      business_type: true,
+      founded_year: true,
+      remote_policy: true,
+      typical_roles: true,
+      hiring_regions: true,
+      website: true,
+      linkedin_profile: true,
+      twitter_handle: true,
+      facebook_page: true,
+      verified: true,
+    },
+  });
 
-  if (error || !data) {
-    return null;
-  }
-
-  return data as PublicCompanyProfile;
+  return profile;
 };
 
 // Get public company jobs
@@ -526,12 +395,16 @@ export const getPublicCompanyJobs = async (
   page: number = 1,
   limit: number = 10
 ): Promise<{ jobs: any[]; total: number; page: number; totalPages: number }> => {
-  // First get company id from slug
-  const { data: company } = await supabase
-    .from("company_profiles")
-    .select("id")
-    .eq("slug", slug)
-    .single();
+  const company = await prisma.companyProfile.findFirst({
+    where: {
+      OR: [
+        { company_id: slug },
+        { company_name: { equals: slug, mode: "insensitive" } },
+        { display_name: { equals: slug, mode: "insensitive" } },
+      ],
+    },
+    select: { company_id: true },
+  });
 
   if (!company) {
     return { jobs: [], total: 0, page: 1, totalPages: 0 };
@@ -539,45 +412,38 @@ export const getPublicCompanyJobs = async (
 
   const offset = (page - 1) * limit;
 
-  // Get total count
-  const { count } = await supabase
-    .from("jobs")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", company.id)
-    .eq("status", "published");
+  const total = await prisma.companyJob.count({
+    where: {
+      company_id: company.company_id,
+      status: "ACTIVE",
+    },
+  });
 
-  // Get jobs
-  const { data: jobs, error } = await supabase
-    .from("jobs")
-    .select(`
-      id,
-      title,
-      slug,
-      location,
-      work_type,
-      employment_type,
-      experience_level,
-      salary_min,
-      salary_max,
-      salary_currency,
-      skills,
-      created_at
-    `)
-    .eq("company_id", company.id)
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+  const jobs = await prisma.companyJob.findMany({
+    where: {
+      company_id: company.company_id,
+      status: "ACTIVE",
+    },
+    select: {
+      job_id: true,
+      title: true,
+      location: true,
+      remote_option: true,
+      job_type: true,
+      experience_level: true,
+      salary_range: true,
+      required_skills: true,
+      created_at: true,
+    },
+    orderBy: { created_at: "desc" },
+    skip: offset,
+    take: limit,
+  });
 
-  if (error) {
-    console.error("Get public company jobs error:", error);
-    throw new Error("Failed to get company jobs");
-  }
-
-  const total = count || 0;
   const totalPages = Math.ceil(total / limit);
 
   return {
-    jobs: jobs || [],
+    jobs,
     total,
     page,
     totalPages,

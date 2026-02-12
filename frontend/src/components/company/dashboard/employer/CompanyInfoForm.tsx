@@ -22,14 +22,15 @@ export default function CompanyInfoForm({ profile }: CompanyInfoFormProps) {
 
   const updateMutation = useUpdateCompanyInfo();
 
-  useEffect(() => {
-    setFormData({
-      name: profile.name || "",
-      tagline: profile.tagline || "",
-      description: profile.description || "",
-      slug: profile.slug || "",
-    });
-  }, [profile]);
+useEffect(() => {
+  setFormData({
+    name: profile.company_name || profile.display_name || "",
+    tagline: (profile as any).tagline || "",
+    description: profile.description || "",
+    slug: (profile as any).slug || "",
+  });
+}, [profile]);
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

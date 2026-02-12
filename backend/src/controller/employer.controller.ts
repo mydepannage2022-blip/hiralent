@@ -408,7 +408,7 @@ export const checkSlugController = async (req: Request, res: Response) => {
   try {
     const authenticatedReq = req as AuthenticatedRequest;
     const user_id = authenticatedReq.user?.user_id;
-    const { slug } = req.params;
+    const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
 
     if (!slug) {
       return res.status(400).json({
@@ -443,7 +443,7 @@ export const checkSlugController = async (req: Request, res: Response) => {
 // Get public company profile (no auth required)
 export const getPublicProfileController = async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
+    const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
 
     if (!slug) {
       return res.status(400).json({
@@ -475,7 +475,7 @@ export const getPublicProfileController = async (req: Request, res: Response) =>
 // Get public company jobs (no auth required)
 export const getPublicJobsController = async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
+    const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
 

@@ -239,3 +239,105 @@ export const INDUSTRY_OPTIONS = [
   "Government",
   "Other",
 ];
+
+export const COMPANY_SIZE_OPTIONS = [
+  { value: "startup", label: "Startup (1-10)" },
+  { value: "small", label: "Small (11-50)" },
+  { value: "medium", label: "Medium (51-200)" },
+  { value: "large", label: "Large (201-1000)" },
+  { value: "enterprise", label: "Enterprise (1000+)" },
+];
+
+export const COMPANY_TYPE_OPTIONS = [
+  { value: "public", label: "Public Company" },
+  { value: "private", label: "Private Company" },
+  { value: "non-profit", label: "Non-Profit" },
+  { value: "government", label: "Government" },
+];
+
+// Alias for backward compatibility
+export type UpdateBusinessPayload = UpdateCompanyBusinessPayload & {
+  industry?: string;
+  company_size?: string;
+  company_type?: string;
+  founded_year?: number;
+};
+
+// Alias for CompanyInfoForm
+export interface UpdateCompanyInfoPayload {
+  name?: string;
+  tagline?: string;
+  description?: string;
+  slug?: string;
+}
+
+// Alias for ContactForm
+export interface UpdateContactPayload {
+  contact_email?: string;
+  contact_phone?: string;
+  location?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+}
+
+// Work Type Options
+export const WORK_TYPE_OPTIONS = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+];
+
+// Benefit Options
+export const BENEFIT_OPTIONS = [
+  "Health Insurance",
+  "Dental Insurance",
+  "Vision Insurance",
+  "401(k) / Retirement",
+  "Paid Time Off",
+  "Remote Work",
+  "Flexible Hours",
+  "Stock Options",
+  "Professional Development",
+  "Gym Membership",
+  "Free Meals",
+  "Parental Leave",
+  "Mental Health Support",
+  "Education Stipend",
+  "Home Office Stipend",
+];
+
+// Alias for HiringPreferencesForm
+export interface UpdateHiringPayload {
+  work_types?: string[];
+  benefits?: string[];
+  culture_description?: string;
+  tech_stack?: string[];
+}
+
+// Alias for SocialLinksForm
+export interface UpdateSocialLinksPayload {
+  website_url?: string;
+  linkedin_url?: string;
+  twitter_url?: string;
+  facebook_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+}
+
+
+// ==================== MISSING RESPONSE TYPES ====================
+
+export interface ProfileCompletenessResponse {
+  success: boolean;
+  completeness: number;
+  score: number;
+  sections: Record<string, boolean>;
+}
+
+export interface PublicCompanyProfileResponse {
+  success: boolean;
+  profile: CompanyProfile;
+}
