@@ -28,15 +28,23 @@ class Settings(BaseSettings):
     OCR_CONFIDENCE_THRESHOLD: float = 0.85
     OCR_TARGET_MIN_WIDTH: int = 1800
     TESSERACT_CMD: str = ""  # Path to tesseract if not in PATH
+    USE_EASYOCR: bool = False  # Use EasyOCR instead of Tesseract
 
     # Redis/Queue
     REDIS_URL: str = "redis://127.0.0.1:6379"
 
     # Webhook
     BACKEND_WEBHOOK_URL: str = "http://localhost:4000/api/v1/webhooks/document-validation"
+    BACKEND_INTERNAL_TOKEN: str = ""  # Token for backend webhook authentication
 
     # Timeouts
     VALIDATION_TIMEOUT_SECONDS: int = 120
+
+    # AI Configuration (OpenAI or Gemini)
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     class Config:
         env_file = ".env"

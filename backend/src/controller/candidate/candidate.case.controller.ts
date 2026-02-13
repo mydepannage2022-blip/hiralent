@@ -52,7 +52,7 @@ function mapToValidatorType(docType: string): DocumentType {
     visa_application: "visa_application_form",
     bank_statement: "bank_statement",
     employment_letter: "employment_letter",
-    accommodation_proof: "accommodation_proof",
+    proof_of_accommodation: "accommodation_proof",
   };
   return mapping[docType] || "passport_copy";
 }
@@ -109,7 +109,7 @@ export const getCandidateCases = async (req: Request, res: Response) => {
 export const getCaseById = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -210,7 +210,7 @@ export const getCaseById = async (req: Request, res: Response) => {
 export const uploadCaseDocument = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
     const { document_type, notes } = req.body;
 
     if (!userId) {
@@ -372,7 +372,7 @@ export const uploadCaseDocument = async (req: Request, res: Response) => {
 export const getCaseDocuments = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -416,7 +416,8 @@ export const getCaseDocuments = async (req: Request, res: Response) => {
 export const deleteCaseDocument = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId, documentId } = req.params;
+    const caseId = req.params.caseId as string;
+    const documentId = req.params.documentId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -487,7 +488,7 @@ export const confirmDocumentReplacement = async (
 ) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
     const { oldDocumentId, newDocumentId } = req.body;
 
     if (!userId) {
@@ -571,7 +572,8 @@ export const cancelDocumentReplacement = async (
 ) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId, documentId } = req.params;
+    const caseId = req.params.caseId as string;
+    const documentId = req.params.documentId as string;
 
     if (!userId) {
       return res.status(401).json({

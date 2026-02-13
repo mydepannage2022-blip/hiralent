@@ -22,12 +22,13 @@ class OCRResult:
 
 
 class OCREngine:
-    """Tesseract OCR engine with confidence scoring."""
+    """OCR engine with Tesseract and EasyOCR support."""
 
     def __init__(self):
         self.preprocessor = ImagePreprocessor()
         self.langs = settings.OCR_LANGS
         self.confidence_threshold = settings.OCR_CONFIDENCE_THRESHOLD
+        self._easyocr_reader = None  # Lazy initialization
 
     async def extract_text(self, file_buffer: bytes, mime_type: str) -> OCRResult:
         """
@@ -125,6 +126,25 @@ class OCREngine:
 
     async def _ocr_image(self, image: Image.Image) -> OCRResult:
         """
+        Run OCR with selected engine (EasyOCR or Tesseract).
+
+        Args:
+            image: PIL Image to process
+
+        Returns:
+            OCRResult with extracted text and confidence
+        """
+        # Use EasyOCR if enabled (better for phone photos with glare)
+        if settings.USE_EASYOCR:
+            logger.info("Using EasyOCR engine (deep learning)")
+            return await self._ocr_image_easyocr(image)
+
+        # Fallback to Tesseract (faster but struggles with phone photos)
+        logger.info("Using Tesseract engine (traditional OCR)")
+        return await self._ocr_image_tesseract(image)
+
+    async def _ocr_image_tesseract(self, image: Image.Image) -> OCRResult:
+        """
         Run OCR on a single image with multiple preprocessing variants.
         Select the variant with highest confidence.
         """
@@ -187,6 +207,99 @@ class OCREngine:
 
         logger.info(f"Best OCR confidence: {best_confidence:.2f}")
         return best_result
+
+    async def _ocr_image_easyocr(self, image: Image.Image) -> OCRResult:
+        """
+        Run OCR using EasyOCR (deep learning model, better for phone photos).
+
+        Args:
+            image: PIL Image to process
+
+        Returns:
+            OCRResult with extracted text and confidence
+        """
+        try:
+            import easyocr
+            import numpy as np
+
+            # Initialize EasyOCR reader (lazy initialization for performance)
+            if self._easyocr_reader is None:
+                logger.info("Initializing EasyOCR reader (first time only, may take 10-20 seconds)...")
+
+                # Map our language codes to EasyOCR codes
+                lang_map = {
+                    'eng': 'en',
+                    'fra': 'fr',
+                    'ara': 'ar',
+                    'spa': 'es'
+                }
+
+                # Parse OCR_LANGS (e.g., "eng+fra+ara+spa")
+                tesseract_langs = self.langs.split('+')
+                easyocr_langs = []
+                for lang in tesseract_langs:
+                    if lang in lang_map:
+                        easyocr_langs.append(lang_map[lang])
+
+                # Default to English if no valid languages
+                if not easyocr_langs:
+                    easyocr_langs = ['en']
+
+                # EasyOCR constraint: Arabic is only compatible with English
+                # English model reads all Latin-script text (covers French too)
+                if 'ar' in easyocr_langs:
+                    easyocr_langs = ['ar', 'en']
+
+                logger.info(f"EasyOCR languages: {easyocr_langs}")
+
+                # Initialize reader (downloads models on first run)
+                self._easyocr_reader = easyocr.Reader(
+                    easyocr_langs,
+                    gpu=False,  # Set to True if GPU available
+                    verbose=False
+                )
+                logger.info("EasyOCR reader initialized successfully")
+
+            # Convert PIL Image to numpy array
+            img_array = np.array(image)
+
+            # Run EasyOCR
+            logger.info("Running EasyOCR text detection...")
+            results = self._easyocr_reader.readtext(img_array, detail=1)
+
+            # Extract text and confidence
+            texts = []
+            confidences = []
+            for (bbox, text, conf) in results:
+                texts.append(text)
+                confidences.append(conf)
+
+            # Calculate average confidence
+            avg_conf = sum(confidences) / len(confidences) if confidences else 0
+
+            # Join all text with spaces
+            full_text = " ".join(texts)
+
+            logger.info(f"EasyOCR extracted {len(texts)} text blocks, avg confidence: {avg_conf:.2f}")
+            logger.info(f"EasyOCR Text Preview: {full_text[:200]}...")
+
+            return OCRResult(
+                text=full_text,
+                confidence=avg_conf,
+                page_count=1,
+                page_texts=[full_text],
+                word_confidences=confidences
+            )
+
+        except ImportError as e:
+            logger.error(f"EasyOCR not installed: {e}")
+            logger.warning("Falling back to Tesseract OCR")
+            return await self._ocr_image_tesseract(image)
+
+        except Exception as e:
+            logger.error(f"EasyOCR failed: {e}")
+            logger.warning("Falling back to Tesseract OCR")
+            return await self._ocr_image_tesseract(image)
 
     async def get_page_count(self, file_buffer: bytes, mime_type: str) -> int:
         """Get page count without full OCR."""

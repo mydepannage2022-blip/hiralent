@@ -123,11 +123,12 @@ router.post("/document-validation", async (req: Request, res: Response) => {
 
         await prisma.notification.create({
           data: {
-            user_id: agencyOwnerId,
-            type: "document_needs_attention",
+            recipient_id: agencyOwnerId,
+            audience: "AGENCY",
+            type: "GENERIC",
+            title: "AI Document Review Required",
             message: `Document "${document.document_type}" flagged by AI: ${issueDescription}. Confidence: ${((payload.overall_confidence || 0) * 100).toFixed(0)}%`,
             sent_via: "push",
-            is_read: false,
           },
         });
 

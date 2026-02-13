@@ -1,5 +1,5 @@
 """
-SpaCy-based entity extraction for documents.
+Entity extraction for documents using LLM (primary) with regex fallback.
 """
 
 import spacy
@@ -11,6 +11,8 @@ import logging
 
 from app.models.enums import DocumentType
 from app.core.nlp import patterns
+from app.core.nlp.llm_extractor import LLMEntityExtractor
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,19 @@ def load_spacy_model():
 
 
 class EntityExtractor:
-    """Extract entities from document text using SpaCy and regex patterns."""
+    """Extract entities from document text using LLM (primary) with regex fallback."""
 
     def __init__(self):
         self.nlp = load_spacy_model()
+        # Initialize LLM extractor if AI API key is configured
+        self.llm_extractor = None
+        if settings.OPENAI_API_KEY or settings.GEMINI_API_KEY:
+            try:
+                self.llm_extractor = LLMEntityExtractor()
+                logger.info("LLM extractor initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize LLM extractor: {e}")
+                logger.info("Falling back to regex-based extraction")
 
     async def extract(
         self,
@@ -54,6 +65,7 @@ class EntityExtractor:
     ) -> Dict[str, Any]:
         """
         Extract entities based on document type.
+        Uses LLM extraction if available, falls back to regex.
 
         Args:
             text: OCR text from document
@@ -62,6 +74,27 @@ class EntityExtractor:
         Returns:
             Dictionary of extracted entities
         """
+        # Try LLM extraction first (if configured)
+        if self.llm_extractor:
+            try:
+                logger.info(f"Using LLM extraction for {document_type.value}")
+                llm_result = await self.llm_extractor.extract(text, document_type)
+
+                # If LLM extraction successful (no error field), return it
+                if "error" not in llm_result:
+                    llm_result["extraction_method"] = "llm"
+                    # Prefer MRZ data over visual zone (MRZ is more reliable)
+                    if document_type == DocumentType.PASSPORT_COPY:
+                        llm_result = self._apply_mrz_priority(llm_result)
+                    return llm_result
+                else:
+                    logger.warning(f"LLM extraction failed: {llm_result.get('error')}, falling back to regex")
+            except Exception as e:
+                logger.error(f"LLM extraction error: {e}, falling back to regex")
+
+        # Fallback to regex-based extraction
+        logger.info(f"Using regex extraction for {document_type.value}")
+
         # Run SpaCy NER
         doc = self.nlp(text)
 
@@ -76,18 +109,52 @@ class EntityExtractor:
         }
 
         # Document-specific extraction
+        result = None
         if document_type == DocumentType.PASSPORT_COPY:
-            return self._extract_passport_data(text, base_entities)
+            result = self._extract_passport_data(text, base_entities)
         elif document_type == DocumentType.BANK_STATEMENT:
-            return self._extract_bank_statement_data(text, base_entities)
+            result = self._extract_bank_statement_data(text, base_entities)
         elif document_type == DocumentType.EMPLOYMENT_LETTER:
-            return self._extract_employment_data(text, base_entities)
+            result = self._extract_employment_data(text, base_entities)
         elif document_type == DocumentType.VISA_APPLICATION_FORM:
-            return self._extract_visa_form_data(text, base_entities)
+            result = self._extract_visa_form_data(text, base_entities)
         elif document_type == DocumentType.ACCOMMODATION_PROOF:
-            return self._extract_accommodation_data(text, base_entities)
+            result = self._extract_accommodation_data(text, base_entities)
+        else:
+            result = base_entities
 
-        return base_entities
+        result["extraction_method"] = "regex"
+        return result
+
+    def _apply_mrz_priority(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Prefer MRZ data over visual zone fields (MRZ is machine-optimized and more reliable)."""
+        mrz = data.get("mrz_data")
+        if not mrz or not isinstance(mrz, dict):
+            return data
+
+        # Override fields with MRZ versions when available
+        if mrz.get("passport_number_mrz"):
+            logger.info(f"MRZ priority: passport_number '{data.get('passport_number')}' → '{mrz['passport_number_mrz']}'")
+            data["passport_number"] = mrz["passport_number_mrz"]
+
+        if mrz.get("surname_mrz") and mrz.get("given_names_mrz"):
+            mrz_name = f"{mrz['surname_mrz']} {mrz['given_names_mrz']}"
+            logger.info(f"MRZ priority: full_name '{data.get('full_name')}' → '{mrz_name}'")
+            data["full_name"] = mrz_name
+
+        if mrz.get("dob_mrz"):
+            logger.info(f"MRZ priority: date_of_birth '{data.get('date_of_birth')}' → '{mrz['dob_mrz']}'")
+            data["date_of_birth"] = mrz["dob_mrz"]
+
+        if mrz.get("expiry_mrz"):
+            logger.info(f"MRZ priority: expiry_date '{data.get('expiry_date')}' → '{mrz['expiry_mrz']}'")
+            data["expiry_date"] = mrz["expiry_mrz"]
+
+        if mrz.get("nationality_mrz"):
+            logger.info(f"MRZ priority: nationality → '{mrz['nationality_mrz']}'")
+            data["nationality"] = mrz["nationality_mrz"]
+
+        return data
 
     def _extract_passport_data(self, text: str, base_entities: Dict) -> Dict[str, Any]:
         """Extract passport-specific fields."""

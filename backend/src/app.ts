@@ -121,6 +121,9 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
+// IMPORTANT: Webhooks MUST come before jobRoutes to avoid auth middleware
+app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
+
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", assessmentTemplateRoutes);
@@ -128,7 +131,6 @@ app.use("/api/v1", skillRadarRoutes);
 app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
-app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
 
 
 

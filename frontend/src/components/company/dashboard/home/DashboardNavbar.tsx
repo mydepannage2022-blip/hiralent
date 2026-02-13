@@ -113,6 +113,13 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       description: "View, edit, and manage this job posting",
     };
   }
+    // agency case details route (individual case)
+  if (pathnameSafe.startsWith("/agency/dashboard/cases/") && pathnameSafe !== "/agency/dashboard/cases") {
+    return {
+      title: "Case",
+      description: "View and manage case details and documents",
+    };
+  }
     switch (pathname) {
       case '/company/dashboard/employer-profile':
         return { title: 'Profile', description: 'Updating your information will offer you the most relevent content' };
@@ -143,6 +150,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         return { title: 'Question Bank', description: 'Manage and organize questions for assessments' };
       case '/company/dashboard/settings':
         return { title: 'Settings', description: 'Updating your information will offer you the most relevent content' };
+      case '/agency/dashboard/cases':
+        return { title: 'Cases', description: 'Manage and track all your relocation cases' };
       default:
         return { title: 'Dashboard', description: 'Updating your information will offer you the most relevent content' };
     }

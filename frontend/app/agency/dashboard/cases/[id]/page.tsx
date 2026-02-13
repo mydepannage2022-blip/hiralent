@@ -27,12 +27,27 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { REQUIRED_DOCUMENT_TYPES } from "@/src/constants/documentTypes";
+import { AIConfidenceBadge } from "@/src/components/agency/AIConfidenceBadge";
+import { AIValidationPanel } from "@/src/components/agency/AIValidationPanel";
 
 interface Candidate {
   user_id: string;
   email: string;
   full_name: string;
   phone_number?: string;
+}
+
+interface ValidationSignal {
+  signal_type: string;
+  passed: boolean;
+  score: number;
+  details: string;
+}
+
+interface ValidationIssue {
+  type: string;
+  severity: "warning" | "error";
+  message: string;
 }
 
 interface Document {
@@ -47,6 +62,13 @@ interface Document {
   notes?: string;
   review_feedback?: string;
   created_at: string;
+  // AI validation fields
+  ai_validation_status?: "valid" | "invalid" | "needs_review" | null;
+  ai_confidence_score?: number | null;
+  ai_extracted_data?: Record<string, any> | null;
+  ai_validation_signals?: ValidationSignal[] | null;
+  ai_validation_issues?: ValidationIssue[] | null;
+  ai_validated_at?: string | null;
 }
 
 interface Case {
@@ -210,10 +232,10 @@ export default function AgencyCaseDetailPage() {
         housing_notes: caseData.notes || "",
       });
       console.log("🔍 Utilities from backend:", {
-      utility_water: caseData.utility_water,
-      utility_electricity: caseData.utility_electricity,
-      utility_internet: caseData.utility_internet,
-    });
+        utility_water: caseData.utility_water,
+        utility_electricity: caseData.utility_electricity,
+        utility_internet: caseData.utility_internet,
+      });
       setUtilityStatus({
         utility_water: caseData.utility_water || "pending",
         utility_electricity: caseData.utility_electricity || "pending",
@@ -406,7 +428,7 @@ export default function AgencyCaseDetailPage() {
 
       setUtilityStatus(updatedUtilities);
       toast.success("Utility status updated!");
-      
+
     } catch (err) {
       console.error("Update utility error:", err);
       toast.error(
@@ -538,24 +560,24 @@ export default function AgencyCaseDetailPage() {
             caseData.utility_internet === "completed",
           icon:
             caseData.utility_water === "completed" &&
-            caseData.utility_electricity === "completed" &&
-            caseData.utility_internet === "completed"
+              caseData.utility_electricity === "completed" &&
+              caseData.utility_internet === "completed"
               ? CheckCircle
               : caseData.utility_water === "in_progress" ||
                 caseData.utility_electricity === "in_progress" ||
                 caseData.utility_internet === "in_progress"
-              ? Clock
-              : Clock,
+                ? Clock
+                : Clock,
           color:
             caseData.utility_water === "completed" &&
-            caseData.utility_electricity === "completed" &&
-            caseData.utility_internet === "completed"
+              caseData.utility_electricity === "completed" &&
+              caseData.utility_internet === "completed"
               ? "green"
               : caseData.utility_water === "in_progress" ||
                 caseData.utility_electricity === "in_progress" ||
                 caseData.utility_internet === "in_progress"
-              ? "yellow"
-              : "gray",
+                ? "yellow"
+                : "gray",
         },
         {
           id: 5,
@@ -608,22 +630,32 @@ export default function AgencyCaseDetailPage() {
             Back to Cases
           </button>
 
-          <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">
-                  {caseData.case_number}
-                </h1>
-                <p className="text-slate-600">Housing & Relocation Case</p>
-                <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                  {caseData.status.replace("_", " ")}
-                </span>
+          <div className="bg-white rounded-2xl p-6 border-2 border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-slate-100 rounded-xl">
+                  <FileText className="w-6 h-6 text-slate-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Case ID</p>
+                  <h1 className="text-lg font-bold text-slate-900 mb-1">
+                    {caseData.case_number}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-slate-600">Housing & Relocation Case</p>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-xs font-semibold">
+                      {caseData.status.replace("_", " ")}
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={fetchCase}
-                className="p-3 bg-white hover:bg-green-50 rounded-xl transition-colors border border-slate-200 hover:border-green-300 shadow-sm"
+                className="p-3 bg-slate-100 hover:bg-indigo-100 rounded-xl transition-colors group"
+                title="Refresh case data"
               >
-                <RefreshCw className="w-5 h-5 text-slate-600" />
+                <RefreshCw className="w-5 h-5 text-slate-600 group-hover:text-indigo-600" />
               </button>
             </div>
           </div>
@@ -1141,8 +1173,8 @@ export default function AgencyCaseDetailPage() {
                     step.color === "green"
                       ? "text-green-600"
                       : step.color === "yellow"
-                      ? "text-yellow-600"
-                      : "text-slate-400";
+                        ? "text-yellow-600"
+                        : "text-slate-400";
                   const textColorClass = step.completed
                     ? "text-slate-700"
                     : "text-slate-400";
@@ -1157,9 +1189,8 @@ export default function AgencyCaseDetailPage() {
                           {step.name}
                         </p>
                         <p
-                          className={`text-xs ${
-                            step.completed ? "text-slate-500" : "text-slate-400"
-                          }`}
+                          className={`text-xs ${step.completed ? "text-slate-500" : "text-slate-400"
+                            }`}
                         >
                           {step.description}
                         </p>
@@ -1213,11 +1244,19 @@ export default function AgencyCaseDetailPage() {
             Back to Cases
           </button>
 
-          <div className="bg-linear-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              {caseData.case_number}
-            </h1>
-            <p className="text-slate-600">Integration Case</p>
+          <div className="bg-white rounded-2xl p-6 border-2 border-slate-200 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-100 rounded-xl">
+                <FileText className="w-6 h-6 text-slate-700" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Case ID</p>
+                <h1 className="text-lg font-bold text-slate-900 mb-1">
+                  {caseData.case_number}
+                </h1>
+                <p className="text-sm text-slate-600">Integration Case</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1285,21 +1324,28 @@ export default function AgencyCaseDetailPage() {
           Back to Cases
         </button>
 
-        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800 mb-2">
-                {caseData.case_number}
-              </h1>
-              <p className="text-slate-600">
-                {caseData.service_type.replace("_", " ")}
-              </p>
+        <div className="bg-white rounded-2xl p-6 border-2 border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-100 rounded-xl">
+                <FileText className="w-6 h-6 text-slate-700" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Case ID</p>
+                <h1 className="text-lg font-bold text-slate-900 mb-1">
+                  {caseData.case_number}
+                </h1>
+                <p className="text-sm text-slate-600">
+                  {caseData.service_type.replace("_", " ")}
+                </p>
+              </div>
             </div>
             <button
               onClick={fetchCase}
-              className="p-3 bg-white hover:bg-blue-50 rounded-xl transition-colors border border-slate-200 hover:border-blue-300 shadow-sm"
+              className="p-3 bg-slate-100 hover:bg-indigo-100 rounded-xl transition-colors group"
+              title="Refresh case data"
             >
-              <RefreshCw className="w-5 h-5 text-slate-600" />
+              <RefreshCw className="w-5 h-5 text-slate-600 group-hover:text-indigo-600" />
             </button>
           </div>
         </div>
@@ -1355,93 +1401,112 @@ export default function AgencyCaseDetailPage() {
                 {caseData.documents.map((doc) => (
                   <div
                     key={doc.document_id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+                    className="bg-white rounded-lg p-5 border border-slate-200 hover:border-indigo-200 transition-all hover:shadow-md"
                   >
-                    <div className="flex items-center gap-3 flex-1">
-                      <FileText className="w-5 h-5 text-slate-400" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">
-                          {doc.file_name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500">
-                            {doc.document_type.replace("_", " ")}
-                          </span>
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">
-                            {formatFileSize(doc.file_size)}
-                          </span>
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">
-                            {formatDate(doc.created_at)}
-                          </span>
-                        </div>
-                        {doc.notes && (
-                          <p className="text-xs text-slate-500 mt-1 italic">
-                            Note: {doc.notes}
-                          </p>
-                        )}
+                    {/* Document Name */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2.5 bg-indigo-50 rounded-lg">
+                        <FileText className="w-5 h-5 text-indigo-600" />
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-slate-900 truncate">
+                          {doc.file_name}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                          <span className="font-medium">{doc.document_type.replace("_", " ")}</span>
+                          <span>•</span>
+                          <span>{formatFileSize(doc.file_size)}</span>
+                          <span>•</span>
+                          <span>{formatDate(doc.created_at)}</span>
+                        </div>
+                      </div>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
-                          !doc.is_active
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 flex items-center gap-1.5 ${!doc.is_active
                             ? getStatusColor("inactive")
                             : getStatusColor(doc.status)
-                        }`}
+                          }`}
                       >
                         {!doc.is_active ? (
                           <>
                             {getStatusIcon("inactive")}
-                            inactive
+                            Inactive
                           </>
                         ) : (
                           <>
                             {getStatusIcon(doc.status)}
-                            {doc.status.replace("_", " ")}
+                            {doc.status.replace("_", " ").charAt(0).toUpperCase() + doc.status.replace("_", " ").slice(1)}
                           </>
                         )}
                       </span>
+                    </div>
 
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                        title="View/Download"
-                      >
-                        <Eye className="w-4 h-4 text-slate-600" />
-                      </a>
+                    {/* Notes */}
+                    {doc.notes && (
+                      <div className="mb-3 p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r">
+                        <p className="text-xs text-amber-900">
+                          <span className="font-semibold">Note:</span> {doc.notes}
+                        </p>
+                      </div>
+                    )}
 
-                      {doc.status === "pending" && doc.is_active && (
-                        <>
-                          <button
-                            onClick={() => openReviewModal(doc, "approved")}
-                            className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                            title="Approve"
-                          >
-                            <ThumbsUp className="w-4 h-4 text-green-600" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              openReviewModal(doc, "needs_revision")
-                            }
-                            className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
-                            title="Request Revision"
-                          >
-                            <AlertTriangle className="w-4 h-4 text-orange-600" />
-                          </button>
-                          <button
-                            onClick={() => openReviewModal(doc, "rejected")}
-                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Reject"
-                          >
-                            <ThumbsDown className="w-4 h-4 text-red-600" />
-                          </button>
-                        </>
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      {/* AI Analysis Link */}
+                      {doc.is_active && params?.id && (
+                        <AIValidationPanel
+                          caseId={params.id as string}
+                          documentId={doc.document_id}
+                          extractedData={doc.ai_extracted_data}
+                          validationSignals={doc.ai_validation_signals}
+                          validationIssues={doc.ai_validation_issues}
+                          validatedAt={doc.ai_validated_at}
+                        />
                       )}
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <a
+                          href={doc.file_path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium text-slate-700"
+                          title="View/Download"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </a>
+
+                        {doc.status === "pending" && doc.is_active && (
+                          <>
+                            <button
+                              onClick={() => openReviewModal(doc, "approved")}
+                              className="px-3 py-1.5 bg-green-100 hover:bg-green-200 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold text-green-700"
+                              title="Approve"
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5" />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() =>
+                                openReviewModal(doc, "needs_revision")
+                              }
+                              className="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold text-orange-700"
+                              title="Request Revision"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              Revise
+                            </button>
+                            <button
+                              onClick={() => openReviewModal(doc, "rejected")}
+                              className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold text-red-700"
+                              title="Reject"
+                            >
+                              <ThumbsDown className="w-3.5 h-3.5" />
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1585,11 +1650,10 @@ export default function AgencyCaseDetailPage() {
             {/* Decision Details */}
             {caseData.embassy_submission.decision_date && (
               <div
-                className={`mt-4 p-4 rounded-lg border ${
-                  caseData.embassy_submission.status === "approved"
+                className={`mt-4 p-4 rounded-lg border ${caseData.embassy_submission.status === "approved"
                     ? "bg-green-50 border-green-200"
                     : "bg-red-50 border-red-200"
-                }`}
+                  }`}
               >
                 <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
                   {caseData.embassy_submission.status === "approved" ? (
@@ -1672,13 +1736,12 @@ export default function AgencyCaseDetailPage() {
             >
               <div className="flex items-start gap-4 mb-6">
                 <div
-                  className={`p-3 rounded-full ${
-                    reviewAction === "approved"
+                  className={`p-3 rounded-full ${reviewAction === "approved"
                       ? "bg-green-100"
                       : reviewAction === "rejected"
-                      ? "bg-red-100"
-                      : "bg-orange-100"
-                  }`}
+                        ? "bg-red-100"
+                        : "bg-orange-100"
+                    }`}
                 >
                   {reviewAction === "approved" ? (
                     <ThumbsUp className="w-6 h-6 text-green-600" />
@@ -1693,8 +1756,8 @@ export default function AgencyCaseDetailPage() {
                     {reviewAction === "approved"
                       ? "Approve Document"
                       : reviewAction === "rejected"
-                      ? "Reject Document"
-                      : "Request Revision"}
+                        ? "Reject Document"
+                        : "Request Revision"}
                   </h3>
                   <p className="text-sm text-slate-600 mb-1">
                     <strong>{selectedDocument.file_name}</strong>
@@ -1710,8 +1773,8 @@ export default function AgencyCaseDetailPage() {
                   {reviewAction === "approved"
                     ? "Notes (Optional)"
                     : reviewAction === "rejected"
-                    ? "Reason for Rejection *"
-                    : "Changes Required *"}
+                      ? "Reason for Rejection *"
+                      : "Changes Required *"}
                 </label>
                 <textarea
                   value={reviewNotes}
@@ -1722,8 +1785,8 @@ export default function AgencyCaseDetailPage() {
                     reviewAction === "approved"
                       ? "Add any notes about this approval..."
                       : reviewAction === "rejected"
-                      ? "Explain why this document is rejected..."
-                      : "Describe what changes are needed..."
+                        ? "Explain why this document is rejected..."
+                        : "Describe what changes are needed..."
                   }
                   required={reviewAction !== "approved"}
                   disabled={reviewing}
@@ -1744,13 +1807,12 @@ export default function AgencyCaseDetailPage() {
                 </button>
                 <button
                   onClick={handleReviewDocument}
-                  className={`flex-1 px-6 py-3 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                    reviewAction === "approved"
+                  className={`flex-1 px-6 py-3 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${reviewAction === "approved"
                       ? "bg-green-600 hover:bg-green-700"
                       : reviewAction === "rejected"
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-orange-600 hover:bg-orange-700"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-orange-600 hover:bg-orange-700"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
                   disabled={
                     reviewing ||
                     (reviewAction !== "approved" && !reviewNotes.trim())

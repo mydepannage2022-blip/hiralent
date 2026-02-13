@@ -1374,8 +1374,8 @@ function VisaTabContent({
                   key={doc.document_id}
                   className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-slate-400" />
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="w-5 h-5 text-slate-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">
                         {doc.file_name}
@@ -1401,9 +1401,9 @@ function VisaTabContent({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${
+                      className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 whitespace-nowrap ${
                         !doc.is_active
                           ? "bg-gray-100 text-gray-600 border-gray-300"
                           : getStatusColor(doc.status)

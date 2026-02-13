@@ -113,16 +113,19 @@ async def run_deep_validation(job_id: str, request: DeepValidationRequest):
         # Send webhook callback
         callback_url = request.callback_url or settings.BACKEND_WEBHOOK_URL
         if callback_url:
+            logger.info(f"Sending webhook to: {callback_url}")
             try:
                 async with httpx.AsyncClient() as client:
-                    await client.post(
+                    response = await client.post(
                         callback_url,
                         json=result.model_dump(),
                         timeout=30
                     )
-                logger.info(f"Webhook sent for job {job_id}")
+                    logger.info(f"Webhook sent for job {job_id}: {response.status_code}")
             except Exception as webhook_error:
-                logger.error(f"Webhook failed for job {job_id}: {webhook_error}")
+                import traceback
+                logger.error(f"Webhook failed for job {job_id}: {type(webhook_error).__name__}: {webhook_error}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
 
     except Exception as e:
         logger.error(f"Deep validation failed for job {job_id}: {e}")
