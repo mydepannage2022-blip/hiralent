@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
-import { PrismaClient, AgencyType, AgencyStatus } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { AgencyType } from "@prisma/client";
+import {
+  findAgencyByEmail,
+  createAgencyApplication,
+  getApplicationById,
+} from "../../services/agency/agency.service";
 
 // POST /api/v1/agency/apply
 export const applyAsAgency = async (req: Request, res: Response) => {
@@ -17,7 +20,6 @@ export const applyAsAgency = async (req: Request, res: Response) => {
       serviceCategories,
     } = req.body;
 
-    // Validation
     if (!name || !email || !phone || !type) {
       return res.status(400).json({
         success: false,
@@ -25,11 +27,7 @@ export const applyAsAgency = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if email already exists
-    const existingAgency = await prisma.agency.findUnique({
-      where: { email },
-    });
-
+    const existingAgency = await findAgencyByEmail(email);
     if (existingAgency) {
       return res.status(409).json({
         success: false,
@@ -37,7 +35,6 @@ export const applyAsAgency = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate agency type
     if (!["VISA", "RELOCATION", "INTEGRATION"].includes(type)) {
       return res.status(400).json({
         success: false,
@@ -45,19 +42,15 @@ export const applyAsAgency = async (req: Request, res: Response) => {
       });
     }
 
-    // Create agency with PENDING status
-    const agency = await prisma.agency.create({
-      data: {
-        name,
-        email,
-        phone,
-        type: type as AgencyType,
-        service_description: description || null,
-        website: website || null,
-        operating_countries: operatingCountries || [],
-        service_categories: serviceCategories || [],
-        status: AgencyStatus.PENDING,
-      },
+    const agency = await createAgencyApplication({
+      name,
+      email,
+      phone,
+      type: type as AgencyType,
+      description,
+      website,
+      operatingCountries,
+      serviceCategories,
     });
 
     return res.status(201).json({
@@ -82,19 +75,9 @@ export const applyAsAgency = async (req: Request, res: Response) => {
 // GET /api/v1/agency/application/:id - Check application status
 export const getApplicationStatus = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
-    const agency = await prisma.agency.findUnique({
-      where: { agency_id: id },
-      select: {
-        agency_id: true,
-        name: true,
-        email: true,
-        status: true,
-        created_at: true,
-        rejection_reason: true,
-      },
-    });
+    const agency = await getApplicationById(id);
 
     if (!agency) {
       return res.status(404).json({

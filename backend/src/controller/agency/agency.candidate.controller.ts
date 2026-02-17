@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { searchCandidates } from "../../services/agency/agency.candidate.service";
 
 /**
  * GET /api/v1/agency/candidates/search
@@ -11,7 +9,7 @@ const prisma = new PrismaClient();
 export const searchCandidatesController = async (req: Request, res: Response) => {
   try {
     const agencyId = req.user?.agency_id;
-    const { query } = req.query;
+    const query = req.query.query as string | undefined;
 
     if (!agencyId) {
       return res.status(401).json({
@@ -20,45 +18,14 @@ export const searchCandidatesController = async (req: Request, res: Response) =>
       });
     }
 
-    if (!query || (query as string).trim().length < 2) {
+    if (!query || query.trim().length < 2) {
       return res.status(400).json({
         success: false,
         message: "Search query must be at least 2 characters",
       });
     }
 
-    const searchTerm = (query as string).trim();
-
-    // Search candidates by name or email
-    const candidates = await prisma.user.findMany({
-      where: {
-        role: "candidate",
-        OR: [
-          {
-            full_name: {
-              contains: searchTerm,
-              mode: "insensitive",
-            },
-          },
-          {
-            email: {
-              contains: searchTerm,
-              mode: "insensitive",
-            },
-          },
-        ],
-      },
-      select: {
-        user_id: true,
-        full_name: true,
-        email: true,
-        phone_number: true,
-      },
-      take: 10, // Limit results to 10
-      orderBy: {
-        full_name: "asc",
-      },
-    });
+    const candidates = await searchCandidates(query.trim());
 
     return res.status(200).json({
       success: true,

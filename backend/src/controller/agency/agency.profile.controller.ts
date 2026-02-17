@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import {
+  getAgencyByUserId,
+  getAgencyIdForUser,
+  updateAgencyProfile,
+} from "../../services/agency/agency.profile.service";
 
 // GET /api/v1/agency/profile - Get agency profile
 export const getProfile = async (req: Request, res: Response) => {
@@ -15,31 +17,9 @@ export const getProfile = async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      include: {
-        agency: {
-          select: {
-            agency_id: true,
-            name: true,
-            email: true,
-            phone: true,
-            type: true,
-            status: true,
-            website: true,
-            service_description: true,
-            operating_countries: true,
-            languages_supported: true,
-            rating: true,
-            total_cases_handled: true,
-            success_rate: true,
-            created_at: true,
-          },
-        },
-      },
-    });
+    const agency = await getAgencyByUserId(userId);
 
-    if (!user?.agency) {
+    if (!agency) {
       return res.status(404).json({
         success: false,
         message: "Agency not found",
@@ -48,7 +28,7 @@ export const getProfile = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      data: user.agency,
+      data: agency,
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -63,13 +43,13 @@ export const getProfile = async (req: Request, res: Response) => {
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { 
-      name, 
-      phone, 
-      website, 
+    const {
+      name,
+      phone,
+      website,
       service_description,
       operating_countries,
-      languages_supported 
+      languages_supported,
     } = req.body;
 
     if (!userId) {
@@ -79,46 +59,22 @@ export const updateProfile = async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      select: { agency_id: true },
-    });
+    const agencyId = await getAgencyIdForUser(userId);
 
-    if (!user?.agency_id) {
+    if (!agencyId) {
       return res.status(404).json({
         success: false,
         message: "Agency not found",
       });
     }
 
-    // Build update object with only provided fields
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
-    if (website !== undefined) updateData.website = website;
-    if (service_description !== undefined) updateData.service_description = service_description;
-    if (operating_countries !== undefined) updateData.operating_countries = operating_countries;
-    if (languages_supported !== undefined) updateData.languages_supported = languages_supported;
-
-    const updatedAgency = await prisma.agency.update({
-      where: { agency_id: user.agency_id },
-      data: updateData,
-      select: {
-        agency_id: true,
-        name: true,
-        email: true,
-        phone: true,
-        type: true,
-        status: true,
-        website: true,
-        service_description: true,
-        operating_countries: true,
-        languages_supported: true,
-        rating: true,
-        total_cases_handled: true,
-        success_rate: true,
-        created_at: true,
-      },
+    const updatedAgency = await updateAgencyProfile(agencyId, {
+      name,
+      phone,
+      website,
+      service_description,
+      operating_countries,
+      languages_supported,
     });
 
     return res.status(200).json({
