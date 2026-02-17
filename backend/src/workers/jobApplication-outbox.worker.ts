@@ -3,6 +3,8 @@ import {
   JobApplicationEventStatus,
   JobApplicationEventType,
   JobApplicationStatus,
+  NotificationAudience,
+  NotificationType,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -36,7 +38,7 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
           data: { attempts: { increment: 1 } },
         });
 
-        // Helper: load application (needed for scoring + transitions)
+        // Helper: load application
         const app = await tx.jobApplication.findUnique({
           where: { application_id: ev.application_id },
           select: {
@@ -48,19 +50,66 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
             vector_score: true,
             trigger: true,
             score_version: true,
+            job: {
+              select: {
+                title: true,
+              },
+            },
           },
         });
 
-        if (!app) {
-          // If application is missing, we can’t process this event
-          throw new Error(`Application not found: ${ev.application_id}`);
-        }
+        if (!app) throw new Error(`Application not found: ${ev.application_id}`);
+
+        // Helper: idempotent outbox by dedupe_key
+        const upsertOutbox = async (
+          dedupeKey: string,
+          type: JobApplicationEventType,
+          payload: any,
+        ) => {
+          return tx.jobApplicationEventOutbox.upsert({
+            where: { dedupe_key: dedupeKey },
+            update: {
+              payload,
+              status: JobApplicationEventStatus.PENDING,
+              attempts: 0,
+              last_error: null,
+            },
+            create: {
+              application_id: app.application_id,
+              type,
+              payload,
+              status: JobApplicationEventStatus.PENDING,
+              dedupe_key: dedupeKey,
+            },
+          });
+        };
+
+        // Helper: notify candidate (A6)
+        const notifyCandidate = async (args: {
+          type: NotificationType;
+          title: string;
+          message: string;
+          action_url?: string;
+          data?: any;
+        }) => {
+          await tx.notification.create({
+            data: {
+              audience: NotificationAudience.CANDIDATE,
+              recipient_id: app.candidate_id,
+              type: args.type,
+              title: args.title,
+              message: args.message,
+              action_url: args.action_url ?? "/candidate/dashboard/applications",
+              data: args.data ?? { applicationId: app.application_id, jobId: app.job_id },
+              sent_via: "in_app",
+            },
+          });
+        };
 
         // =========================================
         // A5) SCORE PER APPLICATION via event worker
         // =========================================
         if (ev.type === JobApplicationEventType.APPLIED_CREATED) {
-          // 1) Try to get recommendation computed by matching worker
           const rec = await tx.jobRecommendation.findUnique({
             where: {
               candidate_id_job_id: {
@@ -84,12 +133,10 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
           const matchScore = rec?.match_score ?? 0;
           const vectorScore = rec?.vector_score ?? null;
 
-          // if no rec: keep NO_TRIGGER (don’t invent eligibility)
           const computedTrigger: TriggerValue =
             (rec?.trigger as TriggerValue) ??
             (rec?.is_eligible ? triggerFromScore(matchScore) : "NO_TRIGGER");
 
-          // 2) Update application snapshot (A5)
           await tx.jobApplication.update({
             where: { application_id: app.application_id },
             data: {
@@ -101,7 +148,6 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
             },
           });
 
-          // 3) Append timeline entry (A5 history)
           await tx.jobApplicationScoreHistory.create({
             data: {
               application_id: app.application_id,
@@ -116,80 +162,126 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
             },
           });
 
-          // 4) Optional: if trigger implies a transition, emit follow-up events
-          // (keeps your architecture event-driven)
+          // A6: Confirmation already sent by applyToJob(), so no need here.
+          // But if you want redundancy, you can also notify here.
+
+          // Follow-up events (idempotent)
           if (computedTrigger === "INTERVIEW_REQUIRED") {
-            await tx.jobApplicationEventOutbox.create({
+            await upsertOutbox(
+              `INTERVIEW_REQUIRED:${app.application_id}`,
+              JobApplicationEventType.INTERVIEW_REQUIRED,
+              { trigger: computedTrigger, match_score: matchScore },
+            );
+          } else if (computedTrigger === "ASSESSMENT_REQUIRED") {
+            await upsertOutbox(
+              `ASSESSMENT_REQUIRED:${app.application_id}`,
+              JobApplicationEventType.ASSESSMENT_REQUIRED,
+              { trigger: computedTrigger, match_score: matchScore },
+            );
+          }
+        }
+
+        // =========================================
+        // A4) STATUS TRANSITIONS + A6 NOTIFICATIONS
+        // =========================================
+        if (ev.type === JobApplicationEventType.INTERVIEW_REQUIRED) {
+          // idempotent status update
+          if (app.status !== JobApplicationStatus.INTERVIEW_REQUIRED) {
+            await tx.jobApplication.update({
+              where: { application_id: app.application_id },
+              data: { status: JobApplicationStatus.INTERVIEW_REQUIRED },
+            });
+
+            await tx.jobApplicationScoreHistory.create({
               data: {
                 application_id: app.application_id,
-                type: JobApplicationEventType.INTERVIEW_REQUIRED,
-                payload: { trigger: computedTrigger, match_score: matchScore },
-                status: JobApplicationEventStatus.PENDING,
-                dedupe_key: `INTERVIEW_REQUIRED:${app.application_id}`,
+                relevance_score: app.relevance_score ?? 0,
+                vector_score: app.vector_score ?? undefined,
+                trigger: "INTERVIEW_REQUIRED",
+                reason_codes: [],
+                missing_skills: [],
+                breakdown: ev.payload ?? undefined,
+                created_by: "system",
+                source: "outbox:INTERVIEW_REQUIRED",
               },
             });
-          } else if (computedTrigger === "ASSESSMENT_REQUIRED") {
-            await tx.jobApplicationEventOutbox.create({
+
+            // A6: Interview invitation
+            await notifyCandidate({
+              type: NotificationType.INTERVIEW_INVITE,
+              title: "Interview required 🎤",
+              message: `Next step for "${app.job.title}": interview required.`,
+              action_url: "/candidate/dashboard/applications",
               data: {
-                application_id: app.application_id,
-                type: JobApplicationEventType.ASSESSMENT_REQUIRED,
-                payload: { trigger: computedTrigger, match_score: matchScore },
-                status: JobApplicationEventStatus.PENDING,
-                dedupe_key: `ASSESSMENT_REQUIRED:${app.application_id}`,
+                applicationId: app.application_id,
+                jobId: app.job_id,
+                trigger: "INTERVIEW_REQUIRED",
+              },
+            });
+
+            // A6: status change (optional if you want both)
+            await notifyCandidate({
+              type: NotificationType.APPLICATION_STATUS_CHANGED,
+              title: "Application status updated",
+              message: `Your application for "${app.job.title}" is now: INTERVIEW_REQUIRED.`,
+              action_url: "/candidate/dashboard/applications",
+              data: {
+                applicationId: app.application_id,
+                jobId: app.job_id,
+                status: "INTERVIEW_REQUIRED",
               },
             });
           }
         }
 
-        // =========================================
-        // A4) STATUS TRANSITIONS + TIMELINE ENTRY
-        // =========================================
-        if (ev.type === JobApplicationEventType.INTERVIEW_REQUIRED) {
-          await tx.jobApplication.update({
-            where: { application_id: app.application_id },
-            data: { status: JobApplicationStatus.INTERVIEW_REQUIRED },
-          });
-
-          // history entry for transition (A5 timeline)
-          await tx.jobApplicationScoreHistory.create({
-            data: {
-              application_id: app.application_id,
-              relevance_score: app.relevance_score ?? 0,
-              vector_score: app.vector_score ?? undefined,
-              trigger: "INTERVIEW_REQUIRED",
-              reason_codes: [],
-              missing_skills: [],
-              breakdown: ev.payload ?? undefined,
-              created_by: "system",
-              source: "outbox:INTERVIEW_REQUIRED",
-            },
-          });
-        }
-
         if (ev.type === JobApplicationEventType.ASSESSMENT_REQUIRED) {
-          await tx.jobApplication.update({
-            where: { application_id: app.application_id },
-            data: { status: JobApplicationStatus.ASSESSMENT_REQUIRED },
-          });
+          if (app.status !== JobApplicationStatus.ASSESSMENT_REQUIRED) {
+            await tx.jobApplication.update({
+              where: { application_id: app.application_id },
+              data: { status: JobApplicationStatus.ASSESSMENT_REQUIRED },
+            });
 
-          // history entry for transition (A5 timeline)
-          await tx.jobApplicationScoreHistory.create({
-            data: {
-              application_id: app.application_id,
-              relevance_score: app.relevance_score ?? 0,
-              vector_score: app.vector_score ?? undefined,
-              trigger: "ASSESSMENT_REQUIRED",
-              reason_codes: [],
-              missing_skills: [],
-              breakdown: ev.payload ?? undefined,
-              created_by: "system",
-              source: "outbox:ASSESSMENT_REQUIRED",
-            },
-          });
+            await tx.jobApplicationScoreHistory.create({
+              data: {
+                application_id: app.application_id,
+                relevance_score: app.relevance_score ?? 0,
+                vector_score: app.vector_score ?? undefined,
+                trigger: "ASSESSMENT_REQUIRED",
+                reason_codes: [],
+                missing_skills: [],
+                breakdown: ev.payload ?? undefined,
+                created_by: "system",
+                source: "outbox:ASSESSMENT_REQUIRED",
+              },
+            });
+
+            // A6: Assessment invitation
+            await notifyCandidate({
+              type: NotificationType.ASSESSMENT_INVITE,
+              title: "Skills assessment required 🧠",
+              message: `Next step for "${app.job.title}": complete the skills assessment.`,
+              action_url: "/candidate/dashboard/skills-assessment",
+              data: {
+                applicationId: app.application_id,
+                jobId: app.job_id,
+                trigger: "ASSESSMENT_REQUIRED",
+              },
+            });
+
+            // A6: status change (optional)
+            await notifyCandidate({
+              type: NotificationType.APPLICATION_STATUS_CHANGED,
+              title: "Application status updated",
+              message: `Your application for "${app.job.title}" is now: ASSESSMENT_REQUIRED.`,
+              action_url: "/candidate/dashboard/applications",
+              data: {
+                applicationId: app.application_id,
+                jobId: app.job_id,
+                status: "ASSESSMENT_REQUIRED",
+              },
+            });
+          }
         }
-
-        // STATUS_UPDATED: optional (future)
-        // if (ev.type === JobApplicationEventType.STATUS_UPDATED) { ... }
 
         // mark SENT
         await tx.jobApplicationEventOutbox.update({

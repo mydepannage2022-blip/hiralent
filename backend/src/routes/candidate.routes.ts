@@ -118,6 +118,7 @@ import {
 import {
   evaluateBadgesController,
   listBadgesController,
+  debugBadgeCriteriaController
 } from '../controller/candidate/profile/badge.controller';
 
 import {
@@ -132,6 +133,16 @@ import {
   confirmAutofillMappingController,
   applyAutofillController,
 } from '../controller/candidate/profile/autofill.controller';
+import {
+  createConversationController,
+  listConversationsController,
+  listConversationMessagesController,
+  renameConversationController,
+  sendChatMessageController,
+  getSuggestedQuestionsController,
+} from "../controller/candidate/ai-chatbot.controller";
+import { sendMessageSchema } from '../validation/chatbot.schema';
+
 const router = Router();
 
 router.get('/health', healthCheckController);
@@ -326,6 +337,7 @@ router.post(
   handleUploadError,  // Handles multer errors
   uploadApplicationResumeController
 );
+router.get('/profile/badges/debug', checkAuth, debugBadgeCriteriaController);
 
 // View all cases for candidate
 router.get('/cases', checkAuth, getCandidateCases);
@@ -453,7 +465,7 @@ router.post('/profile/autofill/confirm', checkAuth, confirmAutofillMappingContro
 // Apply confirmed fields (session_id)
 router.post('/profile/autofill/apply', checkAuth, applyAutofillController);
 
-export default router;
+
 
 // ============================
 // LANGUAGES ROUTES
@@ -483,8 +495,43 @@ router.patch(
 );
 
 
+// ============================
+// AI CHATBOT ROUTES
+// ============================
+
+// Create new conversation (New chat)
+router.post("/chatbot/conversations", checkAuth, createConversationController);
+
+// List conversations (History list)
+router.get("/chatbot/conversations", checkAuth, listConversationsController);
+
+// List messages of one conversation
+router.get(
+  "/chatbot/conversations/:conversationId/messages",
+  checkAuth,
+  listConversationMessagesController
+);
+
+// Optional rename
+router.patch(
+  "/chatbot/conversations/:conversationId",
+  checkAuth,
+  renameConversationController
+);
+
+// Send message (requires conversation_id)
+router.post(
+  "/chatbot/message",
+  [checkAuth, validateBody(sendMessageSchema)],
+  sendChatMessageController
+);
+
+// Suggestions
+router.get("/chatbot/suggestions", checkAuth, getSuggestedQuestionsController);
 
 
+
+export default router;
 /*
 ==================== COMPLETE API ENDPOINTS SUMMARY ====================
 

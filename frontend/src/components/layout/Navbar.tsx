@@ -35,7 +35,6 @@ const Navbar = () => {
     { href: '/', label: 'Home', activePattern: /^\/$/ },
     { href: '/job/findjob', label: 'Find job', activePattern: /^\/candidate\/findjob/ },
     { href: '/company/discover', label: 'Companies', activePattern: /^\/company/ },
-    { href: '/agency/home', label: 'For Agencies', activePattern: /^\/agency\/home/ }, //for agencies
   ];
 
   // Scroll effect

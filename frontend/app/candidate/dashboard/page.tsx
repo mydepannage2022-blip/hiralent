@@ -1,5 +1,6 @@
 "use client"
 import dynamic from 'next/dynamic';
+import ChatbotButton from "@/src/components/candidate/dashboard/chatbot/ChatbotButton";
 
 const DashboardJobStatistics = dynamic(() => 
   import("@/src/components/candidate/dashboard/home/analytics/DashboardJobStatistics"), {
@@ -37,6 +38,8 @@ export default function DashboardHome() {
       <div className='w-full md:w-1/3 flex flex-col justify-start items-start gap-2'>
         <DashboardStatus showOn="desktop"/>
         <SavedJobs />
+        <ChatbotButton />
+
       </div>
     </div>
   );

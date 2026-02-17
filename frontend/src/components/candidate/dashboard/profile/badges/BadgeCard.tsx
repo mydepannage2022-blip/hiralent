@@ -1,12 +1,11 @@
-// components/candidate/profile/badges/BadgeCard.tsx
-
 "use client";
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Badge, BADGE_CATEGORY_COLORS } from '@/src/types/badge.types';
-import { BadgeProgress } from './BadgeProgress';
-import { Lock, CheckCircle, Calendar } from 'lucide-react';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Badge, BADGE_CATEGORY_COLORS } from "@/src/types/badge.types";
+import { BadgeProgress } from "./BadgeProgress";
+import { Lock, CheckCircle, Calendar } from "lucide-react";
+import { getBadgeIcon } from "./badgeIcons";
 
 interface BadgeCardProps {
   badge: Badge;
@@ -16,15 +15,18 @@ interface BadgeCardProps {
 export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  const Icon = getBadgeIcon(badge);
+
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
-  const categoryColor = BADGE_CATEGORY_COLORS[badge.category] || BADGE_CATEGORY_COLORS.profile;
+  const categoryColor =
+    BADGE_CATEGORY_COLORS[badge.category] || BADGE_CATEGORY_COLORS.profile;
 
   return (
     <motion.div
@@ -37,9 +39,10 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, onClick }) => {
       onClick={onClick}
       className={`
         relative rounded-2xl border bg-white p-5 transition-all duration-300 cursor-pointer
-        ${badge.is_earned 
-          ? 'border-blue-200 shadow-md hover:shadow-xl' 
-          : 'border-gray-200 shadow-sm hover:shadow-md opacity-75 hover:opacity-100'
+        ${
+          badge.is_earned
+            ? "border-blue-200 shadow-md hover:shadow-xl"
+            : "border-gray-200 shadow-sm hover:shadow-md opacity-75 hover:opacity-100"
         }
       `}
     >
@@ -64,43 +67,55 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, onClick }) => {
       {/* Badge Icon */}
       <div className="flex flex-col items-center text-center">
         <motion.div
-          animate={badge.is_earned ? {
-            scale: [1, 1.1, 1],
-            rotate: [0, 5, -5, 0],
-          } : {}}
+          animate={
+            badge.is_earned
+              ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }
+              : {}
+          }
           transition={{ duration: 0.5 }}
           className={`
-            mb-3 flex h-20 w-20 items-center justify-center rounded-full text-4xl
-            ${badge.is_earned 
-              ? 'bg-gradient-to-br from-blue-100 to-blue-200 shadow-md' 
-              : 'bg-gray-100 grayscale'
+            mb-3 flex h-20 w-20 items-center justify-center rounded-full shadow-md
+            ${
+              badge.is_earned
+                ? "bg-gradient-to-br from-blue-100 to-blue-200"
+                : "bg-gray-100"
             }
           `}
         >
-          {badge.icon}
+          <Icon
+            className={`h-9 w-9 ${
+              badge.is_earned ? "text-blue-700" : "text-gray-500"
+            }`}
+          />
         </motion.div>
 
         {/* Badge Name */}
-        <h3 className={`
+        <h3
+          className={`
           mb-1.5 text-sm font-bold
-          ${badge.is_earned ? 'text-gray-900' : 'text-gray-600'}
-        `}>
+          ${badge.is_earned ? "text-gray-900" : "text-gray-600"}
+        `}
+        >
           {badge.name}
         </h3>
 
         {/* Badge Description */}
-        <p className={`
+        <p
+          className={`
           mb-3 text-xs leading-relaxed
-          ${badge.is_earned ? 'text-gray-600' : 'text-gray-500'}
-        `}>
+          ${badge.is_earned ? "text-gray-600" : "text-gray-500"}
+        `}
+        >
           {badge.description}
         </p>
 
         {/* Category Tag */}
-        <span className={`
+        <span
+          className={`
           inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium
           ${categoryColor}
-        `}>
+        `}
+        >
           {badge.category}
         </span>
 
@@ -128,11 +143,11 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, onClick }) => {
       {/* Shine Effect on Hover (Earned Badges Only) */}
       {badge.is_earned && isHovered && (
         <motion.div
-          initial={{ x: '-100%' }}
-          animate={{ x: '200%' }}
+          initial={{ x: "-100%" }}
+          animate={{ x: "200%" }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-          style={{ transform: 'skewX(-20deg)' }}
+          style={{ transform: "skewX(-20deg)" }}
         />
       )}
     </motion.div>

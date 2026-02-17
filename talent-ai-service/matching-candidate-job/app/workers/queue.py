@@ -1,7 +1,7 @@
 import json
 import time
 import redis
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 from app.core.settings import settings
 
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -21,7 +21,11 @@ def enqueue(task_type: str, payload: dict, attempt: int = 0, run_at: float | Non
     redis_client.lpush(settings.REDIS_QUEUE_NAME, json.dumps(job))
 
 def dequeue(block: bool = True, timeout: int = 5) -> Optional[Dict[str, Any]]:
-    res = redis_client.brpop(settings.REDIS_QUEUE_NAME, timeout=timeout if block else 0)
+    # ✅ Pylance fix: brpop expects a list/tuple of keys, and we cast the return type
+    res = cast(
+        Optional[Tuple[str, str]],
+        redis_client.brpop([settings.REDIS_QUEUE_NAME], timeout=timeout if block else 0),
+    )
     if not res:
         return None
     _, raw = res

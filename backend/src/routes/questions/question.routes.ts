@@ -64,6 +64,20 @@ router.post('/generate-mcq-batch',
   checkAIServiceAvailable,
   controller.generateMCQBatch.bind(controller)
 );
+
+// Clone a library question into "My Questions" Ihssane added this
+router.post(
+  "/clone-from-library",
+  checkAuth,
+  controller.cloneFromLibrary.bind(controller)
+);
+// ✅ List company user's own questions (My Questions)
+router.get(
+  "/my",
+  checkAuth,
+  controller.getMyQuestions.bind(controller)
+);
+
 // GET /api/questions/:id
 router.get('/:id', 
   controller.getQuestionById.bind(controller)

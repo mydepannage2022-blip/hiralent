@@ -1,12 +1,11 @@
-// components/candidate/profile/badges/BadgeModal.tsx
-
 "use client";
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Badge, BADGE_CATEGORY_COLORS } from '@/src/types/badge.types';
-import { BadgeProgress } from './BadgeProgress';
-import { X, Calendar, Target, TrendingUp } from 'lucide-react';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Badge, BADGE_CATEGORY_COLORS } from "@/src/types/badge.types";
+import { BadgeProgress } from "./BadgeProgress";
+import { X, Calendar, Target, TrendingUp } from "lucide-react";
+import { getBadgeIcon } from "./badgeIcons";
 
 interface BadgeModalProps {
   badge: Badge | null;
@@ -14,19 +13,26 @@ interface BadgeModalProps {
   onClose: () => void;
 }
 
-export const BadgeModal: React.FC<BadgeModalProps> = ({ badge, isOpen, onClose }) => {
+export const BadgeModal: React.FC<BadgeModalProps> = ({
+  badge,
+  isOpen,
+  onClose,
+}) => {
   if (!badge) return null;
 
+  const Icon = getBadgeIcon(badge);
+
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Date(date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
-  const categoryColor = BADGE_CATEGORY_COLORS[badge.category] || BADGE_CATEGORY_COLORS.profile;
+  const categoryColor =
+    BADGE_CATEGORY_COLORS[badge.category] || BADGE_CATEGORY_COLORS.profile;
 
   return (
     <AnimatePresence>
@@ -63,24 +69,26 @@ export const BadgeModal: React.FC<BadgeModalProps> = ({ badge, isOpen, onClose }
                 {/* Badge Icon */}
                 <div className="mb-6 flex justify-center">
                   <motion.div
-                    animate={{
-                      scale: [1, 1.05, 1],
-                      rotate: [0, 3, -3, 0],
-                    }}
+                    animate={{ scale: [1, 1.05, 1], rotate: [0, 3, -3, 0] }}
                     transition={{
                       duration: 2,
                       repeat: Infinity,
                       ease: "easeInOut",
                     }}
                     className={`
-                      flex h-32 w-32 items-center justify-center rounded-full text-6xl shadow-lg
-                      ${badge.is_earned 
-                        ? 'bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300' 
-                        : 'bg-gray-100 grayscale'
+                      flex h-32 w-32 items-center justify-center rounded-full shadow-lg
+                      ${
+                        badge.is_earned
+                          ? "bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300"
+                          : "bg-gray-100"
                       }
                     `}
                   >
-                    {badge.icon}
+                    <Icon
+                      className={`h-14 w-14 ${
+                        badge.is_earned ? "text-blue-700" : "text-gray-500"
+                      }`}
+                    />
                   </motion.div>
                 </div>
 
@@ -89,10 +97,12 @@ export const BadgeModal: React.FC<BadgeModalProps> = ({ badge, isOpen, onClose }
                   <h2 className="mb-2 text-2xl font-bold text-gray-900">
                     {badge.name}
                   </h2>
-                  <span className={`
+                  <span
+                    className={`
                     inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold
                     ${categoryColor}
-                  `}>
+                  `}
+                  >
                     {badge.category.toUpperCase()}
                   </span>
                 </div>
@@ -188,17 +198,16 @@ function getUnlockTip(badge: Badge): string {
     return `Complete ${remaining} more to unlock this badge. Keep going!`;
   }
 
-  // Category-specific tips
   const tips: Record<string, string> = {
-    profile: 'Complete all sections of your profile to 100%',
-    skills: 'Take skill assessments to validate your expertise',
-    achievement: 'Maintain high performance and quality standards',
-    credentials: 'Add professional certifications to your profile',
-    verification: 'Upload and verify all required documents',
-    special: 'This is a special limited-time achievement',
+    profile: "Complete all sections of your profile to 100%",
+    skills: "Take skill assessments to validate your expertise",
+    achievement: "Maintain high performance and quality standards",
+    credentials: "Add professional certifications to your profile",
+    verification: "Upload and verify all required documents",
+    special: "This is a special limited-time achievement",
   };
 
-  return tips[badge.category] || 'Complete the requirements to unlock this badge';
+  return tips[badge.category] || "Complete the requirements to unlock this badge";
 }
 
 export default BadgeModal;
