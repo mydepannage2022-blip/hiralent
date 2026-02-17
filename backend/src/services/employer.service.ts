@@ -1,5 +1,6 @@
 // backend/src/services/employer.service.ts
-
+import * as fs from "fs";
+import * as path from "path";
 import prisma from "../lib/prisma";
 import {
   CompanyProfile,
@@ -109,6 +110,12 @@ export const updateCompanyInfo = async (
     updateData.company_name = payload.company_name;
     updateData.display_name = payload.company_name;
   }
+  if (payload.slug !== undefined) {
+    updateData.slug = payload.slug;
+  }
+  if (payload.tagline !== undefined) {
+    updateData.tagline = payload.tagline;
+  }
   if (payload.description !== undefined) {
     updateData.description = payload.description;
   }
@@ -124,6 +131,7 @@ export const updateCompanyInfo = async (
   return updatedProfile;
 };
 
+
 // Update contact section
 export const updateContact = async (
   user_id: string,
@@ -133,6 +141,11 @@ export const updateContact = async (
 
   const updateData: any = {};
 
+  // ADD THIS LINE ⬇️
+  if (payload.email !== undefined) {
+    updateData.contact_email = payload.email;
+  }
+  
   if (payload.phone !== undefined) {
     updateData.contact_number = payload.phone;
   }
@@ -153,6 +166,7 @@ export const updateContact = async (
 
   return updatedProfile;
 };
+
 
 // Update business details section
 export const updateBusinessDetails = async (
@@ -208,6 +222,13 @@ export const updateHiringPreferences = async (
   if (payload.tech_stack !== undefined) {
     updateData.typical_roles = payload.tech_stack;
   }
+  // ADD THESE 2 LINES ⬇️
+  if (payload.benefits !== undefined) {
+    updateData.benefits = payload.benefits;
+  }
+  if (payload.culture_description !== undefined) {
+    updateData.culture_description = payload.culture_description;
+  }
 
   const updatedProfile = await prisma.companyProfile.update({
     where: { company_id },
@@ -219,6 +240,7 @@ export const updateHiringPreferences = async (
 
   return updatedProfile;
 };
+
 
 // Update social links section
 export const updateSocialLinks = async (
@@ -241,6 +263,13 @@ export const updateSocialLinks = async (
   if (payload.facebook_url !== undefined) {
     updateData.facebook_page = payload.facebook_url;
   }
+  // ADD THESE 2 LINES ⬇️
+  if (payload.instagram_url !== undefined) {
+    updateData.instagram_url = payload.instagram_url;
+  }
+  if (payload.youtube_url !== undefined) {
+    updateData.youtube_url = payload.youtube_url;
+  }
 
   const updatedProfile = await prisma.companyProfile.update({
     where: { company_id },
@@ -253,6 +282,8 @@ export const updateSocialLinks = async (
   return updatedProfile;
 };
 
+
+
 // Upload logo
 export const uploadLogo = async (
   user_id: string,
@@ -264,6 +295,16 @@ export const uploadLogo = async (
   const fileName = `${company_id}-${Date.now()}.${fileExt}`;
   const logo_url = `/uploads/logos/${fileName}`;
 
+  // Ensure directory exists
+  const uploadDir = path.join(process.cwd(), "uploads", "logos");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  // Write file to disk
+  const filePath = path.join(uploadDir, fileName);
+  fs.writeFileSync(filePath, file.buffer);
+
   await prisma.companyProfile.update({
     where: { company_id },
     data: {
@@ -274,6 +315,7 @@ export const uploadLogo = async (
 
   return { logo_url };
 };
+
 
 // Remove logo
 export const removeLogo = async (user_id: string): Promise<void> => {
@@ -299,6 +341,16 @@ export const uploadCover = async (
   const fileName = `${company_id}-cover-${Date.now()}.${fileExt}`;
   const cover_image_url = `/uploads/covers/${fileName}`;
 
+  // Ensure directory exists
+  const uploadDir = path.join(process.cwd(), "uploads", "covers");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  // Write file to disk
+  const filePath = path.join(uploadDir, fileName);
+  fs.writeFileSync(filePath, file.buffer);
+
   await prisma.companyProfile.update({
     where: { company_id },
     data: {
@@ -309,6 +361,7 @@ export const uploadCover = async (
 
   return { cover_image_url };
 };
+
 
 // Remove cover image
 export const removeCover = async (user_id: string): Promise<void> => {

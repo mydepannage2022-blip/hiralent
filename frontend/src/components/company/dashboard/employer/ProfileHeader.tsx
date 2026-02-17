@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Camera, X, Upload, Loader2 } from "lucide-react";
+import { Camera, X, Loader2 } from "lucide-react";
 import Image from "next/image";
 import {
   useUploadCompanyLogo,
@@ -66,21 +66,32 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
     removeCoverMutation.mutate();
   };
 
-  const displayLogo = logoPreview || profile.logo_url;
-  const displayCover = coverPreview || profile.banner_url || (profile as any).cover_url;
+  // Get image URLs - handle both local uploads and full URLs
+  const getImageUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/v1", "") || "http://localhost:5000";
+    return `${backendUrl}${url}`;
+  };
+
+  const displayLogo = logoPreview || getImageUrl(profile.logo_url);
+  const displayCover = coverPreview || getImageUrl(profile.banner_url) || getImageUrl((profile as any).cover_url);
   const isLogoLoading = uploadLogoMutation.isPending || removeLogoMutation.isPending;
   const isCoverLoading = uploadCoverMutation.isPending || removeCoverMutation.isPending;
 
   return (
     <div className="bg-white rounded-xl border border-[#EDEDED] overflow-hidden">
       {/* Cover Image */}
-      <div className="relative h-[180px] bg-gradient-to-r from-[#005DDC] to-[#0046B3]">
+      <div className="relative h-[140px] sm:h-[180px] bg-gradient-to-r from-[#005DDC] to-[#0046B3]">
         {displayCover && (
           <Image
             src={displayCover}
             alt="Cover"
             fill
             className="object-cover"
+            unoptimized
           />
         )}
 
@@ -91,7 +102,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
               <button
                 onClick={handleRemoveCover}
                 disabled={isCoverLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
               >
                 <X size={14} />
                 Remove
@@ -100,7 +111,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
             <button
               onClick={() => coverInputRef.current?.click()}
               disabled={isCoverLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-[12px] font-medium text-white bg-black/50 rounded-lg hover:bg-black/70 transition-colors disabled:opacity-50"
             >
               {isCoverLoading ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -122,21 +133,22 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
       </div>
 
       {/* Profile section */}
-      <div className="px-6 pb-5">
-        <div className="flex items-end gap-4 -mt-12">
+      <div className="px-4 sm:px-6 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10 sm:-mt-12">
           {/* Logo */}
-          <div className="relative">
-            <div className="w-24 h-24 rounded-xl border-4 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center">
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border-4 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center relative">
               {displayLogo ? (
                 <Image
                   src={displayLogo}
                   alt={profile.company_name || profile.display_name || "Company"}
                   fill
                   className="object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full bg-[#EFF5FF] flex items-center justify-center">
-                  <span className="text-[28px] font-bold text-[#005DDC]">
+                  <span className="text-[24px] sm:text-[28px] font-bold text-[#005DDC]">
                     {(profile.company_name || profile.display_name)?.charAt(0)?.toUpperCase() || "C"}
                   </span>
                 </div>
@@ -169,12 +181,14 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           </div>
 
           {/* Company info */}
-          <div className="flex-1 pb-1">
-            <h1 className="text-[20px] font-bold text-[#1a1a1a]">
+          <div className="flex-1 min-w-0 pb-1">
+            <h1 className="text-[18px] sm:text-[20px] font-bold text-[#1a1a1a] truncate">
               {profile.company_name || profile.display_name || "Your Company"}
             </h1>
             {(profile as any).tagline && (
-            <p className="text-[13px] text-[#888] mt-0.5">{(profile as any).tagline}</p>
+              <p className="text-[12px] sm:text-[13px] text-[#888] mt-0.5 truncate">
+                {(profile as any).tagline}
+              </p>
             )}
           </div>
 
@@ -182,7 +196,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           {displayLogo && !isLogoLoading && (
             <button
               onClick={handleRemoveLogo}
-              className="text-[12px] text-[#888] hover:text-[#dc2626] transition-colors"
+              className="hidden sm:block text-[12px] text-[#888] hover:text-[#dc2626] transition-colors flex-shrink-0"
             >
               Remove logo
             </button>
@@ -190,44 +204,43 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         </div>
 
         {/* Quick stats */}
-        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#EDEDED]">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-4 pt-4 border-t border-[#EDEDED]">
           {profile.industry && (
             <div>
-              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+              <p className="text-[10px] sm:text-[11px] text-[#999] uppercase tracking-wide">
                 Industry
               </p>
-              <p className="text-[13px] font-medium text-[#333]">
+              <p className="text-[12px] sm:text-[13px] font-medium text-[#333]">
                 {profile.industry}
               </p>
             </div>
           )}
           {profile.company_size && (
             <div>
-              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+              <p className="text-[10px] sm:text-[11px] text-[#999] uppercase tracking-wide">
                 Company Size
               </p>
-              <p className="text-[13px] font-medium text-[#333]">
+              <p className="text-[12px] sm:text-[13px] font-medium text-[#333]">
                 {profile.company_size}
               </p>
             </div>
           )}
-        {(profile.headquarters || (profile as any).location) && (
-              <div>
-                <p className="text-[11px] text-[#999] uppercase tracking-wide">
-                  Location
-                </p>
-                <p className="text-[13px] font-medium text-[#333]">
-                  {profile.headquarters || (profile as any).location}
-                </p>
-              </div>
-            )}
-
+          {(profile.headquarters || (profile as any).location) && (
+            <div>
+              <p className="text-[10px] sm:text-[11px] text-[#999] uppercase tracking-wide">
+                Location
+              </p>
+              <p className="text-[12px] sm:text-[13px] font-medium text-[#333]">
+                {profile.headquarters || (profile as any).location}
+              </p>
+            </div>
+          )}
           {profile.founded_year && (
             <div>
-              <p className="text-[11px] text-[#999] uppercase tracking-wide">
+              <p className="text-[10px] sm:text-[11px] text-[#999] uppercase tracking-wide">
                 Founded
               </p>
-              <p className="text-[13px] font-medium text-[#333]">
+              <p className="text-[12px] sm:text-[13px] font-medium text-[#333]">
                 {profile.founded_year}
               </p>
             </div>

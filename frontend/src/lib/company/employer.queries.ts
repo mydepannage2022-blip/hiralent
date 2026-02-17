@@ -45,7 +45,7 @@ export function useCompanyProfile() {
   return useQuery({
     queryKey: employerKeys.profile(),
     queryFn: getCompanyProfile,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always refetch when invalidated
   });
 }
 
@@ -56,7 +56,7 @@ export function useProfileCompleteness() {
   return useQuery({
     queryKey: employerKeys.completeness(),
     queryFn: getProfileCompleteness,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Always refetch when invalidated
   });
 }
 
@@ -98,8 +98,9 @@ export function useUpdateCompanyInfo() {
   return useMutation({
     mutationFn: (data: UpdateCompanyInfoPayload) => updateCompanyInfo(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      // Refetch immediately
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -113,8 +114,8 @@ export function useUpdateContact() {
   return useMutation({
     mutationFn: (data: UpdateContactPayload) => updateContact(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -128,8 +129,8 @@ export function useUpdateBusinessDetails() {
   return useMutation({
     mutationFn: (data: UpdateBusinessPayload) => updateBusinessDetails(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -143,8 +144,8 @@ export function useUpdateHiringPreferences() {
   return useMutation({
     mutationFn: (data: UpdateHiringPayload) => updateHiringPreferences(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -158,8 +159,8 @@ export function useUpdateSocialLinks() {
   return useMutation({
     mutationFn: (data: UpdateSocialLinksPayload) => updateSocialLinks(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -173,8 +174,8 @@ export function useUploadCompanyLogo() {
   return useMutation({
     mutationFn: (file: File) => uploadCompanyLogo(file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -188,8 +189,8 @@ export function useUploadCompanyCover() {
   return useMutation({
     mutationFn: (file: File) => uploadCompanyCover(file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -203,8 +204,8 @@ export function useRemoveCompanyLogo() {
   return useMutation({
     mutationFn: () => removeCompanyLogo(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }
@@ -218,8 +219,8 @@ export function useRemoveCompanyCover() {
   return useMutation({
     mutationFn: () => removeCompanyCover(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: employerKeys.profile() });
-      queryClient.invalidateQueries({ queryKey: employerKeys.completeness() });
+      queryClient.refetchQueries({ queryKey: employerKeys.profile() });
+      queryClient.refetchQueries({ queryKey: employerKeys.completeness() });
     },
   });
 }

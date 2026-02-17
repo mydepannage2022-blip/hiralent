@@ -2,17 +2,15 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   Building2,
   Mail,
   Briefcase,
   Users,
   Link2,
-  Eye,
   Loader2,
 } from "lucide-react";
-import Link from "next/link";
 import { useCompanyProfile } from "@/src/lib/company/employer.queries";
 import ProfileHeader from "./ProfileHeader";
 import ProfileCompleteness from "./ProfileCompleteness";
@@ -92,28 +90,6 @@ export default function EmployerProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[20px] font-bold text-[#1a1a1a]">
-            Employer Profile
-          </h1>
-          <p className="text-[13px] text-[#888] mt-0.5">
-            Manage your company profile and public presence
-          </p>
-        </div>
-          {((profile as any).slug || profile.company_id) && (
-            <Link
-              href={`/company/${(profile as any).slug || profile.company_id}`}
-              target="_blank"
-              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-[#005DDC] bg-[#EFF5FF] rounded-lg hover:bg-[#E0EDFF] transition-colors"
-            >
-              <Eye size={15} />
-              View Public Profile
-            </Link>
-          )}
-      </div>
-
       {/* Profile Header (Logo/Cover) */}
       <ProfileHeader profile={profile} />
 
@@ -121,8 +97,11 @@ export default function EmployerProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar - Completeness */}
         <div className="lg:col-span-1">
-          <div className="sticky top-6">
-            <ProfileCompleteness onSectionClick={handleSectionClick} />
+          <div className="sticky top-6 space-y-4">
+            <ProfileCompleteness 
+              onSectionClick={handleSectionClick} 
+              profile={profile}
+            />
           </div>
         </div>
 
@@ -158,12 +137,13 @@ export default function EmployerProfilePage() {
 
           {/* Active Form */}
           <div ref={(el) => { formRefs.current[activeTab] = el; }}>
-            {activeTab === "info" && <CompanyInfoForm profile={profile} />}
-            {activeTab === "contact" && <ContactForm profile={profile} />}
-            {activeTab === "business" && <BusinessDetailsForm profile={profile} />}
-            {activeTab === "hiring" && <HiringPreferencesForm profile={profile} />}
-            {activeTab === "social" && <SocialLinksForm profile={profile} />}
+            {activeTab === "info" && <CompanyInfoForm key={profile.updated_at || profile.company_id} profile={profile} />}
+            {activeTab === "contact" && <ContactForm key={profile.updated_at || profile.company_id} profile={profile} />}
+            {activeTab === "business" && <BusinessDetailsForm key={profile.updated_at || profile.company_id} profile={profile} />}
+            {activeTab === "hiring" && <HiringPreferencesForm key={profile.updated_at || profile.company_id} profile={profile} />}
+            {activeTab === "social" && <SocialLinksForm key={profile.updated_at || profile.company_id} profile={profile} />}
           </div>
+
         </div>
       </div>
     </div>

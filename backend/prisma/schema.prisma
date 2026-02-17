@@ -178,6 +178,8 @@ model CompanyProfile {
   // Basic Company Info
   company_name String? // Official registered company name
   display_name String? // Display name (can be different from legal name)
+  slug         String?
+  tagline      String? 
   industry     String? // Technology, Healthcare, Finance, etc.
   company_size String? // startup, small, medium, large, enterprise
   website      String?
@@ -186,11 +188,14 @@ model CompanyProfile {
   description  String? // Company description/about
 
   // Contact & Social
+  contact_email    String? 
   contact_number   String?
   linkedin_profile String?
   twitter_handle   String?
   facebook_page    String?
-
+  instagram_url    String?  // <-- ADD THIS
+  youtube_url      String?  // <-- ADD THIS
+  
   // Business Details
   business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
@@ -208,6 +213,8 @@ model CompanyProfile {
   hiring_volume  String? // low, medium, high volume hiring
   typical_roles  String[] // Common roles they hire for
   hiring_regions String[] // Geographic regions they hire from/for
+  benefits       String[] 
+  culture_description String? 
   remote_policy  String? // fully_remote, hybrid, office_only
 
   // Platform Specific

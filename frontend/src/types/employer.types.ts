@@ -317,9 +317,9 @@ export interface UpdateHiringPayload {
   tech_stack?: string[];
 }
 
-// Alias for SocialLinksForm
+// Alias for SocialLinksForm - MATCHES BACKEND SCHEMA
 export interface UpdateSocialLinksPayload {
-  website_url?: string;
+  website?: string;
   linkedin_url?: string;
   twitter_url?: string;
   facebook_url?: string;
@@ -328,8 +328,23 @@ export interface UpdateSocialLinksPayload {
 }
 
 
-// ==================== MISSING RESPONSE TYPES ====================
+// Alias for CompanyInfoForm - MATCHES BACKEND SCHEMA
+export interface UpdateCompanyInfoPayload {
+  company_name?: string;
+  slug?: string;
+  tagline?: string;
+  description?: string;
+}
 
+// Alias for ContactForm - MATCHES BACKEND SCHEMA
+export interface UpdateContactPayload {
+  email?: string;
+  phone?: string;
+  location?: string;
+  address?: string;
+}
+
+// Profile Completeness Response - MATCHES API
 export interface ProfileCompletenessResponse {
   success: boolean;
   completeness: number;
@@ -337,6 +352,7 @@ export interface ProfileCompletenessResponse {
   sections: Record<string, boolean>;
 }
 
+// Public Company Profile Response - MATCHES API
 export interface PublicCompanyProfileResponse {
   success: boolean;
   profile: CompanyProfile;

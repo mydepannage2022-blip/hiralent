@@ -27,14 +27,20 @@ export default function HiringPreferencesForm({ profile }: HiringPreferencesForm
 
   const updateMutation = useUpdateHiringPreferences();
 
-  useEffect(() => {
-    setFormData({
-      work_types: (profile as any).work_types || [],
-      benefits: (profile as any).benefits || [],
-      culture_description: (profile as any).culture_description || "",
-      tech_stack: (profile as any).tech_stack || [],
-    });
-  }, [profile]);
+useEffect(() => {
+  // Parse remote_policy back to array
+  const workTypesFromDb = (profile as any).remote_policy 
+    ? (profile as any).remote_policy.split(",").filter(Boolean) 
+    : [];
+    
+  setFormData({
+    work_types: workTypesFromDb,
+    benefits: (profile as any).benefits || [],
+    culture_description: (profile as any).culture_description || "",
+    tech_stack: (profile as any).typical_roles || [],  // DB field is typical_roles
+  });
+}, [profile]);
+
 
 
   const handleCultureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
