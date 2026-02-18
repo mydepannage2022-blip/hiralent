@@ -8,8 +8,7 @@ interface ConditionalLayoutProps {
 const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
   const pathname = usePathname();
 
-  // Routes where navbar/footer should NOT show
-  const excludeLayoutRoutes = [
+const excludeLayoutRoutes = [
     '/candidate/dashboard',
     '/candidate/dashboard/candidate-profile',
     '/candidate/dashboard/notifications', 
@@ -22,10 +21,15 @@ const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
     '/admin/login',
     '/auth/',
     '/job/findjob',
-    '/code-run'
+    '/code-run',
+    '/company/public-profile',  // <-- ADD
   ];
 
-  const shouldHideLayout = pathname ? excludeLayoutRoutes.some(route => pathname.startsWith(route)) : false;
+  // Also check dynamic company slug routes
+  const isCompanyPublicProfile = pathname ? /^\/company\/[^\/]+$/.test(pathname) && !pathname.startsWith('/company/dashboard') && !pathname.startsWith('/company/discover') && !pathname.startsWith('/company/pricing') && !pathname.startsWith('/company/checkout') && !pathname.startsWith('/company/home') : false;
+
+  const shouldHideLayout = pathname ? (excludeLayoutRoutes.some(route => pathname.startsWith(route)) || isCompanyPublicProfile) : false;
+
 
   return (
     <>

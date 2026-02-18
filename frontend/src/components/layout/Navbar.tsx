@@ -127,7 +127,6 @@ const Navbar = () => {
               <IoIosNotificationsOutline className='text-[#222] cursor-pointer lg:text-xl hover:text-[#005DDC] transition-colors duration-200' />
             </motion.div>
 
-            {/* ✅ Employer / Job Seeker link */}
             {!isLoggedIn && getSwitchRoleLink() && (
               <motion.div whileHover={{ scale: 1.05, color: "#005DDC" }} transition={{ duration: 0.2 }}>
                 <SmartLink
@@ -141,14 +140,12 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Get Started / Dashboard */}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
             {(() => {
-              // determine dashboard href based on role (case-insensitive)
               const role = (user?.role || '').toString().toLowerCase();
               let dashboardHref = '/';
               if (isLoggedIn) {
-                if (role === 'company' || role === 'company_admin') dashboardHref = '/company/dashboard';
+                if (role === 'company' || role === 'company_admin' || role === 'company_member') dashboardHref = '/company/dashboard';
                 else if (role === 'candidate') dashboardHref = '/candidate/dashboard';
                 else if (role === 'agency') dashboardHref = '/agency/dashboard';
                 else dashboardHref = '/';

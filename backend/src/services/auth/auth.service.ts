@@ -22,62 +22,6 @@ import {
 } from "../../types/auth.types";
 import { DeleteAccountRequest } from "../../validation/auth.schema";
 
-
-// export const signup = async (input: SignupInput) => {
-//   try {
-//     const { email, password, full_name, role } = input;
-
-//     const exists = await prisma.user.findUnique({ where: { email } });
-//     if (exists) throw new Error("Email already exists");
-
-//     const password_hash = await bcrypt.hash(password, 10);
-//     const user = await prisma.user.create({
-//       data: {
-//         email,
-//         password_hash,
-//         full_name,
-//         role,
-//         agency_id: null, 
-//         is_email_verified: false,
-//       },
-//     });
-
-//     const token = generateToken({ user_id: user.user_id, role: user.role });
-//     await sendVerificationEmail(user.email, user.user_id);
-
-//     // Send company-specific welcome + legacy-check emails immediately for company signups.
-//     try {
-//       // Accept both 'company' and 'company_admin' roles as company signups
-//       if (user.role === 'company' || user.role === 'company_admin') {
-//         // Use token payload key 'userId' for verify flow compatibility
-//         const verificationToken = generateToken({ userId: user.user_id }, '7d');
-//         const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
-//         const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
-//         console.log('[post-signup-email] Sending welcome email to', user.email);
-//         await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
-//         console.log('[post-signup-email] Welcome email send attempted for', user.email);
-
-//         // Legacy / upload link should point to the company's upload page (frontend)
-//         const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
-//         const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
-//         console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
-//         await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
-//         console.log('[post-signup-email] Legacy-check email send attempted for', user.email);
-//       }
-//     } catch (err) {
-//       console.error('Error sending post-signup company emails:', err);
-//     }
-
-//     return { user, token };
-//   } catch (error: any) {
-//     console.error("Signup Error:", error);
-//     return {
-//       error: true,
-//       message: error.message || "Signup failed",
-//     };
-//   }
-// };
-
 export const signup = async (input: SignupInput, req?: any) => {
   try {
     const { email, password, full_name, role } = input;
@@ -172,13 +116,19 @@ export const login = async ({ email, password }: LoginInput, req?: any): Promise
 
     const sessionId = uuidv4();
 
-    // ✅ for both company & company_admin
-    const companyId =
-      (user.role === "company" || user.role === "company_admin")
-        ? (user.companyProfile?.company_id ?? user.user_id)
-        : undefined;
+    let companyId: string | undefined;
 
-    if ((user.role === "company" || user.role === "company_admin") && !companyId) {
+    if (user.role === "company" || user.role === "company_admin") {
+      companyId = user.companyProfile?.company_id ?? user.user_id;
+    } else if (user.role === "company_member") {
+      // Get company_id from team membership
+      const membership = await prisma.companyTeamMember.findFirst({
+        where: { user_id: user.user_id, is_active: true },
+        select: { company_id: true },
+      });
+      companyId = membership?.company_id;
+    }
+    if ((user.role === "company" || user.role === "company_admin" || user.role === "company_member") && !companyId) {
       throw new Error("Company account is not initialized (missing company_id).");
     }
 
@@ -190,9 +140,6 @@ export const login = async ({ email, password }: LoginInput, req?: any): Promise
       undefined,     // deviceHash optional
       companyId      // 👈 now included for both roles
     );
-
-    // DEV sanity check
-    // console.log("JWT payload on login:", jwt.decode(token));
 
     await createSession({
       userId: user.user_id,

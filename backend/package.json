@@ -109,8 +109,8 @@
     "@types/socket.io": "^3.0.1",
     "nodemon": "^3.1.11",
     "prisma": "6.19.0",
-    "ts-node": "^1.7.1",
+    "ts-node": "^10.9.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.2.2"
   }
 }
