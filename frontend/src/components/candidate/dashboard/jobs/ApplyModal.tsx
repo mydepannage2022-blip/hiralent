@@ -1,4 +1,3 @@
-// frontend/src/components/candidate/dashboard/jobs/ApplyModal.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -12,13 +11,14 @@ export default function ApplyModal(props: {
   jobId: string;
   jobTitle?: string | null;
   eligibility?: EligibilityResult;
+  onApplied?: () => void; // ✅ NEW
 }) {
-  const { open, onClose, jobId, jobTitle, eligibility } = props;
+  const { open, onClose, jobId, jobTitle, eligibility, onApplied } = props;
   const [coverLetter, setCoverLetter] = useState("");
   const { mutateAsync, isPending } = useApplyToJob();
 
   const canApply = useMemo(() => {
-    if (!eligibility) return true; // if not provided, allow and let backend validate
+    if (!eligibility) return true;
     return eligibility.eligible;
   }, [eligibility]);
 
@@ -31,6 +31,10 @@ export default function ApplyModal(props: {
       alert(res.error);
       return;
     }
+
+    // ✅ mark applied in parent
+    onApplied?.();
+
     onClose();
   };
 
@@ -39,8 +43,12 @@ export default function ApplyModal(props: {
       <div className="w-full max-w-xl rounded-xl bg-white shadow-lg border border-gray-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Apply to {jobTitle ?? "this job"}</h3>
-            <p className="text-sm text-gray-600">Your application will be validated by the eligibility rules.</p>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Apply to {jobTitle ?? "this job"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              Your application will be validated by the eligibility rules.
+            </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-50">
             <X className="w-5 h-5 text-gray-600" />
@@ -48,7 +56,9 @@ export default function ApplyModal(props: {
         </div>
 
         <div className="p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Cover letter (optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Cover letter (optional)
+          </label>
           <textarea
             value={coverLetter}
             onChange={(e) => setCoverLetter(e.target.value)}
@@ -68,7 +78,10 @@ export default function ApplyModal(props: {
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+          >
             Cancel
           </button>
           <button

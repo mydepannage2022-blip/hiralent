@@ -1,148 +1,232 @@
-import type {
-  InternalCandidateDetailsDTO,
-  InternalCandidateListItemDTO,
-} from "../../../src/types/company.candidates.internal.types";
+"use client";
+
 import type {
   ExternalCandidateDetailsDTO,
   ExternalCandidateListItemDTO,
-} from "../../../src/types/company.candidates.external.types";
+} from "@/src/types/company.candidates.external.types";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import type {
+  InternalCandidateListItemDTO,
+  InternalCandidateFullProfileDTO,
+} from "@/src/types/company.candidates.internal.types";
 
-// ✅ MOCK DATA (replace later with real API)
-const MOCK_INTERNAL: InternalCandidateListItemDTO[] = [
-  {
-    candidate_id: "cnd_001",
-    full_name: "Ihssane EL FASSIHY",
-    headline: "AI Engineer • Multi-agent Systems • RAG",
-    location: "Casablanca, MA",
-    experience_level: "mid",
-    skills: ["python", "fastapi", "docker", "qdrant", "nodejs"],
-    fit_score: 92,
-    applied_count: 3,
-    profile_picture_url: "/images/candidate.jpg",
-  },
-  {
-    candidate_id: "cnd_002",
-    full_name: "Sara Benali",
-    headline: "Data Engineer • Spark • Airflow",
-    location: "Rabat, MA",
-    experience_level: "junior",
-    skills: ["python", "pyspark", "airflow", "postgresql"],
-    fit_score: 78,
-    applied_count: 1,
-    profile_picture_url: "/images/candidate.jpg",
-  },
-];
+export type Paginated<T> = {
+  items: T[];
+  page: number;
+  limit: number;
+  total: number;
+};
 
-const MOCK_EXTERNAL: ExternalCandidateListItemDTO[] = [
-  {
-    source_id: "src_001",
-    source: "linkedin",
-    full_name: "Adam El Idrissi",
-    headline: "Backend Engineer (Node.js)",
-    location: "Remote",
-    skills: ["nodejs", "nestjs", "postgresql", "redis"],
-    fit_score: 84,
-    profile_url: "https://linkedin.com",
-  },
-  {
-    source_id: "src_002",
-    source: "github",
-    full_name: "Yasmine A.",
-    headline: "ML Engineer • NLP",
-    location: "Marrakech, MA",
-    skills: ["python", "pytorch", "transformers", "mlops"],
-    fit_score: 81,
-    profile_url: "https://github.com",
-  },
-];
+export type CompanyJobOption = {
+  job_id: string;
+  title: string;
+};
 
-export async function listInternalCandidates(params?: {
-  q?: string;
-  minScore?: number;
-}): Promise<InternalCandidateListItemDTO[]> {
-  await sleep(250);
+function readTokenFromStorage(key: string): string {
+  const v =
+    (typeof window !== "undefined" && localStorage.getItem(key)) ||
+    (typeof window !== "undefined" && sessionStorage.getItem(key)) ||
+    "";
 
-  const q = (params?.q ?? "").trim().toLowerCase();
-  const minScore = params?.minScore ?? 0;
+  if (!v) return "";
 
-  return MOCK_INTERNAL
-    .filter((c) => (c.fit_score ?? 0) >= minScore)
-    .filter((c) => {
-      if (!q) return true;
-      const hay = [
-        c.full_name,
-        c.headline ?? "",
-        c.location ?? "",
-        ...(c.skills ?? []),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => (b.fit_score ?? 0) - (a.fit_score ?? 0));
+  if (v.startsWith("{") || v.startsWith('"')) {
+    try {
+      const parsed = JSON.parse(v);
+      if (typeof parsed === "string") return parsed;
+      if (parsed?.token && typeof parsed.token === "string") return parsed.token;
+      if (parsed?.accessToken && typeof parsed.accessToken === "string")
+        return parsed.accessToken;
+    } catch {
+      // keep raw
+    }
+  }
+
+  return v;
 }
 
-export async function getInternalCandidateDetails(
-  candidateId: string
-): Promise<InternalCandidateDetailsDTO | null> {
-  await sleep(200);
-  const base = MOCK_INTERNAL.find((x) => x.candidate_id === candidateId);
-  if (!base) return null;
+function getCompanyToken() {
+  if (typeof window === "undefined") return "";
+
+  return (
+    readTokenFromStorage("authToken") ||
+    readTokenFromStorage("token") ||
+    readTokenFromStorage("accessToken") ||
+    readTokenFromStorage("access_token") ||
+    readTokenFromStorage("jwt") ||
+    ""
+  );
+}
+
+async function apiGet<T>(path: string): Promise<T> {
+  const token = getCompanyToken();
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+  const res = await fetch(`${base}${path}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+/** -----------------------------
+ *  EXTERNAL (SCRAPED)
+ * ------------------------------*/
+export async function listExternalCandidates(params: {
+  q?: string;
+  source?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<Paginated<ExternalCandidateListItemDTO>> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.source) qs.set("source", params.source);
+  if (params.status) qs.set("status", params.status);
+  qs.set("page", String(params.page ?? 1));
+  qs.set("limit", String(params.limit ?? 20));
+
+  const raw = await apiGet<any>(
+    `/api/v1/company/candidates/external?${qs.toString()}`
+  );
+
+  const items: any[] = Array.isArray(raw)
+    ? raw
+    : raw.items ?? raw.data?.items ?? raw.data ?? [];
 
   return {
-    ...base,
-    email: "candidate@example.com",
-    phone: null,
-    about_me: "Motivated candidate with strong engineering mindset.",
-    education: [{ school: "ENSAM Casablanca", degree: "Engineering", year: "2026" }],
-    experiences: [{ company: "Fronx Solutions", role: "AI Intern", from: "2025", to: null }],
-    projects: [{ title: "KnowFlow", description: "Adaptive multi-agent orchestration platform" }],
+    items: items.map((r: any) => ({
+      source_id: r.sourced_candidate_id,
+      source: r.source,
+      full_name: r.full_name,
+      headline: r.headline,
+      location: r.location,
+      city: r.city,
+      skills: r.skills ?? [],
+      profile_url: r.source_profile_url ?? null,
+      status: r.status ?? null,
+      fit_score: r.fit_score ?? null,
+    })),
+    page: raw.page ?? raw.data?.page ?? 1,
+    limit: raw.limit ?? raw.data?.limit ?? 20,
+    total: raw.total ?? raw.data?.total ?? items.length ?? 0,
   };
 }
 
-export async function listExternalCandidates(params?: {
-  q?: string;
-  minScore?: number;
-  source?: string;
-}): Promise<ExternalCandidateListItemDTO[]> {
-  await sleep(250);
-
-  const q = (params?.q ?? "").trim().toLowerCase();
-  const minScore = params?.minScore ?? 0;
-  const source = (params?.source ?? "").trim().toLowerCase();
-
-  return MOCK_EXTERNAL
-    .filter((c) => (c.fit_score ?? 0) >= minScore)
-    .filter((c) => (source ? c.source.toLowerCase() === source : true))
-    .filter((c) => {
-      if (!q) return true;
-      const hay = [
-        c.full_name,
-        c.headline ?? "",
-        c.location ?? "",
-        ...(c.skills ?? []),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => (b.fit_score ?? 0) - (a.fit_score ?? 0));
+export async function listExternalSources(): Promise<{ sources: string[] }> {
+  return apiGet<{ sources: string[] }>(
+    `/api/v1/company/candidates/external/sources`
+  );
 }
 
 export async function getExternalCandidateDetails(
   sourceId: string
-): Promise<ExternalCandidateDetailsDTO | null> {
-  await sleep(200);
-  const base = MOCK_EXTERNAL.find((x) => x.source_id === sourceId);
-  if (!base) return null;
+): Promise<ExternalCandidateDetailsDTO> {
+  const r = await apiGet<any>(`/api/v1/company/candidates/external/${sourceId}`);
 
   return {
-    ...base,
-    summary: "Scraped profile summary (placeholder).",
-    experiences: [{ company: "Some Company", role: "Engineer", period: "2023 - 2025" }],
-    education: [{ school: "University", degree: "CS" }],
-    extracted_from: "linkedin_search: data engineer",
+    source_id: r.sourced_candidate_id,
+    source: r.source,
+    full_name: r.full_name,
+    headline: r.headline,
+    about_me: r.about_me,
+    location: r.location,
+    city: r.city,
+    skills: r.skills ?? [],
+    links: r.links ?? null,
+    email: r.email ?? null,
+    phone: r.phone ?? null,
+    linkedin_url: r.linkedin_url ?? null,
+    source_profile_url: r.source_profile_url ?? null,
+    status: r.status ?? null,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
   };
+}
+
+/** -----------------------------
+ *  JOBS (dropdown)
+ * ------------------------------*/
+export async function listCompanyJobsActive(): Promise<CompanyJobOption[]> {
+  const raw = await apiGet<any>(`/api/v1/jobs/company/my-jobs`);
+
+  const items: any[] = Array.isArray(raw)
+    ? raw
+    : raw.items ?? raw.data?.items ?? raw.data ?? [];
+
+  return items
+    .filter((j) => String(j.status ?? "").toUpperCase() === "ACTIVE")
+    .map((j) => ({
+      job_id: String(j.job_id ?? j.id),
+      title: String(j.title ?? j.job_title ?? "Untitled"),
+    }));
+}
+
+/** -----------------------------
+ *  INTERNAL RANKING (by job)
+ *  GET /api/v1/company/jobs/:jobId/candidates-ranking?pool=internal
+ * ------------------------------*/
+export async function getInternalRankingForJob(params: {
+  jobId: string;
+  search?: string;
+  minScore?: number;
+}): Promise<{ items: InternalCandidateListItemDTO[] }> {
+  const qs = new URLSearchParams();
+  qs.set("pool", "internal");
+
+  if (params.search) qs.set("search", params.search);
+
+  if (typeof params.minScore === "number" && params.minScore > 0) {
+    qs.set("minScore", String(params.minScore));
+    qs.set("min_score", String(params.minScore));
+  }
+
+  const raw = await apiGet<any>(
+    `/api/v1/company/jobs/${params.jobId}/candidates-ranking?${qs.toString()}`
+  );
+
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.data)
+    ? raw.data
+    : raw?.data?.items ?? raw?.items ?? [];
+
+  return {
+    items: list.map((c: any) => ({
+      candidate_id: c.candidate_id ?? c.user_id ?? c.id,
+      full_name: c.full_name ?? c.name ?? null,
+      headline: c.headline ?? null,
+      location: c.location ?? null,
+      city: c.city ?? null,
+      experience_level: c.experience_level ?? null,
+      skills: c.skills ?? [],
+      applied_count: c.applied_count ?? c.appliedCount ?? null,
+      profile_picture_url: c.profile_picture_url ?? null,
+      fit_score: c.fit_score ?? c.match_score ?? null,
+    })),
+  };
+}
+
+/** -----------------------------
+ *  INTERNAL DETAILS (FULL PROFILE)
+ *  ✅ This MUST point to your new endpoint:
+ *  GET /api/v1/company/candidates/internal/:candidateId
+ * ------------------------------*/
+export async function getInternalCandidateDetails(
+  candidateId: string
+): Promise<InternalCandidateFullProfileDTO> {
+  return apiGet<InternalCandidateFullProfileDTO>(
+    `/api/v1/company/candidates/internal/${candidateId}`
+  );
 }

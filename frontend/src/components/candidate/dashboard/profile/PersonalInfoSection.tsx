@@ -452,6 +452,7 @@ const Personal = () => {
             </div>
 
             {/* About Section */}
+            {/* About Section */}
             <div className="border-t border-gray-100 pt-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
@@ -465,7 +466,15 @@ const Personal = () => {
 
               {hasAboutContent ? (
                 <div className="border border-gray-200 rounded-lg p-5 bg-emerald-50/20">
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{aboutMe}</p>
+                  <p
+                    className="
+                      text-sm text-gray-700 leading-relaxed
+                      whitespace-pre-wrap break-words
+                      overflow-visible
+                    "
+                  >
+                    {aboutMe}
+                  </p>
                 </div>
               ) : (
                 <div
@@ -480,12 +489,13 @@ const Personal = () => {
                 </div>
               )}
             </div>
+
           </div>
         ) : (
           <div className="space-y-8">
             {/* Edit Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* ✅ NEW: First name */}
+              {/*  NEW: First name */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-900">First Name</label>
                 <input

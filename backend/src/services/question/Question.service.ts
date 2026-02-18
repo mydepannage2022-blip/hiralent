@@ -369,5 +369,74 @@ async findByTitle(title: string): Promise<Question | null> {
   }
 }
 
+async cloneFromLibrary(args: {
+  company_id: string;
+  libraryQuestionId: string;
+}) {
+  const { company_id, libraryQuestionId } = args;
+
+  const q = await prisma.question.findUnique({
+    where: { id: libraryQuestionId },
+  });
+
+  if (!q) throw new Error("Library question not found");
+  if (!q.isLibraryQuestion) throw new Error("This question is not a library question");
+  if (q.status !== "approved") throw new Error("Only approved library questions can be cloned");
+
+  // ✅ Create company-owned copy (My Questions)
+  const created = await prisma.question.create({
+    data: {
+      title: q.title,
+      description: q.description,
+      problemStatement: q.problemStatement,
+      difficulty: q.difficulty,
+      skillTags: q.skillTags ?? [],
+      type: q.type,
+      canonicalSolution: q.canonicalSolution,
+      testCases: q.testCases,
+      parameters: q.parameters ?? undefined,
+      metadata: q.metadata ?? undefined,
+      options: q.options ?? undefined,
+      correctAnswer: q.correctAnswer ?? undefined,
+      explanation: q.explanation ?? undefined,
+
+      // vector fields reset
+      vectorStored: false,
+      vectorId: null,
+      embeddingHash: null,
+
+      // ownership
+      createdBy: company_id,
+      aiGenerated: q.aiGenerated ?? false,
+      source: q.source ?? "library_clone",
+      status: "approved", // ou "draft" si tu veux review
+
+      isLibraryQuestion: false,
+
+      // diagram copy (optional)
+      hasDiagram: q.hasDiagram ?? false,
+      diagramType: q.diagramType ?? null,
+      diagramCode: q.diagramCode ?? null,
+      diagramImageUrl: q.diagramImageUrl ?? null,
+      diagramMetadata: q.diagramMetadata ?? undefined,
+
+      // pattern flags: clone as "not pattern-generated" OR keep it (à toi)
+      generatedFromPattern: q.generatedFromPattern ?? false,
+      patternKey: null, // ⚠️ IMPORTANT: pour éviter @@unique collision
+      patternDifficultyVariant: null,
+    },
+  });
+
+  return created;
+}
+async getMyQuestions(company_id: string) {
+  return prisma.question.findMany({
+    where: {
+      isLibraryQuestion: false,
+      createdBy: company_id,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
 
 }``

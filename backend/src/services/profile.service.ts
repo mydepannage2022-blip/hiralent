@@ -37,6 +37,7 @@ import {
 } from "./candidate/profileSection.service";
 import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
 import path from 'path';
+import { triggerCandidateMatching } from "./matching/candidate-outbox.service"; // I added This line (Ihssane)
 const prisma = new PrismaClient();
 
 export const updateBasicInfo = async (
@@ -91,6 +92,13 @@ export const updateBasicInfo = async (
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
 
+if (updatedFields.includes("about_me")) {
+  await triggerCandidateMatching(candidateId, "updateBasicInfo").catch(e =>
+    console.warn("Failed to trigger matching:", e)
+  );
+}
+
+
     return {
       success: true,
       message: `Successfully updated ${updatedFields.join(', ')}`,
@@ -111,6 +119,10 @@ export const updateSkills = async (
     
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+
+   await triggerCandidateMatching(candidateId, "updateSkills").catch(e => 
+      console.warn("Failed to trigger matching:", e)
+   );
 
     return {
       success: true,
@@ -158,7 +170,10 @@ export const addSkill = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+   await triggerCandidateMatching(candidateId, "addSkill").catch(e => 
+      console.warn("Failed to trigger matching:", e)
+  );
     return {
       success: true,
       message: `Successfully added skill: ${data.skill_name}`,
@@ -196,6 +211,9 @@ export const deleteSkill = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+    await triggerCandidateMatching(candidateId, "deleteSkill").catch(e =>
+  console.warn("Failed to trigger matching:", e)
+);
 
     return {
       success: true,
@@ -217,6 +235,11 @@ export const updateExperience = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
+    
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "updateExperience").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+);
 
     return {
       success: true,
@@ -263,7 +286,10 @@ export const addExperience = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "addExperience").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+);
     return {
       success: true,
       message: `Successfully added experience: ${data.job_title} at ${data.company}`,
@@ -284,7 +310,10 @@ export const updateEducation = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+    // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "updateEducation").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+); 
     return {
       success: true,
       message: `Successfully updated ${data.education.length} education entries`,
@@ -330,7 +359,10 @@ export const addEducation = async (
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-
+     // Après calculateProfileCompleteness
+await triggerCandidateMatching(candidateId, "addEducation").catch(e => 
+  console.warn("Failed to trigger matching:", e)
+); 
     return {
       success: true,
       message: `Successfully added education: ${data.degree} from ${data.institution}`,
@@ -653,11 +685,14 @@ export const uploadApplicationResume = async (
 
 
     //  Kick off extraction in background (so the upload API responds immediately)
-    setImmediate(() => {
-      processDocumentAsync(doc.document_id, candidateId, destinationPath)
-        .catch((e) => console.error("❌ processDocumentAsync(application) failed:", e?.message || e));
-    });
-
+// Kick off extraction in background + trigger matching after success
+setImmediate(() => {
+  processDocumentAsync(doc.document_id, candidateId, destinationPath)
+    .then(() => triggerCandidateMatching(candidateId, "application_resume_extracted"))
+    .catch((e) =>
+      console.error("❌ processDocumentAsync(application) failed:", e?.message || e)
+    );
+});
 
     
 
