@@ -563,7 +563,7 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
     const similarityCheck = await vectorEngineService.checkSimilarity(diagramData.question);
     
     if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
-      return res.status(400).json({  // ✅ ADD `return`
+      return res.status(400).json({  //  ADD `return`
         success: false,
         error: 'Duplicate question detected',
         details: 'Generated question is very similar to existing ones',
@@ -586,7 +586,7 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
       source: 'ai_gemini_diagram',
       createdBy: userId,
       
-      // ✅ NEW: Diagram fields
+      //  NEW: Diagram fields
       hasDiagram: diagramData.diagram?.needed || false,
       diagramType: diagramData.diagram?.type || null,
       diagramCode: diagramData.diagram?.code || null,
@@ -601,12 +601,12 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
     // Save to database
     const savedQuestion = await this.questionService.createQuestion(questionData);
 
-    console.log('💾 [CONTROLLER] Question saved with diagram:', savedQuestion.id);
-    console.log('🎨 [CONTROLLER] Has diagram:', savedQuestion.hasDiagram);
-    console.log('🎨 [CONTROLLER] Diagram type:', savedQuestion.diagramType);
+    console.log(' [CONTROLLER] Question saved with diagram:', savedQuestion.id);
+    console.log(' [CONTROLLER] Has diagram:', savedQuestion.hasDiagram);
+    console.log(' [CONTROLLER] Diagram type:', savedQuestion.diagramType);
 
-    // ✅ VECTOR ENGINE: Store in vector database
-    console.log('💾 [CONTROLLER] Storing question in vector database...');
+    //  VECTOR ENGINE: Store in vector database
+    console.log('[CONTROLLER] Storing question in vector database...');
     const vectorResult = await vectorEngineService.storeQuestion(savedQuestion);
     
     let finalQuestion = savedQuestion;
@@ -616,9 +616,9 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
         vectorStored: true,
         vectorId: vectorResult.question_id
       });
-      console.log('✅ [CONTROLLER] Question stored in vector DB');
+      console.log(' [CONTROLLER] Question stored in vector DB');
     } else {
-      console.log('⚠️ [CONTROLLER] Vector storage failed:', vectorResult.message);
+      console.log(' [CONTROLLER] Vector storage failed:', vectorResult.message);
     }
 
     res.status(201).json({

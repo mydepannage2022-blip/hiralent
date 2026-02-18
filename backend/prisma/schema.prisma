@@ -152,6 +152,9 @@ model User {
   candidateScore        CandidateScore?         @relation("CandidateScore")
   badges                BadgeAward[]            @relation("CandidateBadges")
   certifications        Certification[]         @relation("CandidateCertifications")
+  chatHistory   ChatHistory[]  @relation("CandidateChatHistory")
+  chatConversations ChatConversation[] @relation("CandidateChatConversations")
+
   profileEvents         ProfileEvent[]          @relation("ProfileEvents")
   // Relations to Scraping Candidates models (Do not Touch !!!)
   sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
@@ -2249,6 +2252,7 @@ model Badge {
   awards       BadgeAward[]
 }
 
+
 model BadgeAward {
   award_id     String   @id @default(uuid())
   candidate_id String
@@ -2375,4 +2379,46 @@ model AssessmentTemplateQuestion {
   @@index([question_id])
 
   @@map("assessment_template_questions")
+}
+
+model ChatHistory {
+  chat_id       String   @id @default(uuid())
+  candidate_id  String
+  user_message  String   @db.Text
+  bot_response  String   @db.Text
+  created_at    DateTime @default(now())
+
+  candidate     User     @relation("CandidateChatHistory", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([candidate_id])
+  @@index([created_at])
+  @@map("chat_history")
+}
+model ChatConversation {
+  conversation_id String   @id @default(uuid())
+  candidate_id    String
+  title           String   @default("New chat")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  last_message_at DateTime @default(now())
+  is_archived     Boolean  @default(false)
+
+  candidate User @relation("CandidateChatConversations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([candidate_id, last_message_at])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  message_id      String   @id @default(uuid())
+  conversation_id String
+  role            String   // "user" | "assistant"
+  content         String   @db.Text
+  created_at      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+  @@map("chat_messages")
 }

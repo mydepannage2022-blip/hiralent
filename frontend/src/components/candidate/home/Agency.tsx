@@ -8,109 +8,109 @@ const Agency = () => {
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-      },
+      transition: { duration: 0.8, ease: "easeOut" },
     },
   };
 
   return (
-    <div className="w-full flex justify-center items-center bg-white">
-      <div className="lg:max-w-5xl xl:max-w-7xl w-9/10 flex flex-col lg:flex-row justify-start items-center gap-12 pt-8 lg:py-12">
-        
-        {/* Image Section - LEFT SIDE */}
-        <div className="w-full lg:w-2/3 flex justify-center items-center order-2 lg:order-1">
-          <img src="/images/agency.png" alt="Agency Partner" />
-        </div>
-
-        {/* Text Section - RIGHT SIDE */}
-        <motion.div
-          className="flex flex-col justify-center items-center gap-5 w-full lg:w-1/3 pb-8 lg:pb-12 order-1 lg:order-2"
-          variants={headingVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <motion.h2
-            className="text-[#222] text-2xl lg:text-3xl xl:text-4xl font-semibold text-center"
-            animate={{
-              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            Are you an Agency?
-          </motion.h2>
-          
-          <motion.p
-            className="text-[#757575] text-sm lg:text-base text-center max-w-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-          >
-            Partner with Hiralent to help candidates relocate successfully. 
-            Join our trusted network of visa, relocation, and integration agencies.
-          </motion.p>
-
-          {/* Benefits List */}
-          <motion.ul
-            className="text-[#757575] text-sm lg:text-base space-y-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          >
-            <li className="flex items-start gap-2">
-              <span className="text-[#005DDC] font-bold">✓</span>
-              <span>Steady flow of clients</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#005DDC] font-bold">✓</span>
-              <span>Easy-to-use platform</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#005DDC] font-bold">✓</span>
-              <span>Grow your business</span>
-            </li>
-          </motion.ul>
-
-          {/* Button */}
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-          >
-            <Link href="/agency/home">
-              <motion.button
-                className="bg-[#005DDC] text-white font-semibold py-4 px-8 lg:px-16 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300"
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow:
-                    "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-                }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <motion.span
-                  className="bg-white bg-clip-text text-transparent cursor-pointer"
-                  whileHover={{
-                    backgroundPosition: ["0% 50%", "100% 50%"],
-                  }}
-                  transition={{ duration: 0.5 }}
-                >
-                  Become a Partner →
-                </motion.span>
-              </motion.button>
-            </Link>
-          </motion.div>
-        </motion.div>
-
+    <section className="relative w-full overflow-hidden bg-white">
+      {/* theme glows */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#005DDC] opacity-[0.04] blur-3xl" />
+        <div className="absolute -bottom-28 -left-24 h-80 w-80 rounded-full bg-[#005DDC] opacity-[0.03] blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#F7FBFF] to-transparent" />
       </div>
-    </div>
+
+      <div className="relative mx-auto w-[92%] max-w-7xl py-14 md:py-18">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
+          {/* Image */}
+          <div className="lg:col-span-7 order-2 lg:order-1">
+            <div className="relative overflow-hidden rounded-3xl border border-[#E6ECF8] bg-gradient-to-br from-[#F8FBFF] to-white shadow-[0_18px_45px_-38px_rgba(0,0,0,0.22)]">
+              <div className="absolute inset-0 bg-gradient-to-tl from-[#005DDC]/[0.06] via-transparent to-transparent" />
+              <img
+                src="/images/agency.png"
+                alt="Agency Partner"
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
+              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-[#E6ECF8]" />
+            </div>
+          </div>
+
+          {/* Copy */}
+          <motion.div
+            className="lg:col-span-5 order-1 lg:order-2"
+            variants={headingVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#E6ECF8] bg-[#F7FBFF] px-3 py-1 text-xs font-semibold text-[#0b1b3a]">
+              <span className="h-2 w-2 rounded-full bg-[#005DDC]" />
+              For Agencies
+            </div>
+
+            <motion.h2 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight text-[#0b1b3a] leading-[1.12]">
+              Are you an agency?
+              <span className="block text-[#64748B] text-base md:text-lg font-medium mt-2">
+                Help candidates relocate — in one shared workspace.
+              </span>
+            </motion.h2>
+
+            <motion.p
+              className="mt-4 text-sm md:text-base text-[#64748B] leading-relaxed max-w-xl"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15, duration: 0.5 }}
+            >
+              Partner with Hiralent to support visa, relocation, and integration.
+              Join our trusted network and operate inside the same timeline as
+              candidates and employers.
+            </motion.p>
+
+            {/* Benefits List */}
+            <motion.ul
+              className="mt-5 space-y-2 text-sm text-[#64748B]"
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.25, duration: 0.45 }}
+            >
+              {["Steady flow of clients", "Easy-to-use platform", "Grow your business"].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <span className="mt-1.5 h-2 w-2 rounded-full bg-[#005DDC]" />
+                  <span className="font-medium">{t}</span>
+                </li>
+              ))}
+            </motion.ul>
+
+            {/* Button */}
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.35, duration: 0.45 }}
+            >
+              <Link href="/agency/home">
+                <motion.button
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#005DDC] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_18px_40px_-28px_rgba(0,93,220,0.45)] hover:opacity-95 transition border border-[#005DDC]/20"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Become a Partner <span aria-hidden>→</span>
+                </motion.button>
+              </Link>
+
+              <div className="mt-3 text-[11px] font-semibold text-[#94A3B8]">
+                Verified partners • Transparent case tracking
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
   );
 };
 

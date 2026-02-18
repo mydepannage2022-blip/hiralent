@@ -628,7 +628,7 @@ export interface SkillRemoveResult {
 export interface SkillsUpdateResult {
   success: boolean;
   message: string;
-  skills: PopulatedSkill[];
+  skills: PopulatedSkill[];c
   total_skills_count: number;
 }
 export type ProjectData = {
