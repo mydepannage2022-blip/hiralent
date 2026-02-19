@@ -113,6 +113,13 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       };
     }
 
+    if (pathname.startsWith('/candidate/dashboard/interviews')) {
+      return {
+        title: 'AI Interviews',
+        description: 'Complete your AI-powered video interviews',
+      };
+    }
+
     // ✅ Application details: /candidate/dashboard/applications/[appId]
     // IMPORTANT: must be BEFORE switch
     if (pathname.startsWith('/candidate/dashboard/applications/')) {

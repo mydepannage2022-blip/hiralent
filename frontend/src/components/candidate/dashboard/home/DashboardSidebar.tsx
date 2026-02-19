@@ -14,7 +14,8 @@ import {
   X,
   Briefcase,
   ClipboardList,
-  FolderKanban
+  FolderKanban,
+  Video,
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
@@ -61,6 +62,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
     // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
     // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
+    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
+    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
+    { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
+    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
+    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
+    { name: "AI Interviews", icon: Video, href: "/candidate/dashboard/interviews" },
+
   ];
 
   // Update active item based on current pathname
