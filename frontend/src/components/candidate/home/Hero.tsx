@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Select, { components } from "react-select";
 import { locationOptions } from "../../../constants/groupedLocationOptions";
 import { Play, X, ArrowRight, CheckCircle2, Search, MapPin } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 /* ------------------------------------------------------------------ */
 /*  Rotating roles                                                     */
 /* ------------------------------------------------------------------ */
@@ -170,6 +170,7 @@ const locStyles: Record<string, any> = {
 /*  Hero                                                               */
 /* ------------------------------------------------------------------ */
 const Hero = () => {
+  const router = useRouter();
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [roleIndex, setRoleIndex] = useState(0);
   const [screenIndex, setScreenIndex] = useState(0);
@@ -193,7 +194,10 @@ const Hero = () => {
   }, []);
 
   const handleSearch = () => {
-    console.log("Searching for:", searchTitle, searchLocation?.value);
+    const params = new URLSearchParams();
+    if (searchTitle) params.set("q", searchTitle);
+    if (searchLocation?.value) params.set("location", searchLocation.value);
+    router.push(`/search?${params.toString()}`);
   };
 
   const current = screens[screenIndex];
@@ -221,16 +225,7 @@ const Hero = () => {
             transition={{ duration: 0.6 }}
             className="lg:col-span-4 flex flex-col items-center text-center lg:items-start lg:text-left"
           >
-            {/* Pill */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#005DDC]/10 bg-[#005DDC]/[0.04] px-3.5 py-1.5 mb-5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#005DDC] opacity-40" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#005DDC]" />
-              </span>
-              <span className="text-xs font-semibold text-[#005DDC]">
-                Skills-first hiring platform
-              </span>
-            </div>
+
 
             {/* Headline + rotating role */}
             <h1 className="text-[2.25rem] md:text-[2.9rem] xl:text-[3.35rem] font-bold tracking-[-0.04em] text-[#0b1b3a] leading-[1.05]">

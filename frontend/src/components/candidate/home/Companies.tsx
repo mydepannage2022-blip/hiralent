@@ -122,7 +122,7 @@ export default function HireWithConfidence() {
 
           <div className="lg:col-span-4 flex lg:justify-end">
             <a
-              href="/employers"
+              href="/auth/login"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0b1b3a] px-5 py-3 text-sm font-semibold text-white hover:bg-[#162748] transition shadow-sm"
             >
               Start Hiring Smarter
@@ -412,7 +412,7 @@ export default function HireWithConfidence() {
                     </div>
 
                     <a
-                      href="/employers"
+                      href="/auth/login"
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition"
                       style={{
                         background: "#0b1b3a",

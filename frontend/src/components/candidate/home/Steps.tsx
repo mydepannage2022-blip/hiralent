@@ -68,7 +68,7 @@ const SkillVerificationSection = () => {
 
             <div className="mt-7">
               <a
-                href="/assessments"
+                href="/auth/login"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#0b1b3a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#1a2a4a] transition-colors"
               >
                 Explore Assessments

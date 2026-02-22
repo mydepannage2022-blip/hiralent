@@ -134,7 +134,7 @@ export default function GlobalHiringSection() {
 
           <div className="lg:col-span-5 flex lg:justify-end">
             <a
-              href="/auth/signup"
+              href="/auth/login"
               className="inline-flex items-center gap-2 rounded-2xl bg-[#005DDC] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-28px_rgba(0,93,220,0.45)] hover:opacity-95 transition"
             >
               Start Hiring Globally

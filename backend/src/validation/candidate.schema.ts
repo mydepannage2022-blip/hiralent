@@ -27,25 +27,50 @@ export const updateHeadlineSchema = z.object({
 
 
 // Basic Info Schema
-export const updateBasicInfoSchema = z.object({
-  full_name: z.string()
-    .min(1, "Name is required")
-    .max(100, "Name must be 100 characters or less"), 
-  phone_number: z.string()
-    .min(10, "Phone number must be at least 10 digits")
-    .max(20, "Phone number must be 20 digits or less")
-    .regex(/^[+]?[0-9\s\-()]+$/, "Invalid phone number format")
-    .optional(),
-  location: z.string()                                 
-    .max(255, "Location must be 255 characters or less")
-    .optional(),
-  about_me: z.string()
-    .max(500, "About me must be 500 characters or less")
-    .optional()
-}).refine(
-  (data) => Object.keys(data).length > 0,
-  { message: "At least one field must be provided" }
-);
+
+export const updateBasicInfoSchema = z
+  .object({
+    full_name: z
+      .string()
+      .min(1, "Name is required")
+      .max(100, "Name must be 100 characters or less")
+      .trim()
+      .optional(),
+
+    phone_number: z
+      .preprocess((v) => {
+        // allow "", null -> undefined (so user can clear without breaking validation)
+        if (v === "" || v === null) return undefined;
+        if (typeof v === "string") return v.trim();
+        return v;
+      }, z.string()
+        .min(10, "Phone number must be at least 10 digits")
+        .max(20, "Phone number must be 20 digits or less")
+        .regex(/^[+]?[0-9\s\-()]+$/, "Invalid phone number format")
+      )
+      .optional(),
+
+    location: z
+      .preprocess((v) => {
+        if (v === "" || v === null) return undefined;
+        if (typeof v === "string") return v.trim();
+        return v;
+      }, z.string().max(255, "Location must be 255 characters or less"))
+      .optional(),
+
+    about_me: z
+      .preprocess((v) => {
+        if (v === "" || v === null) return undefined;
+        if (typeof v === "string") return v;
+        return v;
+      }, z.string().max(500, "About me must be 500 characters or less"))
+      .optional(),
+  })
+  .refine(
+    (data) => Object.values(data).some((v) => v !== undefined),
+    { message: "At least one field must be provided" }
+  );
+
 
 // Single Skill Schema
 export const skillSchema = z.object({

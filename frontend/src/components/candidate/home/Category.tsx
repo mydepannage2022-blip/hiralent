@@ -192,7 +192,7 @@ export default function WhyHiralentDifferentCompact() {
                   Fair evaluation • Transparent results
                 </span>
                 <a
-                  href="/register"
+                  href="/auth/login"
                   className="inline-flex items-center gap-2 rounded-2xl bg-[#005DDC] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_40px_-28px_rgba(0,93,220,0.45)] hover:opacity-95 transition"
                 >
                   {current.cta}
