@@ -125,8 +125,8 @@ const Personal = () => {
   }, [derivedFirst, derivedLast, rawFullName]);
  
   const phone = useMemo(
-    () => extractedPI.phone || user?.phone_number || "",
-    [extractedPI.phone, user?.phone_number]
+    () => user?.phone_number || extractedPI.phone || "",
+    [user?.phone_number, extractedPI.phone]
   );
 
   const location = useMemo(
