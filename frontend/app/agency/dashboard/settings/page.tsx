@@ -6,10 +6,8 @@ import { toast } from "react-hot-toast";
 import {
   Shield,
   Bell,
-  Lock,
   Eye,
   EyeOff,
-  Save,
   Database,
   Download,
   Trash2,
@@ -17,8 +15,8 @@ import {
   AlertCircle,
   User,
   Calendar,
-  RefreshCw,
 } from "lucide-react";
+import { Button } from "@/src/components/agency/ui/button";
 
 export default function SettingsPage() {
   // Password change state
@@ -172,122 +170,135 @@ export default function SettingsPage() {
   return (
     <div className="w-full">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Settings</h1>
-          <p className="text-slate-600">Manage your account settings and preferences</p>
-        </motion.div>
-
         <div className="space-y-6">
           {/* Security Settings */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-xl p-8"
+            className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-6"
           >
             <div className="flex items-center gap-3 mb-6">
-              <Shield className="w-6 h-6 text-blue-600" />
-              <h2 className="text-xl font-bold text-slate-800">Security</h2>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-slate-50/40">
+                <Shield className="w-4 h-4 text-blue-700" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Security</h2>
+                <p className="text-xs text-slate-500">Password and access</p>
+              </div>
             </div>
 
             {/* Change Password */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-slate-700">Change Password</h3>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Current Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter current password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
+            <div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Change password
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Update your password to keep your account secure
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Must be at least 8 characters
-                </p>
-              </div>
+              <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full h-11 px-4 pr-12 border border-slate-200/70 rounded-xl bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+                        placeholder="Enter current password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowCurrentPassword(!showCurrentPassword)
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showCurrentPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Confirm new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full h-11 px-4 pr-12 border border-slate-200/70 rounded-xl bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+                        placeholder="Enter new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNewPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Must be at least 8 characters
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full h-11 px-4 pr-12 border border-slate-200/70 rounded-xl bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end">
+                  <Button
+                    onClick={handlePasswordChange}
+                    disabled={changingPassword}
+                    variant="soft"
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
+                    {changingPassword ? "Changing..." : "Change Password"}
+                  </Button>
                 </div>
               </div>
-
-              <button
-                onClick={handlePasswordChange}
-                disabled={changingPassword}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
-              >
-                <Lock className="w-5 h-5" />
-                {changingPassword ? "Changing..." : "Change Password"}
-              </button>
             </div>
           </motion.div>
 
@@ -296,20 +307,29 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-xl p-8"
+            className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-6"
           >
             <div className="flex items-center gap-3 mb-6">
-              <Bell className="w-6 h-6 text-blue-600" />
-              <h2 className="text-xl font-bold text-slate-800">Notifications</h2>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-slate-50/40">
+                <Bell className="w-4 h-4 text-blue-700" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Notifications
+                </h2>
+                <p className="text-xs text-slate-500">Email and activity alerts</p>
+              </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 divide-y divide-slate-200/70">
               {/* Email Notifications */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-slate-400" />
+              <div className="flex items-center justify-between gap-4 p-4 hover:bg-white/60 transition-colors rounded-t-2xl">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <Mail className="w-4.5 h-4.5 text-slate-500" />
+                  </span>
                   <div>
-                    <p className="font-medium text-slate-700">Email Notifications</p>
+                    <p className="text-sm font-semibold text-slate-900">Email notifications</p>
                     <p className="text-sm text-slate-600">
                       Receive notifications via email
                     </p>
@@ -317,8 +337,10 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setEmailNotifications(!emailNotifications)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    emailNotifications ? "bg-blue-600" : "bg-slate-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    emailNotifications
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-200 border-slate-300"
                   }`}
                 >
                   <span
@@ -330,11 +352,13 @@ export default function SettingsPage() {
               </div>
 
               {/* Case Updates */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-slate-400" />
+              <div className="flex items-center justify-between gap-4 p-4 hover:bg-white/60 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <AlertCircle className="w-4.5 h-4.5 text-slate-500" />
+                  </span>
                   <div>
-                    <p className="font-medium text-slate-700">Case Updates</p>
+                    <p className="text-sm font-semibold text-slate-900">Case updates</p>
                     <p className="text-sm text-slate-600">
                       Get notified about case status changes
                     </p>
@@ -342,8 +366,10 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setCaseUpdates(!caseUpdates)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    caseUpdates ? "bg-blue-600" : "bg-slate-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    caseUpdates
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-200 border-slate-300"
                   }`}
                 >
                   <span
@@ -355,11 +381,13 @@ export default function SettingsPage() {
               </div>
 
               {/* New Clients */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-slate-400" />
+              <div className="flex items-center justify-between gap-4 p-4 hover:bg-white/60 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <User className="w-4.5 h-4.5 text-slate-500" />
+                  </span>
                   <div>
-                    <p className="font-medium text-slate-700">New Clients</p>
+                    <p className="text-sm font-semibold text-slate-900">New clients</p>
                     <p className="text-sm text-slate-600">
                       Notify when new clients are assigned
                     </p>
@@ -367,8 +395,10 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setNewClients(!newClients)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    newClients ? "bg-blue-600" : "bg-slate-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    newClients
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-200 border-slate-300"
                   }`}
                 >
                   <span
@@ -380,11 +410,13 @@ export default function SettingsPage() {
               </div>
 
               {/* System Alerts */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-slate-400" />
+              <div className="flex items-center justify-between gap-4 p-4 hover:bg-white/60 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <AlertCircle className="w-4.5 h-4.5 text-slate-500" />
+                  </span>
                   <div>
-                    <p className="font-medium text-slate-700">System Alerts</p>
+                    <p className="text-sm font-semibold text-slate-900">System alerts</p>
                     <p className="text-sm text-slate-600">
                       Important system notifications
                     </p>
@@ -392,8 +424,10 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setSystemAlerts(!systemAlerts)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    systemAlerts ? "bg-blue-600" : "bg-slate-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    systemAlerts
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-200 border-slate-300"
                   }`}
                 >
                   <span
@@ -405,11 +439,13 @@ export default function SettingsPage() {
               </div>
 
               {/* Weekly Reports */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-slate-400" />
+              <div className="flex items-center justify-between gap-4 p-4 hover:bg-white/60 transition-colors rounded-b-2xl">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <Calendar className="w-4.5 h-4.5 text-slate-500" />
+                  </span>
                   <div>
-                    <p className="font-medium text-slate-700">Weekly Reports</p>
+                    <p className="text-sm font-semibold text-slate-900">Weekly reports</p>
                     <p className="text-sm text-slate-600">
                       Receive weekly performance summaries
                     </p>
@@ -417,8 +453,10 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setWeeklyReports(!weeklyReports)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    weeklyReports ? "bg-blue-600" : "bg-slate-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    weeklyReports
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-200 border-slate-300"
                   }`}
                 >
                   <span
@@ -430,14 +468,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleNotificationSave}
-              disabled={savingNotifications}
-              className="mt-6 flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
-            >
-              <Save className="w-5 h-5" />
-              {savingNotifications ? "Saving..." : "Save Preferences"}
-            </button>
+            <div className="mt-4 flex items-center justify-end">
+              <Button
+                onClick={handleNotificationSave}
+                disabled={savingNotifications}
+                variant="soft"
+              >
+                {savingNotifications ? "Saving..." : "Save Preferences"}
+              </Button>
+            </div>
           </motion.div>
 
           {/* Data Management */}
@@ -445,46 +484,55 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl p-8"
+            className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-6"
           >
             <div className="flex items-center gap-3 mb-6">
-              <Database className="w-6 h-6 text-blue-600" />
-              <h2 className="text-xl font-bold text-slate-800">Data Management</h2>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-slate-50/40">
+                <Database className="w-4 h-4 text-blue-700" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Data management
+                </h2>
+                <p className="text-xs text-slate-500">Export and account controls</p>
+              </div>
             </div>
 
             <div className="space-y-4">
               {/* Export Data */}
-              <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl">
-                <div>
-                  <p className="font-medium text-slate-700">Export Your Data</p>
-                  <p className="text-sm text-slate-600">
-                    Download a copy of all your account data
-                  </p>
+              <div className="flex items-center justify-between gap-4 p-4 border border-slate-200/70 rounded-2xl bg-slate-50/40">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white">
+                    <Download className="w-4.5 h-4.5 text-blue-700" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Export your data</p>
+                    <p className="text-sm text-slate-600">
+                      Download a copy of all your account data
+                    </p>
+                  </div>
                 </div>
-                <button
-                  onClick={handleExportData}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                >
-                  <Download className="w-4 h-4" />
+                <Button onClick={handleExportData} variant="soft">
                   Export
-                </button>
+                </Button>
               </div>
 
               {/* Delete Account */}
-              <div className="flex items-center justify-between p-4 border border-red-200 bg-red-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-red-700">Delete Account</p>
-                  <p className="text-sm text-red-600">
-                    Permanently delete your account and all data
-                  </p>
+              <div className="flex items-center justify-between gap-4 p-4 border border-red-200/70 bg-white rounded-2xl">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-200/70 bg-red-50">
+                    <Trash2 className="w-4.5 h-4.5 text-red-700" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Delete account</p>
+                    <p className="text-sm text-slate-600">
+                      Permanently delete your account and all data
+                    </p>
+                  </div>
                 </div>
-                <button
-                  onClick={handleDeleteAccount}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
+                <Button onClick={handleDeleteAccount} variant="danger">
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>

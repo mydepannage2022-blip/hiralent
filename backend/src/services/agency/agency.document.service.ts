@@ -1,5 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../utils/email.util";
+import {
+  formatEmailNote,
+  renderEmailCallout,
+  renderEmailKeyValueTable,
+  renderTransactionalEmail,
+} from "../emailTemplates.service";
 
 const prisma = new PrismaClient();
 
@@ -108,10 +114,6 @@ export const sendDocumentReviewEmail = async (params: {
   const formattedType = documentType.replace("_", " ");
   const reviewDate = new Date().toLocaleDateString();
 
-  const notesHtml = notes
-    ? `<p><strong>${status === "rejected" ? "Reason for Rejection" : status === "needs_revision" ? "Required Changes" : "Reviewer Notes"}:</strong> ${notes}</p>`
-    : "";
-
   const configs: Record<
     string,
     {
@@ -165,51 +167,44 @@ export const sendDocumentReviewEmail = async (params: {
   const cfg = configs[status];
   if (!cfg) return;
 
-  const icon =
-    status === "approved" ? "✅" : status === "rejected" ? "❌" : "📝";
+  const tone = status === "approved" ? "success" : status === "rejected" ? "danger" : "warning";
 
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: ${cfg.bg}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .status-box { background: ${cfg.boxBg}; padding: 15px; border-left: 4px solid ${cfg.boxBorder}; margin: 20px 0; border-radius: 6px; }
-        .document-info { background: white; padding: 15px; border-radius: 6px; margin: 20px 0; }
-        .button { display: inline-block; background: ${cfg.bg}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>${icon} ${cfg.title}</h1>
-        </div>
-        <div class="content">
-          <p>Hi <strong>${candidateName}</strong>,</p>
-          <div class="status-box">
-            <p style="margin: 0; color: ${cfg.textColor}; font-weight: bold;">${cfg.message}</p>
-          </div>
-          <div class="document-info">
-            <p><strong>Document:</strong> ${documentName}</p>
-            <p><strong>Type:</strong> ${formattedType}</p>
-            <p><strong>Case Number:</strong> ${caseNumber}</p>
-            ${notesHtml}
-          </div>
-          <p>${cfg.detail}</p>
-          <a href="${frontendUrl}/candidate/cases/${caseId}" class="button">${cfg.buttonText}</a>
-          <div class="footer">
-            <p>This is an automated notification from Hiralent.</p>
-            <p>Reviewed on ${reviewDate}</p>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Agency", value: agencyName },
+    { label: "Document", value: documentName },
+    { label: "Type", value: formattedType },
+    { label: "Reviewed on", value: reviewDate },
+  ]);
+
+  const notesBlock = notes
+    ? renderEmailCallout({
+        tone,
+        html: formatEmailNote(notes),
+      })
+    : "";
+
+  const nextStepsText =
+    status === "approved"
+      ? "No action is required at this time."
+      : status === "rejected"
+        ? "Please upload a new version of the document that addresses the notes."
+        : "Please revise the document and upload an updated version.";
+
+  const emailHtml = renderTransactionalEmail({
+    title: cfg.title,
+    previewText: cfg.message,
+    greetingName: candidateName,
+    introHtml: cfg.message,
+    sections: [
+      { title: "Document details", html: detailsHtml },
+      ...(notesBlock ? [{ title: "Notes", html: notesBlock }] : []),
+      { title: "Next steps", html: `<p style="margin:0;">${nextStepsText}</p>` },
+    ],
+    cta: { label: cfg.buttonText, href: `${frontendUrl}/candidate/cases/${caseId}` },
+    tone,
+    footerNote: `Reviewed on ${reviewDate}. This is an automated notification from Hiralent.`,
+  });
 
   await sendEmail({
     to: candidateEmail,

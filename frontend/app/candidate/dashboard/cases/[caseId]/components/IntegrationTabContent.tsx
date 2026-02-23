@@ -15,7 +15,10 @@ import {
   Sparkles,
   Mail,
   Phone,
+  RefreshCw,
 } from "lucide-react";
+
+import { Button } from "@/src/components/agency/ui/button";
 
 interface IntegrationService {
   service_id: string;
@@ -57,6 +60,10 @@ export default function IntegrationTabContent({
   setShowIntegrationAgencyBrowser,
   fetchCase,
 }: IntegrationTabContentProps) {
+  const integrationChosen = Boolean(caseData.integration_agency_id);
+  const canChooseIntegrationAgency =
+    caseData.status === "ready_for_arrival" && !integrationChosen;
+
   // Service icons mapping
   const serviceIcons: Record<string, any> = {
     healthcare: Heart,
@@ -99,6 +106,72 @@ export default function IntegrationTabContent({
   const allServicesComplete =
     completedServices.length === services.length && services.length > 0;
 
+  if (!integrationChosen) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
+            <Building2 className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900">
+            Choose an Integration Agency
+          </h3>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+            Select an agency to help with post-arrival services like healthcare registration, banking, telecom, and transport.
+          </p>
+
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="soft"
+              className="justify-center gap-2"
+              onClick={() => setShowIntegrationAgencyBrowser(true)}
+              disabled={!canChooseIntegrationAgency}
+            >
+              <Building2 className="h-4 w-4" />
+              Choose Integration Agency
+            </Button>
+          </div>
+
+          {!canChooseIntegrationAgency && (
+            <p className="mx-auto mt-3 max-w-xl text-xs text-slate-500">
+              This becomes available once your housing agency marks you ready for arrival.
+            </p>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (services.length === 0) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
+            <Users className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900">
+            Integration in progress
+          </h3>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+            Your integration agency has been selected. This tab will update once they create your service checklist.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-center gap-2"
+              onClick={fetchCase}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -116,15 +189,36 @@ export default function IntegrationTabContent({
             Integration Services
           </h2>
 
-          {services.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-xl">
-              <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-600 mb-1">No services available yet</p>
-              <p className="text-sm text-slate-500">
-                Integration services will be created when an agency is assigned
-              </p>
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Progress</p>
+                <p className="text-xs text-slate-500">
+                  {completedServices.length} of {services.length} completed
+                </p>
+              </div>
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+                  allServicesComplete
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                {completionPercentage}%
+              </span>
             </div>
-          ) : (
+
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className={`h-full rounded-full ${
+                  allServicesComplete ? "bg-emerald-500" : "bg-blue-500"
+                }`}
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          {services.length > 0 && (
             <div className="space-y-3">
               {services.map((service, index) => {
                 const Icon = serviceIcons[service.service_type] || FileText;
@@ -247,8 +341,8 @@ export default function IntegrationTabContent({
 
       {/* Right Column - Agency Selection & Checklist (1/3 width) */}
       <div className="lg:col-span-1 space-y-6">
-        {/* Integration Agency Info Card */}
-        {caseData.integrationAgency && (
+        {/* Integration Agency Selection / Info Card */}
+        {caseData.integrationAgency ? (
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -291,6 +385,24 @@ export default function IntegrationTabContent({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Building2 className="w-5 h-5 text-blue-600" />
+              </div>
+              Your Integration Agency
+            </h2>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+              <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-medium text-slate-700">
+                Integration agency selected
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Details will appear here shortly.
+              </p>
             </div>
           </div>
         )}

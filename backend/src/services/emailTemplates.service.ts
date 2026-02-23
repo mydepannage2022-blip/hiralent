@@ -124,3 +124,167 @@ export const getLegacyCheckEmailTemplate = (legacyCheckLink: string, companyName
     </html>
   `;
 };
+
+type EmailTone = "info" | "success" | "warning" | "danger" | "neutral";
+
+const HIRALENT_BRAND_BLUE = "#2563eb";
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const escapeAttr = (value: string) => escapeHtml(value);
+
+const formatTextAsHtml = (value: string) => escapeHtml(value).replace(/\n/g, "<br>");
+
+const toneToAccent = (tone: EmailTone) => {
+  switch (tone) {
+    case "success":
+      return { accent: "#16a34a", softBg: "#f0fdf4", softBorder: "#bbf7d0" };
+    case "warning":
+      return { accent: "#d97706", softBg: "#fffbeb", softBorder: "#fde68a" };
+    case "danger":
+      return { accent: "#dc2626", softBg: "#fef2f2", softBorder: "#fecaca" };
+    case "neutral":
+      return { accent: "#334155", softBg: "#f8fafc", softBorder: "#e2e8f0" };
+    case "info":
+    default:
+      return { accent: "#2563eb", softBg: "#eff6ff", softBorder: "#bfdbfe" };
+  }
+};
+
+export const renderEmailKeyValueTable = (
+  items: Array<{ label: string; value: string | number | null | undefined }>
+) => {
+  const rows = items
+    .filter((item) => item.value !== null && item.value !== undefined && `${item.value}`.trim() !== "")
+    .map((item) => {
+      const label = escapeHtml(item.label);
+      const value = escapeHtml(`${item.value}`);
+      return `
+        <tr>
+          <td style="padding: 10px 0; color: #64748b; font-size: 13px; width: 38%; vertical-align: top;">${label}</td>
+          <td style="padding: 10px 0; color: #0f172a; font-size: 14px; font-weight: 600; vertical-align: top;">${value}</td>
+        </tr>`;
+    })
+    .join("");
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+      ${rows}
+    </table>`;
+};
+
+export const renderEmailCallout = (params: {
+  tone?: EmailTone;
+  title?: string;
+  html: string;
+}) => {
+  const { tone = "info", title, html } = params;
+  const { softBg, softBorder } = toneToAccent(tone);
+
+  return `
+    <div style="background: ${softBg}; border: 1px solid ${softBorder}; border-radius: 12px; padding: 16px;">
+      ${title ? `<div style=\"font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px;\">${escapeHtml(title)}</div>` : ""}
+      <div style="font-size: 14px; color: #0f172a; line-height: 1.65;">${html}</div>
+    </div>`;
+};
+
+export const renderTransactionalEmail = (params: {
+  title: string;
+  previewText?: string;
+  greetingName?: string;
+  introHtml?: string;
+  sections?: Array<{ title?: string; html: string }>;
+  cta?: { label: string; href: string };
+  closingHtml?: string;
+  tone?: EmailTone;
+  footerNote?: string;
+}) => {
+  const {
+    title,
+    previewText,
+    greetingName,
+    introHtml,
+    sections = [],
+    cta,
+    closingHtml,
+    tone = "info",
+    footerNote,
+  } = params;
+
+  const { accent } = toneToAccent(tone);
+
+  const preview = previewText
+    ? `<span style="display:none; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all;">${escapeHtml(previewText)}</span>`
+    : "";
+
+  const greetingLine = greetingName
+    ? `Hi <strong style="color:#0f172a;">${escapeHtml(greetingName)}</strong>,`
+    : "Hello,";
+  const sectionsHtml = sections
+    .map((section) => {
+      const titleHtml = section.title
+        ? `<div style="font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; color: #64748b; font-weight: 700; margin: 18px 0 10px;">${escapeHtml(section.title)}</div>`
+        : "";
+      return `${titleHtml}<div style="font-size: 14px; color: #0f172a; line-height: 1.65;">${section.html}</div>`;
+    })
+    .join("");
+
+  const ctaHtml = cta
+    ? `
+      <div style="text-align: center; margin-top: 22px;">
+        <a href="${escapeAttr(cta.href)}" style="display:inline-block; background:${accent}; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding: 12px 18px; border-radius: 10px;">${escapeHtml(cta.label)}</a>
+      </div>`
+    : "";
+
+  const footerText = footerNote || "This is an automated message from Hiralent. Please do not reply.";
+
+  return `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${escapeHtml(title)}</title>
+    </head>
+    <body style="margin:0; padding:0; background:#f5f7fb;">
+      ${preview}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; background:#f5f7fb;">
+        <tr>
+          <td align="center" style="padding: 28px 14px;">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width:100%; max-width:600px; background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden;">
+              <tr>
+                <td style="padding: 20px 22px; border-bottom: 1px solid #e5e7eb;">
+                  <div style="font-family: Arial, sans-serif; color:${HIRALENT_BRAND_BLUE}; font-weight: 800; letter-spacing: 0.08em; font-size: 12px;">HIRALENT</div>
+                  <div style="font-family: Arial, sans-serif; color:#0f172a; font-weight: 800; font-size: 20px; margin-top: 8px;">${escapeHtml(title)}</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 22px; font-family: Arial, sans-serif;">
+                  <div style="font-size: 14px; color:#0f172a; line-height: 1.65;">${greetingLine}</div>
+                  ${introHtml ? `<div style=\"margin-top: 12px; font-size: 14px; color:#0f172a; line-height:1.65;\">${introHtml}</div>` : ""}
+                  ${sectionsHtml}
+                  ${ctaHtml}
+                  ${closingHtml ? `<div style=\"margin-top: 18px; font-size: 14px; color:#0f172a; line-height:1.65;\">${closingHtml}</div>` : ""}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 18px 22px; border-top: 1px solid #e5e7eb; background: #fafafa; font-family: Arial, sans-serif;">
+                  <div style="font-size: 12px; color: #64748b; line-height: 1.6;">${escapeHtml(footerText)}</div>
+                  <div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">&copy; ${new Date().getFullYear()} Hiralent</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>`;
+};
+
+export const formatEmailNote = (note: string) => formatTextAsHtml(note);

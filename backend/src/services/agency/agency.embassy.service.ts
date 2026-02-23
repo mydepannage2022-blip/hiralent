@@ -1,5 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../utils/email.util";
+import {
+  formatEmailNote,
+  renderEmailCallout,
+  renderEmailKeyValueTable,
+  renderTransactionalEmail,
+} from "../emailTemplates.service";
 
 const prisma = new PrismaClient();
 
@@ -185,52 +191,48 @@ export const sendSubmissionConfirmationEmail = async (params: {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Embassy Submission Confirmed</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${candidateName}</strong>,</p>
-            <p>Great news! Your case <strong>${caseNumber}</strong> has been successfully submitted to the embassy.</p>
-            <div class="info-box">
-              <h3 style="margin-top: 0; color: #667eea;">Submission Details</h3>
-              <p><strong>Embassy:</strong> ${embassy_name}</p>
-              <p><strong>Location:</strong> ${embassy_location}</p>
-              <p><strong>Submission Date:</strong> ${new Date(submission_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
-              ${tracking_number ? `<p><strong>Tracking Number:</strong> ${tracking_number}</p>` : ""}
-              ${expected_response ? `<p><strong>Expected Response:</strong> ${new Date(expected_response).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>` : ""}
-            </div>
-            <h3>What Happens Next?</h3>
-            <ul>
-              <li>The embassy will review your application</li>
-              <li>You may be contacted for an interview</li>
-              <li>We'll keep you updated on the progress</li>
-              <li>Check your case dashboard for status updates</li>
-            </ul>
-            <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button">View Case Details</a>
-          </div>
-          <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+  const submittedOn = new Date(submission_date).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const expectedOn = expected_response
+    ? new Date(expected_response).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Embassy", value: embassy_name },
+    { label: "Location", value: embassy_location },
+    { label: "Submission date", value: submittedOn },
+    { label: "Tracking number", value: tracking_number || null },
+    { label: "Expected response", value: expectedOn },
+  ]);
+
+  const nextHtml = `
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>The embassy will review your application</li>
+      <li>You may be contacted for an interview</li>
+      <li>We will notify you of any updates</li>
+    </ul>`;
+
+  const emailHtml = renderTransactionalEmail({
+    title: "Embassy submission confirmed",
+    previewText: `Your case ${caseNumber} was submitted to the embassy.`,
+    greetingName: candidateName,
+    introHtml: "Your case has been successfully submitted to the embassy.",
+    sections: [
+      { title: "Submission details", html: detailsHtml },
+      { title: "What happens next", html: nextHtml },
+    ],
+    cta: { label: "View case details", href: caseUrl },
+    tone: "info",
+  });
 
   await sendEmail({
     to: candidateEmail,
@@ -260,62 +262,42 @@ export const sendVisaApprovedEmail = async (params: {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
-          .next-step-box { background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-          .button-primary { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; font-weight: bold; }
-          .button-secondary { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Visa Approved!</h1>
-            <p style="font-size: 18px; margin-top: 10px;">Congratulations ${candidateName}!</p>
-          </div>
-          <div class="content">
-            <div class="success-box">
-              <h2 style="margin-top: 0; color: #059669;">Your Visa Has Been Approved</h2>
-              <p>Great news! The embassy has approved your visa application for <strong>${destinationCountry}</strong>.</p>
-              <p><strong>Case Number:</strong> ${caseNumber}</p>
-              <p><strong>Embassy:</strong> ${embassyName}</p>
-              ${decisionNotes ? `<p><strong>Notes:</strong> ${decisionNotes}</p>` : ""}
-            </div>
-            <div class="next-step-box">
-              <h2 style="margin-top: 0; color: #1e40af;">Next Step: Choose Your Housing Agency</h2>
-              <p>Now that your visa is approved, it's time to find accommodation in ${destinationCountry}!</p>
-              <p><strong>What happens next:</strong></p>
-              <ul style="margin: 15px 0; padding-left: 20px;">
-                <li>Browse approved housing agencies in ${destinationCountry}</li>
-                <li>Select an agency that fits your needs</li>
-                <li>They will help you find accommodation</li>
-                <li>Get settled before your arrival</li>
-              </ul>
-              <div style="text-align: center; margin-top: 25px;">
-                <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button-primary">Choose Housing Agency</a>
-              </div>
-            </div>
-            <div style="text-align: center; margin-top: 20px;">
-              <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button-secondary">View Full Case Details</a>
-            </div>
-          </div>
-          <div class="footer">
-            <p>Congratulations on your approved visa!</p>
-            <p>This is an automated message. Please do not reply to this email.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Destination", value: destinationCountry },
+    { label: "Embassy", value: embassyName },
+  ]);
+
+  const notesBlock = decisionNotes
+    ? renderEmailCallout({
+        tone: "success",
+        title: "Notes",
+        html: formatEmailNote(decisionNotes),
+      })
+    : "";
+
+  const nextHtml = `
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>Browse housing agencies and select one that fits your needs</li>
+      <li>Your housing agency will help you find accommodation</li>
+      <li>Track updates in your case dashboard</li>
+    </ul>`;
+
+  const emailHtml = renderTransactionalEmail({
+    title: "Visa approved",
+    previewText: `Your visa has been approved for ${destinationCountry}.`,
+    greetingName: candidateName,
+    introHtml: "The embassy has approved your visa application.",
+    sections: [
+      { title: "Details", html: detailsHtml },
+      ...(notesBlock ? [{ title: "Decision notes", html: notesBlock }] : []),
+      { title: "Next step", html: nextHtml },
+    ],
+    cta: { label: "Choose housing agency", href: caseUrl },
+    tone: "success",
+  });
 
   await sendEmail({
     to: candidateEmail,
@@ -357,44 +339,35 @@ export const sendEmbassyStatusUpdateEmail = async (params: {
 
   const statusInfo = statusMessages[status] || statusMessages.under_review;
 
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: ${statusInfo.color}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusInfo.color}; }
-          .button { display: inline-block; padding: 12px 30px; background: ${statusInfo.color}; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>${statusInfo.title}</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${candidateName}</strong>,</p>
-            <p>${statusInfo.message}</p>
-            <div class="info-box">
-              <h3 style="margin-top: 0; color: ${statusInfo.color};">Case Update</h3>
-              <p><strong>Case Number:</strong> ${caseNumber}</p>
-              <p><strong>Embassy:</strong> ${embassyName}</p>
-              <p><strong>Status:</strong> ${status.replace("_", " ").toUpperCase()}</p>
-              ${decisionNotes ? `<p><strong>Notes:</strong> ${decisionNotes}</p>` : ""}
-            </div>
-            <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button">View Case Details</a>
-          </div>
-          <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const tone = status === "rejected" ? "danger" : status === "interview_scheduled" ? "warning" : "info";
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Embassy", value: embassyName },
+    { label: "Status", value: status.replace(/_/g, " ") },
+  ]);
+
+  const notesBlock = decisionNotes
+    ? renderEmailCallout({
+        tone,
+        title: "Notes",
+        html: formatEmailNote(decisionNotes),
+      })
+    : "";
+
+  const emailHtml = renderTransactionalEmail({
+    title: "Embassy status update",
+    previewText: statusInfo.title,
+    greetingName: candidateName,
+    introHtml: statusInfo.message,
+    sections: [
+      { title: "Update", html: detailsHtml },
+      ...(notesBlock ? [{ title: "Additional notes", html: notesBlock }] : []),
+    ],
+    cta: { label: "View case details", href: caseUrl },
+    tone,
+  });
 
   await sendEmail({
     to: candidateEmail,
@@ -417,64 +390,59 @@ export const sendInterviewScheduledEmail = async (params: {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-          .warning-box { background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-          .button { display: inline-block; padding: 12px 30px; background: #f59e0b; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Embassy Interview Scheduled</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${candidateName}</strong>,</p>
-            <p>Your embassy interview has been scheduled. Please review the details below and prepare accordingly.</p>
-            <div class="info-box">
-              <h3 style="margin-top: 0; color: #f59e0b;">Interview Details</h3>
-              <p><strong>Date & Time:</strong> ${new Date(interview_date).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-              <p><strong>Location:</strong> ${interview_location}</p>
-              <p><strong>Case Number:</strong> ${caseNumber}</p>
-              <p><strong>Embassy:</strong> ${embassyName}</p>
-              ${interview_notes ? `<p><strong>Additional Notes:</strong> ${interview_notes}</p>` : ""}
-            </div>
-            <div class="warning-box">
-              <h4 style="margin-top: 0;">Important Reminders</h4>
-              <ul style="margin: 10px 0; padding-left: 20px;">
-                <li>Arrive at least 30 minutes early</li>
-                <li>Bring your passport and all original documents</li>
-                <li>Bring printed copies of all submitted documents</li>
-                <li>Dress formally and professionally</li>
-                <li>Mobile phones may not be allowed inside</li>
-              </ul>
-            </div>
-            <h3>What to Bring:</h3>
-            <ul>
-              <li>Valid passport</li>
-              <li>Interview appointment confirmation</li>
-              <li>All original supporting documents</li>
-              <li>Passport-sized photos (if required)</li>
-              <li>Application fee receipt</li>
-            </ul>
-            <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button">View Case Details</a>
-          </div>
-          <div class="footer">
-            <p>Good luck with your interview! This is an automated message. Please do not reply to this email.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+  const interviewDateTime = new Date(interview_date).toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Embassy", value: embassyName },
+    { label: "Date & time", value: interviewDateTime },
+    { label: "Location", value: interview_location },
+  ]);
+
+  const notesBlock = interview_notes
+    ? renderEmailCallout({
+        tone: "warning",
+        title: "Additional notes",
+        html: formatEmailNote(interview_notes),
+      })
+    : "";
+
+  const remindersHtml = `
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>Arrive at least 30 minutes early</li>
+      <li>Bring your passport and original documents</li>
+      <li>Dress professionally</li>
+    </ul>`;
+
+  const bringHtml = `
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>Valid passport</li>
+      <li>Interview appointment confirmation</li>
+      <li>Supporting documents (originals where applicable)</li>
+    </ul>`;
+
+  const emailHtml = renderTransactionalEmail({
+    title: "Embassy interview scheduled",
+    previewText: `Interview scheduled for case ${caseNumber}.`,
+    greetingName: candidateName,
+    introHtml: "Your embassy interview has been scheduled. Please review the details and prepare accordingly.",
+    sections: [
+      { title: "Interview details", html: detailsHtml },
+      ...(notesBlock ? [{ title: "Notes", html: notesBlock }] : []),
+      { title: "Reminders", html: remindersHtml },
+      { title: "What to bring", html: bringHtml },
+    ],
+    cta: { label: "View case details", href: caseUrl },
+    tone: "warning",
+  });
 
   await sendEmail({
     to: candidateEmail,

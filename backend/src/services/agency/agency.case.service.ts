@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../utils/email.util";
+import { renderEmailKeyValueTable, renderTransactionalEmail } from "../emailTemplates.service";
 import {
   isActiveVisaCase,
   isActiveRelocationCase,
@@ -7,9 +8,17 @@ import {
   isCompletedRelocationCase,
   isCompletedIntegrationCase,
   isActiveIntegrationCase,
+  CASE_STATUSES,
 } from "../../constants/caseStatuses";
 
 const prisma = new PrismaClient();
+
+const getServiceTypeForAgency = (agencyType: string, caseServiceType: string) => {
+  const t = (agencyType ?? "").toUpperCase();
+  if (t === "RELOCATION") return "housing";
+  if (t === "INTEGRATION") return "integration";
+  return caseServiceType;
+};
 
 // ── Candidate lookup ──
 
@@ -98,48 +107,38 @@ export const sendCaseCreationEmail = async (params: {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-  const emailHtml = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-      .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-      .button { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>New Case Created for You!</h1>
-      </div>
-      <div class="content">
-        <p>Hi <strong>${candidateFullName}</strong>,</p>
-        <p>Great news! A new relocation case has been created for you by <strong>${agencyName}</strong>.</p>
-        <div class="info-box">
-          <h3 style="margin-top: 0; color: #1e40af;">Case Details</h3>
-          <p><strong>Case Number:</strong> ${caseNumber}</p>
-          <p><strong>Service Type:</strong> ${serviceType.replace("_", " ")}</p>
-          <p><strong>Destination:</strong> ${destinationCountry}${destinationCity ? ` (${destinationCity})` : ""}</p>
-          <p><strong>Priority:</strong> ${priorityLevel}</p>
-        </div>
-        <h3>Next Steps:</h3>
-        <ol>
-          <li>Log in to your dashboard to view case details</li>
-          <li>Upload required documents for visa processing</li>
-          <li>Our team will review and guide you through the process</li>
-        </ol>
-        <div style="text-align: center;">
-          <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button">View Your Case</a>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>
-  `;
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+
+  const detailsHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Agency", value: agencyName },
+    { label: "Service type", value: serviceType.replace("_", " ") },
+    {
+      label: "Destination",
+      value: `${destinationCountry}${destinationCity ? ` (${destinationCity})` : ""}`,
+    },
+    { label: "Priority", value: priorityLevel },
+  ]);
+
+  const nextStepsHtml = `
+    <ol style="margin: 0; padding-left: 18px;">
+      <li>Open your case to review details and required documents</li>
+      <li>Upload any missing documents</li>
+      <li>Your agency will review and keep you updated</li>
+    </ol>`;
+
+  const emailHtml = renderTransactionalEmail({
+    title: "New case created",
+    previewText: `A new case (${caseNumber}) is ready to view.`,
+    greetingName: candidateFullName,
+    introHtml: "A new relocation case has been created for you.",
+    sections: [
+      { title: "Case details", html: detailsHtml },
+      { title: "Next steps", html: nextStepsHtml },
+    ],
+    cta: { label: "View case", href: caseUrl },
+    tone: "info",
+  });
 
   await sendEmail({
     to: candidateEmail,
@@ -194,15 +193,43 @@ export const listCasesForAgency = async (params: {
     ];
   }
 
-  return prisma.relocationCase.findMany({
+  const cases = await prisma.relocationCase.findMany({
     where,
     include: {
       candidate: {
         select: { user_id: true, email: true, full_name: true, phone_number: true },
       },
+      embassy_submission: agencyType === "VISA" ? { select: { status: true } } : false,
     },
     orderBy: { created_at: "desc" },
   });
+
+  // VISA dashboards treat visa approval as a completed visa case.
+  // Keep DB/workflow status intact; return explicit agency-view fields instead of rewriting `status`.
+  if (agencyType === "VISA") {
+    return cases.map((c: any) => {
+      const embassyStatus = c.embassy_submission?.status;
+      const housingAssigned = c.housing_agency_id !== null;
+      const completedForAgency = isCompletedVisaCase(c.status, embassyStatus, housingAssigned);
+      const activeForAgency = isActiveVisaCase(c.status, embassyStatus, housingAssigned);
+      const statusForAgency = completedForAgency ? CASE_STATUSES.COMPLETED : undefined;
+
+      return {
+        ...c,
+        viewing_agency_type: agencyType,
+        serviceTypeForAgency: getServiceTypeForAgency(agencyType, c.service_type),
+        statusForAgency,
+        completedForAgency,
+        activeForAgency,
+      };
+    });
+  }
+
+  return cases.map((c: any) => ({
+    ...c,
+    viewing_agency_type: agencyType,
+    serviceTypeForAgency: getServiceTypeForAgency(agencyType, c.service_type),
+  }));
 };
 
 // ── Get single case ──
@@ -224,7 +251,7 @@ export const getCaseByIdForAgency = async (params: {
     whereClause.integration_agency_id = agencyId;
   }
 
-  return prisma.relocationCase.findFirst({
+  const caseData = await prisma.relocationCase.findFirst({
     where: whereClause,
     include: {
       candidate: {
@@ -237,6 +264,30 @@ export const getCaseByIdForAgency = async (params: {
       housing_details: true,
     },
   });
+
+  if (!caseData) return caseData;
+
+  const enrichedBase = {
+    ...caseData,
+    serviceTypeForAgency: getServiceTypeForAgency(agencyType || "", caseData.service_type),
+  };
+
+  if (agencyType === "VISA") {
+    const embassyStatus = enrichedBase.embassy_submission?.status;
+    const housingAssigned = enrichedBase.housing_agency_id !== null;
+    const completedForAgency = isCompletedVisaCase(enrichedBase.status, embassyStatus, housingAssigned);
+    const activeForAgency = isActiveVisaCase(enrichedBase.status, embassyStatus, housingAssigned);
+    const statusForAgency = completedForAgency ? CASE_STATUSES.COMPLETED : undefined;
+
+    return {
+      ...enrichedBase,
+      statusForAgency,
+      completedForAgency,
+      activeForAgency,
+    } as any;
+  }
+
+  return enrichedBase;
 };
 
 export const flattenCaseData = (caseData: any, viewingAgencyType: string | null) => {

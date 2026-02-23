@@ -54,22 +54,36 @@ export function AIValidationPanel({
   return (
     <button
       onClick={handleViewDetails}
-      className="mt-2 flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+      className={`flex items-center gap-2 text-xs font-semibold transition-colors ${hasIssues
+          ? "text-red-700 hover:text-red-800"
+          : overallPassed
+            ? "text-emerald-700 hover:text-emerald-800"
+            : "text-slate-600 hover:text-slate-900"
+        }`}
     >
-      <Brain className="w-4 h-4" />
-      <span>AI Analysis</span>
+      <span
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border bg-white ${hasIssues
+            ? "border-red-200/70"
+            : overallPassed
+              ? "border-emerald-200/70"
+              : "border-slate-200/70"
+          }`}
+      >
+        <Brain className="w-4 h-4" />
+      </span>
+      <span className="whitespace-nowrap">AI analysis</span>
       {hasIssues ? (
-        <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+        <span className="inline-flex items-center gap-1 rounded-full border border-red-200/70 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
           <AlertTriangle className="w-3 h-3" />
           {validationIssues.length}
         </span>
       ) : overallPassed ? (
-        <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
           <CheckCircle className="w-3 h-3" />
           {passedCount}/{totalChecks}
         </span>
       ) : (
-        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+        <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
           {passedCount}/{totalChecks}
         </span>
       )}

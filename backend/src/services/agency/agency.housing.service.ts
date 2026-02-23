@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../utils/email.util";
+import { renderEmailKeyValueTable, renderTransactionalEmail } from "../emailTemplates.service";
 
 const prisma = new PrismaClient();
 
@@ -233,92 +234,76 @@ export const sendReadyForArrivalEmail = async (params: {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
-  const emailHtml = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-      .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
-      .info-section { background: white; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #3b82f6; }
-      .next-step-box { background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-      .button-primary { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; font-weight: bold; }
-      .button-secondary { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
-      .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-      .highlight { color: #059669; font-weight: bold; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>Your Housing is Ready!</h1>
-        <p style="font-size: 18px; margin-top: 10px;">Welcome to ${destinationCountry}, ${candidateName}!</p>
-      </div>
-      <div class="content">
-        <div class="success-box">
-          <h2 style="margin-top: 0; color: #059669;">Everything is Prepared for Your Arrival</h2>
-          <p>Great news! Your housing and relocation preparations are complete.</p>
-          <p><strong>Case Number:</strong> ${caseNumber}</p>
-          <p><strong>Managed by:</strong> ${agencyName}</p>
-        </div>
+  const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
+  const moveInDate = housing.lease_start_date
+    ? new Date(housing.lease_start_date).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+  const arrivalDate = housing.arrival_date
+    ? new Date(housing.arrival_date).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
 
-        <div class="info-section">
-          <h3 style="margin-top: 0; color: #3b82f6;">Housing Details</h3>
-          <p><strong>Type:</strong> ${housing.housing_type?.replace("_", " ")}</p>
-          <p><strong>Address:</strong> ${housing.housing_address}</p>
-          <p><strong>Move-in Date:</strong> ${new Date(housing.lease_start_date!).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
-          <p><strong>Monthly Rent:</strong> ${housing.monthly_rent_mad} MAD</p>
-          ${housing.agency_fee_amount ? `<p><strong>Agency Fee:</strong> ${housing.agency_fee_amount} MAD</p>` : ""}
-        </div>
+  const summaryHtml = renderEmailKeyValueTable([
+    { label: "Case number", value: caseNumber },
+    { label: "Destination", value: destinationCountry },
+    { label: "Managed by", value: agencyName },
+  ]);
 
-        <div class="info-section">
-          <h3 style="margin-top: 0; color: #3b82f6;">Travel Details</h3>
-          <p><strong>Arrival Date:</strong> ${new Date(housing.arrival_date!).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
-          <p><strong>Flight Number:</strong> ${housing.flight_number}</p>
-          ${housing.airport_pickup_required ? `<p><strong>Airport Pickup:</strong> Arranged</p>` : ""}
-        </div>
+  const housingHtml = renderEmailKeyValueTable([
+    { label: "Type", value: housing.housing_type ? housing.housing_type.replace("_", " ") : null },
+    { label: "Address", value: housing.housing_address },
+    { label: "Move-in date", value: moveInDate },
+    { label: "Monthly rent", value: housing.monthly_rent_mad ? `${housing.monthly_rent_mad} MAD` : null },
+    { label: "Agency fee", value: housing.agency_fee_amount ? `${housing.agency_fee_amount} MAD` : null },
+  ]);
 
-        <div class="info-section">
-          <h3 style="margin-top: 0; color: #3b82f6;">Utilities - All Connected!</h3>
-          <ul style="margin: 10px 0; padding-left: 20px;">
-            <li>Water: <span class="highlight">Connected</span></li>
-            <li>Electricity: <span class="highlight">Connected</span></li>
-            <li>Internet: <span class="highlight">Connected</span></li>
-          </ul>
-        </div>
+  const travelHtml = renderEmailKeyValueTable([
+    { label: "Arrival date", value: arrivalDate },
+    { label: "Flight number", value: housing.flight_number },
+    { label: "Airport pickup", value: housing.airport_pickup_required ? "Arranged" : null },
+  ]);
 
-        <div class="next-step-box">
-          <h2 style="margin-top: 0; color: #1e40af;">Next Step: Choose Your Integration Agency</h2>
-          <p>Now that your housing is ready, it's time to select an integration agency to help you settle in!</p>
-          <p><strong>Integration services include:</strong></p>
-          <ul style="margin: 15px 0; padding-left: 20px;">
-            <li>Healthcare registration</li>
-            <li>Bank account setup</li>
-            <li>Tax ID registration</li>
-            <li>Telecom (mobile & internet)</li>
-            <li>Local transportation assistance</li>
-            <li>Cultural integration programs</li>
-          </ul>
-          <div style="text-align: center; margin-top: 25px;">
-            <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button-primary">Choose Integration Agency</a>
-          </div>
-        </div>
+  const utilitiesHtml = `
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>Water: connected</li>
+      <li>Electricity: connected</li>
+      <li>Internet: connected</li>
+    </ul>`;
 
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="${frontendUrl}/candidate/dashboard/cases/${caseId}" class="button-secondary">View Full Case Details</a>
-        </div>
-      </div>
-      <div class="footer">
-        <p>Safe travels and welcome to your new home!</p>
-        <p>This is an automated message. Please do not reply to this email.</p>
-      </div>
-    </div>
-  </body>
-</html>
-  `;
+  const nextHtml = `
+    <p style="margin:0 0 10px;">Next step: choose an integration agency to help you settle in.</p>
+    <ul style="margin: 0; padding-left: 18px;">
+      <li>Healthcare registration</li>
+      <li>Bank account setup</li>
+      <li>Tax ID registration</li>
+      <li>Telecom setup</li>
+    </ul>`;
+
+  const emailHtml = renderTransactionalEmail({
+    title: "Housing ready for arrival",
+    previewText: `Housing is ready for case ${caseNumber}.`,
+    greetingName: candidateName,
+    introHtml: "Your housing and relocation preparations are complete.",
+    sections: [
+      { title: "Summary", html: summaryHtml },
+      { title: "Housing details", html: housingHtml },
+      { title: "Travel details", html: travelHtml },
+      { title: "Utilities", html: utilitiesHtml },
+      { title: "Next step", html: nextHtml },
+    ],
+    cta: { label: "Open case dashboard", href: caseUrl },
+    tone: "success",
+    footerNote: "Safe travels. This is an automated message from Hiralent. Please do not reply.",
+  });
 
   await sendEmail({
     to: candidateEmail,

@@ -26,6 +26,7 @@ import {
   Search,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/src/components/agency/ui/button";
 
 interface Candidate {
   user_id: string;
@@ -87,6 +88,7 @@ export default function AgencyDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [clientQuery, setClientQuery] = useState(" ");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -379,26 +381,26 @@ export default function AgencyDashboard() {
         value: stats.activeCases,
         icon: Users,
         color: "bg-blue-50",
-        iconColor: "text-blue-600",
-        accentColor: "bg-blue-500",
+        iconColor: "text-blue-700",
+        accentColor: "bg-blue-600",
         trend: `${stats.activeCases} in progress`,
       },
       {
         title: "Completed Cases",
         value: stats.completedCases,
         icon: CheckCircle,
-        color: "bg-green-50",
-        iconColor: "text-green-600",
-        accentColor: "bg-green-500",
+        color: "bg-slate-50",
+        iconColor: "text-emerald-700",
+        accentColor: "bg-emerald-500",
         trend: "All time",
       },
       {
         title: "Total Clients",
         value: stats.totalClients,
         icon: Building2,
-        color: "bg-purple-50",
-        iconColor: "text-purple-600",
-        accentColor: "bg-purple-500",
+        color: "bg-slate-50",
+        iconColor: "text-slate-700",
+        accentColor: "bg-slate-600",
         trend: "Unique clients",
       },
       {
@@ -406,18 +408,18 @@ export default function AgencyDashboard() {
         value:
           stats.revenue > 0 ? `$${(stats.revenue / 1000).toFixed(1)}k` : "$0",
         icon: DollarSign,
-        color: "bg-emerald-50",
-        iconColor: "text-emerald-600",
-        accentColor: "bg-emerald-500",
+        color: "bg-slate-50",
+        iconColor: "text-blue-700",
+        accentColor: "bg-blue-600",
         trend: "Year to date",
       },
       {
         title: "Pending Actions",
         value: stats.pendingActions,
         icon: Clock,
-        color: "bg-orange-50",
-        iconColor: "text-orange-600",
-        accentColor: "bg-orange-500",
+        color: "bg-amber-50",
+        iconColor: "text-amber-700",
+        accentColor: "bg-amber-500",
         trend: stats.pendingActions > 0 ? "Needs attention" : "All caught up",
       },
     ];
@@ -430,18 +432,18 @@ export default function AgencyDashboard() {
           title: "Visa Applications",
           value: visaStats.totalVisaApplications,
           icon: FileText,
-          color: "bg-indigo-50",
-          iconColor: "text-indigo-600",
-          accentColor: "bg-indigo-500",
+          color: "bg-slate-50",
+          iconColor: "text-blue-700",
+          accentColor: "bg-blue-600",
           trend: "Total processed",
         },
         {
           title: "Success Rate",
           value: `${visaStats.successRate}%`,
           icon: TrendingUp,
-          color: "bg-teal-50",
-          iconColor: "text-teal-600",
-          accentColor: "bg-teal-500",
+          color: "bg-slate-50",
+          iconColor: "text-emerald-700",
+          accentColor: "bg-emerald-500",
           trend: "Approval rate",
         },
       ];
@@ -453,18 +455,18 @@ export default function AgencyDashboard() {
           title: "Housing Completed",
           value: relocationStats.housingCompleted,
           icon: Home,
-          color: "bg-indigo-50",
-          iconColor: "text-indigo-600",
-          accentColor: "bg-indigo-500",
+          color: "bg-slate-50",
+          iconColor: "text-blue-700",
+          accentColor: "bg-blue-600",
           trend: "Properties secured",
         },
         {
           title: "In Progress",
           value: relocationStats.housingInProgress,
           icon: Briefcase,
-          color: "bg-cyan-50",
-          iconColor: "text-cyan-600",
-          accentColor: "bg-cyan-500",
+          color: "bg-slate-50",
+          iconColor: "text-slate-700",
+          accentColor: "bg-slate-600",
           trend: "Active searches",
         },
       ];
@@ -476,18 +478,18 @@ export default function AgencyDashboard() {
           title: "Bank Accounts",
           value: integrationStats.bankAccountsOpened,
           icon: DollarSign,
-          color: "bg-indigo-50",
-          iconColor: "text-indigo-600",
-          accentColor: "bg-indigo-500",
+          color: "bg-slate-50",
+          iconColor: "text-blue-700",
+          accentColor: "bg-blue-600",
           trend: "Opened",
         },
         {
           title: "Healthcare",
           value: integrationStats.healthcareRegistrations,
           icon: CheckCircle,
-          color: "bg-pink-50",
-          iconColor: "text-pink-600",
-          accentColor: "bg-pink-500",
+          color: "bg-slate-50",
+          iconColor: "text-slate-700",
+          accentColor: "bg-slate-600",
           trend: "Registered",
         },
       ];
@@ -499,15 +501,15 @@ export default function AgencyDashboard() {
   const getActivityIcon = (type: Activity["type"]) => {
     switch (type) {
       case "new_case":
-        return { color: "bg-blue-500" };
+        return { color: "bg-blue-600" };
       case "completed":
-        return { color: "bg-green-500" };
+        return { color: "bg-emerald-600" };
       case "pending_document":
-        return { color: "bg-orange-500" };
+        return { color: "bg-amber-600" };
       case "message":
-        return { color: "bg-purple-500" };
+        return { color: "bg-slate-700" };
       default:
-        return { color: "bg-gray-500" };
+        return { color: "bg-slate-500" };
     }
   };
 
@@ -584,222 +586,189 @@ export default function AgencyDashboard() {
       console.error("Fetch analytics error:", error);
     }
   };
-  return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="mb-8 bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-slate-800">
-                Welcome Back, {stats?.agencyName || user?.full_name}! 👋
-              </h1>
-            </div>
-            <p className="text-slate-600 mb-3">
-              Here's what's happening with your agency today.
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-medium shadow-sm">
-                {agencyTypeLabel} Agency
-              </span>
-              <span className="text-sm text-slate-500">•</span>
-              <span className="text-sm text-slate-600">
-                Last updated:{" "}
-                {new Date().toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={fetchDashboardData}
-            className="p-3 bg-white hover:bg-blue-50 rounded-xl transition-colors border border-slate-200 hover:border-blue-300 shadow-sm"
-            title="Refresh Dashboard"
-          >
-            <RefreshCw
-              className={`w-5 h-5 text-slate-600 ${
-                loading ? "animate-spin" : ""
-              }`}
-            />
-          </button>
-        </div>
-      </div>
 
-      {/* View Mode Tabs */}
-      {viewMode !== "dashboard" && (
-        <div className="mb-6">
+  const normalizedClientQuery = clientQuery.trim().toLowerCase();
+  const visibleClients = normalizedClientQuery
+    ? clients.filter((client) => {
+        const name = String(client?.name ?? "").toLowerCase();
+        const email = String(client?.email ?? "").toLowerCase();
+        const phone = String(client?.phone ?? "").toLowerCase();
+        return (
+          name.includes(normalizedClientQuery) ||
+          email.includes(normalizedClientQuery) ||
+          phone.includes(normalizedClientQuery)
+        );
+      })
+    : clients;
+
+  return (
+    <div className="w-full space-y-6">
+
+      {/* Segmented View Switch */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex w-full sm:w-auto p-1 rounded-xl bg-white border border-slate-200 shadow-sm">
           <button
             onClick={() => setViewMode("dashboard")}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              viewMode === "dashboard"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            <ArrowRight className="w-4 h-4 rotate-180" />
-            Back to Dashboard
+            Overview
+          </button>
+          <button
+            onClick={() => setViewMode("clients")}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              viewMode === "clients"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Clients
+          </button>
+          <button
+            onClick={() => setViewMode("reports")}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              viewMode === "reports"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Reports
           </button>
         </div>
-      )}
+
+        <div className="text-sm text-slate-500">
+          {viewMode === "dashboard"
+            ? "Key metrics and activity"
+            : viewMode === "clients"
+            ? "Your client directory"
+            : "Analytics and trends"}
+        </div>
+      </div>
 
       {/* Dashboard View */}
       {viewMode === "dashboard" && (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {statCards.map((stat, index) => (
               <motion.div
                 key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-200"
+                transition={{ delay: index * 0.04 }}
+                className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 p-5"
               >
-                <div
-                  className={`absolute top-0 left-0 right-0 h-1 ${stat.accentColor}`}
-                ></div>
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${stat.accentColor}`} />
 
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-700 truncate">
+                      {stat.title}
+                    </p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                      {stat.value}
+                    </p>
+                  </div>
+
                   <div
-                    className={`p-3 ${stat.color} rounded-xl group-hover:scale-110 transition-transform duration-200`}
+                    className={`shrink-0 h-10 w-10 rounded-xl border border-slate-200 ${stat.color} flex items-center justify-center`}
+                    aria-hidden="true"
                   >
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+                    <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
                   </div>
                 </div>
 
-                <p className="text-3xl font-bold text-slate-800 mb-2">
-                  {stat.value}
-                </p>
-                <p className="text-sm font-semibold text-slate-700 mb-1">
-                  {stat.title}
-                </p>
-                <p className="text-xs text-slate-500">{stat.trend}</p>
+                <p className="mt-3 text-xs text-slate-500 truncate">{stat.trend}</p>
               </motion.div>
             ))}
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">
-              Quick Actions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* ONLY SHOW FOR VISA AGENCIES */}
-              {stats?.agencyType === "VISA" && (
+          {/* Quick Actions (compact) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2 className="text-lg font-bold text-slate-900">Quick actions</h2>
+              <p className="text-sm text-slate-500 hidden sm:block">
+                Shortcuts to common tasks
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {stats?.agencyType === "VISA" ? (
                 <button
                   onClick={() => setShowNewCaseModal(true)}
-                  className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-200 transition-colors px-4 py-3 text-left"
                 >
-                  <div className="flex flex-col items-start gap-3">
-                    <div className="p-3 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
-                      <Plus className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-lg font-bold text-slate-800 mb-1">
-                        New Case
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        Create a new visa case
-                      </p>
-                    </div>
-                  </div>
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <ArrowRight className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
+                  <span className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                    <Plus className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-900">New case</span>
+                    <span className="block text-xs text-slate-500 truncate">Create a new visa case</span>
+                  </span>
                 </button>
-              )}
-
-              {/* NEW: Show "Assigned Cases" for RELOCATION/INTEGRATION */}
-              {(stats?.agencyType === "RELOCATION" ||
-                stats?.agencyType === "INTEGRATION") && (
+              ) : (
                 <button
                   onClick={() => router.push("/agency/dashboard/cases")}
-                  className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-200 transition-colors px-4 py-3 text-left"
                 >
-                  <div className="flex flex-col items-start gap-3">
-                    <div className="p-3 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
-                      <FileText className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-lg font-bold text-slate-800 mb-1">
-                        View Assigned Cases
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        See cases assigned to you
-                      </p>
-                    </div>
-                  </div>
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <ArrowRight className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
+                  <span className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-900">Cases</span>
+                    <span className="block text-xs text-slate-500 truncate">View assigned cases</span>
+                  </span>
                 </button>
               )}
 
               <button
-                onClick={() => {
-                  setViewMode("clients");
-                  fetchClients();
-                }}
-                className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-green-50 to-green-100 border-2 border-green-200 hover:border-green-400 hover:shadow-lg transition-all duration-200"
+                onClick={() => setViewMode("clients")}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors px-4 py-3 text-left"
               >
-                <div className="flex flex-col items-start gap-3">
-                  <div className="p-3 bg-green-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
-                    <Building2 className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-lg font-bold text-slate-800 mb-1">
-                      View Clients
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Manage your client list
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <ArrowRight className="w-4 h-4 text-white" />
-                  </div>
-                </div>
+                <span className="h-9 w-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900">Clients</span>
+                  <span className="block text-xs text-slate-500 truncate">Manage your client list</span>
+                </span>
               </button>
 
               <button
-                onClick={() => {
-                  setViewMode("reports");
-                  fetchAnalytics();
-                }}
-                className="group relative overflow-hidden rounded-xl p-6 bg-linear-to-br from-purple-50 to-purple-100 border-2 border-purple-200 hover:border-purple-400 hover:shadow-lg transition-all duration-200"
+                onClick={() => router.push("/agency/dashboard/cases")}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors px-4 py-3 text-left"
               >
-                <div className="flex flex-col items-start gap-3">
-                  <div className="p-3 bg-purple-500 rounded-xl group-hover:scale-110 transition-transform duration-200">
-                    <TrendingUp className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-lg font-bold text-slate-800 mb-1">
-                      View Reports
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Performance analytics
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                    <ArrowRight className="w-4 h-4 text-white" />
-                  </div>
-                </div>
+                <span className="h-9 w-9 rounded-lg bg-white border border-slate-200 text-slate-900 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900">Assigned</span>
+                  <span className="block text-xs text-slate-500 truncate">Go to case management</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => setViewMode("reports")}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-200 transition-colors px-4 py-3 text-left"
+              >
+                <span className="h-9 w-9 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900">Reports</span>
+                  <span className="block text-xs text-slate-500 truncate">Performance analytics</span>
+                </span>
               </button>
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* Recent Activity (full width) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-800">
-                Recent Activity
-              </h2>
+              <h2 className="text-lg font-bold text-slate-900">Recent activity</h2>
               <button
                 onClick={fetchDashboardData}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -808,6 +777,7 @@ export default function AgencyDashboard() {
                 <RefreshCw className="w-4 h-4 text-slate-600" />
               </button>
             </div>
+
             {activities.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-linear-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -817,23 +787,24 @@ export default function AgencyDashboard() {
                   No recent activity
                 </p>
                 <p className="text-sm text-slate-500">
-                  Activity will appear here once you start managing cases
+                  Activity will appear once you start managing cases.
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white overflow-hidden">
                 {activities.map((activity) => {
                   const { color } = getActivityIcon(activity.type);
                   return (
                     <div
                       key={activity.id}
-                      className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                      className="flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors"
                     >
-                      <div
-                        className={`w-2 h-2 rounded-full ${color} mt-2`}
-                      ></div>
+                      <div className="shrink-0 flex items-start gap-3 mt-0.5">
+                        <div className={`w-1.5 h-9 rounded-full ${color}`} aria-hidden="true" />
+                        <div className={`w-2 h-2 rounded-full ${color} mt-3`} aria-hidden="true" />
+                      </div>
                       <div className="flex-1">
-                        <p className="font-medium text-slate-800">
+                        <p className="font-semibold text-slate-900">
                           {activity.title}
                         </p>
                         <p className="text-sm text-slate-600">
@@ -842,6 +813,24 @@ export default function AgencyDashboard() {
                         <p className="text-xs text-slate-500 mt-1">
                           {formatTimestamp(activity.timestamp)}
                         </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                            activity.status === "success"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                              : activity.status === "warning"
+                              ? "bg-amber-50 text-amber-700 border-amber-100"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          {activity.status === "success"
+                            ? "Completed"
+                            : activity.status === "warning"
+                            ? "Action needed"
+                            : "Info"}
+                        </span>
                       </div>
                     </div>
                   );
@@ -855,15 +844,33 @@ export default function AgencyDashboard() {
       {/* Clients View */}
       {viewMode === "clients" && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">Client List</h2>
-            <button
-              onClick={fetchClients}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4 text-slate-600" />
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Clients</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Directory of your clients and their case activity.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  value={clientQuery}
+                  onChange={(e) => setClientQuery(e.target.value)}
+                  placeholder="Search clients…"
+                  className="w-full sm:w-72 pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={fetchClients}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-slate-800 font-semibold"
+                title="Refresh"
+              >
+                <RefreshCw className="w-4 h-4 text-slate-600" />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {clients.length === 0 ? (
@@ -879,58 +886,81 @@ export default function AgencyDashboard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {clients.map((client) => (
-                <div
-                  key={client.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-linear-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                      {client.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-800">
-                        {client.name}
-                      </p>
-                      <p className="text-sm text-slate-600">{client.email}</p>
-                      {client.phone && (
-                        <p className="text-xs text-slate-500">{client.phone}</p>
-                      )}
-                    </div>
+            <>
+              {visibleClients.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-linear-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-slate-400" />
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">Total Cases</p>
-                      <p className="font-bold text-slate-800">
-                        {client.totalCases}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">Active</p>
-                      <p className="font-bold text-blue-600">
-                        {client.activeCases}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">Completed</p>
-                      <p className="font-bold text-green-600">
-                        {client.completedCases}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        client.status === "Active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-100 text-slate-700"
-                      }`}
-                    >
-                      {client.status}
-                    </span>
-                  </div>
+                  <p className="text-lg font-semibold text-slate-700 mb-2">
+                    No matches
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Try searching by name, email, or phone
+                  </p>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                  {visibleClients.map((client) => {
+                    const initial = String(client?.name ?? "?")
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase();
+                    const status = String(client?.status ?? "");
+                    const isActive = status.toLowerCase() === "active";
+
+                    return (
+                      <div
+                        key={client.id}
+                        className="p-4 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+                              {initial}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-900 truncate">
+                                {client.name}
+                              </p>
+                              <p className="text-sm text-slate-600 truncate">
+                                {client.email}
+                              </p>
+                              {client.phone && (
+                                <p className="text-xs text-slate-500 truncate">
+                                  {client.phone}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200">
+                              Total {client.totalCases}
+                            </span>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              Active {client.activeCases}
+                            </span>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              Completed {client.completedCases}
+                            </span>
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
+                                isActive
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                              }`}
+                            >
+                              {status || "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -938,16 +968,20 @@ export default function AgencyDashboard() {
       {/* Reports View */}
       {viewMode === "reports" && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">
-              Performance Reports
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Reports</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Snapshot of key performance indicators.
+              </p>
+            </div>
             <button
               onClick={fetchAnalytics}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-slate-800 font-semibold"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4 text-slate-600" />
+              Refresh
             </button>
           </div>
 
@@ -957,62 +991,77 @@ export default function AgencyDashboard() {
               <p className="text-slate-600">Loading analytics...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Monthly Revenue */}
-              <div className="p-6 bg-linear-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                <h3 className="font-bold text-slate-800 mb-2">
-                  Monthly Revenue
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 mb-2">
-                  ${analytics.revenue.monthly.toLocaleString()}
-                </p>
-                <p className="text-sm text-slate-600">
-                  {analytics.revenue.trend === "up" ? "↑" : "↓"}
-                  {Math.abs(analytics.revenue.change).toFixed(1)}% from last
-                  month
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-5">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Monthly revenue</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      ${analytics.revenue.monthly.toLocaleString()}
+                    </p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      {analytics.revenue.trend === "up" ? "Up" : "Down"} {Math.abs(analytics.revenue.change).toFixed(1)}% vs last month
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl border border-slate-200 bg-blue-50 flex items-center justify-center shrink-0">
+                    <DollarSign className="w-5 h-5 text-blue-700" />
+                  </div>
+                </div>
               </div>
 
-              {/* Completion Rate */}
-              <div className="p-6 bg-linear-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-                <h3 className="font-bold text-slate-800 mb-2">
-                  Completion Rate
-                </h3>
-                <p className="text-3xl font-bold text-green-600 mb-2">
-                  {analytics.completionRate.rate}%
-                </p>
-                <p className="text-sm text-slate-600">
-                  {analytics.completionRate.difference}%{" "}
-                  {analytics.completionRate.comparison} industry average
-                </p>
+              <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-5">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Completion rate</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {analytics.completionRate.rate}%
+                    </p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      {analytics.completionRate.difference}% {analytics.completionRate.comparison} industry average
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl border border-slate-200 bg-emerald-50 flex items-center justify-center shrink-0">
+                    <CheckCircle className="w-5 h-5 text-emerald-700" />
+                  </div>
+                </div>
               </div>
 
-              {/* Avg Processing Time */}
-              <div className="p-6 bg-linear-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                <h3 className="font-bold text-slate-800 mb-2">
-                  Avg. Processing Time
-                </h3>
-                <p className="text-3xl font-bold text-purple-600 mb-2">
-                  {analytics.processingTime.days} days
-                </p>
-                <p className="text-sm text-slate-600">
-                  {analytics.processingTime.difference} days{" "}
-                  {analytics.processingTime.comparison} than average
-                </p>
+              <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-5">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-600" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Processing time</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {analytics.processingTime.days} days
+                    </p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      {analytics.processingTime.difference} days {analytics.processingTime.comparison} than average
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5 text-slate-700" />
+                  </div>
+                </div>
               </div>
 
-              {/* Client Satisfaction */}
-              <div className="p-6 bg-linear-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-                <h3 className="font-bold text-slate-800 mb-2">
-                  Client Satisfaction
-                </h3>
-                <p className="text-3xl font-bold text-orange-600 mb-2">
-                  {analytics.satisfaction.rating}/5
-                </p>
-                <p className="text-sm text-slate-600">
-                  Based on {analytics.satisfaction.reviewCount} review
-                  {analytics.satisfaction.reviewCount !== 1 ? "s" : ""}
-                </p>
+              <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-5">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Satisfaction</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {analytics.satisfaction.rating}/5
+                    </p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      Based on {analytics.satisfaction.reviewCount} review{analytics.satisfaction.reviewCount !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl border border-slate-200 bg-blue-50 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-5 h-5 text-blue-700" />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1022,33 +1071,33 @@ export default function AgencyDashboard() {
       {/* New Case Modal */}
       <AnimatePresence>
         {showNewCaseModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl"
             >
-              <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between z-20">
-                <h3 className="text-2xl font-bold text-slate-800">
-                  Create New Case
-                </h3>
-                <button
+              <div className="sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+                <h3 className="text-lg font-semibold text-slate-900">Create New Case</h3>
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => {
                     setShowNewCaseModal(false);
                     setSelectedCandidate(null);
                     setCandidateSearch("");
                     setCandidateResults([]);
                   }}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  aria-label="Close"
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="overflow-y-auto flex-1">
-                <form onSubmit={handleCreateCase} className="p-6 space-y-6">
+              <div className="max-h-[calc(90vh-84px)] overflow-y-auto bg-slate-50/40 px-6 py-6">
+                <form onSubmit={handleCreateCase} className="space-y-6">
                   {/* Candidate Search with Autocomplete */}
-                  <div className="sticky top-0 bg-white z-10 pb-4 -mt-6 pt-6">
+                  <div className="pb-4">
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Select Candidate *
                     </label>
@@ -1070,7 +1119,7 @@ export default function AgencyDashboard() {
                           }
                         }}
                         onFocus={() => setShowCandidateDropdown(true)}
-                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         placeholder="Search by name or email..."
                         autoComplete="off"
                       />
@@ -1084,7 +1133,7 @@ export default function AgencyDashboard() {
                       {showCandidateDropdown &&
                         candidateSearch.length >= 2 &&
                         !selectedCandidate && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20">
+                          <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl max-h-60 overflow-y-auto z-20">
                             {candidateResults.length === 0 ? (
                               <div className="p-4 text-center text-slate-500 text-sm">
                                 {searchingCandidates
@@ -1099,7 +1148,7 @@ export default function AgencyDashboard() {
                                   onClick={() =>
                                     handleCandidateSelect(candidate)
                                   }
-                                  className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-b-0"
+                                  className="w-full text-left px-4 py-3 transition-colors border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
                                 >
                                   <p className="font-medium text-slate-800">
                                     {candidate.full_name}
@@ -1121,26 +1170,30 @@ export default function AgencyDashboard() {
 
                     {/* Selected Candidate Display */}
                     {selectedCandidate && (
-                      <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="mt-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/60 p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3">
-                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/70 ring-1 ring-emerald-200">
+                              <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            </div>
                             <div>
-                              <p className="font-semibold text-green-900">
+                              <p className="font-semibold text-slate-900">
                                 {selectedCandidate.full_name}
                               </p>
-                              <p className="text-sm text-green-700">
+                              <p className="text-sm text-slate-700">
                                 {selectedCandidate.email}
                               </p>
                               {selectedCandidate.phone_number && (
-                                <p className="text-xs text-green-600">
+                                <p className="text-xs text-slate-600">
                                   {selectedCandidate.phone_number}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => {
                               setSelectedCandidate(null);
                               setCandidateSearch("");
@@ -1149,11 +1202,10 @@ export default function AgencyDashboard() {
                                 candidate_id: "",
                               });
                             }}
-                            className="p-1 hover:bg-green-100 rounded transition-colors"
-                            title="Clear selection"
+                            aria-label="Clear selection"
                           >
-                            <X className="w-4 h-4 text-green-700" />
-                          </button>
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -1178,7 +1230,7 @@ export default function AgencyDashboard() {
                           serviceType: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200/70 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                       <option value="">Select service type</option>
                       {getServiceTypeOptions().map((service) => (
@@ -1207,7 +1259,7 @@ export default function AgencyDashboard() {
                               originCountry: e.target.value,
                             })
                           }
-                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          className="w-full appearance-none rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                           <option value="">Select origin country</option>
                           {Country.getAllCountries().map((country) => (
@@ -1234,7 +1286,7 @@ export default function AgencyDashboard() {
                               destinationCity: "", // Reset city when country changes
                             });
                           }}
-                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          className="w-full appearance-none rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                           <option value="">Select destination country</option>
                           {Country.getAllCountries().map((country) => (
@@ -1263,7 +1315,7 @@ export default function AgencyDashboard() {
                               destinationCity: e.target.value,
                             })
                           }
-                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          className="w-full appearance-none rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
                           disabled={!newCaseForm.destinationCountry}
                         >
                           <option value="">Select city (optional)</option>
@@ -1301,7 +1353,7 @@ export default function AgencyDashboard() {
                             priorityLevel: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-xl border border-slate-200/70 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -1328,7 +1380,7 @@ export default function AgencyDashboard() {
                               estimatedCompletion: e.target.value,
                             })
                           }
-                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
                     </div>
@@ -1350,7 +1402,7 @@ export default function AgencyDashboard() {
                               estimatedCost: e.target.value,
                             })
                           }
-                          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full rounded-xl border border-slate-200/70 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                           placeholder="5000"
                         />
                       </div>
@@ -1370,33 +1422,35 @@ export default function AgencyDashboard() {
                           notes: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200/70 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       rows={3}
                       placeholder="Additional information..."
                     />
                   </div>
 
                   {/* Buttons */}
-                  <div className="sticky bottom-0 bg-white pt-4 pb-2 -mb-6 border-t border-slate-200">
+                  <div className="sticky bottom-0 -mb-6 border-t border-slate-200 bg-white/90 pt-4 pb-2 backdrop-blur">
                     <div className="flex gap-3">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        className="flex-1"
                         onClick={() => {
                           setShowNewCaseModal(false);
                           setSelectedCandidate(null);
                           setCandidateSearch("");
                         }}
-                        className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors"
                       >
                         Cancel
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="submit"
+                        variant="soft"
+                        className="flex-1"
                         disabled={!selectedCandidate}
-                        className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium transition-colors"
                       >
                         Create Case
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </form>
