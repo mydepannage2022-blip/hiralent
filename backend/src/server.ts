@@ -5,6 +5,7 @@ import { connectDB } from "./lib/mongo";
 import { loadDevStubs } from "./bootstrap/devStubs";
 import { setupSocketIO } from "./realtime/socket.messaging";
 import { getScheduler } from "./services/scraping/scraping-scheduler";
+import { getInterviewScheduler } from "./scheduler/interview.scheduler";
 
 dotenv.config();
 
@@ -27,6 +28,10 @@ if (process.env.NODE_ENV !== "production") {
     } else {
       console.log("⏸️ Scraping scheduler DISABLED (set SCRAPING_SCHEDULER_ENABLED=true)");
     }
+
+    // Initialize and start interview scheduler (always enabled)
+    const interviewScheduler = getInterviewScheduler();
+    interviewScheduler.start();
 
     const server = http.createServer(app);
 

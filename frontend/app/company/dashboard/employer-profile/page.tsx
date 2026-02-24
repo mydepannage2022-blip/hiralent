@@ -1,14 +1,10 @@
 "use client";
 
 import React from "react";
+import EmployerProfilePage from "@/src/components/company/dashboard/employer/EmployerProfilePage";
 
 const Page = () => {
-
-  return (
-    <div className="max-w-3xl 2xl:max-w-6xl p-2 sm:p-4 bg-white rounded-xl space-y-6">
-      <p>Comming Soon!</p>
-    </div>
-  );
+  return <EmployerProfilePage />;
 };
 
 export default Page;

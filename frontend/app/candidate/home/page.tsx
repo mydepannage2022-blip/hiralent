@@ -9,6 +9,9 @@ import Achievements from '../../../src/components/candidate/home/Achievements'
 import BlogSection from '../../../src/components/candidate/home/Blog'
 import Employer from '../../../src/components/candidate/home/Employer'
 import Agency from '../../../src/components/candidate/home/Agency'
+import GlobalHiringAgenciesSection from '../../../src/components/candidate/home/GlobalHiringAgenciesSection'
+import UseCasesStorySection from  '../../../src/components/candidate/home/UseCasesStorySection';
+
 
 const page = () => {
   return (
@@ -19,9 +22,13 @@ const page = () => {
       <Steps />
       <Companies />
       <Achievements />
+      <GlobalHiringAgenciesSection/>
+      {/* <UseCasesStorySection /> */}
+
       <BlogSection />
       <Employer />
-      <Agency />
+
+      {/* <Agency /> */}
     </div>
   )
 }

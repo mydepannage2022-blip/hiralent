@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import * as candidateService from '../services/candidate.service';
 import { generateCareerPrediction , updateCandidateVector} from '../services/candidate/documentProcessor.service'; 
 import { AuthUser } from '../types/express';
+import { completenessService } from "../../src/services/candidate/profile/completeness.service";
+
 import { 
   APIResponse, 
   CVUploadResponse, 
@@ -16,6 +18,7 @@ import {
   UpdateHeadlineInput,        // NEW - Add this import
   HeadlineUpdateResult 
 } from '../types/candidate.types';
+import { triggerAutoBadgeEvaluation } from '../../src/services/candidate/profile/badge.trigger';
 
 
 // Extend Request interface for better type safety
@@ -49,6 +52,11 @@ export const uploadCVController = async (req: Request, res: Response): Promise<v
     }
 
     const result = await candidateService.uploadAndProcessCV(req.user.user_id, req.file);
+
+    // ✅ AUTO-TRIGGER BADGE EVALUATION
+    triggerAutoBadgeEvaluation(req.user.user_id).catch(error => 
+      console.error('Failed to trigger badges:', error)
+    );
 
     res.status(200).json({
       success: true,
@@ -98,30 +106,30 @@ export const getProfileSummaryController = async (req: Request, res: Response): 
 export const getProfileCompletenessController = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      } as APIResponse);
+      res.status(401).json({ success: false, message: "Authentication required" } as APIResponse);
       return;
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
-    const completeness = await candidateService.calculateProfileCompleteness(candidateId);
+
+    const completeness = await completenessService.calculateCompleteness(candidateId);
+    triggerAutoBadgeEvaluation(candidateId);
 
     res.status(200).json({
       success: true,
       data: completeness,
-      message: 'Profile completeness calculated successfully'
+      message: "Profile completeness calculated successfully",
     } as APIResponse<ProfileCompletenessScore>);
   } catch (error) {
-    console.error('Error calculating profile completeness:', error);
+    console.error("Error calculating profile completeness:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to calculate profile completeness',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      message: "Failed to calculate profile completeness",
+      error: error instanceof Error ? error.message : "Unknown error",
     } as APIResponse);
   }
 };
+
 
 // Generate career prediction - Week 1 API
 export const generateCareerPredictionController = async (req: Request, res: Response): Promise<void> => {
@@ -371,6 +379,7 @@ export const uploadProfilePictureController = async (
 };
 
 // Update candidate headline controller
+// Update headline controller
 export const updateHeadlineController = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -385,6 +394,11 @@ export const updateHeadlineController = async (req: Request, res: Response): Pro
     const input: UpdateHeadlineInput = req.body;
     
     const result = await candidateService.updateCandidateHeadline(userId, input);
+
+    // ✅ AUTO-TRIGGER BADGE EVALUATION
+    triggerAutoBadgeEvaluation(userId).catch(error => 
+      console.error('Failed to trigger badges:', error)
+    );
 
     res.status(200).json({
       success: true,
@@ -401,6 +415,7 @@ export const updateHeadlineController = async (req: Request, res: Response): Pro
     } as APIResponse);
   }
 };
+
 
 export const getHeadlineController = async (req: Request, res: Response): Promise<void> => {
   try {

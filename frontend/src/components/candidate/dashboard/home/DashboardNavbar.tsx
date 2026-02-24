@@ -24,10 +24,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const { user } = useAuth();
   const { profileData } = useProfile();
 
-  // ✅ FIX: pathname can be null in Next.js types
   const pathname = usePathname() ?? "";
 
-  // ✅ Notification modal state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -55,7 +53,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     },
     {
       id: '4',
-      title: 'Your resume has been successfully submitted for the ‘Product Design’ position at Global Crop Solution. We’ll keep you updated on the next steps.',
+      title: "Your resume has been successfully submitted for the 'Product Design' position at Global Crop Solution. We'll keep you updated on the next steps.",
       tag: 'Apply Result',
       time: '22:14 AM',
       read: true
@@ -69,7 +67,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     },
     {
       id: '6',
-      title: 'Exciting opportunity! A ‘Digital Marketing Specialist’ role has just been posted at Bright Solutions Group. Check your dashboard for more  information and apply now.',
+      title: "Exciting opportunity! A 'Digital Marketing Specialist' role has just been posted at Bright Solutions Group. Check your dashboard for more information and apply now.",
       tag: 'New Job',
       time: '22:14 AM',
       read: false,
@@ -115,12 +113,27 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       };
     }
 
+    if (pathname.startsWith('/candidate/dashboard/interviews')) {
+      return {
+        title: 'AI Interviews',
+        description: 'Complete your AI-powered video interviews',
+      };
+    }
+
     // ✅ Application details: /candidate/dashboard/applications/[appId]
     // IMPORTANT: must be BEFORE switch
     if (pathname.startsWith('/candidate/dashboard/applications/')) {
       return {
         title: 'My applications',
         description: 'Track your applications, status changes, and timeline events.',
+      };
+    }
+
+    // ✅ ADDED: Badges page - Hide navbar title/description
+    if (pathname === '/candidate/dashboard/candidate-profile/badges') {
+      return {
+        title: '',
+        description: '',
       };
     }
 
@@ -149,7 +162,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           description: 'Browse and apply to job opportunities tailored for you',
         };
 
-      // ✅ Applications list
       case '/candidate/dashboard/applications':
         return {
           title: 'My applications',
@@ -190,7 +202,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
   const { title, description } = getPageInfo();
 
-  // ✅ Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -202,27 +213,42 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isNotifOpen]);
 
+  // ✅ Check if we should hide title/description (for Badges page)
+  const shouldHideTitle = !title && !description;
+
   return (
     <div className='relative w-full flex flex-col sm:flex-row justify-start items-start sm:items-center text-[#282828] gap-4 sm:gap-0'>
-      {/* Left Section */}
-      <div className='w-full sm:w-1/2 lg:w-1/3 xl:w-1/2 flex items-center gap-3'>
+      {/* Left Section - Only show if title exists */}
+      {!shouldHideTitle && (
+        <div className='w-full sm:w-1/2 lg:w-1/3 xl:w-1/2 flex items-center gap-3'>
+          <button
+            onClick={handleMobileMenuToggle}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <HiOutlineMenuAlt3 className="text-2xl text-[#353535]" />
+          </button>
+
+          <div className="flex-1">
+            <h3 className='font-bold text-lg sm:text-xl lg:text-xl xl:text-2xl'>{title}</h3>
+            <p className='font-light text-xs sm:text-xs xl:text-sm text-[#515151] hidden sm:block'>
+              {description}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Mobile menu button for pages without title */}
+      {shouldHideTitle && (
         <button
           onClick={handleMobileMenuToggle}
           className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
         >
           <HiOutlineMenuAlt3 className="text-2xl text-[#353535]" />
         </button>
-
-        <div className="flex-1">
-          <h3 className='font-bold text-lg sm:text-xl lg:text-xl xl:text-2xl'>{title}</h3>
-          <p className='font-light text-xs sm:text-xs xl:text-sm text-[#515151] hidden sm:block'>
-            {description}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Right Section */}
-      <div className='relative w-full sm:w-1/2 lg:w-2/3 xl:w-1/2 flex items-center justify-between sm:justify-end gap-3 sm:gap-4 lg:gap-8'>
+      <div className={`relative ${shouldHideTitle ? 'w-full' : 'w-full sm:w-1/2 lg:w-2/3 xl:w-1/2'} flex items-center justify-between sm:justify-end gap-3 sm:gap-4 lg:gap-8`}>
         {/* Search */}
         <form
           onSubmit={handleSearchSubmit}

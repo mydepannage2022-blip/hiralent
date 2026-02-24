@@ -116,6 +116,7 @@ model User {
   progressUpdatedBy         CandidateProgressTracker[] @relation("ProgressUpdatedBy")
 
   aiInterviewResults        AIInterviewResult[]       @relation("CandidateAIResults")
+  assignedInterviews        AIInterviewResult[]       @relation("AssignedInterviews")
   relocationCases           RelocationCase[]          @relation("CandidateRelocationCases")
   caseAssignments           CaseAssignment[]          @relation("AgentCaseAssignments")
   agencyReviews             AgencyReview[]            @relation("ClientReviews")
@@ -152,12 +153,25 @@ model User {
   candidateScore        CandidateScore?         @relation("CandidateScore")
   badges                BadgeAward[]            @relation("CandidateBadges")
   certifications        Certification[]         @relation("CandidateCertifications")
+  chatHistory   ChatHistory[]  @relation("CandidateChatHistory")
+  chatConversations ChatConversation[] @relation("CandidateChatConversations")
+
   profileEvents         ProfileEvent[]          @relation("ProfileEvents")
   // Relations to Scraping Candidates models (Do not Touch !!!)
   sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
   sourcingRunsTriggered SourcingRun[] @relation("SourcingRunTriggeredByUser")
   candidateGlobalScore CandidateGlobalScore?
   candidateGlobalScoreHistory CandidateGlobalScoreHistory[]
+
+    // Company Team Relations
+  ownedCompanyTeam           CompanyTeamMember[]     @relation("CompanyTeamMembers")
+  teamMemberships            CompanyTeamMember[]     @relation("UserTeamMemberships")
+  teamMembersInvited         CompanyTeamMember[]     @relation("TeamMemberInviter")
+  companyInvitationsSent     CompanyTeamInvitation[] @relation("SentInvitations")
+  companyInvitationsReceived CompanyTeamInvitation[] @relation("CompanyInvitations")
+  companyActivityLogs        CompanyActivityLog[]    @relation("CompanyActivityLogs")
+  activityActions            CompanyActivityLog[]    @relation("ActivityActor")
+
 
 }
 
@@ -168,6 +182,8 @@ model CompanyProfile {
   // Basic Company Info
   company_name String? // Official registered company name
   display_name String? // Display name (can be different from legal name)
+  slug         String?
+  tagline      String? 
   industry     String? // Technology, Healthcare, Finance, etc.
   company_size String? // startup, small, medium, large, enterprise
   website      String?
@@ -176,11 +192,14 @@ model CompanyProfile {
   description  String? // Company description/about
 
   // Contact & Social
+  contact_email    String? 
   contact_number   String?
   linkedin_profile String?
   twitter_handle   String?
   facebook_page    String?
-
+  instagram_url    String?  // <-- ADD THIS
+  youtube_url      String?  // <-- ADD THIS
+  
   // Business Details
   business_type       String? // public, private, non-profit, government
   registration_number String? // Business registration number
@@ -198,6 +217,8 @@ model CompanyProfile {
   hiring_volume  String? // low, medium, high volume hiring
   typical_roles  String[] // Common roles they hire for
   hiring_regions String[] // Geographic regions they hire from/for
+  benefits       String[] 
+  culture_description String? 
   remote_policy  String? // fully_remote, hybrid, office_only
 
   // Platform Specific
@@ -551,6 +572,42 @@ model AIInterviewResult {
   candidate_id   String
   application    JobApplication @relation(fields: [application_id], references: [application_id])
   candidate      User           @relation("CandidateAIResults", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  // AI Video Interview Fields
+  status              AIInterviewStatus @default(PENDING)
+  transcript          Json?             // Full conversation transcript [{role, content, timestamp}]
+  questions_asked     Json?             // Array of questions with metadata
+  responses           Json?             // Array of candidate responses with analysis
+  soft_skills         Json?             // Detected soft skills {communication, problemSolving, etc.}
+  sentiment_analysis  Json?             // Sentiment data {overall, perResponse[]}
+  duration_seconds    Int?              // Total interview duration
+  total_questions     Int?              // Number of questions asked
+  qualification       AIQualification?  // Final result: QUALIFIED or NOT_QUALIFIED
+  evaluation_details  Json?             // Full evaluation: {fitScore, strengths, areasForImprovement, redFlags, confidenceInAssessment}
+  started_at          DateTime?         // When interview started
+  completed_at        DateTime?         // When interview completed
+  job_id              String?           // Reference to the job being interviewed for
+
+  // Recruiter Assignment Fields
+  scheduled_date      DateTime?         // When the interview is scheduled for
+  assigned_by         String?           // Recruiter user_id who assigned the interview
+  assigned_at         DateTime?         // When the interview was assigned
+  assignedByUser      User?             @relation("AssignedInterviews", fields: [assigned_by], references: [user_id])
+}
+
+enum AIInterviewStatus {
+  PENDING       // Interview created but not started
+  IN_PROGRESS   // Candidate is currently in the interview
+  COMPLETED     // Interview finished successfully
+  FAILED        // Technical failure or error
+  EXPIRED       // Interview link expired
+  CANCELLED     // Interview was cancelled
+}
+
+enum AIQualification {
+  QUALIFIED
+  NOT_QUALIFIED
+  PENDING_REVIEW
 }
 
 model SkillAssessment {
@@ -2259,6 +2316,7 @@ model Badge {
   awards       BadgeAward[]
 }
 
+
 model BadgeAward {
   award_id     String   @id @default(uuid())
   candidate_id String
@@ -2386,3 +2444,180 @@ model AssessmentTemplateQuestion {
 
   @@map("assessment_template_questions")
 }
+
+model ChatHistory {
+  chat_id       String   @id @default(uuid())
+  candidate_id  String
+  user_message  String   @db.Text
+  bot_response  String   @db.Text
+  created_at    DateTime @default(now())
+
+  candidate     User     @relation("CandidateChatHistory", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([candidate_id])
+  @@index([created_at])
+  @@map("chat_history")
+}
+model ChatConversation {
+  conversation_id String   @id @default(uuid())
+  candidate_id    String
+  title           String   @default("New chat")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  last_message_at DateTime @default(now())
+  is_archived     Boolean  @default(false)
+
+  candidate User @relation("CandidateChatConversations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([candidate_id, last_message_at])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  message_id      String   @id @default(uuid())
+  conversation_id String
+  role            String   // "user" | "assistant"
+  content         String   @db.Text
+  created_at      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+  @@map("chat_messages")
+}
+
+// ==================== COMPANY TEAM ENUMS ====================
+
+enum CompanyTeamRole {
+  owner
+  admin
+  hr_manager
+  recruiter
+  viewer
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  expired
+  cancelled
+}
+
+enum CompanyModule {
+  dashboard
+  jobs
+  candidates
+  assessments
+  questions
+  messages
+  settings
+  team
+  analytics
+  billing
+}
+
+// ==================== COMPANY TEAM MODELS ====================
+
+model CompanyTeamMember {
+  member_id     String          @id @default(uuid())
+  company_id    String
+  user_id       String
+  role          CompanyTeamRole @default(recruiter)
+  job_title     String?
+  department    String?
+  is_active     Boolean         @default(true)
+  invited_by    String?
+  joined_at     DateTime        @default(now())
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+
+  // Relations
+  company       User            @relation("CompanyTeamMembers", fields: [company_id], references: [user_id], onDelete: Cascade)
+  user          User            @relation("UserTeamMemberships", fields: [user_id], references: [user_id], onDelete: Cascade)
+  inviter       User?           @relation("TeamMemberInviter", fields: [invited_by], references: [user_id])
+  permissions   CompanyMemberPermission[]
+  activityLogs  CompanyActivityLog[]
+
+  @@unique([company_id, user_id])
+  @@index([company_id])
+  @@index([user_id])
+  @@index([role])
+}
+
+model CompanyTeamInvitation {
+  invitation_id      String           @id @default(uuid())
+  company_id         String
+  email              String
+  role               CompanyTeamRole  @default(recruiter)
+  job_title          String?
+  department         String?
+  token              String           @unique
+  token_hash         String
+  status             InvitationStatus @default(pending)
+  invited_by         String
+  expires_at         DateTime
+  accepted_at        DateTime?
+  cancelled_at       DateTime?
+  custom_permissions Json?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+
+  // Relations
+  company    User @relation("CompanyInvitations", fields: [company_id], references: [user_id], onDelete: Cascade)
+  inviter    User @relation("SentInvitations", fields: [invited_by], references: [user_id])
+
+  @@index([company_id])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+}
+
+model CompanyMemberPermission {
+  permission_id String        @id @default(uuid())
+  member_id     String
+  module        CompanyModule
+  can_view      Boolean       @default(false)
+  can_create    Boolean       @default(false)
+  can_edit      Boolean       @default(false)
+  can_delete    Boolean       @default(false)
+  can_manage    Boolean       @default(false)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  // Relations
+  member CompanyTeamMember @relation(fields: [member_id], references: [member_id], onDelete: Cascade)
+
+  @@unique([member_id, module])
+  @@index([member_id])
+  @@index([module])
+}
+
+model CompanyActivityLog {
+  log_id          String    @id @default(uuid())
+  company_id      String
+  member_id       String?
+  user_id         String
+  action          String
+  action_category String
+  resource_type   String?
+  resource_id     String?
+  resource_name   String?
+  details         Json?
+  ip_address      String?
+  user_agent      String?
+  created_at      DateTime  @default(now())
+
+  // Relations
+  company User               @relation("CompanyActivityLogs", fields: [company_id], references: [user_id], onDelete: Cascade)
+  member  CompanyTeamMember? @relation(fields: [member_id], references: [member_id], onDelete: SetNull)
+  actor   User               @relation("ActivityActor", fields: [user_id], references: [user_id])
+
+  @@index([company_id])
+  @@index([member_id])
+  @@index([user_id])
+  @@index([action])
+  @@index([action_category])
+  @@index([created_at])
+}
+

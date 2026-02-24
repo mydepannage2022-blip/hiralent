@@ -3,6 +3,9 @@
 import { Request, Response } from 'express';
 import * as profileService from '../../services/profile.service';
 import { APIResponse, SocialLink } from '../../types/candidate.types';
+import { badgeService } from '../../../src/services/candidate/profile/badge.service';
+import { completenessService } from '../../../src/services/candidate/profile/completeness.service';
+
 
 // ==================== BASIC INFO CONTROLLER ====================
 
@@ -17,6 +20,14 @@ export const updateBasicInfoController = async (req: Request, res: Response): Pr
     }
 
     const result = await profileService.updateBasicInfo(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(200).json({
       success: true,
@@ -47,6 +58,14 @@ export const updateSkillsController = async (req: Request, res: Response): Promi
 
     const result = await profileService.updateSkills(req.user.user_id, req.body);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -73,6 +92,14 @@ export const addSkillController = async (req: Request, res: Response): Promise<v
     }
 
     const result = await profileService.addSkill(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(201).json({
       success: true,
@@ -110,6 +137,14 @@ export const deleteSkillController = async (req: Request, res: Response): Promis
 
     const result = await profileService.deleteSkill(req.user.user_id, skillId);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -139,6 +174,14 @@ export const updateExperienceController = async (req: Request, res: Response): P
 
     const result = await profileService.updateExperience(req.user.user_id, req.body);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -165,6 +208,14 @@ export const addExperienceController = async (req: Request, res: Response): Prom
     }
 
     const result = await profileService.addExperience(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(201).json({
       success: true,
@@ -195,6 +246,14 @@ export const updateEducationController = async (req: Request, res: Response): Pr
 
     const result = await profileService.updateEducation(req.user.user_id, req.body);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -221,6 +280,14 @@ export const addEducationController = async (req: Request, res: Response): Promi
     }
 
     const result = await profileService.addEducation(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(201).json({
       success: true,
@@ -249,6 +316,14 @@ export const updateLinksController = async (req: Request, res: Response): Promis
     const payload = Array.isArray(req.body) ? { links: req.body } : req.body;
     const result = await profileService.updateLinks(req.user.user_id, payload);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -276,6 +351,14 @@ export const addLinkController = async (req: Request, res: Response): Promise<vo
     }
 
     const result = await profileService.addLink(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(201).json({
       success: true,
@@ -312,6 +395,14 @@ export const deleteLinkController = async (req: Request, res: Response): Promise
     }
 
     const result = await profileService.deleteLink(req.user.user_id, linkIndex);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(200).json({
       success: true,
@@ -370,6 +461,14 @@ export const bulkUpdateProfileController = async (req: Request, res: Response): 
     }
 
     const result = await profileService.bulkUpdateProfile(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(200).json({
       success: true,
@@ -453,6 +552,14 @@ export const updateProjectsController = async (req: Request, res: Response): Pro
 
     const result = await profileService.updateProjects(req.user.user_id, req.body);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -467,6 +574,7 @@ export const updateProjectsController = async (req: Request, res: Response): Pro
     } as APIResponse);
   }
 };
+
 export const getLanguagesController = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -500,6 +608,14 @@ export const updateLanguagesController = async (req: Request, res: Response): Pr
     // body validated by schema: { languages: [...] }
     const result = await profileService.updateLanguages(req.user.user_id, req.body.languages);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -522,6 +638,14 @@ export const addLanguageController = async (req: Request, res: Response): Promis
     }
 
     const result = await profileService.addLanguage(req.user.user_id, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(201).json({
       success: true,
@@ -552,6 +676,14 @@ export const deleteLanguageController = async (req: Request, res: Response): Pro
 
     const result = await profileService.deleteLanguage(req.user.user_id, index);
 
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -580,6 +712,14 @@ export const updateLanguageAtIndexController = async (req: Request, res: Respons
     }
 
     const result = await profileService.updateLanguageAtIndex(req.user.user_id, index, req.body);
+
+    // ✅ TRIGGER BADGE EVALUATION
+    try {
+      await completenessService.calculateCompleteness(req.user.user_id);
+      await badgeService.evaluateBadges(req.user.user_id);
+    } catch (error) {
+      console.error('Failed to evaluate badges:', error);
+    }
 
     res.status(200).json({
       success: true,

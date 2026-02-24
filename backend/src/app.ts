@@ -64,17 +64,23 @@ import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes
 import matchingInternalRoutes from "./routes/internal/matching.routes";
 import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
 import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
+import interviewRoutes from "./routes/interview.routes";
 import externalCandidatesRoutes from "./routes/company.externalCandidates.routes";
 import companyInternalCandidatesRoutes from "./routes/company.internalCandidates.routes";
 import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
+import teamRoutes from './routes/team.routes';
+import employerRoutes from './routes/employer.routes';
+
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
+app.use('/api/v1/company/team', teamRoutes);
+app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
@@ -134,9 +140,10 @@ app.use('/api/v1/subscription', subscriptionRoutes);
 
 
 
-//Candidate (jobs+assessments)
+//Candidate (jobs+assessments+interviews)
 app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
 app.use("/api/v1/candidate", jobApplicationsRoutes);
+app.use('/api/v1/interviews', interviewRoutes);
 app.use("/internal/matching/candidate", internalCandidateRoutes);
 app.use("/internal/matching/company", internalCompanyRoutes);
 app.use("/internal/matching", matchingInternalRoutes);

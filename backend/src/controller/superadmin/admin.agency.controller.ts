@@ -141,17 +141,35 @@ export const approveAgency = async (req: Request, res: Response) => {
     const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    // Create User for agency admin
-    const newUser = await prisma.user.create({
-      data: {
-        email: agency.email!,
-        password_hash: hashedPassword,
-        full_name: agency.name,
-        role: "agency_admin",
-        is_email_verified: true,
-        agency_id: agency.agency_id,
-      },
+    // Check if user already exists with this email
+    let newUser = await prisma.user.findUnique({
+      where: { email: agency.email! },
     });
+
+    if (newUser) {
+      // User already exists - update their role and link to agency
+      newUser = await prisma.user.update({
+        where: { user_id: newUser.user_id },
+        data: {
+          role: "agency_admin",
+          agency_id: agency.agency_id,
+          is_email_verified: true,
+          password_hash: hashedPassword,
+        },
+      });
+    } else {
+      // Create new user for agency admin
+      newUser = await prisma.user.create({
+        data: {
+          email: agency.email!,
+          password_hash: hashedPassword,
+          full_name: agency.name,
+          role: "agency_admin",
+          is_email_verified: true,
+          agency_id: agency.agency_id,
+        },
+      });
+    }
 
     // Update Agency
     const updatedAgency = await prisma.agency.update({

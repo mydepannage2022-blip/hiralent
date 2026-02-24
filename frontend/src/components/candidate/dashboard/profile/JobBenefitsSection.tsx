@@ -21,7 +21,7 @@ import {
   Shield,
   Brain,
   Eye,
-  Tooth,
+  UserCog,
   TrendingUp,
   MapPin,
   Bus,
@@ -49,6 +49,7 @@ const JobBenefitsSection: React.FC = () => {
     importance: "preferred",
     notes: "",
   });
+  const [isAdding, setIsAdding] = useState(false);
 
   const { mutate: updateJobBenefits, isPending: isUpdating } = useUpdateJobBenefits();
 
@@ -109,44 +110,141 @@ const JobBenefitsSection: React.FC = () => {
     }));
 
     updateJobBenefits(sanitizedBenefits, {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        // ✅ Use the response data if available
+        console.log("Update successful:", response);
+        
         // ✅ Keep context updated so view mode reflects changes immediately
-        setProfileData({
-          ...profileData,
-          job_benefits: [...sanitizedBenefits],
-        });
+        // Make sure to merge properly with existing profile data
+        if (profileData) {
+          setProfileData({
+            ...profileData,
+            job_benefits: sanitizedBenefits,
+            updated_at: new Date().toISOString(),
+          });
+        }
 
         // ✅ Also update local state + exit edit mode
         setBenefits(sanitizedBenefits);
         setIsEditing(false);
+        
+        // ✅ Show success message
+        // You might want to add a toast notification here
       },
       onError: (error) => {
         console.error("API Error:", error);
+        // ✅ Show error message to user
+        // You might want to add a toast notification here
       },
     });
   };
 
   const handleAddBenefit = () => {
     if (newBenefit.benefit_type.trim()) {
-      setBenefits((prev) => [...prev, { ...newBenefit }]);
-      setNewBenefit({
-        benefit_type: "health_insurance",
-        importance: "preferred",
-        notes: "",
+      setIsAdding(true);
+      
+      // ✅ Create updated benefits array
+      const updatedBenefits = [...benefits, { ...newBenefit }];
+      
+      // ✅ Sanitize notes
+      const sanitizedBenefits = updatedBenefits.map((b) => ({
+        ...b,
+        notes: (b.notes || "").substring(0, 200),
+      }));
+
+      // ✅ Update backend immediately
+      updateJobBenefits(sanitizedBenefits, {
+        onSuccess: (response) => {
+          console.log("Add benefit successful:", response);
+          
+          // ✅ Update local state
+          setBenefits(sanitizedBenefits);
+          
+          // ✅ Update profile context
+          if (profileData) {
+            setProfileData({
+              ...profileData,
+              job_benefits: sanitizedBenefits,
+              updated_at: new Date().toISOString(),
+            });
+          }
+          
+          // ✅ Reset new benefit form
+          setNewBenefit({
+            benefit_type: "health_insurance",
+            importance: "preferred",
+            notes: "",
+          });
+          
+          setIsAdding(false);
+        },
+        onError: (error) => {
+          console.error("Error adding benefit:", error);
+          setIsAdding(false);
+          // Optionally: show error message to user
+        },
       });
     }
   };
 
   const handleRemoveBenefit = (index: number) => {
-    setBenefits((prev) => prev.filter((_, i) => i !== index));
+    // ✅ Remove from local state first for immediate UI feedback
+    const updatedBenefits = benefits.filter((_, i) => i !== index);
+    setBenefits(updatedBenefits);
+    
+    // ✅ Sanitize notes
+    const sanitizedBenefits = updatedBenefits.map((b) => ({
+      ...b,
+      notes: (b.notes || "").substring(0, 200),
+    }));
+
+    // ✅ Update backend
+    updateJobBenefits(sanitizedBenefits, {
+      onSuccess: (response) => {
+        console.log("Remove benefit successful:", response);
+        
+        // ✅ Update profile context
+        if (profileData) {
+          setProfileData({
+            ...profileData,
+            job_benefits: sanitizedBenefits,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      },
+      onError: (error) => {
+        console.error("Error removing benefit:", error);
+        // Revert local state on error
+        setBenefits(benefits);
+      },
+    });
   };
 
   const handleBenefitChange = (index: number, field: keyof JobBenefitData, value: string) => {
-    setBenefits((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
+    // ✅ Update local state first for immediate UI feedback
+    const updated = [...benefits];
+    updated[index] = { ...updated[index], [field]: value };
+    setBenefits(updated);
+    
+    // ✅ If we're in edit mode, save immediately (optional)
+    // Or you can wait for the Save button
+    if (isEditing) {
+      // Option 1: Save immediately on change
+      // const sanitizedBenefits = updated.map((b) => ({
+      //   ...b,
+      //   notes: (b.notes || "").substring(0, 200),
+      // }));
+      // updateJobBenefits(sanitizedBenefits, {
+      //   onSuccess: () => {
+      //     if (profileData) {
+      //       setProfileData({
+      //         ...profileData,
+      //         job_benefits: sanitizedBenefits,
+      //       });
+      //     }
+      //   },
+      // });
+    }
   };
 
   const getImportancePill = (importance: string) => {
@@ -167,7 +265,7 @@ const JobBenefitsSection: React.FC = () => {
       case "health_insurance":
         return HeartPulse;
       case "dental_insurance":
-        return Tooth;
+        return UserCog; // Changed from Tooth to UserCog
       case "vision_insurance":
         return Eye;
       case "retirement_401k":
@@ -297,7 +395,7 @@ const JobBenefitsSection: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCancel}
-              disabled={isUpdating}
+              disabled={isUpdating || isAdding}
               className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               <X className="w-4 h-4" />
@@ -305,7 +403,7 @@ const JobBenefitsSection: React.FC = () => {
             </button>
             <button
               onClick={handleSave}
-              disabled={isUpdating}
+              disabled={isUpdating || isAdding}
               className="flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
@@ -408,7 +506,8 @@ const JobBenefitsSection: React.FC = () => {
 
                       <button
                         onClick={() => handleRemoveBenefit(index)}
-                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors"
+                        disabled={isUpdating || isAdding}
+                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors disabled:opacity-50"
                         title="Remove"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -421,7 +520,8 @@ const JobBenefitsSection: React.FC = () => {
                         <select
                           value={benefit.benefit_type}
                           onChange={(e) => handleBenefitChange(index, "benefit_type", e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                          disabled={isUpdating || isAdding}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {benefitOptions.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -436,7 +536,8 @@ const JobBenefitsSection: React.FC = () => {
                         <select
                           value={benefit.importance}
                           onChange={(e) => handleBenefitChange(index, "importance", e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                          disabled={isUpdating || isAdding}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <option value="required">Required</option>
                           <option value="preferred">Preferred</option>
@@ -458,7 +559,8 @@ const JobBenefitsSection: React.FC = () => {
                             }
                           }}
                           maxLength={200}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                          disabled={isUpdating || isAdding}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                           placeholder="Any details (ex: private insurance, budget, etc.)"
                         />
                       </div>
@@ -487,7 +589,8 @@ const JobBenefitsSection: React.FC = () => {
                 <select
                   value={newBenefit.benefit_type}
                   onChange={(e) => setNewBenefit({ ...newBenefit, benefit_type: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  disabled={isUpdating || isAdding}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {benefitOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -502,7 +605,8 @@ const JobBenefitsSection: React.FC = () => {
                 <select
                   value={newBenefit.importance}
                   onChange={(e) => setNewBenefit({ ...newBenefit, importance: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  disabled={isUpdating || isAdding}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="required">Required</option>
                   <option value="preferred">Preferred</option>
@@ -524,7 +628,8 @@ const JobBenefitsSection: React.FC = () => {
                     }
                   }}
                   maxLength={200}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  disabled={isUpdating || isAdding}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Optional"
                 />
               </div>
@@ -532,10 +637,20 @@ const JobBenefitsSection: React.FC = () => {
               <div className="md:col-span-4">
                 <button
                   onClick={handleAddBenefit}
-                  className="w-full mt-1 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                  disabled={isUpdating || isAdding || !newBenefit.benefit_type.trim()}
+                  className="w-full mt-1 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Benefit
+                  {isAdding ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Benefit
+                    </>
+                  )}
                 </button>
               </div>
             </div>

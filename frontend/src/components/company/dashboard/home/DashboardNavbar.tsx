@@ -148,6 +148,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         return { title: 'Review Queue', description: 'Review and approve candidate assessments' };
       case '/company/dashboard/questions':
         return { title: 'Question Bank', description: 'Manage and organize questions for assessments' };
+      case '/company/dashboard/interviews':
+        return { title: 'AI Interviews', description: 'Manage AI-powered video interviews for your candidates' };
       case '/company/dashboard/settings':
         return { title: 'Settings', description: 'Updating your information will offer you the most relevent content' };
       case '/agency/dashboard/cases':

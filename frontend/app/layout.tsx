@@ -3,7 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "../src/context/Providers";
 import ConditionalLayout from "../src/components/layout/ConditionalLayout";
+
 import { Toaster } from 'react-hot-toast';
+import "maplibre-gl/dist/maplibre-gl.css";
+
 // Dev-only token injector (sets NEXT_PUBLIC_DEV_TOKEN into localStorage or cookie)
 let DevTokenSetter: any = null;
 if (process.env.NODE_ENV !== 'production') {

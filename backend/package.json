@@ -17,10 +17,16 @@
     "worker": "ts-node src/workers/ai_company_setup.worker.ts",
     "generate:batch": "ts-node src/scripts/batch-generate-questions.ts",
     "worker:dev": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/run.worker.ts\"",
-    "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\""
+    "worker:matching": "nodemon --watch src/workers --ext ts,js,json --ignore node_modules --ignore dist --exec \"tsx src/workers/matching-outbox.runner.ts\"",
+    "seed:badges": "tsx prisma/seeds/badges.seed.ts",
+    "evaluate:badges": "tsx src/scripts/evaluate-all-badges.ts",
+    "debug:badges": "tsx src/scripts/debug-badges.ts"
+
+
+
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "module": "CommonJS",
   "type": "commonjs",
@@ -103,8 +109,8 @@
     "@types/socket.io": "^3.0.1",
     "nodemon": "^3.1.11",
     "prisma": "6.19.0",
-    "ts-node": "^1.7.1",
+    "ts-node": "^10.9.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.2.2"
   }
 }
