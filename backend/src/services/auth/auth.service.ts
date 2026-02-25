@@ -649,3 +649,31 @@ export const getUserDeletionSummary = async (userId: string) => {
     throw new Error(`Failed to get deletion summary: ${error.message}`);
   }
 };
+
+
+export const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { user_id: true, password_hash: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const bcrypt = require("bcrypt");
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+
+  if (!isPasswordValid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { user_id: userId },
+    data: { password_hash: newPasswordHash, updated_at: new Date() },
+  });
+
+  return { success: true, message: "Password changed successfully" };
+};

@@ -31,7 +31,6 @@ const ChatShell: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
 
-  // Initialize Socket.io
   useEffect(() => {
     if (token) {
       initializeSocket(token);
@@ -41,20 +40,14 @@ const ChatShell: React.FC = () => {
     }
   }, [token, user?.full_name]);
 
-  // Fetch conversations
   const {
     data: conversationsResponse,
     isLoading: isLoadingConversations,
     refetch: refetchConversations,
   } = useConversations();
 
-  // Fetch messages for selected conversation
-  const {
-    data: messagesResponse,
-    isLoading: isLoadingMessages,
-  } = useMessages(selectedChatId || "", 1, 50);
+  const { data: messagesResponse } = useMessages(selectedChatId || "", 1, 50);
 
-  // Send message mutation
   const sendMessageMutation = useSendMessage();
 
   const conversations: Conversation[] = conversationsResponse?.success
@@ -70,7 +63,6 @@ const ChatShell: React.FC = () => {
     }
   }, [messagesResponse, selectedChatId]);
 
-  // Socket event listeners
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -92,29 +84,17 @@ const ChatShell: React.FC = () => {
       refetchConversations();
     });
 
-    socket.on(
-      "user_typing",
-      (data: {
-        user_id: string;
-        full_name: string;
-        conversation_id: string;
-        typing: boolean;
-      }) => {
-        if (data.conversation_id === selectedChatId) {
-          setTypingUsers((prev) => {
-            const newSet = new Set(prev);
-            if (data.typing) {
-              newSet.add(data.user_id);
-            } else {
-              newSet.delete(data.user_id);
-            }
-            return newSet;
-          });
-        }
+    socket.on("user_typing", (data: { user_id: string; full_name: string; conversation_id: string; typing: boolean }) => {
+      if (data.conversation_id === selectedChatId) {
+        setTypingUsers((prev) => {
+          const newSet = new Set(prev);
+          data.typing ? newSet.add(data.user_id) : newSet.delete(data.user_id);
+          return newSet;
+        });
       }
-    );
+    });
 
-    socket.on("error", (error: { message: string; error?: string }) => {
+    socket.on("error", (error: { message: string }) => {
       console.error("Socket error:", error);
     });
 
@@ -122,10 +102,7 @@ const ChatShell: React.FC = () => {
       setMessages((prev) =>
         prev.map((msg) => {
           if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
-            return {
-              ...msg,
-              reactions: [...(msg.reactions || []), data.reaction],
-            };
+            return { ...msg, reactions: [...(msg.reactions || []), data.reaction] };
           }
           return msg;
         })
@@ -137,10 +114,7 @@ const ChatShell: React.FC = () => {
       setMessages((prev) =>
         prev.map((msg) => {
           if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
-            return {
-              ...msg,
-              reactions: (msg.reactions || []).filter((r) => r.user_id !== data.user_id),
-            };
+            return { ...msg, reactions: (msg.reactions || []).filter((r) => r.user_id !== data.user_id) };
           }
           return msg;
         })
@@ -148,7 +122,7 @@ const ChatShell: React.FC = () => {
       refetchConversations();
     });
 
-    socket.on("message_deleted", (data: { message_id: string; deleted_by: string }) => {
+    socket.on("message_deleted", (data: { message_id: string }) => {
       setMessages((prev) => prev.filter((msg) => msg.message_id !== data.message_id));
       refetchConversations();
     });
@@ -166,20 +140,16 @@ const ChatShell: React.FC = () => {
 
   const handleSelectChat = (id: string | number) => {
     const conversationId = String(id);
-
     if (selectedChatId && selectedChatId !== conversationId) {
       leaveConversation(selectedChatId);
     }
-
     setSelectedChatId(conversationId);
     joinConversation(conversationId);
     setTypingUsers(new Set());
   };
 
   const handleBack = () => {
-    if (selectedChatId) {
-      leaveConversation(selectedChatId);
-    }
+    if (selectedChatId) leaveConversation(selectedChatId);
     setSelectedChatId(null);
     setMessages([]);
     setTypingUsers(new Set());
@@ -187,7 +157,6 @@ const ChatShell: React.FC = () => {
 
   const handleSendMessage = (chatId: string | number, newMessage: LegacyMessage) => {
     if (!selectedChatId || !user) return;
-
     sendSocketMessage({
       conversation_id: selectedChatId,
       content: newMessage.text,
@@ -197,19 +166,15 @@ const ChatShell: React.FC = () => {
     });
   };
 
-  // Convert backend conversations to legacy format
   const legacyConversations: LegacyConversation[] = conversations.map((conv) =>
     convertToLegacyConversation(conv, [], user?.user_id || "")
   );
 
-  // Convert backend messages to legacy format
   const legacyMessages: LegacyMessage[] = messages.map((msg) =>
     convertToLegacyMessage(msg, user?.user_id || "")
   );
 
-  // Find selected conversation
   const selectedChat = legacyConversations.find((c) => c.id === selectedChatId) || null;
-
   if (selectedChat) {
     selectedChat.messages = legacyMessages;
   }
@@ -233,7 +198,6 @@ const ChatShell: React.FC = () => {
 
   return (
     <div className="w-full lg:max-w-5xl 2xl:max-w-3/4 flex h-[100vh] 2xl:h-[calc(100vh-200px)] rounded-xl overflow-hidden bg-white">
-      {/* Sidebar */}
       <div
         className={`w-full sm:w-1/3 md:w-xs 2xl:w-xl border-r border-gray-100 transition-all duration-300 ${
           selectedChatId ? "hidden sm:flex" : "flex"
@@ -245,8 +209,6 @@ const ChatShell: React.FC = () => {
           onSelectChat={handleSelectChat}
         />
       </div>
-
-      {/* Chat Window */}
       <div
         className={`flex-1 transition-all duration-300 ${
           selectedChatId ? "flex" : "hidden sm:flex"

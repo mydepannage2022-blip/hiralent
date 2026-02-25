@@ -108,9 +108,33 @@ export const deleteAccountController = async (req: Request, res: Response) => {
     });
   }
 };
+export const changePasswordController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.user_id;
+    const { currentPassword, newPassword } = req.body;
 
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
 
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
+    }
 
-
-
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
+    res.status(200).json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to change password";
+    res.status(400).json({ success: false, message });
+  }
+};

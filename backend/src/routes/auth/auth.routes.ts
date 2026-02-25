@@ -6,7 +6,8 @@ import {
   forgotPasswordController,
   resetPasswordController,
   resendVerificationController,
-  deleteAccountController
+  deleteAccountController,
+  changePasswordController
 } from "../../controller/auth/auth.controller";
 import { validateBody } from "../../middlewares/validateBody.middleware";
 import { limiter } from "../../middlewares/rateLimiter.middleware";
@@ -30,4 +31,5 @@ router.post("/forgot-password", limiter, validateBody(ForgotPasswordSchema), for
 router.post("/reset-password", validateBody(ResetPasswordSchema), resetPasswordController);
 
 router.delete("/delete-account", checkAuth, validateBody(DeleteAccountSchema), deleteAccountController);
+router.put("/change-password", checkAuth, changePasswordController);
 export default router;
