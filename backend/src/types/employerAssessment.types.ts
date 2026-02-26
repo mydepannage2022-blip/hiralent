@@ -66,7 +66,7 @@ export interface SkillsAnalysis {
 
   question_recommendations: QuestionRecommendation[];
 
-  job_type?: "full_time" | "part_time" | "contract" | "internship";
+  job_type?: "full_time" | "part_time" | "contract" | "internship" | "Freelance";
   education_level?: "high_school" | "bachelor" | "master" | "phd";
   remote_option?: "fully_remote" | "hybrid" | "office_only";
   department?: string;
@@ -263,6 +263,9 @@ export interface EmployerAssessment {
   extracted_skills: string[];
   // 👇 NEW: questions attached to this assessment (what UI will display)
   questions?: AttachedQuestionSummary[];
+  candidate_count?: number;
+  completed_count?: number;
+  to_evaluate_count?: number;
   job?: {
     title: string;
     location: string;

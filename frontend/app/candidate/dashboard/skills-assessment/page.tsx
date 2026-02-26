@@ -1,209 +1,376 @@
-// frontend/app/candidate/dashboard/skills-assessment/page.tsx
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import AssessmentCard from '@/src/components/candidate/dashboard/skills-assessment/AssessmentCard';
-import Button from '@/src/components/layout/Button';
-import SmartLink from '@/src/components/layout/SmartLink';
-import { useProfile } from '@/src/context/ProfileContext';
-import { useAssessmentHistory } from '@/src/lib/profile/assessment.queries';
-import { HistoryItem, AssessmentHistory } from '@/src/types/assessment.types';
+import React, { useMemo } from "react";
+import { motion } from "framer-motion";
+import SmartLink from "@/src/components/layout/SmartLink";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  FlaskConical,
+  Sparkles,
+  ChevronRight,
+} from "lucide-react";
 
-interface ProfileSkill {
-  skill_id: string;
-  skill_name: string;
-  skill_category: 'technical' | 'soft' | 'certification';
-  proficiency: 'beginner' | 'intermediate' | 'advanced';
-  years_experience: number;
-  confidence_score: number;
-  source_type: string;
-  is_verified: boolean;
+import { useAssessmentInvites } from "@/src/lib/invites/invites.queries";
+import { useCandidateAssessmentHistory } from "@/src/lib/assessments/assessmentHistory.queries";
+import { useSimpleTestInvites } from "@/src/lib/simpleTest/simpleTest.queries";
+
+function isExpired(expiresAt?: string | null) {
+  if (!expiresAt) return false;
+  const t = new Date(expiresAt).getTime();
+  return Number.isFinite(t) ? t < Date.now() : false;
 }
 
-const AssessmentHubPage = () => {
+type UiPendingInvite = {
+  inviteId: string;
+  assessmentId: string | null;
+  jobTitle: string | null;
+  assessmentTitle: string;
+  expiresAt: string | null;
+  durationMin: number | null;
+  status: string;
+};
+
+type UiRecentAssessment = {
+  sessionId: string;
+  title: string;
+  submittedAt: string | null;
+};
+
+function formatDate(d: string | null) {
+  if (!d) return "—";
+  const t = new Date(d);
+  if (Number.isNaN(t.getTime())) return "—";
+  return t.toLocaleString();
+}
+
+export default function AssessmentHubPage() {
   const router = useRouter();
-  const { profileData } = useProfile();
 
-  const { 
-    data: historyResponse, 
-    isLoading: isLoadingHistory, 
-    error: historyError 
-  } = useAssessmentHistory();
+  const { data: invites = [], isLoading: invitesLoading, error: invitesError } =
+    useAssessmentInvites();
 
-  const historyData = historyResponse as AssessmentHistory | undefined;
-  const realAssessmentHistory: HistoryItem[] = historyData?.success ? historyData.data.assessments : [];
+  const {
+    data: history = [],
+    isLoading: historyLoading,
+    error: historyError,
+  } = useCandidateAssessmentHistory();
 
-  const [availableAssessments, setAvailableAssessments] = useState<any[]>([]);
+  // ✅ Simple Tests (Warm-up)
+  const {
+    data: simpleInvites = [],
+    isLoading: simpleInvitesLoading,
+    isError: simpleInvitesError,
+  } = useSimpleTestInvites();
 
-  const assessmentHistory = realAssessmentHistory.map(history => ({
-    id: history.assessmentId,
-    skillName: history.skillCategory,
-    assessmentType: 'Assessment',
-    score: history.overallScore,
-    skillLevel: history.skillLevel,
-    completedAt: history.completedAt,
-    status: 'completed' as const,
-    timeSpent: 'Completed',
-    questionsAnswered: 25,
-    totalQuestions: 25
-  }));
+  const pendingInvites: UiPendingInvite[] = useMemo(() => {
+    return (invites || [])
+      .map((i: any) => {
+        const inviteId = String(i.inviteId ?? i.invite_id ?? "");
+        const assessmentId = (i.assessmentId ?? i.assessment_id ?? null) as
+          | string
+          | null;
+        const expiresAt = (i.expiresAt ?? i.expires_at ?? null) as
+          | string
+          | null;
+        const status = String(i?.status ?? "PENDING").toUpperCase();
 
-  useEffect(() => {
-    if (profileData?.skills && profileData.skills.length > 0 && realAssessmentHistory.length > 0) {
-      const completedSkillsAssessments = profileData.skills
-        .filter((skill: ProfileSkill) => {
-          return realAssessmentHistory.some(
-            history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
-          );
-        })
-        .map((skill: ProfileSkill) => {
-          const completedAssessment = realAssessmentHistory.find(
-            history => history.skillCategory.toLowerCase() === skill.skill_name.toLowerCase()
-          );
+        return {
+          inviteId,
+          assessmentId,
+          status,
+          expiresAt,
+          jobTitle: (i.jobTitle ?? i?.application?.job?.title ?? null) as
+            | string
+            | null,
+          assessmentTitle: (i.assessmentTitle ??
+            i?.assessment?.title ??
+            "Skills Assessment") as string,
+          durationMin: (i.durationMin ??
+            i.duration_min ??
+            i?.assessment?.time_limit ??
+            null) as number | null,
+        };
+      })
+      .filter(
+        (x: UiPendingInvite) =>
+          x.inviteId && x.status === "PENDING" && !isExpired(x.expiresAt)
+      );
+  }, [invites]);
 
-          return {
-            id: `${skill.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-assessment`,
-            name: skill.skill_name,
-            description: `${skill.skill_category.charAt(0).toUpperCase() + skill.skill_category.slice(1)} skill assessment covering ${skill.proficiency} level concepts with ${skill.years_experience} years experience`,
-            questionCount: skill.proficiency === 'beginner' ? 15 : skill.proficiency === 'intermediate' ? 20 : 25,
-            timeEstimate: skill.proficiency === 'beginner' ? '15-20 mins' : skill.proficiency === 'intermediate' ? '25-30 mins' : '35-40 mins',
-            difficulty: skill.proficiency.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED',
-            isRecommended: skill.confidence_score < 70 || !skill.is_verified,
-            isCompleted: true, 
-            lastScore: completedAssessment?.overallScore,
-            category: skill.skill_category === 'technical' ? 'Programming' : 
-                     skill.skill_category === 'soft' ? 'Soft Skills' : 'Certification'
-          };
-        });
-      
-      setAvailableAssessments(completedSkillsAssessments);
-    } else {
-      // Empty state - no completed assessments
-      setAvailableAssessments([]);
-    }
-  }, [profileData?.skills, realAssessmentHistory]);
+  const recentAssessments: UiRecentAssessment[] = useMemo(() => {
+    const arr = Array.isArray(history) ? history : [];
+    return arr
+      .filter((h: any) => String(h.status ?? "").toUpperCase() === "SUBMITTED")
+      .sort((a: any, b: any) => {
+        const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+        const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+        return tb - ta;
+      })
+      .slice(0, 3)
+      .map((h: any) => ({
+        sessionId: String(h.sessionId ?? ""),
+        title: String(h.title ?? "Skills Assessment"),
+        submittedAt: (h.submittedAt ?? null) as string | null,
+      }))
+      .filter((x: UiRecentAssessment) => Boolean(x.sessionId));
+  }, [history]);
 
-  const handleStartAssessment = (assessmentId: string) => {
-    router.push(`/candidate/dashboard/skills-assessment/instructions?skill=${assessmentId}`);
+  const openInvite = (inviteId: string) => {
+    router.push(`/candidate/dashboard/skills-assessment/invites/${inviteId}`);
   };
 
-  const handleNewAssessment = () => {
-    router.push('/candidate/dashboard/skills-assessment/start');
+  const openWarmup = () => {
+    router.push(`/candidate/dashboard/simple-tests`);
   };
 
-  const handleViewResults = (assessmentId: string) => {
-    router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
-  };
-
-  // Loading state
-  if (isLoadingHistory) {
-    return (
-      <div className="bg-gray-50 py-8 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/3 mb-4 mx-auto"></div>
-            <div className="h-4 bg-gray-300 rounded w-1/2 mb-8 mx-auto"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-lg p-6 border border-gray-200">
-                  <div className="h-6 bg-gray-300 rounded mb-3"></div>
-                  <div className="h-4 bg-gray-300 rounded mb-4"></div>
-                  <div className="h-10 bg-gray-300 rounded"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const warmupCount = Array.isArray(simpleInvites) ? simpleInvites.length : 0;
 
   return (
-    <div className="bg-gray-50">
-      <div className="mx-auto space-y-8">
+    <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        {/* Top row */}
+        <div className="flex items-center justify-between">
+          <SmartLink
+            href="/candidate/dashboard/skills-assessment/start"
+            className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors text-sm font-semibold"
+          >
+            Start Assessments
+          </SmartLink>
+
+          <SmartLink
+            href="/candidate/dashboard/skills-assessment/invites"
+            className="text-sm text-[#005DDC] hover:underline"
+          >
+            View All Invites
+          </SmartLink>
+        </div>
+
+        {/* ✅ Warm-up (Simple Tests) */}
         <motion.section
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          className="space-y-3"
         >
-          <div className="flex items-center justify-between mb-6">
-            <SmartLink
-              href="/candidate/dashboard/skills-assessment/start"
-              className="px-4 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors text-sm"
-            >
-              Start Assessments
-            </SmartLink>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-emerald-600" />
+              <h2 className="text-base font-semibold text-[#111]">
+                Simple Tests
+              </h2>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="p-5 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                    <FlaskConical className="h-5 w-5 text-emerald-700" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[#111]">
+                      Practice before the real assessment
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Optional, unlimited attempts — and your score is visible
+                      only to you.
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-xs bg-gray-50 border border-gray-200 text-[#111]">
+                        {simpleInvitesLoading
+                          ? "Loading…"
+                          : simpleInvitesError
+                          ? "Warm-up unavailable"
+                          : `${warmupCount} available`}
+                      </span>
+
+                      <span className="px-2.5 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        Not counted in assessment history
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {simpleInvitesError ? (
+                  <div className="mt-3 text-sm text-rose-600">
+                    Could not load warm-up tests right now.
+                  </div>
+                ) : null}
+              </div>
+
+              <button
+                onClick={openWarmup}
+                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-semibold"
+              >
+                Start Warm-up
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </motion.section>
 
+        {/* Pending Invitations */}
         <motion.section
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          className="space-y-3"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-[#222]">Recent Assessments</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[#111]">
+              Pending Invitations
+            </h2>
+            <span className="text-xs text-gray-500">
+              {pendingInvites.length} pending
+            </span>
+          </div>
+
+          {invitesLoading ? (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-14 bg-gray-200 rounded" />
+              </div>
+            </div>
+          ) : invitesError ? (
+            <div className="bg-white border border-red-200 rounded-xl p-5 text-sm text-red-600">
+              {String((invitesError as any)?.message || invitesError)}
+            </div>
+          ) : pendingInvites.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pendingInvites.map((inv) => (
+                <div
+                  key={inv.inviteId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openInvite(inv.inviteId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      openInvite(inv.inviteId);
+                  }}
+                  className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-sm transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[#111] truncate">
+                        {inv.assessmentTitle}
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        Job:{" "}
+                        <span className="text-[#111]">
+                          {inv.jobTitle ?? "—"}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {inv.durationMin ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs bg-gray-50 border border-gray-200 text-[#111]">
+                            {inv.durationMin} min
+                          </span>
+                        ) : null}
+                        {inv.expiresAt ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs bg-gray-50 border border-gray-200 text-[#111]">
+                            Expires: {formatDate(inv.expiresAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openInvite(inv.inviteId);
+                      }}
+                      className="shrink-0 px-4 py-2 rounded-lg bg-[#005DDC] text-white hover:bg-[#004EB7] text-sm font-semibold"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
+              <div className="text-[#111] font-semibold">
+                No invitations right now
+              </div>
+              <div className="text-sm text-gray-500 mt-1">
+                When a company invites you, it will appear here.
+              </div>
+            </div>
+          )}
+        </motion.section>
+
+        {/* Recent Assessments */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[#111]">
+              Recent Assessments
+            </h2>
             <SmartLink
-              href="/candidate/dashboard/skills-assessment/history"
+              href="/candidate/dashboard/skills-assessment/history/candidateAssessment"
               className="text-sm text-[#005DDC] hover:underline"
             >
               View All History
             </SmartLink>
           </div>
 
-          {assessmentHistory.length > 0 ? (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="divide-y divide-gray-200">
-                {assessmentHistory.slice(0, 5).map((history, index) => (
-                  <motion.div
-                    key={history.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="p-6 hover:bg-gray-50 transition-colors"
+          {historyLoading ? (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-14 bg-gray-200 rounded" />
+              </div>
+            </div>
+          ) : historyError ? (
+            <div className="bg-white border border-red-200 rounded-xl p-5 text-sm text-red-600">
+              {String((historyError as any)?.message || historyError)}
+            </div>
+          ) : recentAssessments.length ? (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {recentAssessments.map((a) => (
+                  <div
+                    key={a.sessionId}
+                    className="p-5 flex items-center justify-between gap-4 hover:bg-gray-50"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-[#222]">{history.skillName}</h3>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md">
-                            {history.assessmentType}
-                          </span>
-                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md">
-                            {history.skillLevel}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-[#757575]">
-                          <span>Score: {history.score}%</span>
-                          <span>Status: {history.timeSpent}</span>
-                          <span>Completed: {new Date(history.completedAt).toLocaleDateString()}</span>
-                        </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[#111] truncate">
+                        {a.title}
                       </div>
-                      <SmartLink
-                        href={`/candidate/dashboard/skills-assessment/results/${history.id}`}
-                        className="px-4 py-2 text-sm text-[#005DDC] border border-[#005DDC] rounded-md hover:bg-blue-50 transition-colors"
-                      >
-                        View Results
-                      </SmartLink>
+                      <div className="text-sm text-gray-500 mt-1">
+                        Submitted:{" "}
+                        <span className="text-[#111]">
+                          {formatDate(a.submittedAt)}
+                        </span>
+                      </div>
                     </div>
-                  </motion.div>
+                    <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-100">
+                      Submitted
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
-              <div className="text-[#757575] mb-4">No assessments completed yet</div>
-              <p className="text-sm text-[#757575] mb-6">
-                Take your first assessment to track your skill progress
-              </p>
+            <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
+              <div className="text-[#111] font-semibold">
+                No assessments completed yet
+              </div>
+              <div className="text-sm text-gray-500 mt-1">
+                Complete your first invited assessment to see it here.
+              </div>
               <SmartLink
-                href="/candidate/dashboard/skills-assessment/start"
-                className="px-6 py-2 bg-[#005DDC] text-white rounded-md hover:bg-[#004EB7] transition-colors inline-block"
+                href="/candidate/dashboard/skills-assessment/invites"
+                className="inline-flex mt-5 px-5 py-2.5 rounded-lg bg-[#005DDC] text-white hover:bg-[#004EB7] font-semibold"
               >
-                Take Your First Assessment
+                View Invites
               </SmartLink>
             </div>
           )}
@@ -211,6 +378,4 @@ const AssessmentHubPage = () => {
       </div>
     </div>
   );
-};
-
-export default AssessmentHubPage;
+}

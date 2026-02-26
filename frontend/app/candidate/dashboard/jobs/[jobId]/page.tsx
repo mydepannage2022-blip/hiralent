@@ -9,6 +9,8 @@ import {
   useCandidateJobEligibility,
 } from "@/src/lib/candidate/jobs.queries";
 
+import { useMyApplicationsList } from "@/src/lib/candidate/applications.queries"; // ✅ NEW
+
 import JobDetailsHeader from "@/src/components/candidate/dashboard/jobs/JobDetailsHeader";
 import EligibilityReasons from "@/src/components/candidate/dashboard/jobs/EligibilityReasons";
 import ApplyModal from "@/src/components/candidate/dashboard/jobs/ApplyModal";
@@ -29,7 +31,21 @@ export default function JobDetailsPage() {
   const jobQ = useCandidateJobDetails(jobId ?? "", { enabled: !!jobId });
   const eligQ = useCandidateJobEligibility(jobId ?? "", { enabled: !!jobId });
 
+  // ✅ NEW: fetch my applications (same approach as JobsPage)
+  const myAppsQ = useMyApplicationsList(true);
+
+  const appliedJobIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const app of myAppsQ.data?.items ?? []) {
+      if (app.job?.job_id) s.add(app.job.job_id);
+    }
+    return s;
+  }, [myAppsQ.data?.items]);
+
+  const isApplied = !!jobId && appliedJobIds.has(jobId);
+
   const canApply = useMemo(() => eligQ.data?.eligible ?? false, [eligQ.data]);
+  const applyDisabled = !canApply || isApplied;
 
   if (!jobId) {
     return (
@@ -79,7 +95,6 @@ export default function JobDetailsPage() {
           <EligibilityReasons reasons={eligQ.data.reasons} />
         ) : null}
 
-        {/* Layout similar to company view: description + side apply */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Description */}
           <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
@@ -100,18 +115,28 @@ export default function JobDetailsPage() {
           {/* Apply card */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 h-fit">
             <h3 className="text-base font-semibold text-gray-900">Application</h3>
+
             <p className="text-sm text-gray-600 mt-1">
-              {canApply
+              {isApplied
+                ? "You already applied to this job."
+                : canApply
                 ? "You meet the requirements. You can apply now."
                 : "Complete your profile to meet the requirements."}
             </p>
 
             <button
-              onClick={() => setOpenApply(true)}
-              disabled={!canApply}
-              className="mt-4 w-full px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+              onClick={() => {
+                if (!applyDisabled) setOpenApply(true);
+              }}
+              disabled={applyDisabled}
+              className={`mt-4 w-full px-5 py-2.5 rounded-lg font-medium transition
+                ${
+                  applyDisabled
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
             >
-              Apply
+              {isApplied ? "Applied" : "Apply"}
             </button>
           </div>
         </div>

@@ -67,6 +67,16 @@ import companyInternalCandidatesRoutes from "./routes/company.internalCandidates
 import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
+//Candidate Assessments Space
+import assessmentSessionRoutes from "./routes/candidate/assessmentSession.routes";
+import assessmentAnswerRoutes from "./routes/candidate/assessmentAnswer.routes";
+import assessmentTelemetryRoutes from "./routes/candidate/assessmentTelemetry.routes";
+import assessmentExecutionRoutes from "./routes/candidate/assessmentExecution.routes";
+import assessmentInsightsRoutes from "./routes/companyAssessmentInsights.routes";
+import candidateSimpleTestRoutes from "./routes/candidateSimpleTest.routes";
+import candidateInvitesRoutes from "./routes/candidateInvites.routes";
+import companyHiringFlowRoutes from "./routes/companyHiringFlow.routes";
+import candidateAssessmentHistoryRoutes from "./routes/candidate/assessmentHistory.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -136,7 +146,16 @@ app.use("/internal/matching/candidate", internalCandidateRoutes);
 app.use("/internal/matching/company", internalCompanyRoutes);
 app.use("/internal/matching", matchingInternalRoutes);
 app.use("/api/v1", companyCandidateRankingRoutes);
-
+app.use("/api/v1", assessmentSessionRoutes);
+app.use("/api/v1", assessmentAnswerRoutes);
+app.use("/api/v1", assessmentTelemetryRoutes);
+app.use("/api/v1", assessmentExecutionRoutes);
+app.use("/api/v1", assessmentInsightsRoutes);
+// Simple test + Invites + Hiring flow
+app.use("/api/v1", candidateInvitesRoutes);
+app.use("/api/v1", candidateSimpleTestRoutes);
+app.use("/api/v1", companyHiringFlowRoutes);
+app.use("/api/v1", candidateAssessmentHistoryRoutes);
 
 //Scraping Candidates
 app.use("/internal", internalRoutes);

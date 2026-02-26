@@ -1,38 +1,126 @@
-import dotenv from 'dotenv';
-import axios from 'axios';
+// backend/src/services/externalClients.ts
+import dotenv from "dotenv";
+import axios from "axios";
+import prisma from "../lib/prisma";
 
 dotenv.config();
 
-const MOCK_MODE = process.env.EXTERNALS_MOCK === '1' || process.env.NODE_ENV !== 'production';
+// ✅ mock mode ONLY when explicitly enabled
+const MOCK_MODE =
+  (process.env.EXTERNALS_MOCK || "").toLowerCase() === "1" ||
+  (process.env.EXTERNALS_MOCK || "").toLowerCase() === "true";
 
-const WAFAA_BASE = process.env.WAFAA_BASE_URL || '';
-const WAFAA_KEY = process.env.WAFAA_API_KEY || '';
-const IHSN_BASE = process.env.IHSSANE_BASE_URL || '';
-const IHSN_KEY = process.env.IHSSANE_API_KEY || '';
+const WAFAA_BASE = process.env.WAFAA_BASE_URL || "";
+const WAFAA_KEY = process.env.WAFAA_API_KEY || "";
+const IHSN_BASE = process.env.IHSSANE_BASE_URL || "";
+const IHSN_KEY = process.env.IHSSANE_API_KEY || "";
 
-export type QuestionTestCase = { input: string; expected_output: string };
+export type QuestionTestCase = {
+  input: string;
+  expected_output?: string | null;
+  output?: string | null;
+};
+
+function toStr(v: any): string {
+  if (v === null || v === undefined) return "";
+  return typeof v === "string" ? v : JSON.stringify(v);
+}
+
+function normalizeSuite(raw: any): QuestionTestCase[] {
+  if (!raw) return [];
+
+  // DB shape: [{ input, output }]
+  if (Array.isArray(raw)) {
+    return raw.map((tc: any) => ({
+      input: toStr(tc?.input ?? tc?.stdin ?? tc?.in ?? tc?.args ?? ""),
+      output: tc?.output ?? tc?.out ?? tc?.expected ?? tc?.expected_output ?? null,
+      expected_output: tc?.expected_output ?? tc?.expected ?? tc?.output ?? tc?.out ?? null,
+    }));
+  }
+
+  // Shape: { inputs: [], outputs: [] }
+  if (Array.isArray(raw?.inputs) && Array.isArray(raw?.outputs)) {
+    const n = Math.min(raw.inputs.length, raw.outputs.length);
+    return Array.from({ length: n }).map((_, i) => ({
+      input: toStr(raw.inputs[i]),
+      expected_output: raw.outputs[i] ?? null,
+      output: raw.outputs[i] ?? null,
+    }));
+  }
+
+  // Shape: { testCases: [...] } or { cases: [...] }
+  if (Array.isArray(raw?.testCases)) return normalizeSuite(raw.testCases);
+  if (Array.isArray(raw?.cases)) return normalizeSuite(raw.cases);
+
+  return [];
+}
+
+async function getFromDb(questionId: string): Promise<QuestionTestCase[]> {
+  // Try normal Prisma model name
+  try {
+    const q = await (prisma as any).question.findUnique({
+      where: { id: questionId },
+      select: { testCases: true },
+    });
+    const suite = normalizeSuite(q?.testCases);
+    if (suite.length > 0) return suite;
+  } catch {}
+
+  // Fallback: some projects may have `questions`
+  try {
+    const q = await (prisma as any).questions.findUnique({
+      where: { id: questionId },
+      select: { testCases: true },
+    });
+    const suite = normalizeSuite(q?.testCases);
+    if (suite.length > 0) return suite;
+  } catch {}
+
+  return [];
+}
 
 export async function get_question_test_cases(questionId: string): Promise<QuestionTestCase[]> {
-  // In mock mode we return canned test cases for real questions, but
-  // for the interactive playground (ad-hoc runs) we should not inject
-  // numeric testcases that make the runner expect numbers. Detect
-  // playground-like IDs and return an empty test set so the run is
-  // evaluated based on runner-provided heuristics or manual tests.
-  const playgroundIds = ['playground', 'code-playground', 'editor-run', 'ad-hoc'];
-  if (MOCK_MODE || !WAFAA_BASE) {
-    if (!questionId || playgroundIds.includes(String(questionId).toLowerCase())) {
-      return [];
-    }
+  // 0) Mock mode
+  if (MOCK_MODE) {
     return [
-      { input: '1 2', expected_output: '3' },
-      { input: '4 5', expected_output: '9' },
+      { input: "1 2", expected_output: "3" },
+      { input: "4 5", expected_output: "9" },
     ];
   }
 
-  const url = `${WAFAA_BASE.replace(/\/$/, '')}/questions/${encodeURIComponent(questionId)}`;
-  const res = await axios.get(url, { headers: { Authorization: `Bearer ${WAFAA_KEY}` }, timeout: 5000 });
-  // Expect res.data.test_cases = [{ input, expected_output }, ...]
-  return res.data.test_cases || [];
+  // 1) ✅ DB first (your source of truth)
+  if (questionId) {
+    const suite = await getFromDb(questionId);
+    if (suite.length > 0) {
+      // Ensure expected_output always populated (your runner needs it)
+      return suite.map((tc) => ({
+        ...tc,
+        expected_output: tc.expected_output ?? tc.output ?? null,
+      }));
+    }
+  }
+
+  // 2) Fallback WAFAA
+  if (!WAFAA_BASE) return [];
+
+  const url = `${WAFAA_BASE.replace(/\/$/, "")}/questions/${encodeURIComponent(questionId)}`;
+  const res = await axios.get(url, {
+    headers: WAFAA_KEY ? { Authorization: `Bearer ${WAFAA_KEY}` } : undefined,
+    timeout: 5000,
+  });
+
+  const raw =
+    res.data?.test_cases ??
+    res.data?.testCases ??
+    res.data?.cases ??
+    null;
+
+  const suite = normalizeSuite(raw);
+
+  return suite.map((tc) => ({
+    ...tc,
+    expected_output: tc.expected_output ?? tc.output ?? null,
+  }));
 }
 
 export async function generate_embedding(text: string): Promise<number[]> {
@@ -44,8 +132,12 @@ export async function generate_embedding(text: string): Promise<number[]> {
     return v.map((n) => n / 13);
   }
 
-  const url = `${WAFAA_BASE.replace(/\/$/, '')}/embeddings`;
-  const res = await axios.post(url, { text }, { headers: { Authorization: `Bearer ${WAFAA_KEY}` }, timeout: 8000 });
+  const url = `${WAFAA_BASE.replace(/\/$/, "")}/embeddings`;
+  const res = await axios.post(
+    url,
+    { text },
+    { headers: WAFAA_KEY ? { Authorization: `Bearer ${WAFAA_KEY}` } : undefined, timeout: 8000 }
+  );
   return res.data.embedding;
 }
 
@@ -54,13 +146,17 @@ export type VectorSearchResult = { id: string; score: number; snippet: string };
 export async function search_vector_db(embedding: number[], topK = 10): Promise<VectorSearchResult[]> {
   if (MOCK_MODE || !WAFAA_BASE) {
     return [
-      { id: 'web-1', score: 0.92, snippet: 'for i in range...' },
-      { id: 'web-2', score: 0.42, snippet: 'def solve():' },
+      { id: "web-1", score: 0.92, snippet: "for i in range..." },
+      { id: "web-2", score: 0.42, snippet: "def solve():" },
     ].slice(0, topK);
   }
 
-  const url = `${WAFAA_BASE.replace(/\/$/, '')}/vector_search`;
-  const res = await axios.post(url, { embedding, top_k: topK }, { headers: { Authorization: `Bearer ${WAFAA_KEY}` }, timeout: 8000 });
+  const url = `${WAFAA_BASE.replace(/\/$/, "")}/vector_search`;
+  const res = await axios.post(
+    url,
+    { embedding, top_k: topK },
+    { headers: WAFAA_KEY ? { Authorization: `Bearer ${WAFAA_KEY}` } : undefined, timeout: 8000 }
+  );
   return res.data.results || [];
 }
 
@@ -69,8 +165,10 @@ export async function update_skill_radar(submission: { userId: string; id: strin
     return { ok: true };
   }
 
-  const url = `${IHSN_BASE.replace(/\/$/, '')}/update_skill_radar`;
-  const res = await axios.post(url, submission, { headers: { Authorization: `Bearer ${IHSN_KEY}` }, timeout: 5000 });
+  const url = `${IHSN_BASE.replace(/\/$/, "")}/update_skill_radar`;
+  const res = await axios.post(url, submission, {
+    headers: IHSN_KEY ? { Authorization: `Bearer ${IHSN_KEY}` } : undefined,
+    timeout: 5000,
+  });
   return res.data;
 }
-

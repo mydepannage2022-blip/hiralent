@@ -1,9 +1,10 @@
 import AssessmentDetails from "@/src/components/company/dashboard/assessmentManagement/AssessmentDetails";
 
-export default function Page({
+export default async function Page({
   params,
 }: {
-  params: { assessmentId: string };
+  params: Promise<{ assessmentId: string }>;
 }) {
-  return <AssessmentDetails assessmentId={params.assessmentId} />;
+  const { assessmentId } = await params;
+  return <AssessmentDetails assessmentId={assessmentId} />;
 }
