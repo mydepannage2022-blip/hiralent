@@ -67,6 +67,7 @@ import companyInternalCandidatesRoutes from "./routes/company.internalCandidates
 import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
+import searchRoutes from "./routes/search.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
@@ -146,6 +147,9 @@ app.use("/api/v1", companyInternalCandidatesRoutes);
 // Notifications
 app.use("/api/v1", candidateNotificationsRoutes);
 app.use("/api/v1", companyNotificationsRoutes);
+
+// Public candidate search (Hero search)
+app.use("/api/v1/search", searchRoutes);
 
 //candidate cv
 // Serve uploaded files statically

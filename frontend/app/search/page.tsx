@@ -5,23 +5,25 @@ import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Search, MapPin, Star, Briefcase, Lock, ArrowRight,
   Zap, TrendingUp, CheckCircle2, Clock, SlidersHorizontal,
-  Sparkles, Shield, ChevronRight, Bell, User,
+  Sparkles, Shield, ChevronRight, Bell, User, Plus,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useCandidateSearch } from "../../src/lib/search/search.queries";
+import { useAuth } from "../../src/context/AuthContext";
 
 /* ─────────────────────────────
-   HIRALENT DESIGN TOKENS
+   HIRALENT DESIGN TOKENS - REFINED
 ───────────────────────────── */
 const H = {
-  bg:       "#F4F7FF",
+  bg:       "#F8FAFC",
   surface:  "#FFFFFF",
-  navy:     "#0A1628",
-  navyMd:   "#1E3A5F",
-  blue:     "#1B4FFF",
-  blueLt:   "#EEF2FF",
-  blueMd:   "#C7D4FF",
-  blueDk:   "#1340DD",
+  navy:     "#0F172A",
+  navyMd:   "#1E293B",
+  blue:     "#2563EB",
+  blueLt:   "#EFF6FF",
+  blueMd:   "#BFDBFE",
+  blueDk:   "#1D4ED8",
   gray:     "#64748B",
   grayLt:   "#F1F5F9",
   grayBd:   "#E2E8F0",
@@ -29,28 +31,34 @@ const H = {
   warning:  "#F59E0B",
   text:     "#334155",
   muted:    "#94A3B8",
+  gradient: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
 };
 
 /* ─────────────────────────────
-   MOCK DATA
+   FREELANCER CARD DATA TYPE
 ───────────────────────────── */
-const MOCK_FREELANCERS = [
-  { id:1, name:"Sofia Amrani",    title:"Senior UI/UX Designer",      rate:85,  rating:4.9, jobs:47, location:"Casablanca", skills:["Figma","Framer","Design Systems"], avatar:"/images/people6.png",  badge:"Top Rated", matchScore:98, available:true,  responseTime:"1h",  verified:true  },
-  { id:2, name:"Yassine Benali",  title:"Full-Stack Engineer",         rate:95,  rating:4.8, jobs:63, location:"Rabat",      skills:["React","Node.js","PostgreSQL"],    avatar:"/images/people2.png",  badge:"Pro",       matchScore:95, available:true,  responseTime:"2h",  verified:true  },
-  { id:3, name:"Nadia El Fassi",  title:"AI / ML Engineer",           rate:120, rating:5.0, jobs:29, location:"Marrakech",  skills:["Python","TensorFlow","LLMs"],      avatar:"/images/people3.png",  badge:"Expert",    matchScore:92, available:false, responseTime:"4h",  verified:true  },
-  { id:4, name:"Omar Idrissi",    title:"Product Manager",            rate:75,  rating:4.7, jobs:38, location:"Casablanca", skills:["Roadmapping","Agile","Jira"],      avatar:"/images/people4.png",  badge:null,        matchScore:89, available:true,  responseTime:"3h",  verified:false },
-  { id:5, name:"Leila Chraibi",   title:"Frontend Developer",         rate:70,  rating:4.8, jobs:51, location:"Tangier",    skills:["Next.js","TypeScript","Tailwind"],  avatar:"/images/people5.png",  badge:"Rising",    matchScore:94, available:true,  responseTime:"1h",  verified:true  },
-  { id:6, name:"Karim Tazi",      title:"DevOps & Cloud Engineer",    rate:110, rating:4.9, jobs:34, location:"Rabat",      skills:["AWS","Docker","Kubernetes"],       avatar:"/images/people6.png",  badge:"Pro",       matchScore:87, available:true,  responseTime:"2h",  verified:true  },
-  { id:7, name:"Amina Kettani",   title:"Brand & Motion Designer",    rate:65,  rating:4.6, jobs:22, location:"Fès",        skills:["Illustrator","After Effects","Brand"],avatar:"/images/people7.png",badge:null,        matchScore:83, available:false, responseTime:"6h",  verified:false },
-  { id:8, name:"Hamza Lahlou",    title:"Backend Engineer",           rate:100, rating:4.9, jobs:58, location:"Casablanca", skills:["Go","Node.js","Redis"],            avatar:"/images/people8.png",  badge:"Top Rated", matchScore:91, available:true,  responseTime:"1h",  verified:true  },
-  { id:9, name:"Rime Serghini",   title:"Data Analyst & BI",          rate:80,  rating:4.7, jobs:19, location:"Agadir",     skills:["Power BI","SQL","Python"],         avatar:"/images/people9.png",  badge:"Rising",    matchScore:88, available:true,  responseTime:"3h",  verified:true  },
-];
+interface FreelancerCardData {
+  id: string | number;
+  name: string;
+  title: string;
+  location: string;
+  skills: string[];
+  avatar: string | null;
+  badge: string | null;
+  matchScore: number;
+  available: boolean;
+  responseTime: string;
+  verified: boolean;
+  rating: number;
+  jobs: number;
+  rate: number;
+}
 
 const BADGE_MAP: Record<string, { bg: string; color: string; border: string }> = {
-  "Top Rated": { bg:"#FFF7ED", color:"#C2410C", border:"#FED7AA" },
-  "Pro":       { bg:"#EEF2FF", color:"#1B4FFF", border:"#C7D4FF" },
-  "Expert":    { bg:"#ECFDF5", color:"#065F46", border:"#A7F3D0" },
-  "Rising":    { bg:"#F5F3FF", color:"#5B21B6", border:"#DDD6FE" },
+  "Top Rated": { bg:"#FFF7ED", color:"#EA580C", border:"#FED7AA" },
+  "Pro":       { bg:"#EFF6FF", color:"#2563EB", border:"#BFDBFE" },
+  "Expert":    { bg:"#ECFDF5", color:"#059669", border:"#A7F3D0" },
+  "Rising":    { bg:"#FAF5FF", color:"#7C3AED", border:"#DDD6FE" },
 };
 
 /* ─────────────────────────────
@@ -66,15 +74,27 @@ function AnimatedNumber({ to, duration = 1.1 }: { to: number; duration?: number 
 }
 
 /* ─────────────────────────────
-   MATCH SCORE RING
+   MATCH SCORE RING - REFINED
 ───────────────────────────── */
 function ScoreRing({ score }: { score: number }) {
-  const r = 16, circ = 2 * Math.PI * r;
-  const color = score >= 95 ? H.success : score >= 88 ? H.blue : H.warning;
+  const r = 18, circ = 2 * Math.PI * r;
+  const color = score >= 90 ? H.success : score >= 75 ? H.blue : H.warning;
+  const bgColor = score >= 90 ? "#D1FAE5" : score >= 75 ? "#DBEAFE" : "#FEF3C7";
+  
   return (
-    <div style={{ position:"relative", width:44, height:44, flexShrink:0 }}>
+    <div style={{ 
+      position:"relative", 
+      width:52, 
+      height:52, 
+      flexShrink:0,
+      background: bgColor,
+      borderRadius: 12,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}>
       <svg width={44} height={44} style={{ transform:"rotate(-90deg)" }}>
-        <circle cx={22} cy={22} r={r} fill="none" stroke={H.grayBd} strokeWidth={3} />
+        <circle cx={22} cy={22} r={r} fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={3} />
         <motion.circle cx={22} cy={22} r={r} fill="none" stroke={color} strokeWidth={3}
           strokeLinecap="round" strokeDasharray={circ}
           initial={{ strokeDashoffset: circ }}
@@ -86,112 +106,176 @@ function ScoreRing({ score }: { score: number }) {
         position:"absolute", inset:0, display:"flex", flexDirection:"column",
         alignItems:"center", justifyContent:"center",
       }}>
-        <span style={{ fontSize:11, fontWeight:800, color, lineHeight:1 }}>{score}</span>
-        <span style={{ fontSize:7.5, color:H.muted, fontWeight:600, lineHeight:1 }}>%</span>
+        <span style={{ fontSize:13, fontWeight:800, color, lineHeight:1 }}>{score}</span>
+        <span style={{ fontSize:8, color, fontWeight:600, lineHeight:1, opacity:0.8 }}>match</span>
       </div>
     </div>
   );
 }
 
 /* ─────────────────────────────
-   FREELANCER CARD  (grid cell)
+   SKILL TAG COMPONENT
 ───────────────────────────── */
-function FreelancerCard({ f, index, blurred }: { f: typeof MOCK_FREELANCERS[0]; index: number; blurred: boolean }) {
+function SkillTag({ skill, isHighlight = false }: { skill: string; isHighlight?: boolean }) {
+  return (
+    <span style={{
+      fontSize: 11,
+      fontWeight: 500,
+      padding: "4px 10px",
+      borderRadius: 6,
+      background: isHighlight ? H.blueLt : H.grayLt,
+      color: isHighlight ? H.blue : H.text,
+      border: `1px solid ${isHighlight ? H.blueMd : H.grayBd}`,
+      whiteSpace: "nowrap",
+    }}>
+      {skill}
+    </span>
+  );
+}
+
+/* ─────────────────────────────
+   FREELANCER CARD - COMPACT & CONSISTENT
+───────────────────────────── */
+const CARD_HEIGHT = 200; // Fixed height for consistency
+const MAX_SKILLS = 4;
+
+function FreelancerCard({ f, index, blurred, onCardClick }: { f: FreelancerCardData; index: number; blurred: boolean; onCardClick?: (id: string) => void }) {
   const [hovered, setHovered] = useState(false);
   const b = f.badge ? BADGE_MAP[f.badge] : null;
+  const visibleSkills = f.skills.slice(0, MAX_SKILLS);
+  const remainingSkills = f.skills.length - MAX_SKILLS;
 
   return (
     <motion.div
-      initial={{ opacity:0, y:20 }}
-      animate={{ opacity: blurred ? 0.35 : 1, y:0, filter: blurred ? "blur(5px)" : "none" }}
-      transition={{ duration:0.4, delay: index * 0.055, ease:[0.22,1,0.36,1] }}
+      initial={{ opacity:0, y:16 }}
+      animate={{ opacity: blurred ? 0.3 : 1, y:0, filter: blurred ? "blur(6px)" : "none" }}
+      transition={{ duration:0.35, delay: index * 0.04, ease:[0.22,1,0.36,1] }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => onCardClick?.(String(f.id))}
       style={{ pointerEvents: blurred ? "none" : "auto" }}
     >
       <div style={{
         background: H.surface,
         borderRadius: 16,
-        border: `1.5px solid ${hovered ? H.blueMd : H.grayBd}`,
+        height: CARD_HEIGHT,
+        border: `1px solid ${hovered ? H.blueMd : H.grayBd}`,
         boxShadow: hovered
-          ? `0 8px 32px -8px rgba(27,79,255,0.18), 0 2px 8px rgba(0,0,0,0.04)`
-          : `0 1px 4px rgba(0,0,0,0.04)`,
-        transition: "border-color 0.2s, box-shadow 0.2s",
+          ? `0 20px 40px -12px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.04)`
+          : `0 1px 3px rgba(0,0,0,0.04)`,
+        transition: "all 0.25s cubic-bezier(0.22,1,0.36,1)",
         overflow: "hidden",
         cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
       }}>
-        {/* Match score bar */}
-        <div style={{ height:3, background: H.grayLt, overflow:"hidden" }}>
-          <motion.div
-            style={{ height:"100%", background:`linear-gradient(90deg, ${H.blue}, #60A5FA)` }}
-            initial={{ width:0 }}
-            animate={{ width:`${f.matchScore}%` }}
-            transition={{ duration:1, ease:[0.22,1,0.36,1], delay: index * 0.06 + 0.2 }}
-          />
-        </div>
+        {/* Top accent line */}
+        <div style={{ 
+          height: 3, 
+          background: hovered ? H.gradient : `linear-gradient(90deg, ${H.blue}, ${H.blueMd})`,
+          transition: "background 0.3s",
+        }} />
 
-        <div style={{ padding:"16px 18px" }}>
+        <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
           {/* Header: avatar + name + score */}
-          <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap: 12, marginBottom: 12 }}>
             {/* Avatar */}
             <div style={{ position:"relative", flexShrink:0 }}>
               <div style={{
-                width:46, height:46, borderRadius:12, overflow:"hidden",
-                border:`2px solid ${H.blueLt}`,
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                overflow:"hidden",
+                background: `linear-gradient(135deg, ${H.blueLt}, ${H.blueMd})`,
+                border: `2px solid ${H.surface}`,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               }}>
-                <img src={f.avatar} alt={f.name}
-                  style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    (e.currentTarget.parentElement as HTMLElement).style.background = `linear-gradient(135deg, ${H.blueLt}, ${H.blueMd})`;
-                    (e.currentTarget.parentElement as HTMLElement).innerHTML += `<div style="position:absolute;inset:0;display:grid;place-items:center;color:${H.blue};font-weight:800;font-size:18px">${f.name[0]}</div>`;
-                  }}
-                />
+                {f.avatar ? (
+                  <img src={f.avatar} alt={f.name}
+                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "grid",
+                    placeItems: "center",
+                    color: H.blue,
+                    fontWeight: 700,
+                    fontSize: 18,
+                  }}>
+                    {f.name[0]}
+                  </div>
+                )}
               </div>
-              {/* Available dot */}
+              {/* Available indicator */}
               <div style={{
-                position:"absolute", bottom:-1, right:-1,
-                width:11, height:11, borderRadius:"50%",
+                position:"absolute", bottom: -2, right: -2,
+                width: 14, height: 14, borderRadius:"50%",
                 background: f.available ? H.success : H.muted,
-                border:`2px solid ${H.surface}`,
+                border: `3px solid ${H.surface}`,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
               }} />
             </div>
 
-            {/* Name / title */}
+            {/* Name / title / meta */}
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                <span style={{ fontSize:13.5, fontWeight:700, color:H.navy, letterSpacing:"-0.01em" }}>
+              <div style={{ display:"flex", alignItems:"center", gap: 6, marginBottom: 2 }}>
+                <span style={{ 
+                  fontSize: 14, 
+                  fontWeight: 700, 
+                  color: H.navy, 
+                  letterSpacing: "-0.01em",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}>
                   {f.name}
                 </span>
                 {f.verified && (
-                  <span style={{
-                    fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:20,
-                    background:H.blueLt, color:H.blue, border:`1px solid ${H.blueMd}`,
-                    letterSpacing:"0.04em",
-                  }}>VERIFIED</span>
+                  <CheckCircle2 size={14} color={H.blue} fill={H.blueLt} />
                 )}
               </div>
-              <div style={{ fontSize:11.5, color:H.gray, marginTop:2 }}>{f.title}</div>
-              {/* Stars + location */}
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6, flexWrap:"wrap" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-                  {[1,2,3,4,5].map(i => (
-                    <Star key={i} size={9}
-                      fill={i <= Math.round(f.rating) ? "#F59E0B" : H.grayBd}
-                      color={i <= Math.round(f.rating) ? "#F59E0B" : H.grayBd}
-                    />
-                  ))}
-                  <span style={{ fontSize:10.5, fontWeight:700, color:H.navy, marginLeft:2 }}>{f.rating}</span>
-                </div>
-                <span style={{ color:H.grayBd }}>·</span>
-                <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-                  <Briefcase size={9} color={H.muted} />
-                  <span style={{ fontSize:10.5, color:H.gray }}>{f.jobs} projects</span>
-                </div>
-                <span style={{ color:H.grayBd }}>·</span>
-                <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-                  <MapPin size={9} color={H.muted} />
-                  <span style={{ fontSize:10.5, color:H.gray }}>{f.location}</span>
+              <div style={{ 
+                fontSize: 12, 
+                color: H.gray, 
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                marginBottom: 6,
+              }}>
+                {f.title}
+              </div>
+              {/* Meta row */}
+              <div style={{ display:"flex", alignItems:"center", gap: 8, flexWrap: "wrap" }}>
+                {f.rating > 0 && (
+                  <div style={{ display:"flex", alignItems:"center", gap: 3 }}>
+                    <Star size={11} fill="#F59E0B" color="#F59E0B" />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: H.navy }}>{f.rating}</span>
+                  </div>
+                )}
+                {f.jobs > 0 && (
+                  <div style={{ display:"flex", alignItems:"center", gap: 3 }}>
+                    <Briefcase size={10} color={H.muted} />
+                    <span style={{ fontSize: 11, color: H.gray }}>{f.jobs}</span>
+                  </div>
+                )}
+                <div style={{ display:"flex", alignItems:"center", gap: 3 }}>
+                  <MapPin size={10} color={H.muted} />
+                  <span style={{ 
+                    fontSize: 11, 
+                    color: H.gray,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 80,
+                  }}>
+                    {f.location}
+                  </span>
                 </div>
               </div>
             </div>
@@ -200,66 +284,115 @@ function FreelancerCard({ f, index, blurred }: { f: typeof MOCK_FREELANCERS[0]; 
             <ScoreRing score={f.matchScore} />
           </div>
 
-          {/* Skills */}
-          <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:12 }}>
-            {f.skills.map(s => (
-              <span key={s} style={{
-                fontSize:10.5, fontWeight:600, padding:"3px 10px",
-                borderRadius:20, letterSpacing:"0.01em",
-                background:H.blueLt, color:H.blue,
-                border:`1px solid ${H.blueMd}`,
-              }}>{s}</span>
+          {/* Skills - Limited display */}
+          <div style={{ 
+            display:"flex", 
+            flexWrap:"wrap", 
+            gap: 6, 
+            flex: 1,
+            alignContent: "flex-start",
+          }}>
+            {visibleSkills.map((s, i) => (
+              <SkillTag key={s} skill={s} isHighlight={i < 2} />
             ))}
+            {remainingSkills > 0 && (
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "4px 10px",
+                borderRadius: 6,
+                background: H.grayLt,
+                color: H.muted,
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}>
+                <Plus size={10} />
+                {remainingSkills} more
+              </span>
+            )}
           </div>
 
           {/* Footer */}
           <div style={{
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            paddingTop:10, borderTop:`1px solid ${H.grayLt}`,
+            display:"flex", 
+            alignItems:"center", 
+            justifyContent:"space-between",
+            paddingTop: 12, 
+            borderTop: `1px solid ${H.grayLt}`,
+            marginTop: "auto",
           }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap: 8 }}>
               {b && (
                 <span style={{
-                  fontSize:9.5, fontWeight:700, letterSpacing:"0.06em",
-                  padding:"3px 8px", borderRadius:6,
-                  background:b.bg, color:b.color, border:`1px solid ${b.border}`,
-                }}>{f.badge}</span>
+                  fontSize: 10, 
+                  fontWeight: 700, 
+                  letterSpacing: "0.03em",
+                  padding: "3px 8px", 
+                  borderRadius: 5,
+                  background: b.bg, 
+                  color: b.color, 
+                  border: `1px solid ${b.border}`,
+                }}>
+                  {f.badge}
+                </span>
               )}
-              <span style={{ fontSize:10, color:H.muted }}>
-                <Clock size={9} style={{ display:"inline", marginRight:3, verticalAlign:"middle" }} />
-                ~{f.responseTime}
-              </span>
+              {f.responseTime !== "—" && (
+                <span style={{ fontSize: 10, color: H.muted, display: "flex", alignItems: "center", gap: 3 }}>
+                  <Clock size={10} />
+                  {f.responseTime}
+                </span>
+              )}
             </div>
-            <div style={{ display:"flex", alignItems:"baseline", gap:2 }}>
-              <span style={{ fontSize:18, fontWeight:800, color:H.navy, letterSpacing:"-0.02em" }}>${f.rate}</span>
-              <span style={{ fontSize:10.5, color:H.muted, fontWeight:500 }}>/hr</span>
-            </div>
+            {f.rate > 0 && (
+              <div style={{ display:"flex", alignItems:"baseline", gap: 2 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: H.navy, letterSpacing: "-0.02em" }}>
+                  ${f.rate}
+                </span>
+                <span style={{ fontSize: 11, color: H.muted, fontWeight: 500 }}>/hr</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Hover CTA */}
+        {/* Hover overlay */}
         <AnimatePresence>
           {hovered && (
             <motion.div
-              initial={{ opacity:0, height:0 }}
-              animate={{ opacity:1, height:"auto" }}
-              exit={{ opacity:0, height:0 }}
-              style={{ overflow:"hidden" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "12px 16px",
+                background: "linear-gradient(to top, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%)",
+                borderTop: `1px solid ${H.blueMd}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
-              <div style={{
-                display:"flex", alignItems:"center", justifyContent:"space-between",
-                padding:"10px 18px",
-                background:H.blueLt,
-                borderTop:`1px solid ${H.blueMd}`,
-              }}>
-                <span style={{ fontSize:11.5, fontWeight:700, color:H.blue }}>View full profile</span>
-                <div style={{
-                  width:24, height:24, borderRadius:"50%",
-                  background:H.blue, display:"grid", placeItems:"center",
-                }}>
-                  <ChevronRight size={12} color="#fff" />
-                </div>
-              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: H.blue }}>
+                View Full Profile
+              </span>
+              <motion.div
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                style={{
+                  width: 28, 
+                  height: 28, 
+                  borderRadius: 8,
+                  background: H.blue, 
+                  display: "grid", 
+                  placeItems: "center",
+                }}
+              >
+                <ArrowRight size={14} color="#fff" />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -269,38 +402,60 @@ function FreelancerCard({ f, index, blurred }: { f: typeof MOCK_FREELANCERS[0]; 
 }
 
 /* ─────────────────────────────
-   SKELETON CARD
+   SKELETON CARD - MATCHING HEIGHT
 ───────────────────────────── */
 function SkeletonCard({ index }: { index: number }) {
   return (
     <motion.div
-      initial={{ opacity:0 }} animate={{ opacity:1 }}
-      transition={{ delay: index * 0.05 }}
+      initial={{ opacity:0 }} 
+      animate={{ opacity:1 }}
+      transition={{ delay: index * 0.03 }}
       style={{
-        background:H.surface, borderRadius:16, overflow:"hidden",
-        border:`1.5px solid ${H.grayBd}`,
+        background: H.surface, 
+        borderRadius: 16, 
+        height: CARD_HEIGHT,
+        overflow: "hidden",
+        border: `1px solid ${H.grayBd}`,
       }}
     >
-      <div style={{ height:3, background:H.grayLt }} />
-      <div style={{ padding:"16px 18px" }}>
-        <div style={{ display:"flex", gap:12, marginBottom:12 }}>
-          <div style={{ width:46, height:46, borderRadius:12, background:H.grayLt, flexShrink:0, overflow:"hidden" }}>
-            <motion.div style={{ width:"100%", height:"100%", background:`linear-gradient(90deg,transparent,${H.grayBd},transparent)` }}
-              animate={{ x:["-100%","100%"] }} transition={{ duration:1.5, repeat:Infinity, ease:"linear" }} />
+      <div style={{ height: 3, background: H.grayLt }} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display:"flex", gap: 12, marginBottom: 12 }}>
+          <div style={{ 
+            width: 48, 
+            height: 48, 
+            borderRadius: 12, 
+            background: H.grayLt, 
+            flexShrink: 0, 
+            overflow: "hidden",
+            position: "relative",
+          }}>
+            <motion.div 
+              style={{ 
+                position: "absolute",
+                inset: 0,
+                background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)`,
+              }}
+              animate={{ x: ["-100%", "100%"] }} 
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} 
+            />
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ height:13, borderRadius:7, background:H.grayLt, width:"55%", marginBottom:7 }} />
-            <div style={{ height:10, borderRadius:5, background:H.grayLt, width:"38%" }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 14, borderRadius: 6, background: H.grayLt, width: "60%", marginBottom: 8 }} />
+            <div style={{ height: 10, borderRadius: 5, background: H.grayLt, width: "40%", marginBottom: 8 }} />
+            <div style={{ height: 10, borderRadius: 5, background: H.grayLt, width: "50%" }} />
           </div>
-          <div style={{ width:44, height:44, borderRadius:"50%", background:H.grayLt, flexShrink:0 }} />
+          <div style={{ width: 52, height: 52, borderRadius: 12, background: H.grayLt, flexShrink: 0 }} />
         </div>
-        <div style={{ display:"flex", gap:5, marginBottom:12 }}>
-          {[55,70,60].map((w,i) => <div key={i} style={{ height:22, borderRadius:20, background:H.grayLt, width:`${w}px` }} />)}
+        <div style={{ display:"flex", gap: 6, marginBottom: 16 }}>
+          {[60, 70, 55, 45].map((w, i) => (
+            <div key={i} style={{ height: 24, borderRadius: 6, background: H.grayLt, width: w }} />
+          ))}
         </div>
-        <div style={{ height:1, background:H.grayLt, marginBottom:10 }} />
+        <div style={{ height: 1, background: H.grayLt, marginBottom: 12 }} />
         <div style={{ display:"flex", justifyContent:"space-between" }}>
-          <div style={{ height:10, borderRadius:5, background:H.grayLt, width:"25%" }} />
-          <div style={{ height:14, borderRadius:6, background:H.grayLt, width:"18%" }} />
+          <div style={{ height: 12, borderRadius: 5, background: H.grayLt, width: "25%" }} />
+          <div style={{ height: 16, borderRadius: 6, background: H.grayLt, width: "18%" }} />
         </div>
       </div>
     </motion.div>
@@ -314,200 +469,286 @@ function CountdownBadge({ seconds, total }: { seconds: number; total: number }) 
   const r = 10, circ = 2 * Math.PI * r;
   return (
     <div style={{
-      display:"flex", alignItems:"center", gap:8,
-      background:H.blueLt, border:`1.5px solid ${H.blueMd}`,
-      borderRadius:10, padding:"7px 12px",
+      display: "flex", 
+      alignItems: "center", 
+      gap: 8,
+      background: H.blueLt, 
+      border: `1px solid ${H.blueMd}`,
+      borderRadius: 10, 
+      padding: "6px 12px",
     }}>
       <Clock size={12} color={H.blue} />
-      <span className="hidden sm:block" style={{ fontSize:11.5, fontWeight:700, color:H.blue }}>Preview</span>
-      <svg width="26" height="26" viewBox="0 0 26 26">
-        <circle cx="13" cy="13" r={r} fill="none" stroke={H.blueMd} strokeWidth="2.5" />
-        <motion.circle cx="13" cy="13" r={r} fill="none" stroke={H.blue} strokeWidth="2.5"
-          strokeLinecap="round" strokeDasharray={circ}
+      <span className="hidden sm:block" style={{ fontSize: 11, fontWeight: 600, color: H.blue }}>
+        Preview
+      </span>
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r={r} fill="none" stroke={H.blueMd} strokeWidth="2" />
+        <motion.circle 
+          cx="12" cy="12" r={r} fill="none" stroke={H.blue} strokeWidth="2"
+          strokeLinecap="round" 
+          strokeDasharray={circ}
           strokeDashoffset={circ * (1 - seconds / total)}
-          style={{ transformOrigin:"13px 13px", transform:"rotate(-90deg)" }}
-          transition={{ duration:0.4 }} />
-        <text x="13" y="17" textAnchor="middle" fontSize="10" fontWeight="800" fill={H.blue}>{seconds}</text>
+          style={{ transformOrigin: "12px 12px", transform: "rotate(-90deg)" }}
+          transition={{ duration: 0.4 }} 
+        />
+        <text x="12" y="15" textAnchor="middle" fontSize="9" fontWeight="700" fill={H.blue}>
+          {seconds}
+        </text>
       </svg>
     </div>
   );
 }
 
 /* ─────────────────────────────
-   GATE OVERLAY
+   GATE OVERLAY - REFINED
 ───────────────────────────── */
 function GateOverlay({ query, count }: { query: string; count: number }) {
   return (
     <motion.div
-      initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.5 }}
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      transition={{ duration: 0.5 }}
       style={{
-        position:"absolute", inset:0, zIndex:40,
-        display:"flex", alignItems:"flex-start", justifyContent:"center",
-        paddingTop:"8vh",
-        background:`linear-gradient(to bottom, rgba(244,247,255,0) 0%, rgba(244,247,255,0.92) 22%, rgba(244,247,255,0.99) 38%)`,
+        position: "absolute", 
+        inset: 0, 
+        zIndex: 40,
+        display: "flex", 
+        alignItems: "flex-start", 
+        justifyContent: "center",
+        paddingTop: "6vh",
+        background: `linear-gradient(to bottom, 
+          rgba(248,250,252,0) 0%, 
+          rgba(248,250,252,0.9) 15%, 
+          rgba(248,250,252,0.98) 30%
+        )`,
       }}
     >
       <motion.div
-        initial={{ opacity:0, y:24, scale:0.97 }}
-        animate={{ opacity:1, y:0, scale:1 }}
-        transition={{ delay:0.1, duration:0.5, ease:[0.22,1,0.36,1] }}
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.1, duration: 0.5, ease: [0.22,1,0.36,1] }}
         style={{
-          width:"100%", maxWidth:460, margin:"0 16px",
-          background:H.surface,
-          border:`1.5px solid ${H.grayBd}`,
-          borderRadius:24,
-          boxShadow:"0 24px 64px -16px rgba(27,79,255,0.18), 0 8px 24px -6px rgba(0,0,0,0.08)",
-          overflow:"hidden",
+          width: "100%", 
+          maxWidth: 420, 
+          margin: "0 16px",
+          background: H.surface,
+          border: `1px solid ${H.grayBd}`,
+          borderRadius: 20,
+          boxShadow: "0 24px 48px -12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.02)",
+          overflow: "hidden",
         }}
       >
-        {/* Blue top bar — matches Hiralent button style */}
-        <div style={{ height:4, background:`linear-gradient(90deg, ${H.blue}, #60A5FA)` }} />
+        {/* Gradient top bar */}
+        <div style={{ height: 4, background: H.gradient }} />
 
-        <div style={{ padding:"26px 28px 28px" }}>
-
+        <div style={{ padding: "24px" }}>
           {/* Header */}
-          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:20 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
             <div>
               <div style={{
-                display:"inline-flex", alignItems:"center", gap:5,
-                background:H.blueLt, border:`1px solid ${H.blueMd}`,
-                borderRadius:20, padding:"4px 12px", marginBottom:8,
+                display: "inline-flex", 
+                alignItems: "center", 
+                gap: 6,
+                background: H.blueLt, 
+                border: `1px solid ${H.blueMd}`,
+                borderRadius: 8, 
+                padding: "5px 10px", 
+                marginBottom: 8,
               }}>
-                <Sparkles size={11} color={H.blue} />
-                <span style={{ fontSize:10.5, fontWeight:700, color:H.blue, letterSpacing:"0.05em" }}>
+                <Sparkles size={12} color={H.blue} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: H.blue }}>
                   AI-Matched Results
                 </span>
               </div>
-              <p style={{ fontSize:13, color:H.gray }}>
+              <p style={{ fontSize: 13, color: H.gray }}>
                 {query
-                  ? <>Showing talent for <strong style={{ color:H.navy }}>"{query}"</strong></>
+                  ? <>Showing talent for <strong style={{ color: H.navy }}>"{query}"</strong></>
                   : "All verified talent"
                 }
               </p>
             </div>
             <motion.div
-              animate={{ rotate:[0,-8,8,0] }} transition={{ delay:1, duration:0.5 }}
+              animate={{ rotate: [0, -8, 8, 0] }} 
+              transition={{ delay: 1, duration: 0.5 }}
               style={{
-                width:44, height:44, borderRadius:12, flexShrink:0,
-                background:H.blueLt, border:`1.5px solid ${H.blueMd}`,
-                display:"grid", placeItems:"center",
+                width: 44, 
+                height: 44, 
+                borderRadius: 12, 
+                flexShrink: 0,
+                background: H.blueLt, 
+                border: `1px solid ${H.blueMd}`,
+                display: "grid", 
+                placeItems: "center",
               }}
             >
-              <Lock size={17} color={H.blue} />
+              <Lock size={18} color={H.blue} />
             </motion.div>
           </div>
 
-          {/* Count + divider */}
+          {/* Count */}
           <div style={{
-            textAlign:"center", padding:"16px 0 20px",
-            borderTop:`1px solid ${H.grayLt}`, borderBottom:`1px solid ${H.grayLt}`,
-            marginBottom:20,
+            textAlign: "center", 
+            padding: "20px 0",
+            borderTop: `1px solid ${H.grayLt}`, 
+            borderBottom: `1px solid ${H.grayLt}`,
+            marginBottom: 20,
           }}>
-            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:4 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 4 }}>
               <motion.span
-                initial={{ opacity:0, scale:0.7 }}
-                animate={{ opacity:1, scale:1 }}
-                transition={{ delay:0.25, type:"spring", stiffness:260, damping:14 }}
-                style={{ fontSize:68, fontWeight:900, color:H.navy, lineHeight:1, letterSpacing:"-0.04em" }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
+                style={{ 
+                  fontSize: 56, 
+                  fontWeight: 800, 
+                  color: H.navy, 
+                  lineHeight: 1, 
+                  letterSpacing: "-0.03em",
+                }}
               >
                 <AnimatedNumber to={count} />
               </motion.span>
-              <span style={{ fontSize:38, fontWeight:900, color:H.blue, lineHeight:1, marginBottom:8 }}>+</span>
+              <span style={{ fontSize: 32, fontWeight: 800, color: H.blue, lineHeight: 1, marginBottom: 6 }}>
+                +
+              </span>
             </div>
-            <p style={{ fontSize:13.5, color:H.gray, marginTop:4 }}>verified freelancers matched your search</p>
+            <p style={{ fontSize: 13, color: H.gray, marginTop: 6 }}>
+              verified freelancers matched
+            </p>
 
-            {/* Avatar row */}
+            {/* Avatar stack */}
             <motion.div
-              initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.4 }}
-              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginTop:14 }}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              transition={{ delay: 0.4 }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 14 }}
             >
-              <div style={{ display:"flex" }}>
-                {[1,2,3,4,5].map((n,i) => (
+              <div style={{ display: "flex" }}>
+                {[1, 2, 3, 4, 5].map((n, i) => (
                   <div key={i} style={{
-                    width:30, height:30, borderRadius:"50%", overflow:"hidden",
-                    border:`2.5px solid ${H.surface}`,
-                    marginLeft: i === 0 ? 0 : -9, zIndex:5-i, position:"relative",
-                    boxShadow:"0 2px 6px rgba(0,0,0,0.08)",
+                    width: 28, 
+                    height: 28, 
+                    borderRadius: "50%", 
+                    overflow: "hidden",
+                    border: `2px solid ${H.surface}`,
+                    marginLeft: i === 0 ? 0 : -8, 
+                    zIndex: 5 - i, 
+                    position: "relative",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
+                    background: `hsl(${i * 45 + 200}, 65%, 60%)`,
                   }}>
-                    <img src={`/images/people${n}.png`} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                      onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.background = `hsl(${i*55+210},70%,62%)`; e.currentTarget.style.display="none"; }} />
+                    <img 
+                      src={`/images/people${n}.png`} 
+                      alt="" 
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => { e.currentTarget.style.display = "none"; }} 
+                    />
                   </div>
                 ))}
               </div>
-              <span style={{ fontSize:12, color:H.gray }}>+ {count - 5} more ready to connect</span>
+              <span style={{ fontSize: 11, color: H.gray }}>+ {count - 5} more</span>
             </motion.div>
           </div>
 
-          {/* Stats row */}
+          {/* Stats */}
           <motion.div
-            initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.45 }}
-            style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:18 }}
+            initial={{ opacity: 0, y: 8 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.45 }}
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}
           >
             {[
-              { icon:Zap,        val:"2h",   sub:"Avg reply",  color:"#1B4FFF", bg:H.blueLt,   border:H.blueMd   },
-              { icon:TrendingUp, val:"94%",  sub:"Hire rate",  color:"#065F46", bg:"#ECFDF5", border:"#A7F3D0" },
-              { icon:Shield,     val:"100%", sub:"Verified",   color:"#92400E", bg:"#FFF7ED", border:"#FED7AA" },
-            ].map(({ icon:Icon, val, sub, color, bg, border }) => (
+              { icon: Zap,        val: "2h",   sub: "Avg reply",  color: H.blue,    bg: H.blueLt },
+              { icon: TrendingUp, val: "94%",  sub: "Hire rate",  color: "#059669", bg: "#ECFDF5" },
+              { icon: Shield,     val: "100%", sub: "Verified",   color: "#D97706", bg: "#FEF3C7" },
+            ].map(({ icon: Icon, val, sub, color, bg }) => (
               <div key={sub} style={{
-                borderRadius:12, padding:"12px 8px", textAlign:"center",
-                background:bg, border:`1px solid ${border}`,
+                borderRadius: 10, 
+                padding: "12px 8px", 
+                textAlign: "center",
+                background: bg,
               }}>
-                <Icon size={13} color={color} style={{ margin:"0 auto 5px" }} />
-                <div style={{ fontSize:16, fontWeight:800, color:H.navy, letterSpacing:"-0.02em" }}>{val}</div>
-                <div style={{ fontSize:9.5, fontWeight:600, color, marginTop:1 }}>{sub}</div>
+                <Icon size={14} color={color} style={{ margin: "0 auto 4px" }} />
+                <div style={{ fontSize: 16, fontWeight: 700, color: H.navy }}>{val}</div>
+                <div style={{ fontSize: 9, fontWeight: 500, color }}>{sub}</div>
               </div>
             ))}
           </motion.div>
 
-          {/* Feature list */}
+          {/* Features */}
           <motion.div
-            initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.5 }}
+            initial={{ opacity: 0, y: 8 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.5 }}
             style={{
-              borderRadius:14, padding:"14px 16px", marginBottom:20,
-              background:H.bg, border:`1px solid ${H.grayBd}`,
+              borderRadius: 12, 
+              padding: "14px", 
+              marginBottom: 16,
+              background: H.grayLt,
             }}
           >
-            <p style={{ fontSize:11, fontWeight:700, color:H.blue, letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:10 }}>
+            <p style={{ 
+              fontSize: 10, 
+              fontWeight: 700, 
+              color: H.blue, 
+              letterSpacing: "0.05em", 
+              textTransform: "uppercase", 
+              marginBottom: 10,
+            }}>
               Create free account to unlock
             </p>
             {[
-              { text:"Full profiles · portfolio · CV access",    color:H.success },
-              { text:"Verified fit scores & skill assessments",  color:H.blue    },
-              { text:"Message & hire talent instantly",          color:"#7C3AED"  },
+              { text: "Full profiles & portfolio access", color: H.success },
+              { text: "Verified skill assessments",       color: H.blue },
+              { text: "Direct messaging & hiring",        color: "#7C3AED" },
             ].map(({ text, color }) => (
-              <div key={text} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:7 }}>
-                <CheckCircle2 size={13} color={color} style={{ flexShrink:0 }} />
-                <span style={{ fontSize:12.5, color:H.text, fontWeight:500 }}>{text}</span>
+              <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <CheckCircle2 size={14} color={color} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: H.text, fontWeight: 500 }}>{text}</span>
               </div>
             ))}
           </motion.div>
 
-          {/* CTAs — matches Hiralent "Get Started" style */}
+          {/* CTAs */}
           <motion.div
-            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.56 }}
-            style={{ display:"flex", flexDirection:"column", gap:10 }}
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.56 }}
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
           >
             <Link href="/auth/signup">
               <motion.div
-                whileHover={{ scale:1.02, boxShadow:`0 12px 32px -8px rgba(27,79,255,0.45)` }}
-                whileTap={{ scale:0.98 }}
+                whileHover={{ scale: 1.02, boxShadow: "0 12px 28px -8px rgba(37,99,235,0.4)" }}
+                whileTap={{ scale: 0.98 }}
                 style={{
-                  borderRadius:12, padding:"13px 0", textAlign:"center",
-                  background:H.blue, color:"#fff",
-                  fontSize:14, fontWeight:700,
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                  cursor:"pointer",
-                  boxShadow:`0 6px 20px -6px rgba(27,79,255,0.5)`,
-                  position:"relative", overflow:"hidden",
+                  borderRadius: 12, 
+                  padding: "14px 0", 
+                  textAlign: "center",
+                  background: H.gradient, 
+                  color: "#fff",
+                  fontSize: 14, 
+                  fontWeight: 700,
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  gap: 8,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px -4px rgba(37,99,235,0.4)",
+                  position: "relative", 
+                  overflow: "hidden",
                 }}
               >
                 <motion.div
-                  style={{ position:"absolute", inset:0, background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)" }}
-                  animate={{ x:["-100%","200%"] }}
-                  transition={{ duration:2.5, repeat:Infinity, repeatDelay:1 }}
+                  style={{ 
+                    position: "absolute", 
+                    inset: 0, 
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+                  }}
+                  animate={{ x: ["-100%", "200%"] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
                 />
                 <Sparkles size={14} />
-                Get Started — It's Free
+                Get Started — Free
                 <ArrowRight size={14} />
               </motion.div>
             </Link>
@@ -515,27 +756,63 @@ function GateOverlay({ query, count }: { query: string; count: number }) {
             <Link href="/auth/login">
               <div
                 style={{
-                  borderRadius:12, padding:"11px 0", textAlign:"center",
-                  border:`1.5px solid ${H.grayBd}`, color:H.gray,
-                  fontSize:13, fontWeight:600, cursor:"pointer",
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:5,
-                  transition:"all 0.18s",
+                  borderRadius: 12, 
+                  padding: "12px 0", 
+                  textAlign: "center",
+                  border: `1px solid ${H.grayBd}`, 
+                  color: H.gray,
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  cursor: "pointer",
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  gap: 4,
+                  transition: "all 0.2s",
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = H.blueMd; (e.currentTarget as HTMLElement).style.color = H.blue; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = H.grayBd; (e.currentTarget as HTMLElement).style.color = H.gray; }}
+                onMouseEnter={e => { 
+                  e.currentTarget.style.borderColor = H.blueMd; 
+                  e.currentTarget.style.color = H.blue; 
+                }}
+                onMouseLeave={e => { 
+                  e.currentTarget.style.borderColor = H.grayBd; 
+                  e.currentTarget.style.color = H.gray; 
+                }}
               >
                 Already have an account? Sign in
-                <ChevronRight size={13} />
+                <ChevronRight size={14} />
               </div>
             </Link>
           </motion.div>
 
-          <p style={{ textAlign:"center", marginTop:14, fontSize:11, color:H.muted }}>
+          <p style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: H.muted }}>
             Free to start · No credit card required
           </p>
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/* ─────────────────────────────
+   FILTER CHIP
+───────────────────────────── */
+function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
+  return (
+    <button style={{
+      fontSize: 12,
+      fontWeight: 500,
+      padding: "6px 14px",
+      borderRadius: 8,
+      background: active ? H.blue : H.surface,
+      color: active ? "#fff" : H.gray,
+      border: `1px solid ${active ? H.blue : H.grayBd}`,
+      cursor: "pointer",
+      transition: "all 0.2s",
+      whiteSpace: "nowrap",
+    }}>
+      {label}
+    </button>
   );
 }
 
@@ -547,17 +824,54 @@ export default function SearchResultsPage() {
   const query    = searchParams.get("q") ?? "";
   const locParam = searchParams.get("location") ?? "";
 
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  const handleCardClick = (candidateId: string) => {
+    if (isAuthenticated) {
+      router.push(`/candidate/public-profile/${candidateId}`);
+    } else {
+      router.push('/auth/login');
+    }
+  };
+
   const TEASER = 4;
   const [timeLeft, setTimeLeft] = useState(TEASER);
   const [gated,    setGated]    = useState(false);
   const [started,  setStarted]  = useState(false);
-  const [loading,  setLoading]  = useState(true);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const { data, isLoading: loading } = useCandidateSearch({
+    q: query || undefined,
+    location: locParam || undefined,
+    page: 1,
+    limit: 12,
+  });
+
+  const results = data?.results ?? [];
+  const total   = data?.total   ?? 0;
+
+  const freelancers: FreelancerCardData[] = results.map((r) => ({
+    id:           r.candidate_id,
+    name:         r.full_name,
+    title:        r.headline ?? "Candidate",
+    location:     r.location ?? r.city ?? "Remote",
+    skills:       r.skills,
+    avatar:       r.profile_picture_url,
+    badge:        null,
+    matchScore:   r.match_score,
+    available:    true,
+    responseTime: "—",
+    verified:     false,
+    rating:       0,
+    jobs:         0,
+    rate:         0,
+  }));
+
+  // Start countdown after data loads
   useEffect(() => {
-    const t1 = setTimeout(() => {
-      setLoading(false);
-      const t2 = setTimeout(() => {
+    if (!loading && !started) {
+      const t = setTimeout(() => {
         setStarted(true);
         timer.current = setInterval(() => {
           setTimeLeft(t => {
@@ -566,114 +880,176 @@ export default function SearchResultsPage() {
           });
         }, 1000);
       }, 300);
-      return () => clearTimeout(t2);
-    }, 850);
-    return () => { clearTimeout(t1); if (timer.current) clearInterval(timer.current); };
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    return () => { if (timer.current) clearInterval(timer.current); };
   }, []);
 
-  const total = MOCK_FREELANCERS.length + 38;
-
   return (
-    <div style={{ minHeight:"100vh", background:H.bg, fontFamily:"'Plus Jakarta Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');`}</style>
+    <div style={{ 
+      minHeight: "100vh", 
+      background: H.bg, 
+      fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+      `}</style>
 
-      {/* ─── NAV — matches Hiralent nav exactly ─── */}
+      {/* ─── NAVIGATION ─── */}
       <div style={{
-        position:"sticky", top:0, zIndex:30, background:"rgba(255,255,255,0.95)",
-        backdropFilter:"blur(16px)", borderBottom:`1px solid ${H.grayBd}`,
-        boxShadow:"0 1px 8px rgba(0,0,0,0.04)",
+        position: "sticky", 
+        top: 0, 
+        zIndex: 30, 
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: `1px solid ${H.grayBd}`,
       }}>
         {/* Progress bar */}
-        <div style={{ height:2, background:H.grayLt, overflow:"hidden" }}>
+        <div style={{ height: 2, background: H.grayLt, overflow: "hidden" }}>
           {started && !gated && (
             <motion.div
-              style={{ height:"100%", background:H.blue }}
-              animate={{ width:`${(timeLeft / TEASER) * 100}%` }}
-              transition={{ duration:0.4 }}
+              style={{ height: "100%", background: H.gradient }}
+              animate={{ width: `${(timeLeft / TEASER) * 100}%` }}
+              transition={{ duration: 0.4 }}
             />
           )}
         </div>
 
         <div style={{
-          width:"92%", maxWidth:1200, margin:"0 auto",
-          padding:"13px 0",
-          display:"flex", alignItems:"center", gap:12, flexWrap:"wrap",
+          width: "94%", 
+          maxWidth: 1280, 
+          margin: "0 auto",
+          padding: "12px 0",
+          display: "flex", 
+          alignItems: "center", 
+          gap: 16,
         }}>
-          {/* Logo — styled like screenshot */}
-          <Link href="/" style={{ flexShrink:0, marginRight:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:1 }}>
+          {/* Logo */}
+          <Link href="/" style={{ flexShrink: 0, textDecoration: "none" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
               <span style={{
-                fontSize:20, fontWeight:900, letterSpacing:"-0.04em",
-                color:H.navy, fontFamily:"'Plus Jakarta Sans', sans-serif",
+                fontSize: 22, 
+                fontWeight: 800, 
+                letterSpacing: "-0.03em",
+                color: H.navy,
               }}>
-                <span style={{ color:H.blue }}>H</span>iralent
+                <span style={{ color: H.blue }}>H</span>iralent
               </span>
             </div>
           </Link>
 
-          {/* Search pill */}
+          {/* Search bar */}
           <div style={{
-            flex:1, display:"flex", alignItems:"center", gap:8, minWidth:0,
-            background:H.surface, border:`1.5px solid ${H.grayBd}`,
-            borderRadius:10, padding:"9px 14px",
+            flex: 1, 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 8, 
+            minWidth: 0,
+            background: H.surface, 
+            border: `1px solid ${H.grayBd}`,
+            borderRadius: 12, 
+            padding: "10px 16px",
+            maxWidth: 480,
           }}>
-            <Search size={14} color={H.muted} />
-            <span style={{ fontSize:13.5, fontWeight:600, color:H.navy, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>
-              {query || "Job title, skill, or keyword..."}
+            <Search size={16} color={H.muted} />
+            <span style={{ 
+              fontSize: 14, 
+              fontWeight: 500, 
+              color: H.navy, 
+              overflow: "hidden", 
+              textOverflow: "ellipsis", 
+              whiteSpace: "nowrap", 
+              flex: 1,
+            }}>
+              {query || "Search talent..."}
             </span>
             {locParam && (
               <>
-                <div style={{ width:1, height:16, background:H.grayBd, flexShrink:0 }} />
-                <MapPin size={12} color={H.blue} />
-                <span style={{ fontSize:12.5, fontWeight:700, color:H.blue, whiteSpace:"nowrap" }}>{locParam}</span>
+                <div style={{ width: 1, height: 18, background: H.grayBd, flexShrink: 0 }} />
+                <MapPin size={14} color={H.blue} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: H.blue, whiteSpace: "nowrap" }}>
+                  {locParam}
+                </span>
               </>
             )}
           </div>
 
           {/* Nav links */}
-          <nav className="hidden md:flex" style={{ gap:24, alignItems:"center", flexShrink:0 }}>
-            {["Find job","Companies"].map(item => (
-              <span key={item} style={{ fontSize:13.5, fontWeight:500, color:H.gray, cursor:"pointer", whiteSpace:"nowrap" }}>{item}</span>
+          <nav className="hidden md:flex" style={{ gap: 24, alignItems: "center", flexShrink: 0 }}>
+            {["Find job", "Companies"].map(item => (
+              <span key={item} style={{ 
+                fontSize: 14, 
+                fontWeight: 500, 
+                color: H.gray, 
+                cursor: "pointer", 
+                whiteSpace: "nowrap",
+                transition: "color 0.2s",
+              }}>
+                {item}
+              </span>
             ))}
           </nav>
 
           {/* Right controls */}
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <button className="hidden sm:grid" style={{
-              width:36, height:36, borderRadius:8, background:"transparent",
-              border:`1.5px solid ${H.grayBd}`, placeItems:"center", cursor:"pointer",
-              color:H.gray,
+              width: 38, 
+              height: 38, 
+              borderRadius: 10, 
+              background: "transparent",
+              border: `1px solid ${H.grayBd}`, 
+              placeItems: "center", 
+              cursor: "pointer",
+              color: H.gray,
             }}>
-              <SlidersHorizontal size={14} />
+              <SlidersHorizontal size={16} />
             </button>
 
             {/* Countdown */}
             <AnimatePresence>
               {started && !gated && (
-                <motion.div initial={{ opacity:0, scale:0.85 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.85 }}>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
                   <CountdownBadge seconds={timeLeft} total={TEASER} />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <span className="hidden sm:block" style={{ fontSize:13.5, fontWeight:500, color:H.gray, cursor:"pointer" }}>Employer</span>
+            <span className="hidden md:block" style={{ fontSize: 14, fontWeight: 500, color: H.gray, cursor: "pointer" }}>
+              Employer
+            </span>
 
-            {/* Get Started — exact Hiralent style */}
-            <Link href="/auth/login">
+            <Link href="/auth/login" style={{ textDecoration: "none" }}>
               <motion.div
-                whileHover={{ scale:1.02, boxShadow:`0 6px 20px -4px rgba(27,79,255,0.4)` }}
-                whileTap={{ scale:0.97 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 style={{
-                  display:"flex", alignItems:"center", gap:6,
-                  borderRadius:8, padding:"8px 16px",
-                  background:H.blue, color:"#fff",
-                  fontSize:13, fontWeight:700, cursor:"pointer",
-                  boxShadow:`0 3px 12px -4px rgba(27,79,255,0.45)`,
-                  whiteSpace:"nowrap",
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 6,
+                  borderRadius: 10, 
+                  padding: "10px 18px",
+                  background: H.blue, 
+                  color: "#fff",
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px -2px rgba(37,99,235,0.4)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <ArrowRight size={14} />
                 Get Started
+                <ArrowRight size={14} />
               </motion.div>
             </Link>
           </div>
@@ -681,79 +1057,148 @@ export default function SearchResultsPage() {
       </div>
 
       {/* ─── CONTENT ─── */}
-      <div style={{ width:"92%", maxWidth:1200, margin:"0 auto" }}>
+      <div style={{ width: "94%", maxWidth: 1280, margin: "0 auto" }}>
 
         {/* Results header */}
-        <div style={{ paddingTop:28, paddingBottom:18 }}>
+        <div style={{ paddingTop: 24, paddingBottom: 16 }}>
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="l" exit={{ opacity:0 }} style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                <div style={{ height:22, width:240, borderRadius:8, background:H.grayBd }} />
-                <div style={{ height:13, width:160, borderRadius:6, background:H.grayLt }} />
+              <motion.div key="loading" exit={{ opacity: 0 }} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ height: 24, width: 220, borderRadius: 8, background: H.grayBd }} className="animate-pulse" />
+                <div style={{ height: 14, width: 150, borderRadius: 6, background: H.grayLt }} className="animate-pulse" />
               </motion.div>
             ) : (
-              <motion.div key="h" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                  <h1 style={{ fontSize:26, fontWeight:800, color:H.navy, letterSpacing:"-0.03em", lineHeight:1 }}>
+              <motion.div key="header" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                  <h1 style={{ 
+                    fontSize: 24, 
+                    fontWeight: 700, 
+                    color: H.navy, 
+                    letterSpacing: "-0.02em", 
+                    lineHeight: 1, 
+                    margin: 0,
+                  }}>
                     <AnimatedNumber to={total} /> freelancers found
                   </h1>
                   {query && (
                     <span style={{
-                      fontSize:13.5, fontWeight:700,
-                      background:H.blueLt, color:H.blue,
-                      border:`1.5px solid ${H.blueMd}`,
-                      borderRadius:8, padding:"3px 12px",
-                    }}>"{query}"</span>
+                      fontSize: 13, 
+                      fontWeight: 600,
+                      background: H.blueLt, 
+                      color: H.blue,
+                      border: `1px solid ${H.blueMd}`,
+                      borderRadius: 8, 
+                      padding: "4px 12px",
+                    }}>
+                      "{query}"
+                    </span>
                   )}
                 </div>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
-                  <span style={{ position:"relative", display:"flex" }}>
-                    <span className="animate-ping" style={{ position:"absolute", inset:0, borderRadius:"50%", background:H.success, opacity:0.5 }} />
-                    <span style={{ position:"relative", width:8, height:8, borderRadius:"50%", background:H.success, display:"block" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: "50%", 
+                    background: H.success,
+                    boxShadow: `0 0 0 3px rgba(16,185,129,0.2)`,
+                  }} />
+                  <span style={{ fontSize: 13, color: H.gray }}>
+                    Sorted by AI match score
                   </span>
-                  <span style={{ fontSize:12.5, color:H.gray }}>
-                    Sorted by AI match score · Updated live
+                  <span style={{ color: H.grayBd }}>·</span>
+                  <span style={{ fontSize: 13, color: H.muted }}>
+                    Top {freelancers.length} shown
                   </span>
-                  <div style={{ flex:1, height:1, background:H.grayBd, maxWidth:180 }} />
-                  <span style={{ fontSize:12, color:H.muted }}>Showing top {MOCK_FREELANCERS.length}</span>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
+        {/* Filter bar */}
+        <div style={{ 
+          display: "flex", 
+          gap: 8, 
+          paddingBottom: 20,
+          overflowX: "auto",
+        }}>
+          <FilterChip label="All" active />
+          <FilterChip label="Available Now" />
+          <FilterChip label="Top Rated" />
+          <FilterChip label="$50-100/hr" />
+          <FilterChip label="Verified" />
+        </div>
+
         {/* Cards grid */}
-        <div style={{ paddingBottom:120, position:"relative" }}>
+        <div style={{ paddingBottom: 120, position: "relative" }}>
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="sk" exit={{ opacity:0 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap:14 }}>
-                {Array.from({ length:9 }).map((_,i) => <SkeletonCard key={i} index={i} />)}
+              <motion.div 
+                key="skeleton" 
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                style={{ gap: 16 }}
+              >
+                {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} index={i} />)}
               </motion.div>
             ) : (
-              <motion.div key="cards"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap:14 }}>
-                {MOCK_FREELANCERS.map((f,i) => (
-                  <FreelancerCard key={f.id} f={f} index={i} blurred={gated} />
-                ))}
+              <motion.div 
+                key="cards"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                style={{ gap: 16 }}
+              >
+                {freelancers.length === 0 ? (
+                  <div style={{
+                    gridColumn: "1 / -1", 
+                    textAlign: "center",
+                    padding: "80px 20px", 
+                    color: H.gray,
+                  }}>
+                    <div style={{ 
+                      width: 64, 
+                      height: 64, 
+                      borderRadius: 16, 
+                      background: H.grayLt, 
+                      display: "grid", 
+                      placeItems: "center",
+                      margin: "0 auto 16px",
+                    }}>
+                      <Search size={28} color={H.muted} />
+                    </div>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: H.navy, marginBottom: 4 }}>
+                      No candidates found
+                    </p>
+                    <p style={{ fontSize: 14, color: H.gray }}>
+                      {query ? `Try adjusting your search for "${query}"` : "Try a different search"}
+                    </p>
+                  </div>
+                ) : (
+                  freelancers.map((f, i) => (
+                    <FreelancerCard key={f.id} f={f} index={i} blurred={gated} onCardClick={handleCardClick} />
+                  ))
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Ghost rows */}
-          {!loading && !gated && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ gap:14, marginTop:14, filter:"blur(6px)", opacity:0.2, pointerEvents:"none" }}>
-              {[1,2,3].map(i => (
+          {/* Ghost rows for preview effect */}
+          {!loading && !gated && freelancers.length > 0 && (
+            <div 
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              style={{ gap: 16, marginTop: 16, filter: "blur(8px)", opacity: 0.15, pointerEvents: "none" }}
+            >
+              {[1, 2, 3, 4].map(i => (
                 <div key={i} style={{
-                  background:H.surface, borderRadius:16, height:160,
-                  border:`1.5px solid ${H.grayBd}`,
+                  background: H.surface, 
+                  borderRadius: 16, 
+                  height: CARD_HEIGHT,
+                  border: `1px solid ${H.grayBd}`,
                 }} />
               ))}
             </div>
           )}
 
-          {/* Gate */}
+          {/* Gate overlay */}
           <AnimatePresence>
             {gated && <GateOverlay query={query} count={total} />}
           </AnimatePresence>

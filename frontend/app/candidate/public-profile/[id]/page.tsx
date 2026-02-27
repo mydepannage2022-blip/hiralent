@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { useParams } from "next/navigation";
+import React, { useMemo, useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicProfile } from "@/src/lib/profile/profile.api";
 
@@ -100,7 +100,19 @@ function pickNumber(...vals: unknown[]): number | null {
 export default function PublicProfilePage() {
   // ✅ HOOKS FIRST (always)
   const params = useParams();
+  const router = useRouter();
   const candidateId = (params?.id as string) || "";
+
+  // Auth guard — only signed-in users may view profiles
+  const [authorized, setAuthorized] = useState(false);
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.replace('/auth/login');
+      return;
+    }
+    setAuthorized(true);
+  }, []);
 
   const { data: profileResponse, isLoading, error } = useQuery({
     queryKey: ["public-profile", candidateId],
@@ -189,6 +201,8 @@ export default function PublicProfilePage() {
   /* ----------------------------
      AFTER hooks: render states
   ----------------------------- */
+
+  if (!authorized) return null;
 
   if (isLoading) {
     return (

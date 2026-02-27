@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { seedCandidates } from './seeds/candidates.seed';
 
 const prisma = new PrismaClient();
 
@@ -45,8 +46,9 @@ async function main() {
   });
 
   console.log('Subscription plans seeded successfully!');
-  
+
   await seedBadges();
+  await seedCandidates();
 }
 //seedBadges
 async function seedBadges() {

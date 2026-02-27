@@ -19,7 +19,7 @@ const Navbar = () => {
   // Consider a user authenticated if we have a user object. Token may be cookie-only.
   const isLoggedIn = !!user;
 
-  // ✅ get correct role switch link
+  //  get correct role switch link
   const getSwitchRoleLink = () => {
     if (pathname === "/" || pathname.startsWith("/candidate/home")) {
       return { label: "Employer", href: "/company/home" };

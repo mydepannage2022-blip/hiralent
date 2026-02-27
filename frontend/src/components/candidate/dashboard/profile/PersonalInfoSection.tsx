@@ -547,7 +547,7 @@ const Personal = () => {
                 />
               </div>
 
-              {/* ✅ Keep GitHub */}
+              {/*  Keep GitHub */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-900">GitHub</label>
                 <input
