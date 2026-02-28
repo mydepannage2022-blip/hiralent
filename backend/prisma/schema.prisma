@@ -172,6 +172,19 @@ model User {
   companyActivityLogs        CompanyActivityLog[]    @relation("CompanyActivityLogs")
   activityActions            CompanyActivityLog[]    @relation("ActivityActor")
 
+  //Candidate skills assessment Relations (Do not touch)
+  candidateAssessmentSessions CandidateAssessmentSession[]
+  candidateAssessmentTelemetry CandidateAssessmentTelemetryEvent[]
+
+  // ===== Simple Test Relations =====
+  candidateSimpleTestInvites  CandidateJobSimpleTestInvite[]  @relation("CandidateSimpleTestInvites")
+  companySimpleTestInvites    CandidateJobSimpleTestInvite[]  @relation("CompanySimpleTestInvites")
+  candidateSimpleTestAttempts CandidateJobSimpleTestAttempt[] @relation("CandidateSimpleTestAttempts")
+  companyJobSimpleTests       JobSimpleTest[]                 @relation("CompanyJobSimpleTests")
+
+  // ===== Assessment Invite Relations =====
+  candidateAssessmentInvites  CandidateAssessmentInvite[]     @relation("CandidateAssessmentInvites")
+  companyAssessmentInvites    CandidateAssessmentInvite[]     @relation("CompanyAssessmentInvites")
 
 }
 
@@ -271,8 +284,9 @@ model Question {
   isLibraryQuestion Boolean @default(false)
   assessments AssessmentQuestion[]   //  NEW
   templateAssessments AssessmentTemplateQuestion[] //Ihssane Puted This
-
-
+  candidateAssessmentAnswers CandidateAssessmentAnswer[]
+  simpleTestQuestions JobSimpleTestQuestion[]
+  
   //  NEW (for pattern-generated questions)
   generatedFromPattern     Boolean @default(false)
   patternKey               String?  // "stackoverflow:123456"
@@ -388,6 +402,10 @@ model CompanyJob {
   interviewSchedules InterviewSchedule[] // Added relation without fields/references
 
   employerAssessments EmployerAssessment[] @relation("JobAssessments")
+  //simple test (1 per job)
+  simpleTest JobSimpleTest?
+  simpleTestInvites  CandidateJobSimpleTestInvite[]
+  simpleTestAttempts CandidateJobSimpleTestAttempt[]
 
   @@index([status])
   @@index([experience_level])
@@ -456,6 +474,12 @@ model JobApplication {
 
   applicationScores JobApplicationScoreHistory[]
   events            JobApplicationEventOutbox[]
+  // Simple test flow
+  simpleTestInvite  CandidateJobSimpleTestInvite?
+  simpleTestAttempts CandidateJobSimpleTestAttempt[] // one-to-many
+
+  // Employer assessment invite flow
+  assessmentInvites CandidateAssessmentInvite[]
 
   @@unique([candidate_id, job_id])
   @@index([candidate_id])
@@ -998,6 +1022,11 @@ enum NotificationType {
   ASSESSMENT_INVITE
   INTERVIEW_INVITE
   GENERIC
+  JOB_APPLICATION_RECEIVED          // company
+  JOB_APPLICATION_REJECTED          // candidate
+  SIMPLE_TEST_INVITE                // candidate
+  ASSESSMENT_INVITE_ACCEPTED        // company
+  ASSESSMENT_EXPIRED                // candidate
 }
 
 model Notification {
@@ -1907,6 +1936,8 @@ model EmployerAssessment {
   questions            AssessmentQuestion[]   // 👈 NEW
   template_id String?
   template    AssessmentTemplate? @relation("EmployerAssessmentTemplate", fields: [template_id], references: [template_id], onDelete: SetNull)
+  sessions CandidateAssessmentSession[]
+  invites CandidateAssessmentInvite[]
 
   @@index([company_id])
   @@index([job_id])
@@ -2611,3 +2642,333 @@ model CompanyActivityLog {
   @@index([created_at])
 }
 
+//Candidate Space Test enums + Models
+
+enum AssessmentSessionStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+  ABANDONED
+}
+
+enum CandidateAnswerState {
+  DRAFT
+  FINAL
+}
+
+enum TelemetryEventType {
+  SESSION_START
+  SESSION_RESUME
+  QUESTION_VIEW
+  NAVIGATE
+  ANSWER_CHANGED
+  FLAG_TOGGLE
+  CODE_RUN
+  CODE_SUBMIT
+  FOCUS_LOST
+  COPY_PASTE
+  TAB_SWITCH
+  FULLSCREEN_EXIT
+  NETWORK_ISSUE
+  AUTO_SUBMIT
+  SUBMIT
+}
+
+model CandidateAssessmentSession {
+  session_id     String                 @id @default(uuid())
+  assessment_id  String                 // EmployerAssessment.assessment_id
+  candidate_id   String                 // User.user_id
+
+  status         AssessmentSessionStatus @default(IN_PROGRESS)
+  submission_reason String?  // "USER_SUBMIT" | "AUTO_SUBMIT" | "TIME_EXPIRED"
+
+  // timing
+  started_at     DateTime               @default(now())
+  last_activity_at DateTime             @default(now())
+  submitted_at   DateTime?
+  expires_at     DateTime?              // started_at + time_limit (optional but useful)
+  time_limit_min Int?                   // snapshot from EmployerAssessment.time_limit
+
+  // navigation / UX state
+  current_index  Int                    @default(0)
+  flagged        String[]               @default([]) // question_id(s)
+  progress       Json?                  // optional: computed snapshot for fast resume
+
+  // scoring snapshot (Track D feed)
+  total_score    Float?
+  passed         Boolean?
+  result_summary Json?                  // radar/evidence summary prepared by worker
+
+  created_at     DateTime               @default(now())
+  updated_at     DateTime               @updatedAt
+
+  // relations
+  assessment     EmployerAssessment      @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  candidate      User                   @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  answers        CandidateAssessmentAnswer[]
+  telemetry      CandidateAssessmentTelemetryEvent[]
+  insight        CandidateAssessmentInsight?
+
+  @@unique([assessment_id, candidate_id], map: "uniq_candidate_session_per_assessment")
+  @@index([candidate_id, status])
+  @@index([assessment_id, status])
+  @@map("candidate_assessment_sessions")
+}
+
+model CandidateAssessmentAnswer {
+  answer_id     String              @id @default(uuid())
+  session_id    String
+  question_id   String              // Question.id
+
+  state         CandidateAnswerState @default(DRAFT)
+
+  // generic answer payload (MCQ/CODING)
+  answer        Json?               // { selectedOptionIds:[], code:"", language:"", ... }
+
+  // helpful metrics
+  time_spent_sec Int?               // aggregated time on question
+  attempts       Int                @default(0) // for coding runs
+  last_error     String?
+  last_saved_at  DateTime           @default(now())
+
+  // link to runner submissions (optional)
+  latest_submission_id String?      // CodeSubmission.submission_id (not enforced as FK to avoid tight coupling)
+
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+
+  session       CandidateAssessmentSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  question      Question                 @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([session_id, question_id], map: "uniq_answer_per_question_per_session")
+  @@index([session_id])
+  @@index([question_id])
+  @@map("candidate_assessment_answers")
+}
+
+model CandidateAssessmentTelemetryEvent {
+  event_id     String            @id @default(uuid())
+  session_id   String
+  candidate_id String
+
+  type         TelemetryEventType
+  payload      Json?             // metadata (questionId, duration, etc.)
+  created_at   DateTime          @default(now())
+
+  session      CandidateAssessmentSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  candidate    User                     @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([session_id, created_at])
+  @@index([candidate_id, created_at])
+  @@index([type])
+  @@map("candidate_assessment_telemetry")
+}
+
+model CandidateAssessmentInsight {
+  insight_id   String   @id @default(uuid())
+  session_id   String   @unique
+
+  // AI output
+  strengths        Json?
+  weaknesses       Json?
+  recommendations  Json?
+  risk_flags       Json?  // { level, reasons, evidenceQuestionIds:[] }
+
+  evidence_by_skill Json? // { "React":[{questionId, note}], "SQL":[...] }
+
+  // ✅ NEW: Gemini agent outputs (for company UI)
+  radar_ai   Json?   // [{ label, score, evidenceQuestionIds, note }]
+  kpis       Json?   // { overallScore, reliability, riskLevel, ... }
+  summary    String? // 2–4 lines recruiter-friendly
+
+  model_name   String?
+  model_version String?
+  confidence   Float?
+  generated_at DateTime @default(now())
+
+  session      CandidateAssessmentSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+
+  @@map("candidate_assessment_insights")
+}
+
+
+//Simple test models (1 test per job, many invites/attempts)
+enum SimpleTestInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum SimpleTestAttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+}
+
+enum SimpleTestQuestionKind {
+  MCQ
+  CODING
+}
+
+model JobSimpleTest {
+  test_id        String   @id @default(uuid())
+  job_id         String   @unique
+  company_id     String
+
+  title          String
+  description    String?
+  time_limit_min Int      @default(10)
+
+
+  // NEW: system-managed flags
+  is_system      Boolean  @default(true)
+  version        Int      @default(1)
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  job            CompanyJob @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  company        User       @relation("CompanyJobSimpleTests", fields: [company_id], references: [user_id], onDelete: Cascade)
+
+  questions      JobSimpleTestQuestion[]   // ✅ NEW
+  invites        CandidateJobSimpleTestInvite[]
+  attempts       CandidateJobSimpleTestAttempt[]
+
+  @@index([company_id])
+  @@map("job_simple_tests")
+}
+
+model JobSimpleTestQuestion {
+  id          String @id @default(uuid())
+  test_id     String
+  question_id String
+
+  kind        SimpleTestQuestionKind
+  order       Int?
+
+  test        JobSimpleTest @relation(fields: [test_id], references: [test_id], onDelete: Cascade)
+  question    Question      @relation(fields: [question_id], references: [id], onDelete: Restrict)
+
+  @@unique([test_id, question_id])
+  @@index([test_id])
+  @@index([question_id])
+  @@map("job_simple_test_questions")
+}
+
+
+model CandidateJobSimpleTestInvite {
+  invite_id      String @id @default(uuid())
+
+  test_id        String
+  job_id String
+  job    CompanyJob @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  application_id String @unique
+  candidate_id   String
+  company_id     String
+
+  status         SimpleTestInviteStatus @default(PENDING)
+  expires_at     DateTime
+  accepted_at    DateTime?
+  declined_at    DateTime?
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  test        JobSimpleTest @relation(fields: [test_id], references: [test_id], onDelete: Cascade)
+  application JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+  candidate User @relation("CandidateSimpleTestInvites", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  company   User @relation("CompanySimpleTestInvites", fields: [company_id], references: [user_id], onDelete: Cascade)
+
+  
+  attempts CandidateJobSimpleTestAttempt[]
+
+  @@unique([test_id, candidate_id], map: "uniq_simple_test_invite_per_candidate")
+  @@index([candidate_id, status])
+  @@index([company_id, status])
+  @@index([job_id])
+  @@map("candidate_job_simple_test_invites")
+}
+
+model CandidateJobSimpleTestAttempt {
+  attempt_id   String @id @default(uuid())
+
+  invite_id    String
+  test_id      String
+  candidate_id String
+  job_id       String
+  application_id String
+
+  attempt_no   Int @default(1)
+
+  status       SimpleTestAttemptStatus @default(NOT_STARTED)
+  started_at   DateTime?
+  submitted_at DateTime?
+  expires_at   DateTime?
+  answers      Json?
+  score        Float?
+  result_summary Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  invite      CandidateJobSimpleTestInvite @relation(fields: [invite_id], references: [invite_id], onDelete: Cascade)
+  test        JobSimpleTest @relation(fields: [test_id], references: [test_id], onDelete: Cascade)
+  candidate   User @relation("CandidateSimpleTestAttempts", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  job         CompanyJob @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  application JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+
+  @@unique([application_id, attempt_no], map: "uniq_attempt_no_per_application")
+  @@index([candidate_id, status])
+  @@index([test_id, status])
+  @@index([job_id])
+  @@index([invite_id])
+  @@index([application_id])
+
+  @@map("candidate_job_simple_test_attempts")
+}
+
+
+//Assessment invite model (deadline + accept flow)
+enum CandidateAssessmentInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model CandidateAssessmentInvite {
+  invite_id      String @id @default(uuid())
+
+  application_id String
+  assessment_id  String
+  job_id         String
+  company_id     String
+  candidate_id   String
+
+  status         CandidateAssessmentInviteStatus @default(PENDING)
+  expires_at     DateTime
+  accepted_at    DateTime?
+  declined_at    DateTime?
+
+  session_id     String?
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  application JobApplication     @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+  assessment  EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  candidate   User               @relation("CandidateAssessmentInvites", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+  company     User               @relation("CompanyAssessmentInvites", fields: [company_id], references: [user_id], onDelete: Cascade)
+
+  // ✅ Autorise plusieurs assessments pour la même application,
+  //    mais empêche le doublon "même assessment" sur la même application
+  @@unique([application_id, assessment_id], map: "uniq_invite_per_application_assessment")
+
+  @@index([candidate_id, status])
+  @@index([company_id, status])
+  @@index([application_id])
+  @@map("candidate_assessment_invites")
+}

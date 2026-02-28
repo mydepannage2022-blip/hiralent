@@ -41,7 +41,7 @@ type JobStatus =
   | "Cancelled"
   | "Archived";
 
-type JobType = "full_time" | "part_time" | "contract" | "internship";
+type JobType = "full_time" | "part_time" | "contract" | "internship"| "freelance";
 
 interface CompanyJob {
   job_id: string;
@@ -166,6 +166,8 @@ function typeChipStyle(t?: JobType | null) {
     case "contract":
       return "text-[#005edc]";
     case "internship":
+      return "text-[#005edc]";
+    case "freelance":
       return "text-[#005edc]";
     default:
       return "text-[#005edc]";
@@ -509,6 +511,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                   <option value="part_time">Part Time</option>
                   <option value="contract">Contract</option>
                   <option value="internship">Internship</option>
+                  <option value="freelance">Freelance</option>
                 </select>
               </div>
 
@@ -1168,6 +1171,7 @@ const JobsManagement: React.FC = () => {
                 <option value="part_time">Part Time</option>
                 <option value="contract">Contract</option>
                 <option value="internship">Internship</option>
+                <option value="freelance">Freelance</option>
               </select>
             </div>
 

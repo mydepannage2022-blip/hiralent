@@ -2,10 +2,16 @@
 
 import React, { useMemo, useState } from "react";
 import { Briefcase, Sparkles, Filter } from "lucide-react";
+
 import JobList from "@/src/components/candidate/dashboard/jobs/JobList";
 import JobFilters from "@/src/components/candidate/dashboard/jobs/JobFilters";
-import { useCandidateJobsList, useCandidateRecommendedJobs } from "@/src/lib/candidate/jobs.queries";
-import { useMyApplicationsList } from "@/src/lib/candidate/applications.queries"; // ✅ NEW
+
+import {
+  useCandidateJobsList,
+  useCandidateRecommendedJobs,
+} from "@/src/lib/candidate/jobs.queries";
+
+import { useMyApplicationsList } from "@/src/lib/candidate/applications.queries";
 import type { JobListQuery } from "../../../../src/types/candidate.jobs.types";
 
 type SortOrder = "latest" | "oldest";
@@ -23,10 +29,14 @@ export default function JobsPage() {
   const [query, setQuery] = useState<JobListQuery>({ page: 1, limit: 6 });
   const [recQuery, setRecQuery] = useState<JobListQuery>({ page: 1, limit: 6 });
 
-  const recommendedQ = useCandidateRecommendedJobs(recQuery, { enabled: activeTab === "recommended" });
-  const allQ = useCandidateJobsList(query, { enabled: activeTab === "all" });
+  const recommendedQ = useCandidateRecommendedJobs(recQuery, {
+    enabled: activeTab === "recommended",
+  });
+  const allQ = useCandidateJobsList(query, {
+    enabled: activeTab === "all",
+  });
 
-  const myAppsQ = useMyApplicationsList(true); // ✅ NEW (fetch my applications)
+  const myAppsQ = useMyApplicationsList(true);
 
   const appliedJobIds = useMemo(() => {
     const s = new Set<string>();
@@ -34,7 +44,7 @@ export default function JobsPage() {
       if (app.job?.job_id) s.add(app.job.job_id);
     }
     return s;
-  }, [myAppsQ.data?.items]); // ✅ NEW
+  }, [myAppsQ.data?.items]);
 
   const isLoading = activeTab === "recommended" ? recommendedQ.isLoading : allQ.isLoading;
   const error = activeTab === "recommended" ? recommendedQ.error : allQ.error;
@@ -43,7 +53,6 @@ export default function JobsPage() {
   const setCurrentQuery = activeTab === "recommended" ? setRecQuery : setQuery;
 
   const sortOrder: SortOrder = ((currentQuery as any)?.sort ?? "latest") as SortOrder;
-
   const MIN_SCORE = 60;
 
   const items = useMemo(() => {
@@ -78,7 +87,9 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* ✅ Keep page padding */}
       <div className="px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tabs */}
         <div className="bg-white rounded-lg border border-gray-200 mb-6">
           <div className="flex items-center">
             <button
@@ -113,11 +124,20 @@ export default function JobsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* ✅ Main layout: fixed height + right column scroll */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:h-[calc(100vh-220px)]">
+          {/* ✅ Desktop filters (sticky) */}
           <div className="hidden lg:block">
-            <JobFilters query={currentQuery} onChange={setCurrentQuery as any} onClear={clearFilters} />
+            <div className="sticky top-6">
+              <JobFilters
+                query={currentQuery}
+                onChange={setCurrentQuery as any}
+                onClear={clearFilters}
+              />
+            </div>
           </div>
 
+          {/* Mobile filters button + drawer */}
           <div className="lg:hidden mb-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -132,7 +152,10 @@ export default function JobsPage() {
                 <div className="bg-white h-full overflow-y-auto p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold">Filters</h2>
-                    <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-gray-700">
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
                       ✕
                     </button>
                   </div>
@@ -153,23 +176,27 @@ export default function JobsPage() {
             )}
           </div>
 
-          <div className="lg:col-span-3">
-            {pageData && !isLoading && (
-              <div className="mb-4 text-sm text-gray-600">
-                Showing {items.length} of {pageData.total} jobs
-              </div>
-            )}
+          {/* ✅ Jobs column: scrollable */}
+          <div className="lg:col-span-3 lg:overflow-y-auto lg:pr-2">
+            {/* Header inside scrolling area stays on top of the scroll container */}
+            <div className="mb-4 text-sm text-gray-600">
+              {pageData && !isLoading ? (
+                <>Showing {items.length} of {pageData.total} jobs</>
+              ) : (
+                <span />
+              )}
+            </div>
 
             <JobList
               items={items}
               isLoading={isLoading}
               showMatchScore={activeTab === "recommended"}
               eligibilityMode={activeTab === "recommended" ? "fetch" : "useItem"}
-              appliedJobIds={appliedJobIds} // ✅ NEW
+              appliedJobIds={appliedJobIds}
             />
 
             {pageData && pageData.total > (pageState.limit ?? 6) && (
-              <div className="mt-8 flex items-center justify-center gap-2">
+              <div className="mt-8 flex items-center justify-center gap-2 pb-8">
                 <button
                   onClick={() => setPage(Math.max(1, (pageState.page ?? 1) - 1))}
                   disabled={(pageState.page ?? 1) === 1}
@@ -178,7 +205,9 @@ export default function JobsPage() {
                   Previous
                 </button>
 
-                <span className="px-4 py-2 text-sm text-gray-700">Page {pageState.page ?? 1}</span>
+                <span className="px-4 py-2 text-sm text-gray-700">
+                  Page {pageState.page ?? 1}
+                </span>
 
                 <button
                   onClick={() => setPage((pageState.page ?? 1) + 1)}

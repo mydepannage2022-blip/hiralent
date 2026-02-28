@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const defaultMenu = [
     { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
     { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-
+    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
     // ✅ your existing sections
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const postJobMenu = [
     { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
     { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-
+    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
     // ✅ also include here so they appear while on /postjob
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
