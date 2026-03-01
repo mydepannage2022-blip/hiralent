@@ -2,17 +2,23 @@
 import { Request, Response } from "express";
 import { getAssessmentSkillRadar } from "../../services/company/skillRadar.service";
 
-// We rely on the global augmentation of Request.user done in session.types.ts
-// so we don't create a new interface here.
+const asSingleString = (v: unknown): string | null => {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return typeof v[0] === "string" ? v[0] : null;
+  return null;
+};
 
 export const getAssessmentSkillRadarHandler = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { assessmentId } = req.params;
+    const assessmentId = asSingleString((req as any).params?.assessmentId);
 
-    // req.user is added by your checkAuth / authenticate middleware
+    if (!assessmentId) {
+      return res.status(400).json({ message: "Missing assessmentId" });
+    }
+
     const authUser = (req as any).user as
       | { user_id: string; role: string; session_id?: string }
       | undefined;

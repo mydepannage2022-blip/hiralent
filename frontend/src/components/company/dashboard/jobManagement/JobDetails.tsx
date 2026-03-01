@@ -47,7 +47,7 @@ type JobStatus =
   | "CANCELLED"
   | "ARCHIVED";
 
-type JobType = "full_time" | "part_time" | "contract" | "internship";
+type JobType = "full_time" | "part_time" | "contract" | "internship"| "freelance";
 
 interface CompanyJob {
   job_id: string;
@@ -136,6 +136,8 @@ function jobTypePillClass(t?: JobType | null) {
     case "contract":
       return "text-[#005edc]";
     case "internship":
+      return "text-[#005edc]";
+    case "freelance":
       return "text-[#005edc]";
     default:
       return "text-[#005edc]";
@@ -586,6 +588,231 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 />
               </div>
             </div>
+{/* ✅ ADD THIS BLOCK inside <form ...> (ex: after Location/Department) */}
+
+{/* =============================
+   Status + Core job settings
+============================= */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* ✅ MOST IMPORTANT: STATUS */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Job Status *</label>
+    <select
+      value={formData.status}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, status: e.target.value as JobStatus }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required
+    >
+      {(["DRAFT", "ACTIVE", "PAUSED", "CLOSED", "CANCELLED", "ARCHIVED"] as JobStatus[]).map(
+        (s) => (
+          <option key={s} value={s}>
+            {formatEnumNice(s)}
+          </option>
+        )
+      )}
+    </select>
+    <p className="text-[12px] text-gray-500 mt-1">
+      This status will be saved and reflected immediately in job management.
+    </p>
+  </div>
+
+  {/* Job Type */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Job Type</label>
+    <select
+      value={formData.job_type}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, job_type: e.target.value as JobType }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      {(
+        ["full_time", "part_time", "contract", "internship", "freelance"] as JobType[]
+      ).map((t) => (
+        <option key={t} value={t}>
+          {formatEnumNice(t)}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* Salary */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Salary Range</label>
+    <input
+      type="text"
+      value={formData.salary_range}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, salary_range: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="e.g., 12k–18k MAD / month"
+    />
+  </div>
+
+  {/* Deadline */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Application Deadline</label>
+    <input
+      type="date"
+      value={formData.application_deadline}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, application_deadline: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* Experience */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Experience Level</label>
+    <input
+      type="text"
+      value={formData.experience_level}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, experience_level: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="e.g., Junior / Mid / Senior"
+    />
+  </div>
+
+  {/* Education */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Education Level</label>
+    <input
+      type="text"
+      value={formData.education_level}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, education_level: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="e.g., Bachelor's / Master's"
+    />
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* Remote option */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Remote Option</label>
+    <select
+      value={formData.remote_option}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, remote_option: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      <option value="">—</option>
+      <option value="ONSITE">Onsite</option>
+      <option value="HYBRID">Hybrid</option>
+      <option value="REMOTE">Remote</option>
+    </select>
+  </div>
+
+  {/* Urgency */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Urgency Level</label>
+    <select
+      value={formData.urgency_level}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, urgency_level: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      <option value="">—</option>
+      <option value="LOW">Low</option>
+      <option value="MEDIUM">Medium</option>
+      <option value="HIGH">High</option>
+      <option value="URGENT">Urgent</option>
+    </select>
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* Max applications */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Max Applications</label>
+    <input
+      type="number"
+      min={0}
+      value={formData.max_applications}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, max_applications: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="e.g., 200"
+    />
+  </div>
+
+  {/* Auto reject after */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Auto Reject After (days)</label>
+    <input
+      type="number"
+      min={0}
+      value={formData.auto_reject_after}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, auto_reject_after: e.target.value }))
+      }
+      className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="e.g., 14"
+    />
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {/* Visa sponsorship */}
+  <div className="rounded-sm border border-gray-200 p-4 bg-white">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-sm font-semibold text-gray-900">Visa Sponsored</div>
+        <div className="text-xs text-gray-500 mt-0.5">
+          Indicate if visa sponsorship is available.
+        </div>
+      </div>
+      <input
+        type="checkbox"
+        checked={formData.visa_sponsored}
+        onChange={(e) =>
+          setFormData((prev) => ({ ...prev, visa_sponsored: e.target.checked }))
+        }
+        className="mt-1 h-5 w-5 accent-blue-600"
+      />
+    </div>
+  </div>
+
+  {/* Relocation */}
+  <div className="rounded-sm border border-gray-200 p-4 bg-white">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-sm font-semibold text-gray-900">Relocation Assistance</div>
+        <div className="text-xs text-gray-500 mt-0.5">
+          Offer relocation support for candidates.
+        </div>
+      </div>
+      <input
+        type="checkbox"
+        checked={formData.relocation_assistance}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            relocation_assistance: e.target.checked,
+          }))
+        }
+        className="mt-1 h-5 w-5 accent-blue-600"
+      />
+    </div>
+  </div>
+</div>
+
+{/* ✅ END BLOCK */}
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">

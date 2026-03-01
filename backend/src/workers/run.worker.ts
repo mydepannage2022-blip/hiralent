@@ -15,7 +15,20 @@ const prisma = new PrismaClient();
 let processed = 0;
 let failed = 0;
 
-async function processOne(job: { submissionId: string; assessmentId: string; questionId: string; language: string }) {
+type RunJob = {
+  submissionId: string;
+  assessmentId: string;
+  questionId: string;
+  language: string;
+
+  // ✅ NEW (coming from simpleTest.runCoding enqueueRun)
+  attemptId?: string;
+  suite?: any[];
+  loadedTestsCount?: number;
+  firstExpected?: string;
+};
+
+async function processOne(job: RunJob) {
   const s = await (prisma as any).codeSubmission.findUnique({ where: { submission_id: job.submissionId } });
   if (!s) return;
 
@@ -26,7 +39,17 @@ async function processOne(job: { submissionId: string; assessmentId: string; que
   // perform run + grading
   const endTimer = runDuration.startTimer();
   try {
-    const res = await run_submission_and_grade({ submissionId: job.submissionId, questionId: job.questionId, language: job.language, code: s.code, userId: s.candidate_id });
+    const res = await run_submission_and_grade({
+  submissionId: job.submissionId,
+  questionId: job.questionId,
+  language: job.language,
+  code: s.code,
+  userId: s.candidate_id,
+
+  // ✅ NEW
+  suite: Array.isArray(job.suite) ? job.suite : undefined,
+});
+
     // validate runner & plagiarism shapes and attach warnings if any
     const validationWarnings: any[] = [];
     try {

@@ -55,19 +55,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     { name: 'My Cases', icon: FolderKanban, href: '/candidate/dashboard/cases' },
     { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
     { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
-    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
-    // { name: 'Notifications', icon: Bell, href: '/candidate/dashboard/notifications' },
     // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
     // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
-    // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
-    { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
-    { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
-    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
     { name: "AI Interviews", icon: Video, href: "/candidate/dashboard/interviews" },
+    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
 
   ];
 

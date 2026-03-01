@@ -23,10 +23,6 @@ const SecurityAccount = dynamic(() => import("@/src/components/candidate/dashboa
 });
 
 const SettingsAccount = dynamic(() => import("@/src/components/candidate/dashboard/settings/SettingsAccount"), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-xl mb-2"></div>
-});
-
-const SettingsFullname = dynamic(() => import("@/src/components/candidate/dashboard/settings/SettingsFullname"), {
   loading: () => <div className="animate-pulse bg-gray-200 h-24 rounded-xl mb-2"></div>
 });
 

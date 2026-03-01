@@ -1,13 +1,12 @@
 import {
   PrismaClient,
+  Prisma,
   JobApplicationStatus,
   JobApplicationEventType,
   NotificationAudience,
   NotificationType,
   JobApplicationEventStatus,
 } from "@prisma/client";
-
-import { NotificationService } from "../notification.service";
 
 type TriggerValue = "INTERVIEW_REQUIRED" | "ASSESSMENT_REQUIRED" | "NO_TRIGGER";
 
@@ -19,9 +18,11 @@ const triggerFromScore = (score: number): TriggerValue => {
 
 const safeSkillsArray = (raw: unknown): string[] => {
   if (Array.isArray(raw)) return raw.map((x) => String(x)).filter(Boolean);
+
   if (typeof raw === "string") {
     const s = raw.trim();
     if (!s) return [];
+
     if (s.startsWith("[") || s.startsWith("{")) {
       try {
         const parsed = JSON.parse(s);
@@ -31,17 +32,18 @@ const safeSkillsArray = (raw: unknown): string[] => {
         return [];
       }
     }
-    return s.split(",").map((x) => x.trim()).filter(Boolean);
+
+    return s
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
   }
+
   return [];
 };
 
 export class JobApplicationService {
-  private notifications: NotificationService;
-
-  constructor(private prisma: PrismaClient) {
-    this.notifications = new NotificationService(prisma);
-  }
+  constructor(private prisma: PrismaClient) {}
 
   /**
    * Apply to a job (A4)
@@ -60,6 +62,7 @@ export class JobApplicationService {
         where: { job_id: jobId },
         select: {
           job_id: true,
+          company_id: true, // ✅ needed for company notification
           title: true,
           status: true,
           required_skills: true,
@@ -100,7 +103,7 @@ export class JobApplicationService {
       throw err;
     }
 
-    // required_fields check (read-only)
+    // required_fields check
     const requiredFields = job.required_fields ?? [];
     const missingFields: string[] = [];
 
@@ -150,12 +153,12 @@ export class JobApplicationService {
     const computedTrigger: TriggerValue =
       (rec?.trigger as TriggerValue) ?? (eligible ? triggerFromScore(matchScore) : "NO_TRIGGER");
 
-    // scale: 0..100 (you are using 80/60 thresholds)
+    // scale: 0..100
     const relevanceScore = matchScore;
     const vectorScore = rec?.vector_score ?? null;
 
     // 5) Transaction: create application + history + outbox events + mark recommendation applied + notify
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // prevent duplicate apply (unique candidate_id+job_id)
       const existing = await tx.jobApplication.findUnique({
         where: { candidate_id_job_id: { candidate_id: candidateId, job_id: jobId } },
@@ -189,7 +192,7 @@ export class JobApplicationService {
         select: { application_id: true, status: true },
       });
 
-      // A6: in-app notification (application confirmation)
+      // A6: Candidate notification
       await tx.notification.create({
         data: {
           audience: NotificationAudience.CANDIDATE,
@@ -199,6 +202,20 @@ export class JobApplicationService {
           message: `Your application for "${job.title}" has been submitted.`,
           action_url: "/candidate/dashboard/applications",
           data: { jobId, applicationId: app.application_id },
+          sent_via: "in_app",
+        },
+      });
+
+      // A6: Company notification (new applicant)
+      await tx.notification.create({
+        data: {
+          audience: NotificationAudience.COMPANY,
+          recipient_id: job.company_id,
+          type: NotificationType.JOB_APPLICATION_RECEIVED,
+          title: "New applicant received 📩",
+          message: `A new candidate applied to "${job.title}".`,
+          action_url: `/company/dashboard/jobs/${job.job_id}/applicants`,
+          data: { applicationId: app.application_id, jobId: job.job_id, candidateId },
           sent_via: "in_app",
         },
       });
@@ -218,12 +235,8 @@ export class JobApplicationService {
         },
       });
 
-      // outbox events (A4) — SAFE idempotent upsert by dedupe_key
-      const upsertOutbox = async (
-        dedupeKey: string,
-        type: JobApplicationEventType,
-        payload: any,
-      ) => {
+      // outbox events (A4) — idempotent upsert by dedupe_key
+      const upsertOutbox = async (dedupeKey: string, type: JobApplicationEventType, payload: any) => {
         return tx.jobApplicationEventOutbox.upsert({
           where: { dedupe_key: dedupeKey },
           update: {
@@ -248,17 +261,15 @@ export class JobApplicationService {
       });
 
       if (computedTrigger === "INTERVIEW_REQUIRED") {
-        await upsertOutbox(
-          `INTERVIEW_REQUIRED:${app.application_id}`,
-          JobApplicationEventType.INTERVIEW_REQUIRED,
-          { trigger: computedTrigger, match_score: matchScore },
-        );
+        await upsertOutbox(`INTERVIEW_REQUIRED:${app.application_id}`, JobApplicationEventType.INTERVIEW_REQUIRED, {
+          trigger: computedTrigger,
+          match_score: matchScore,
+        });
       } else if (computedTrigger === "ASSESSMENT_REQUIRED") {
-        await upsertOutbox(
-          `ASSESSMENT_REQUIRED:${app.application_id}`,
-          JobApplicationEventType.ASSESSMENT_REQUIRED,
-          { trigger: computedTrigger, match_score: matchScore },
-        );
+        await upsertOutbox(`ASSESSMENT_REQUIRED:${app.application_id}`, JobApplicationEventType.ASSESSMENT_REQUIRED, {
+          trigger: computedTrigger,
+          match_score: matchScore,
+        });
       }
 
       // mark recommendation as applied (optional)
@@ -269,7 +280,7 @@ export class JobApplicationService {
         });
       }
 
-      // update global score (simple v1)
+      // update global score
       await this.recomputeCandidateGlobalScoreTx(tx, candidateId, "apply");
 
       return { ok: true, ...app, trigger: computedTrigger };
@@ -277,10 +288,7 @@ export class JobApplicationService {
   }
 
   /**
-   * =========================
-   * READ
-   * GET /candidate/applications
-   * =========================
+   * READ: GET /candidate/applications
    */
   async listApplications(args: { candidateId: string }) {
     const { candidateId } = args;
@@ -315,10 +323,7 @@ export class JobApplicationService {
   }
 
   /**
-   * =========================
-   * READ
-   * GET /candidate/applications/:id/timeline
-   * =========================
+   * READ: GET /candidate/applications/:id/timeline
    */
   async getTimeline(args: { candidateId: string; applicationId: string }) {
     const { candidateId, applicationId } = args;
@@ -351,15 +356,12 @@ export class JobApplicationService {
       select: {
         history_id: true,
         created_at: true,
-
         relevance_score: true,
         vector_score: true,
         trigger: true,
-
         reason_codes: true,
         missing_skills: true,
         breakdown: true,
-
         source: true,
         created_by: true,
       },
@@ -377,8 +379,6 @@ export class JobApplicationService {
 
   /**
    * A5: recompute candidate global score (simple version)
-   * - average relevance_score of applications
-   * - stores CandidateGlobalScore + history
    */
   async recomputeCandidateGlobalScore(args: { candidateId: string; reason?: string }) {
     const { candidateId, reason } = args;
@@ -387,15 +387,19 @@ export class JobApplicationService {
     );
   }
 
-  private async recomputeCandidateGlobalScoreTx(tx: any, candidateId: string, reason: string) {
+  private async recomputeCandidateGlobalScoreTx(
+    tx: Prisma.TransactionClient,
+    candidateId: string,
+    reason: string,
+  ) {
     const apps = await tx.jobApplication.findMany({
       where: { candidate_id: candidateId },
       select: { relevance_score: true, status: true },
     });
 
     const scores = apps
-      .map((a: any) => a.relevance_score)
-      .filter((v: any) => typeof v === "number") as number[];
+      .map((a) => a.relevance_score)
+      .filter((v): v is number => typeof v === "number");
 
     const avg = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
 

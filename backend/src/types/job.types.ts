@@ -3,7 +3,7 @@ import type { Request } from 'express';
 import type { AuthUser } from '../types/express';
 import type { ParamsDictionary } from 'express-serve-static-core';
 
-export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship';
+export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship'| "Freelance";
 export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive';
 export type EducationLevel = 'high_school' | 'bachelor' | 'master' | 'phd';
 export type RemoteOption = 'fully_remote' | 'hybrid' | 'office_only';
