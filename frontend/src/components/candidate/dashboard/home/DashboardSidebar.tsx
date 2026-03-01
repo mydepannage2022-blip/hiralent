@@ -57,7 +57,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
     { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
     // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
-    // { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
+    { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
     { name: "AI Interviews", icon: Video, href: "/candidate/dashboard/interviews" },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
 
