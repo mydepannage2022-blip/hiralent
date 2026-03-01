@@ -6,6 +6,15 @@ export interface Document {
   created_at: string;
 }
 
+export interface IntegrationService {
+  service_id: string;
+  case_id: string;
+  service_type: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Case {
   case_id: string;
   case_number: string;
@@ -33,6 +42,10 @@ export interface Case {
     phone_number: string | null;
   };
   documents?: Document[];
+
+  // Integration fields (included by backend for integration agencies)
+  integration_agency_id?: string;
+  integrationServices?: IntegrationService[];
 
   // Housing fields (flattened by backend for housing agencies)
   housing_type?: string;

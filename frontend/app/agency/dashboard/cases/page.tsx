@@ -570,9 +570,22 @@ export default function CasesPage() {
                           Status
                         </label>
                         <div className="relative">
+                          {(() => {
+                            const isCompletedIntegrationCase =
+                              isIntegrationView &&
+                              toStatusKey(getDisplayStatus(editedCase)) === "completed";
+                            const isCompletedHousingCase =
+                              isHousingView &&
+                              toStatusKey(getDisplayStatus(editedCase)) === "completed";
+                            const statusDisabled =
+                              editedCase.completedForAgency === true ||
+                              isCompletedIntegrationCase ||
+                              isCompletedHousingCase;
+
+                            return (
                           <select
                             value={getDisplayStatus(editedCase)}
-                            disabled={editedCase.completedForAgency === true}
+                            disabled={statusDisabled}
                             onChange={(e) =>
                               setEditedCase({
                                 ...editedCase,
@@ -580,7 +593,7 @@ export default function CasesPage() {
                               })
                             }
                             className={`h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 ${
-                              editedCase.completedForAgency === true
+                              statusDisabled
                                 ? "cursor-not-allowed bg-slate-100 text-slate-500"
                                 : ""
                             }`}
@@ -593,6 +606,8 @@ export default function CasesPage() {
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                            );
+                          })()}
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                             <svg
                               className="h-5 w-5 text-slate-400"
@@ -615,6 +630,22 @@ export default function CasesPage() {
                             Visa phase is completed (embassy approved). Status updates are disabled for this case.
                           </p>
                         )}
+
+                        {editedCase.completedForAgency !== true &&
+                          isIntegrationView &&
+                          toStatusKey(getDisplayStatus(editedCase)) === "completed" && (
+                            <p className="mt-2 text-xs text-slate-500">
+                              This integration case is completed. Status updates are disabled.
+                            </p>
+                          )}
+
+                        {editedCase.completedForAgency !== true &&
+                          isHousingView &&
+                          toStatusKey(getDisplayStatus(editedCase)) === "completed" && (
+                            <p className="mt-2 text-xs text-slate-500">
+                              This housing case is completed. Status updates are disabled.
+                            </p>
+                          )}
                       </div>
 
                       <div>

@@ -123,7 +123,14 @@ export default function AgencyCaseDetailPage() {
   }
 
   if (viewingAgencyType === "INTEGRATION") {
-    return <IntegrationCaseDetail caseData={caseData} />;
+    return (
+      <IntegrationCaseDetail
+        caseData={caseData}
+        caseId={caseId}
+        token={token}
+        onRefresh={fetchCase}
+      />
+    );
   }
 
   return (

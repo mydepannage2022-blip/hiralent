@@ -262,6 +262,22 @@ export const getCaseByIdForAgency = async (params: {
       embassy_submission: true,
       agency: { select: { agency_id: true, name: true, type: true } },
       housing_details: true,
+      ...(agencyType === "INTEGRATION"
+        ? {
+            integrationAgency: {
+              select: {
+                agency_id: true,
+                name: true,
+                email: true,
+                phone: true,
+                type: true,
+              },
+            },
+            integrationServices: {
+              orderBy: { created_at: "asc" },
+            },
+          }
+        : {}),
     },
   });
 

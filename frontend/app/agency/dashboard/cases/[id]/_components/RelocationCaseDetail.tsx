@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -58,6 +58,16 @@ export default function RelocationCaseDetail({
   const getDisplayStatus = (c: Pick<Case, "status" | "statusForAgency">) =>
     c.statusForAgency ?? c.status;
 
+  const displayStatus = useMemo(() => getDisplayStatus(caseData), [caseData]);
+  const alreadyMarkedFromStatus = useMemo(() => {
+    return (
+      displayStatus === "ready_for_arrival" ||
+      displayStatus === "integration_assigned" ||
+      displayStatus === "integration_in_progress" ||
+      displayStatus === "completed"
+    );
+  }, [displayStatus]);
+
   const [housingData, setHousingData] = useState({
     housing_type: "",
     housing_address: "",
@@ -85,7 +95,9 @@ export default function RelocationCaseDetail({
   const [savingUtilities, setSavingUtilities] = useState(false);
   const [savingArrival, setSavingArrival] = useState(false);
   const [markingReadyForArrival, setMarkingReadyForArrival] = useState(false);
-  const [markedReadyForArrival, setMarkedReadyForArrival] = useState(false);
+  const [markedReadyForArrival, setMarkedReadyForArrival] = useState(
+    alreadyMarkedFromStatus
+  );
 
   useEffect(() => {
     setHousingData({
@@ -117,11 +129,8 @@ export default function RelocationCaseDetail({
       arrival_notes: caseData.arrival_notes || "",
     });
 
-    const status = getDisplayStatus(caseData);
-    setMarkedReadyForArrival(
-      status === "ready_for_arrival" || status === "completed"
-    );
-  }, [caseData]);
+    setMarkedReadyForArrival(alreadyMarkedFromStatus);
+  }, [caseData, alreadyMarkedFromStatus]);
 
   const handleSaveHousing = async () => {
     try {
@@ -337,6 +346,7 @@ export default function RelocationCaseDetail({
 
   const relocationProgress = calculateRelocationProgress();
   const canMarkReady = isReadyForArrival();
+  const isMarkedReady = alreadyMarkedFromStatus || markedReadyForArrival;
 
   return (
     <div className="w-full">
@@ -370,7 +380,7 @@ export default function RelocationCaseDetail({
                   </p>
                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                    {getDisplayStatus(caseData).replace(/_/g, " ")}
+                    {displayStatus.replace(/_/g, " ")}
                   </span>
                 </div>
               </div>
@@ -400,48 +410,48 @@ export default function RelocationCaseDetail({
 
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-500">Name</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {caseData.candidate.full_name}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-500">Email</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {caseData.candidate.email}
-                  </p>
-                </div>
-              </div>
-              {caseData.candidate.phone_number && (
                 <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-slate-400" />
+                  <User className="w-5 h-5 text-slate-400" />
                   <div>
-                    <p className="text-sm text-slate-500">Phone</p>
+                    <p className="text-sm text-slate-500">Name</p>
                     <p className="text-sm font-medium text-slate-700">
-                      {caseData.candidate.phone_number}
+                      {caseData.candidate.full_name}
                     </p>
                   </div>
                 </div>
-              )}
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-500">Destination</p>
-                  <p className="text-sm font-medium text-slate-700">
-                    {caseData.destination_country}
-                    {caseData.destination_city
-                      ? `, ${caseData.destination_city}`
-                      : ""}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-500">Email</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.candidate.email}
+                    </p>
+                  </div>
+                </div>
+                {caseData.candidate.phone_number && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-slate-400" />
+                    <div>
+                      <p className="text-sm text-slate-500">Phone</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        {caseData.candidate.phone_number}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm text-slate-500">Destination</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {caseData.destination_country}
+                      {caseData.destination_city
+                        ? `, ${caseData.destination_city}`
+                        : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
 
@@ -866,10 +876,10 @@ export default function RelocationCaseDetail({
             </div>
 
             <div className="p-6 space-y-3">
-              {canMarkReady ? (
+              {canMarkReady || isMarkedReady ? (
                 <Button
                   onClick={async () => {
-                    if (markedReadyForArrival || markingReadyForArrival) return;
+                    if (isMarkedReady || markingReadyForArrival) return;
                     try {
                       setMarkingReadyForArrival(true);
                       const response = await fetch(
@@ -898,11 +908,11 @@ export default function RelocationCaseDetail({
                   }}
                   variant="soft"
                   className="w-full"
-                  disabled={markingReadyForArrival || markedReadyForArrival}
+                  disabled={markingReadyForArrival || isMarkedReady}
                 >
                   {markingReadyForArrival
                     ? "Marking..."
-                    : markedReadyForArrival
+                    : isMarkedReady
                       ? "Already marked for arrival"
                       : "Mark Ready for Arrival"}
                 </Button>

@@ -454,13 +454,37 @@ export default function CaseDetailPage() {
   const showHousingTab =
     visaApproved || housingAgencyAssigned || Boolean(caseData?.housing_address);
 
+  const caseStatus = (caseData?.status || "").toLowerCase();
+
   const showIntegrationTab =
-    caseData?.status === "ready_for_arrival" ||
-    caseData?.status === "integration_assigned" ||
-    caseData?.status === "integration_in_progress" ||
-    caseData?.status === "integration_complete" ||
-    caseData?.status === "fully_integrated" ||
+    caseStatus === "ready_for_arrival" ||
+    caseStatus === "integration_assigned" ||
+    caseStatus === "integration_in_progress" ||
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed" ||
     Boolean(caseData?.integration_agency_id);
+
+  const housingTabComplete =
+    caseStatus === "ready_for_arrival" ||
+    caseStatus === "integration_assigned" ||
+    caseStatus === "integration_in_progress" ||
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed";
+
+  const integrationServicesComplete =
+    Array.isArray(caseData?.integrationServices) &&
+    caseData.integrationServices.length > 0 &&
+    caseData.integrationServices.every(
+      (service) => (service.status || "").toLowerCase() === "completed"
+    );
+
+  const integrationTabComplete =
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed" ||
+    integrationServicesComplete;
 
   if (loading) {
     return (
@@ -568,11 +592,7 @@ export default function CaseDetailPage() {
               }`}
             >
               Housing
-              {(caseData.status === "ready_for_arrival" ||
-                caseData.status === "integration_assigned" ||
-                caseData.status === "integration_in_progress" ||
-                caseData.status === "integration_complete" ||
-                caseData.status === "fully_integrated") && (
+              {housingTabComplete && (
                 <CheckCircle className="w-4 h-4 text-green-600" />
               )}
             </button>
@@ -589,8 +609,7 @@ export default function CaseDetailPage() {
               }`}
             >
               Integration
-              {(caseData.status === "integration_complete" ||
-                caseData.status === "fully_integrated") && (
+              {integrationTabComplete && (
                 <CheckCircle className="w-4 h-4 text-green-600" />
               )}
             </button>
@@ -980,15 +999,32 @@ function OverviewTabContent({
   formatDate: (date: string) => string;
   getStatusColor: (status: string) => string;
 }) {
+  const caseStatus = (caseData.status || "").toLowerCase();
+
   const visaComplete =
     caseData.embassy_submission?.status?.toLowerCase() === "approved" ||
-    caseData.status?.toLowerCase() === "embassy_approved";
+    caseStatus === "embassy_approved";
+
   const housingComplete =
-    caseData.status === "ready_for_arrival" ||
-    caseData.status === "integration_assigned" ||
-    caseData.status === "integration_in_progress" ||
-    caseData.status === "integration_complete" ||
-    caseData.status === "fully_integrated";
+    caseStatus === "ready_for_arrival" ||
+    caseStatus === "integration_assigned" ||
+    caseStatus === "integration_in_progress" ||
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed";
+
+  const integrationServicesComplete =
+    Array.isArray(caseData.integrationServices) &&
+    caseData.integrationServices.length > 0 &&
+    caseData.integrationServices.every(
+      (service) => (service.status || "").toLowerCase() === "completed"
+    );
+
+  const integrationComplete =
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed" ||
+    integrationServicesComplete;
 
   // Replace the housingInProgress check with:
   const housingInProgress =
@@ -997,11 +1033,12 @@ function OverviewTabContent({
     Boolean(caseData.housing_address);
 
   const showIntegrationTab =
-    caseData.status === "ready_for_arrival" ||
-    caseData.status === "integration_assigned" ||
-    caseData.status === "integration_in_progress" ||
-    caseData.status === "integration_complete" ||
-    caseData.status === "fully_integrated" ||
+    caseStatus === "ready_for_arrival" ||
+    caseStatus === "integration_assigned" ||
+    caseStatus === "integration_in_progress" ||
+    caseStatus === "integration_complete" ||
+    caseStatus === "fully_integrated" ||
+    caseStatus === "completed" ||
     Boolean(caseData.integration_agency_id);
 
   return (
@@ -1155,8 +1192,7 @@ function OverviewTabContent({
             {showIntegrationTab && (
               <div
                 className={`flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-white p-4 border-l-4 ${
-                  caseData.status === "integration_complete" ||
-                  caseData.status === "fully_integrated"
+                  integrationComplete
                     ? "border-l-blue-500"
                     : caseData.integration_agency_id
                     ? "border-l-amber-500"
@@ -1164,8 +1200,7 @@ function OverviewTabContent({
                 }`}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
-                  {caseData.status === "integration_complete" ||
-                  caseData.status === "fully_integrated" ? (
+                  {integrationComplete ? (
                     <CheckCircle className="h-6 w-6 text-green-600" />
                   ) : caseData.integration_agency_id ? (
                     <Clock className="h-6 w-6 text-amber-600" />
@@ -1177,14 +1212,20 @@ function OverviewTabContent({
                   <p className="text-sm font-semibold text-slate-900">
                     Integration Services
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {caseData.status === "integration_complete" ||
-                    caseData.status === "fully_integrated"
-                      ? "All set - Fully integrated and settled"
-                      : caseData.integration_agency_id
-                      ? "Integration services in progress"
-                      : "Waiting for housing completion"}
-                  </p>
+                  {(() => {
+                    const subtitle =
+                      integrationComplete
+                        ? "All set - Fully integrated and settled"
+                        : caseData.integration_agency_id
+                        ? "Integration services in progress"
+                        : caseStatus === "ready_for_arrival"
+                        ? "Choose an integration agency to get started"
+                        : null;
+
+                    return subtitle ? (
+                      <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             )}
@@ -1263,16 +1304,14 @@ function OverviewTabContent({
                 </span>
                 <span
                   className={`text-sm font-bold ${
-                    caseData.status === "integration_complete" ||
-                    caseData.status === "fully_integrated"
+                    integrationComplete
                       ? "text-green-600"
                       : caseData.integration_agency_id
                       ? "text-yellow-600"
                       : "text-slate-400"
                   }`}
                 >
-                  {caseData.status === "integration_complete" ||
-                  caseData.status === "fully_integrated"
+                  {integrationComplete
                     ? "Complete"
                     : caseData.integration_agency_id
                     ? "In Progress"

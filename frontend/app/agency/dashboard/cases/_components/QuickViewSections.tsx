@@ -5,6 +5,18 @@ import { FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/src/components/agency/ui/button";
 import type { AgencyType, Case, Document, UpdateEditedCase } from "./types";
 
+const formatIntegrationServiceType = (serviceType: string) => {
+  const map: Record<string, string> = {
+    healthcare: "Healthcare",
+    banking: "Banking",
+    tax_id: "Tax ID",
+    telecom: "Telecom",
+    transport: "Transport",
+    integration_program: "Integration program",
+  };
+  return map[serviceType] ?? serviceType.replace(/_/g, " ");
+};
+
 function VisaQuickViewIntro({
   selectedCase,
   onOpenCase,
@@ -131,6 +143,91 @@ function RelocationQuickViewIntro({
   );
 }
 
+function IntegrationQuickViewIntro({
+  selectedCase,
+  onOpenCase,
+}: {
+  selectedCase: Case;
+  onOpenCase: () => void;
+}) {
+  const services = selectedCase.integrationServices ?? [];
+  const totalSteps = services.length;
+  const completedSteps = services.filter(
+    (service) => (service.status ?? "pending").toLowerCase() === "completed"
+  ).length;
+
+  return (
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">
+            Integration checklist
+          </h4>
+          <p className="mt-1 text-sm text-slate-600">
+            {completedSteps} of {totalSteps} steps.
+          </p>
+        </div>
+        <Button
+          onClick={onOpenCase}
+          variant="outline"
+          size="md"
+          className="hover:border-blue-200/70 hover:bg-blue-50"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open case
+        </Button>
+      </div>
+
+      <div className="mt-4">
+        {services.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            {services.slice(0, 3).map((service) => {
+              const status = (service.status ?? "pending").toLowerCase();
+              const badgeClassName =
+                status === "completed"
+                  ? "border-emerald-200/70 bg-emerald-50 text-emerald-800"
+                  : status === "in_progress"
+                    ? "border-amber-200/70 bg-amber-50 text-amber-800"
+                    : "border-slate-200 bg-slate-50 text-slate-600";
+
+              return (
+                <div
+                  key={service.service_id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                >
+                  <p className="truncate text-sm font-medium text-slate-900">
+                    {formatIntegrationServiceType(service.service_type)}
+                  </p>
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClassName}`}
+                  >
+                    {status
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (m) => m.toUpperCase())}
+                  </span>
+                </div>
+              );
+            })}
+            {services.length > 3 && (
+              <p className="pt-1 text-center text-xs text-slate-500">
+                +{services.length - 3} more services
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+            <FileText className="mx-auto mb-2 h-10 w-10 text-slate-300" />
+            <p className="text-sm text-slate-600">No checklist yet</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Open the case to create the default checklist.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function VisaQuickViewAfterLocation({
   editedCase,
   updateEditedCase,
@@ -192,6 +289,9 @@ export function AgencyQuickViewIntroSections({
   if (agencyType === "VISA") return <VisaQuickViewIntro selectedCase={selectedCase} onOpenCase={onOpenCase} />;
   if (agencyType === "RELOCATION") {
     return <RelocationQuickViewIntro selectedCase={selectedCase} onOpenCase={onOpenCase} />;
+  }
+  if (agencyType === "INTEGRATION") {
+    return <IntegrationQuickViewIntro selectedCase={selectedCase} onOpenCase={onOpenCase} />;
   }
   return null;
 }

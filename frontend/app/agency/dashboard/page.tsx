@@ -779,15 +779,15 @@ export default function AgencyDashboard() {
             </div>
 
             {activities.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-linear-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-10 h-10 text-slate-400" />
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                  <AlertCircle className="h-7 w-7 text-slate-400" />
                 </div>
-                <p className="text-lg font-semibold text-slate-700 mb-2">
+                <p className="text-base font-semibold text-slate-900">
                   No recent activity
                 </p>
-                <p className="text-sm text-slate-500">
-                  Activity will appear once you start managing cases.
+                <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
+                  Activity will appear here once you start managing cases.
                 </p>
               </div>
             ) : (

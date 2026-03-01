@@ -6,21 +6,13 @@ import toast from "react-hot-toast";
 import { Button } from "@/src/components/agency/ui/button";
 import {
   Briefcase,
-  FileText,
   RefreshCw,
   AlertCircle,
-  Building2,
   Search,
-  Eye,
   ExternalLink,
   MapPin,
-  Calendar,
-  Clock,
-  Mail,
-  Phone,
-  X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface Agency {
   agency_id: string;
@@ -56,7 +48,7 @@ interface Case {
 type FilterTab = "all" | "active" | "completed";
 
 export default function CasesPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const [cases, setCases] = useState<Case[]>([]);
   const [filteredCases, setFilteredCases] = useState<Case[]>([]);
@@ -64,8 +56,6 @@ export default function CasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const toStatusKey = (status?: string) =>
     (status ?? "").toLowerCase().trim().replace(/[\s-]+/g, "_");
@@ -133,30 +123,6 @@ export default function CasesPage() {
     setFilteredCases(filtered);
   }, [activeTab, cases, searchQuery]);
 
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, { bg: string; text: string; label: string }> =
-      {
-        initiated: { bg: "bg-blue-100", text: "text-blue-700", label: "Initiated" },
-        in_progress: { bg: "bg-yellow-100", text: "text-yellow-700", label: "In Progress" },
-        pending_documents: { bg: "bg-orange-100", text: "text-orange-700", label: "Pending Docs" },
-        completed: { bg: "bg-green-100", text: "text-green-700", label: "Completed" },
-        cancelled: { bg: "bg-red-100", text: "text-red-700", label: "Cancelled" },
-      };
-
-    const key = toStatusKey(status);
-    return badges[key] || badges.initiated;
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const badges: Record<string, { bg: string; text: string }> = {
-      low: { bg: "bg-slate-100", text: "text-slate-700" },
-      medium: { bg: "bg-blue-100", text: "text-blue-700" },
-      high: { bg: "bg-orange-100", text: "text-orange-700" },
-      urgent: { bg: "bg-red-100", text: "text-red-700" },
-    };
-    return badges[toStatusKey(priority)] || badges.medium;
-  };
-
   const counts = useMemo(
     () => ({
       all: cases.length,
@@ -168,11 +134,6 @@ export default function CasesPage() {
     }),
     [cases]
   );
-
-  const handleOpenModal = (caseItem: Case) => {
-    setSelectedCase(caseItem);
-    setShowDetailModal(true);
-  };
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {
@@ -305,8 +266,9 @@ export default function CasesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5">
           {filteredCases.map((caseItem, index) => {
-            const statusBadge = getStatusBadge(caseItem.status);
-            const priorityBadge = getPriorityBadge(caseItem.priority_level);
+            const candidateName = user?.full_name || "—";
+            const routeLabel = `${caseItem.origin_country} → ${caseItem.destination_country}`;
+            const routeSubLabel = caseItem.destination_city || "—";
 
             return (
               <motion.div
@@ -316,98 +278,47 @@ export default function CasesPage() {
                 transition={{ delay: index * 0.05 }}
                 className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
               >
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold text-slate-900">
-                          {caseItem.case_number}
-                        </h3>
-                        <span
-                          className={`inline-flex items-center rounded-full border border-slate-200/70 px-2.5 py-1 text-xs font-semibold ${statusBadge.bg} ${statusBadge.text}`}
-                        >
-                          {statusBadge.label}
-                        </span>
-                        <span
-                          className={`inline-flex items-center rounded-full border border-slate-200/70 px-2.5 py-1 text-xs font-semibold ${priorityBadge.bg} ${priorityBadge.text}`}
-                        >
-                          {caseItem.priority_level.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {caseItem.service_type.replace(/_/g, " ")}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs font-medium text-slate-500">Case</p>
+                      <p className="text-xs font-semibold text-slate-800">
+                        {caseItem.case_number}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleOpenModal(caseItem)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50"
-                        title="Quick View"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <Button
-                        onClick={() =>
-                          router.push(
-                            `/candidate/dashboard/cases/${caseItem.case_id}`
-                          )
-                        }
-                        variant="soft"
-                        size="md"
-                        className="gap-2"
-                        title="View Details"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Open
-                      </Button>
+                    <h3 className="mt-2 truncate text-base font-semibold text-slate-900">
+                      {candidateName}
+                    </h3>
+
+                    <div className="mt-2 flex min-w-0 items-start gap-2">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900">
+                          {routeLabel}
+                        </p>
+                        <p className="truncate text-xs text-slate-600">
+                          {routeSubLabel}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">Agency</p>
-                      <p className="truncate text-sm font-medium text-slate-900">
-                        {caseItem.agency?.name || "—"}
-                      </p>
-                      <p className="truncate text-xs text-slate-600">
-                        {caseItem.agency?.email || "—"}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">Route</p>
-                      <p className="truncate text-sm font-medium text-slate-900">
-                        {caseItem.origin_country} → {caseItem.destination_country}
-                      </p>
-                      <p className="truncate text-xs text-slate-600">
-                        {caseItem.destination_city || "—"}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">
-                        Est. completion
-                      </p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {caseItem.estimated_completion
-                          ? formatDate(caseItem.estimated_completion)
-                          : "Not set"}
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        Created {formatDate(caseItem.created_at)}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">
-                        Documents
-                      </p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {caseItem.documents.length}
-                      </p>
-                      <p className="text-xs text-slate-600">Uploaded</p>
-                    </div>
+                  <div className="shrink-0">
+                    <Button
+                      onClick={() =>
+                        router.push(
+                          `/candidate/dashboard/cases/${caseItem.case_id}`
+                        )
+                      }
+                      variant="soft"
+                      size="md"
+                      className="gap-2"
+                      title="View Details"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -415,200 +326,6 @@ export default function CasesPage() {
           })}
         </div>
       )}
-
-      <AnimatePresence>
-        {showDetailModal && selectedCase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl"
-            >
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {selectedCase.case_number}
-                    </h3>
-                    {(() => {
-                      const badge = getStatusBadge(selectedCase.status);
-                      return (
-                        <span
-                          className={`inline-flex items-center rounded-full border border-slate-200/70 px-2.5 py-1 text-xs font-semibold ${badge.bg} ${badge.text}`}
-                        >
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
-                    {(() => {
-                      const priority = getPriorityBadge(
-                        selectedCase.priority_level
-                      );
-                      return (
-                        <span
-                          className={`inline-flex items-center rounded-full border border-slate-200/70 px-2.5 py-1 text-xs font-semibold ${priority.bg} ${priority.text}`}
-                        >
-                          {selectedCase.priority_level.toUpperCase()}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {selectedCase.service_type.replace(/_/g, " ")}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-                  title="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="max-h-[calc(90vh-110px)] overflow-y-auto bg-slate-50/40 px-6 py-6">
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      <Building2 className="h-4 w-4 text-blue-600" />
-                      Agency
-                    </h4>
-
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Name</p>
-                        <p className="mt-1 text-sm font-medium text-slate-900">
-                          {selectedCase.agency?.name || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Contact</p>
-                        <div className="mt-1 space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-slate-700">
-                            <Mail className="h-4 w-4 text-slate-400" />
-                            <span className="truncate">
-                              {selectedCase.agency?.email || "—"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-700">
-                            <Phone className="h-4 w-4 text-slate-400" />
-                            <span className="truncate">
-                              {selectedCase.agency?.phone || "—"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      <MapPin className="h-4 w-4 text-blue-600" />
-                      Route & timeline
-                    </h4>
-
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Origin</p>
-                        <p className="mt-1 text-sm font-medium text-slate-900">
-                          {selectedCase.origin_country}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Destination</p>
-                        <p className="mt-1 text-sm font-medium text-slate-900">
-                          {selectedCase.destination_country}
-                        </p>
-                        <p className="text-xs text-slate-600">
-                          {selectedCase.destination_city || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Created</p>
-                        <p className="mt-1 text-sm font-medium text-slate-900">
-                          {formatDate(selectedCase.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                        <FileText className="h-4 w-4 text-blue-600" />
-                        Documents
-                        <span className="text-slate-500">
-                          ({selectedCase.documents?.length || 0})
-                        </span>
-                      </h4>
-                      <Button
-                        onClick={() =>
-                          router.push(
-                            `/candidate/dashboard/cases/${selectedCase.case_id}`
-                          )
-                        }
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        View details
-                      </Button>
-                    </div>
-
-                    <div className="mt-4">
-                      {selectedCase.documents && selectedCase.documents.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedCase.documents.slice(0, 3).map((doc) => (
-                            <div
-                              key={doc.document_id}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-slate-900">
-                                  {doc.file_name}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {doc.document_type.replace(/_/g, " ")}
-                                </p>
-                              </div>
-                              <span
-                                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
-                                  doc.status === "approved"
-                                    ? "border-green-200 bg-green-50 text-green-700"
-                                    : doc.status === "rejected"
-                                    ? "border-red-200 bg-red-50 text-red-700"
-                                    : doc.status === "needs_revision"
-                                    ? "border-orange-200 bg-orange-50 text-orange-700"
-                                    : "border-yellow-200 bg-yellow-50 text-yellow-700"
-                                }`}
-                              >
-                                {doc.status.replace(/_/g, " ")}
-                              </span>
-                            </div>
-                          ))}
-                          {selectedCase.documents.length > 3 && (
-                            <p className="pt-2 text-center text-xs text-slate-500">
-                              +{selectedCase.documents.length - 3} more documents
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-                          <FileText className="mx-auto mb-2 h-10 w-10 text-slate-300" />
-                          <p className="text-sm text-slate-600">
-                            No documents uploaded yet
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

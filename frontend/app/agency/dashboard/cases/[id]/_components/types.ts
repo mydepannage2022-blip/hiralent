@@ -57,6 +57,18 @@ export interface EmbassySubmission {
   decision_notes?: string;
 }
 
+export interface IntegrationService {
+  service_id: string;
+  case_id: string;
+  service_type: string;
+  status: string;
+  service_date?: string | null;
+  proof_document?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Case {
   case_id: string;
   case_number: string;
@@ -83,6 +95,17 @@ export interface Case {
     type: AgencyType;
   };
   viewing_agency_type?: AgencyType | null;
+
+  // Integration fields
+  integration_agency_id?: string | null;
+  integrationAgency?: {
+    agency_id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    type: AgencyType;
+  } | null;
+  integrationServices?: IntegrationService[];
 
   // RELOCATION fields
   housing_type?: string;
