@@ -69,28 +69,32 @@ export const useLogin = () => {
         console.log('Profile data set in context:', data.profile);
       }
 
+      // Priority 1: callbackUrl query param (set by search page / profile page guard)
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/')) {
+        router.push(callbackUrl);
+        return;
+      }
+
+      // Priority 2: stored redirect path (legacy mechanism — note: localStorage.clear()
+      // above already wiped this, so it will always be null; kept for safety)
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
-        console.log('Redirecting to stored path:', redirectPath);
         router.push(redirectPath);
-      } else {
-        // YEH BHI LOG KARO
-        console.log('No stored redirect, checking role:', data.user.role);
+        return;
+      }
 
-        if (data.user.role === 'candidate') {
-          console.log('Redirecting to candidate dashboard');
-          router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company_admin') {
-          console.log('Redirecting to company dashboard');
-          router.push('/company/dashboard');
-        } else if (data.user.role === 'agency_admin') {
-          console.log('Redirecting to agency dashboard');
-          router.push('/agency/dashboard');
-        } else {
-          console.log('Unknown role, redirecting to home');
-          router.push('/');
-        }
+      // Fallback: role-based dashboard redirect
+      if (data.user.role === 'candidate') {
+        router.push('/candidate/dashboard');
+      } else if (data.user.role === 'company_admin') {
+        router.push('/company/dashboard');
+      } else if (data.user.role === 'agency_admin') {
+        router.push('/agency/dashboard');
+      } else {
+        router.push('/');
       }
     },
     onError: (error: any) => {

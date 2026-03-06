@@ -120,6 +120,11 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
+// Public candidate search — must be mounted BEFORE jobRoutes because
+// job.routes.ts has a global router.use(checkAuth) that rejects all
+// unauthenticated requests to any /api/v1/* path.
+app.use("/api/v1/search", searchRoutes);
+
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", assessmentTemplateRoutes);
@@ -147,9 +152,6 @@ app.use("/api/v1", companyInternalCandidatesRoutes);
 // Notifications
 app.use("/api/v1", candidateNotificationsRoutes);
 app.use("/api/v1", companyNotificationsRoutes);
-
-// Public candidate search (Hero search)
-app.use("/api/v1/search", searchRoutes);
 
 //candidate cv
 // Serve uploaded files statically

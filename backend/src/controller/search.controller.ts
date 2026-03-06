@@ -16,7 +16,8 @@ export const searchCandidatesPublicController = async (
       Math.max(1, parseInt(req.query.limit as string, 10) || 12)
     );
 
-    const data = await searchCandidates({ q, location, page, limit });
+    const isAuthenticated = !!(req as any).user;
+    const data = await searchCandidates({ q, location, page, limit, isAuthenticated });
 
     res.status(200).json({ success: true, data });
   } catch (error) {

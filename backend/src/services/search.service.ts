@@ -4,13 +4,16 @@ const prisma = new PrismaClient();
 
 export interface CandidateSearchResult {
   candidate_id: string;
-  full_name: string;
+  /** null for unauthenticated (guest) responses */
+  full_name: string | null;
   headline: string | null;
   city: string | null;
   location: string | null;
   profile_picture_url: string | null;
+  /** Guests receive at most 5 skills; authenticated users receive all */
   skills: string[];
   match_score: number;
+  /** Guests receive at most 120 chars; authenticated users receive full text */
   about_me: string | null;
 }
 
@@ -26,6 +29,8 @@ export interface SearchParams {
   location?: string;
   page?: number;
   limit?: number;
+  /** When false (guest), field-level privacy is applied to results */
+  isAuthenticated?: boolean;
 }
 
 // Raw row type returned by PostgreSQL
@@ -147,8 +152,9 @@ const COMPLETENESS_EXPR = `
 export const searchCandidates = async (
   params: SearchParams
 ): Promise<CandidateSearchResponse> => {
-  const page  = Math.max(1, params.page  ?? 1);
-  const limit = Math.min(20, Math.max(1, params.limit ?? 12));
+  const page            = Math.max(1, params.page  ?? 1);
+  const limit           = Math.min(20, Math.max(1, params.limit ?? 12));
+  const isAuthenticated = params.isAuthenticated ?? false;
   const skip  = (page - 1) * limit;
   const q        = params.q?.trim()        ?? "";
   const location = params.location?.trim() ?? "";
@@ -227,17 +233,43 @@ export const searchCandidates = async (
     skip      // $4
   );
 
-  const results: CandidateSearchResult[] = rows.map((row) => ({
-    candidate_id:        row.candidate_id,
-    full_name:           row.full_name,
-    headline:            row.headline            ?? null,
-    city:                row.city                ?? null,
-    location:            row.location            ?? null,
-    profile_picture_url: row.profile_picture_url ?? null,
-    skills:              Array.isArray(row.skills) ? row.skills : [],
-    about_me:            row.about_me            ?? null,
-    match_score:         Number(row.match_score  ?? 0),
-  }));
+  const GUEST_SKILLS_LIMIT  = 5;
+  const GUEST_ABOUT_LIMIT   = 120;
+
+  const results: CandidateSearchResult[] = rows.map((row) => {
+    const allSkills = Array.isArray(row.skills) ? row.skills : [];
+
+    if (isAuthenticated) {
+      // Full data for signed-in users
+      return {
+        candidate_id:        row.candidate_id,
+        full_name:           row.full_name,
+        headline:            row.headline            ?? null,
+        city:                row.city                ?? null,
+        location:            row.location            ?? null,
+        profile_picture_url: row.profile_picture_url ?? null,
+        skills:              allSkills,
+        about_me:            row.about_me            ?? null,
+        match_score:         Number(row.match_score  ?? 0),
+      };
+    }
+
+    // Guest — limited preview fields only
+    const aboutRaw = row.about_me ?? null;
+    return {
+      candidate_id:        row.candidate_id,
+      full_name:           null,                                        // hidden from guests
+      headline:            row.headline            ?? null,
+      city:                row.city                ?? null,
+      location:            row.location            ?? null,
+      profile_picture_url: row.profile_picture_url ?? null,
+      skills:              allSkills.slice(0, GUEST_SKILLS_LIMIT),     // top 5 only
+      about_me:            aboutRaw                                     // truncated in-place
+                             ? aboutRaw.slice(0, GUEST_ABOUT_LIMIT)
+                             : null,
+      match_score:         Number(row.match_score  ?? 0),
+    };
+  });
 
   const totalPages = Math.ceil(total / limit);
 

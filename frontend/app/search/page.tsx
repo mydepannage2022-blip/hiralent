@@ -208,7 +208,7 @@ function FreelancerCard({ f, index, blurred, onCardClick }: { f: FreelancerCardD
                     fontWeight: 700,
                     fontSize: 18,
                   }}>
-                    {f.name[0]}
+                    {f.name[0] ?? "?"}
                   </div>
                 )}
               </div>
@@ -831,7 +831,8 @@ export default function SearchResultsPage() {
     if (isAuthenticated) {
       router.push(`/candidate/public-profile/${candidateId}`);
     } else {
-      router.push('/auth/login');
+      const callbackUrl = encodeURIComponent(`/candidate/public-profile/${candidateId}`);
+      router.push(`/auth/login?callbackUrl=${callbackUrl}`);
     }
   };
 
@@ -853,7 +854,7 @@ export default function SearchResultsPage() {
 
   const freelancers: FreelancerCardData[] = results.map((r) => ({
     id:           r.candidate_id,
-    name:         r.full_name,
+    name:         r.full_name ?? "Candidate",  // null for guests → show placeholder
     title:        r.headline ?? "Candidate",
     location:     r.location ?? r.city ?? "Remote",
     skills:       r.skills,
@@ -868,9 +869,12 @@ export default function SearchResultsPage() {
     rate:         0,
   }));
 
-  // Start countdown after data loads
+  // Authenticated users are never gated — gate only anonymous visitors
+  const shouldGate = gated && !isAuthenticated;
+
+  // Start countdown after data loads (skip entirely for authenticated users)
   useEffect(() => {
-    if (!loading && !started) {
+    if (!loading && !started && !isAuthenticated) {
       const t = setTimeout(() => {
         setStarted(true);
         timer.current = setInterval(() => {
@@ -913,7 +917,7 @@ export default function SearchResultsPage() {
       }}>
         {/* Progress bar */}
         <div style={{ height: 2, background: H.grayLt, overflow: "hidden" }}>
-          {started && !gated && (
+          {started && !shouldGate && (
             <motion.div
               style={{ height: "100%", background: H.gradient }}
               animate={{ width: `${(timeLeft / TEASER) * 100}%` }}
@@ -1014,7 +1018,7 @@ export default function SearchResultsPage() {
 
             {/* Countdown */}
             <AnimatePresence>
-              {started && !gated && (
+              {started && !shouldGate && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }} 
                   animate={{ opacity: 1, scale: 1 }} 
@@ -1174,7 +1178,7 @@ export default function SearchResultsPage() {
                   </div>
                 ) : (
                   freelancers.map((f, i) => (
-                    <FreelancerCard key={f.id} f={f} index={i} blurred={gated} onCardClick={handleCardClick} />
+                    <FreelancerCard key={f.id} f={f} index={i} blurred={shouldGate} onCardClick={handleCardClick} />
                   ))
                 )}
               </motion.div>
@@ -1182,7 +1186,7 @@ export default function SearchResultsPage() {
           </AnimatePresence>
 
           {/* Ghost rows for preview effect */}
-          {!loading && !gated && freelancers.length > 0 && (
+          {!loading && !shouldGate && freelancers.length > 0 && (
             <div 
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               style={{ gap: 16, marginTop: 16, filter: "blur(8px)", opacity: 0.15, pointerEvents: "none" }}
@@ -1200,7 +1204,7 @@ export default function SearchResultsPage() {
 
           {/* Gate overlay */}
           <AnimatePresence>
-            {gated && <GateOverlay query={query} count={total} />}
+            {shouldGate && <GateOverlay query={query} count={total} />}
           </AnimatePresence>
         </div>
       </div>

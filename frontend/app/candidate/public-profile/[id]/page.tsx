@@ -108,7 +108,8 @@ export default function PublicProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (!token) {
-      router.replace('/auth/login');
+      const callbackUrl = encodeURIComponent(window.location.pathname);
+      router.replace(`/auth/login?callbackUrl=${callbackUrl}`);
       return;
     }
     setAuthorized(true);
@@ -202,7 +203,13 @@ export default function PublicProfilePage() {
      AFTER hooks: render states
   ----------------------------- */
 
-  if (!authorized) return null;
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#EFF5FF]">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
