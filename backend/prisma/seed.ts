@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { seedCandidates } from './seeds/candidates.seed';
+import { seedJobs } from './seeds/jobs.seed';
 
 const prisma = new PrismaClient();
 
@@ -49,6 +50,7 @@ async function main() {
 
   await seedBadges();
   await seedCandidates();
+  await seedJobs();
 }
 //seedBadges
 async function seedBadges() {

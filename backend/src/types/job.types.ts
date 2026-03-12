@@ -3,7 +3,7 @@ import type { Request } from 'express';
 import type { AuthUser } from '../types/express';
 import type { ParamsDictionary } from 'express-serve-static-core';
 
-export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship';
+export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship'| "Freelance";
 export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive';
 export type EducationLevel = 'high_school' | 'bachelor' | 'master' | 'phd';
 export type RemoteOption = 'fully_remote' | 'hybrid' | 'office_only';
@@ -113,7 +113,8 @@ export type ReqWithUser<
 export const Roles = {
   CANDIDATE: 'candidate',
   COMPANY_ADMIN: 'company_admin',
-  RECRUITER: 'recruiter', // recruiter is treated as internal/company user
+  COMPANY_MEMBER: 'company_member',
+  RECRUITER: 'recruiter',
   ADMIN: 'admin',
   SUPERADMIN: 'superadmin',
 } as const;
@@ -126,6 +127,7 @@ export const isAdminLike = (u?: AuthUser) =>
 // Company users = company admin + recruiter + platform admins
 export const isCompanyUser = (u?: AuthUser) =>
   u?.role === Roles.COMPANY_ADMIN ||
+  u?.role === Roles.COMPANY_MEMBER ||
   u?.role === Roles.RECRUITER ||
   isAdminLike(u);
 

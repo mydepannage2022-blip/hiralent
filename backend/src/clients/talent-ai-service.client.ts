@@ -8,15 +8,12 @@ class TalentAIServiceClient {
   private client: AxiosInstance;
 
   constructor() {
-    const baseURL =
-      process.env.TALENT_AI_BASE_URL || "http://localhost:8003";
+    const baseURL = process.env.TALENT_AI_BASE_URL || "http://localhost:8003";
 
     this.client = axios.create({
       baseURL,
       timeout: 20_000,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -71,7 +68,4 @@ class TalentAIServiceClient {
   }
 }
 
-/**
- * Export singleton (1 instance pour tout le backend)
- */
 export const talentAIServiceClient = new TalentAIServiceClient();

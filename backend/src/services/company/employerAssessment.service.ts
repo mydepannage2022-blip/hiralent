@@ -852,6 +852,7 @@ export async function listEmployerAssessments(
   filters?: { status?: PrismaEmployerAssessmentStatus; job_id?: string },
 ): Promise<EmployerAssessment[]> {
   await assertCompanyExists(company_id);
+
   const list = await prisma.employerAssessment.findMany({
     where: {
       company_id,
@@ -859,9 +860,46 @@ export async function listEmployerAssessments(
       job_id: filters?.job_id,
     },
     orderBy: { created_at: 'desc' },
-    include: { job: true, _count: { select: { candidateAssessments: true } } },
+    include: {
+      job: true,
+      _count: { select: { candidateAssessments: true } },
+      // ✅ fetch sessions to compute the 3 counts
+      sessions: {
+        select: {
+          status: true,
+          total_score: true,
+        },
+      },
+    },
   });
-  return list.map(mapPrismaAssessment);
+
+  return list.map((a) => {
+    const sessions = (a as any).sessions ?? [];
+
+    // Total = any session exists (invited + started)
+    const candidate_count = sessions.length;
+
+    // Completed = submitted (done, regardless of score)
+    const completed_count = sessions.filter(
+      (s: any) => s.status === 'SUBMITTED'
+    ).length;
+
+    // To Evaluate = submitted BUT score not yet computed
+    // (HackerRank style: needs review by company or scoring worker)
+    const to_evaluate_count = sessions.filter(
+      (s: any) =>
+        s.status === 'SUBMITTED' &&
+        (s.total_score === null || s.total_score === undefined)
+    ).length;
+
+    const mapped = mapPrismaAssessment(a);
+    return {
+      ...mapped,
+      candidate_count,
+      completed_count,
+      to_evaluate_count,
+    };
+  });
 }
 
 export async function updateEmployerAssessment(
@@ -979,52 +1017,3 @@ export const EmployerAssessmentService = {
 };
 
 export default EmployerAssessmentService;
-
-// Waffa mock
-// export async function finalizeAssessment(req: Request, res: Response) {
-//   try {
-//     const assessmentId = req.params.id;
-
-//     const assessment = await prisma.employerAssessment.findUnique({
-//       where: { assessment_id: assessmentId },
-//     });
-
-//     if (!assessment) {
-//       return res.status(404).json({ message: "Assessment not found" });
-//     }
-
-//     // ------ derive config for Wafaa (mock) ------
-//     const skills = assessment.extracted_skills ?? [];
-//     const difficulty =
-//       (assessment.difficulty?.toLowerCase() as string) || "medium"; // depend on your enum
-//     const totalQuestions = assessment.total_questions || 10;
-
-//     // call question generator (mock Wafaa)
-//     const questions = await generateQuestionsForAssessment({
-//       skills,
-//       difficulty,
-//       totalQuestions,
-//     });
-
-//     const questionIds = questions.map((q) => q.id);
-
-//     // update EmployerAssessment with question_ids and status
-//     const updated = await prisma.employerAssessment.update({
-//       where: { assessment_id: assessmentId },
-//       data: {
-//         question_ids: questionIds,
-//         status: "ACTIVE",          // or whatever status you use
-//         auto_generated: true,
-//       },
-//     });
-
-//     return res.json({
-//       message: "Assessment finalized with mock questions",
-//       assessment: updated,
-//       questions,
-//     });
-//   } catch (err) {
-//     console.error("Error finalizing assessment:", err);
-//     return res.status(500).json({ message: "Internal server error" });
-//   }
-// }

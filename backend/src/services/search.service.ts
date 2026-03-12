@@ -275,3 +275,158 @@ export const searchCandidates = async (
 
   return { results, total, page, totalPages };
 };
+
+/* ═══════════════════════════════════════════════════════
+   JOB SEARCH
+═══════════════════════════════════════════════════════ */
+
+export interface JobSearchResult {
+  job_id: string;
+  title: string;
+  location: string;
+  description: string;
+  salary_range: string | null;
+  required_skills: string[];
+  job_type: string | null;
+  experience_level: string | null;
+  remote_option: string | null;
+  department: string | null;
+  created_at: string;
+  company_name: string | null;
+  logo_url: string | null;
+}
+
+export interface JobSearchResponse {
+  results: JobSearchResult[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface JobSearchParams extends SearchParams {
+  /** e.g. "full_time" | "part_time" | "contract" | "internship" */
+  jobType?: string;
+  /** when true, only fully_remote jobs */
+  remote?: boolean;
+}
+
+interface RawJobRow {
+  job_id: string;
+  title: string;
+  location: string;
+  description: string;
+  salary_range: string | null;
+  required_skills: string[] | null;
+  job_type: string | null;
+  experience_level: string | null;
+  remote_option: string | null;
+  department: string | null;
+  created_at: Date;
+  company_name: string | null;
+  logo_url: string | null;
+}
+
+interface RawJobCountRow {
+  total: bigint;
+}
+
+export const searchJobs = async (
+  params: JobSearchParams
+): Promise<JobSearchResponse> => {
+  const page     = Math.max(1, params.page  ?? 1);
+  const limit    = Math.min(20, Math.max(1, params.limit ?? 12));
+  const skip     = (page - 1) * limit;
+  const q        = params.q?.trim()        ?? "";
+  const location = params.location?.trim() ?? "";
+  const jobType  = params.jobType?.trim()  ?? "";
+  const remote   = params.remote           ?? false;
+
+  const keywordWhere = `
+    (
+      $1 = ''
+      OR lower(j.title)                          LIKE lower('%' || $1 || '%')
+      OR lower(j.description)                    LIKE lower('%' || $1 || '%')
+      OR lower(coalesce(j.department, ''))        LIKE lower('%' || $1 || '%')
+      OR lower(coalesce(j.job_type, ''))          LIKE lower('%' || $1 || '%')
+      OR lower(coalesce(j.experience_level, ''))  LIKE lower('%' || $1 || '%')
+      OR EXISTS (
+        SELECT 1 FROM unnest(j.required_skills) AS sk
+        WHERE lower(sk) LIKE lower('%' || $1 || '%')
+      )
+    )
+  `;
+
+  // Parameters: $1=q  $2=location  $3=jobType  $4=remote
+  // Count/search use these same 4; search appends $5=limit $6=skip
+  const locationWhere = `($2 = '' OR lower(j.location) LIKE lower('%' || $2 || '%'))`;
+  const jobTypeWhere  = `($3 = '' OR lower(j.job_type) = lower($3))`;
+  const remoteWhere   = `($4 = false OR j.remote_option = 'fully_remote')`;
+
+  const baseWhere = `
+    j.status = 'ACTIVE'
+    AND ${keywordWhere}
+    AND ${locationWhere}
+    AND ${jobTypeWhere}
+    AND ${remoteWhere}
+  `;
+
+  const countSql = `
+    SELECT COUNT(*)::bigint AS total
+    FROM   "CompanyJob" j
+    WHERE  ${baseWhere}
+  `;
+
+  const countRows = await prisma.$queryRawUnsafe<RawJobCountRow[]>(
+    countSql, q, location, jobType, remote
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+
+  if (total === 0) {
+    return { results: [], total: 0, page, totalPages: 0 };
+  }
+
+  const searchSql = `
+    SELECT
+      j.job_id,
+      j.title,
+      j.location,
+      j.description,
+      j.salary_range,
+      j.required_skills,
+      j.job_type,
+      j.experience_level,
+      j.remote_option,
+      j.department,
+      j.created_at,
+      cp.company_name,
+      cp.logo_url
+    FROM   "CompanyJob" j
+    INNER JOIN "CompanyProfile" cp ON cp.company_id = j.company_id
+    WHERE  ${baseWhere}
+    ORDER BY j.created_at DESC
+    LIMIT  $5
+    OFFSET $6
+  `;
+
+  const rows = await prisma.$queryRawUnsafe<RawJobRow[]>(
+    searchSql, q, location, jobType, remote, limit, skip
+  );
+
+  const results: JobSearchResult[] = rows.map((row) => ({
+    job_id:           row.job_id,
+    title:            row.title,
+    location:         row.location,
+    description:      row.description,
+    salary_range:     row.salary_range     ?? null,
+    required_skills:  Array.isArray(row.required_skills) ? row.required_skills : [],
+    job_type:         row.job_type         ?? null,
+    experience_level: row.experience_level ?? null,
+    remote_option:    row.remote_option    ?? null,
+    department:       row.department       ?? null,
+    created_at:       row.created_at.toISOString(),
+    company_name:     row.company_name     ?? null,
+    logo_url:         row.logo_url         ?? null,
+  }));
+
+  return { results, total, page, totalPages: Math.ceil(total / limit) };
+};

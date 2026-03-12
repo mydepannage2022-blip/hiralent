@@ -6,8 +6,17 @@ import {
   forgotPasswordController,
   resetPasswordController,
   resendVerificationController,
-  deleteAccountController
+  deleteAccountController,
+  changePasswordController
 } from "../../controller/auth/auth.controller";
+import {
+  setup2FAController,
+  setupWithTokenController,
+  enable2FAController,
+  disable2FAController,
+  verifyLogin2FAController,
+  verifyRecoveryCodeController,
+} from "../../controller/auth/twoFactor.controller";
 import { validateBody } from "../../middlewares/validateBody.middleware";
 import { limiter } from "../../middlewares/rateLimiter.middleware";
 import { checkAuth } from "../../middlewares/checkAuth.middleware";
@@ -30,4 +39,14 @@ router.post("/forgot-password", limiter, validateBody(ForgotPasswordSchema), for
 router.post("/reset-password", validateBody(ResetPasswordSchema), resetPasswordController);
 
 router.delete("/delete-account", checkAuth, validateBody(DeleteAccountSchema), deleteAccountController);
+router.put("/change-password", checkAuth, changePasswordController);
+
+// 2FA routes
+router.post("/2fa/setup", checkAuth, setup2FAController);
+router.post("/2fa/setup-with-token", setupWithTokenController); // public — used during forced first-time setup at login
+router.post("/2fa/enable", checkAuth, enable2FAController);
+router.post("/2fa/disable", checkAuth, disable2FAController);
+router.post("/2fa/verify-login", verifyLogin2FAController);
+router.post("/2fa/verify-recovery", verifyRecoveryCodeController);
+
 export default router;

@@ -13,6 +13,7 @@ interface User {
   linkedin_url?: string;
   agency_id?: string;
   agency?: any;
+  mfa_enabled?: boolean;
 }
 
 interface AuthContextType {

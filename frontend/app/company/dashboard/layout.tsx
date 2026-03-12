@@ -16,6 +16,8 @@ import {
   BookOpen,    // add for Question Bank
   Clock,       //  add for Review Queue
   Users,
+  UsersRound,
+  Video,       // add for AI Interviews
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
@@ -31,39 +33,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  // 👉 Define menus with new items
   const defaultMenu = [
     { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
     { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-
+    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
     // ✅ your existing sections
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
     { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
+    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
 
     // ✅ NEW SECTIONS
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
     { name: "Review Queue",     icon: Clock,           href: "/company/dashboard/review-queue" },
+    { name: "Team",             icon: UsersRound,       href: "/company/dashboard/team" },
 
     { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
     { name: "Account Setting",  icon: Settings,        href: "/company/dashboard/settings" },
+
   ];
 
   const postJobMenu = [
     { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
     { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-
+    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
     // ✅ also include here so they appear while on /postjob
     { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
     { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
     { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
+    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
 
     // ✅ NEW SECTIONS (also in postJobMenu)
     { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
     { name: "Review Queue",     icon: Clock,           href: "/company/dashboard/review-queue" },
+    { name: "Team",             icon: UsersRound,       href: "/company/dashboard/team" },
 
     { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
     { name: "Account Setting",  icon: Settings,        href: "/company/dashboard/settings" },
+
   ];
 
   // 👉 Switch menus based on route

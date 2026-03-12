@@ -62,18 +62,34 @@ import internalCompanyRoutes from "./routes/internal/company/jobsSnapshot.routes
 import matchingInternalRoutes from "./routes/internal/matching.routes";
 import companyCandidateRankingRoutes from "./routes/company.candidateRanking.routes";
 import jobApplicationsRoutes from "./routes/candidate/jobApplications.routes";
+import interviewRoutes from "./routes/interview.routes";
 import externalCandidatesRoutes from "./routes/company.externalCandidates.routes";
 import companyInternalCandidatesRoutes from "./routes/company.internalCandidates.routes";
 import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
 import searchRoutes from "./routes/search.routes";
+import teamRoutes from './routes/team.routes';
+import employerRoutes from './routes/employer.routes';
+
+//Candidate Assessments Space
+import assessmentSessionRoutes from "./routes/candidate/assessmentSession.routes";
+import assessmentAnswerRoutes from "./routes/candidate/assessmentAnswer.routes";
+import assessmentTelemetryRoutes from "./routes/candidate/assessmentTelemetry.routes";
+import assessmentExecutionRoutes from "./routes/candidate/assessmentExecution.routes";
+import assessmentInsightsRoutes from "./routes/companyAssessmentInsights.routes";
+import candidateSimpleTestRoutes from "./routes/candidateSimpleTest.routes";
+import candidateInvitesRoutes from "./routes/candidateInvites.routes";
+import companyHiringFlowRoutes from "./routes/companyHiringFlow.routes";
+import candidateAssessmentHistoryRoutes from "./routes/candidate/assessmentHistory.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
+app.use('/api/v1/company/team', teamRoutes);
+app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
@@ -135,14 +151,24 @@ app.use('/api/v1/subscription', subscriptionRoutes);
 
 
 
-//Candidate (jobs+assessments)
+//Candidate (jobs+assessments+interviews)
 app.use('/api/v1/candidate/jobs', candidateJobsRoutes);
 app.use("/api/v1/candidate", jobApplicationsRoutes);
+app.use('/api/v1/interviews', interviewRoutes);
 app.use("/internal/matching/candidate", internalCandidateRoutes);
 app.use("/internal/matching/company", internalCompanyRoutes);
 app.use("/internal/matching", matchingInternalRoutes);
 app.use("/api/v1", companyCandidateRankingRoutes);
-
+app.use("/api/v1", assessmentSessionRoutes);
+app.use("/api/v1", assessmentAnswerRoutes);
+app.use("/api/v1", assessmentTelemetryRoutes);
+app.use("/api/v1", assessmentExecutionRoutes);
+app.use("/api/v1", assessmentInsightsRoutes);
+// Simple test + Invites + Hiring flow
+app.use("/api/v1", candidateInvitesRoutes);
+app.use("/api/v1", candidateSimpleTestRoutes);
+app.use("/api/v1", companyHiringFlowRoutes);
+app.use("/api/v1", candidateAssessmentHistoryRoutes);
 
 //Scraping Candidates
 app.use("/internal", internalRoutes);

@@ -5,12 +5,15 @@ import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Search, MapPin, Star, Briefcase, Lock, ArrowRight,
   Zap, TrendingUp, CheckCircle2, Clock, SlidersHorizontal,
-  Sparkles, Shield, ChevronRight, Bell, User, Plus,
+  Sparkles, Shield, ChevronRight, User, Plus,
+  DollarSign, Calendar, Target, BarChart2, Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useCandidateSearch } from "../../src/lib/search/search.queries";
+import { useCandidateSearch, useJobSearch } from "../../src/lib/search/search.queries";
 import { useAuth } from "../../src/context/AuthContext";
+import type { JobSearchResult } from "../../src/types/search.types";
+import JobDetailModal from "./JobDetailModal";
 
 /* ─────────────────────────────
    HIRALENT DESIGN TOKENS - REFINED
@@ -795,22 +798,348 @@ function GateOverlay({ query, count }: { query: string; count: number }) {
 }
 
 /* ─────────────────────────────
+   JOB TYPE LABEL MAP
+───────────────────────────── */
+const JOB_TYPE_LABEL: Record<string, string> = {
+  full_time: "Full Time",
+  part_time: "Part Time",
+  contract: "Contract",
+  internship: "Internship",
+};
+const EXP_LEVEL_LABEL: Record<string, string> = {
+  entry: "Entry Level",
+  mid: "Mid Level",
+  senior: "Senior",
+  executive: "Executive",
+};
+
+function relativeDate(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+/* ─────────────────────────────
+   JOB CARD
+───────────────────────────── */
+function JobCard({
+  job,
+  index,
+  onJobClick,
+}: {
+  job: JobSearchResult;
+  index: number;
+  onJobClick: (job: JobSearchResult) => void;
+}) {
+  const visibleSkills = job.required_skills.slice(0, 4);
+  const extraSkills   = job.required_skills.length - visibleSkills.length;
+  const initial       = (job.company_name ?? "?")[0].toUpperCase();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        background: H.surface,
+        borderRadius: 16,
+        border: `1px solid ${H.grayBd}`,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        transition: "box-shadow 0.2s, border-color 0.2s",
+      }}
+      whileHover={{
+        boxShadow: "0 8px 32px -8px rgba(37,99,235,0.14)",
+        borderColor: H.blueMd,
+      }}
+    >
+      {/* top accent */}
+      <div style={{ height: 3, background: H.gradient }} />
+
+      <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* header */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+          {/* logo */}
+          <div style={{
+            width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+            overflow: "hidden", border: `1px solid ${H.grayBd}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: H.blueLt, fontSize: 18, fontWeight: 700, color: H.blue,
+          }}>
+            {job.logo_url
+              ? <img src={job.logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              : initial
+            }
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: H.blue, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {job.company_name ?? "Company"}
+            </p>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: H.navy, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
+              {job.title}
+            </h3>
+          </div>
+        </div>
+
+        {/* meta row */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: H.gray }}>
+            <MapPin size={11} /> {job.location}
+          </span>
+          {job.job_type && (
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: H.blueLt, color: H.blue }}>
+              {JOB_TYPE_LABEL[job.job_type] ?? job.job_type}
+            </span>
+          )}
+          {job.experience_level && (
+            <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 6, background: H.grayLt, color: H.gray }}>
+              {EXP_LEVEL_LABEL[job.experience_level] ?? job.experience_level}
+            </span>
+          )}
+          {job.remote_option === "fully_remote" && (
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "#ECFDF5", color: "#059669" }}>
+              Remote
+            </span>
+          )}
+        </div>
+
+        {/* skills */}
+        {visibleSkills.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
+            {visibleSkills.map((sk) => (
+              <span key={sk} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: H.grayLt, color: H.text, border: `1px solid ${H.grayBd}` }}>
+                {sk}
+              </span>
+            ))}
+            {extraSkills > 0 && (
+              <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: H.grayLt, color: H.muted }}>
+                +{extraSkills}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* footer */}
+        <div style={{ marginTop: "auto", borderTop: `1px solid ${H.grayLt}`, paddingTop: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 11, color: H.muted, display: "flex", alignItems: "center", gap: 3 }}>
+              <Calendar size={11} /> {relativeDate(job.created_at)}
+            </span>
+            {job.salary_range && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: H.navy, display: "flex", alignItems: "center", gap: 3 }}>
+                <DollarSign size={11} color={H.success} /> {job.salary_range}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => onJobClick(job)}
+            style={{
+              width: "100%",
+              padding: "9px 0",
+              borderRadius: 10,
+              background: H.blue,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = H.blueDk; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = H.blue; }}
+          >
+            <Briefcase size={13} /> View &amp; Apply
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────
+   JOB GATE OVERLAY
+───────────────────────────── */
+function JobGateOverlay({ query, total, logos }: { query: string; total: number; logos: (string | null)[] }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.45 }}
+      style={{
+        position: "absolute", inset: 0, zIndex: 40,
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        paddingTop: "5vh",
+        background: "linear-gradient(to bottom, rgba(248,250,252,0) 0%, rgba(248,250,252,0.88) 14%, rgba(248,250,252,0.99) 28%)",
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          width: "100%", maxWidth: 460, margin: "0 16px",
+          background: "#fff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 24,
+          boxShadow: "0 32px 64px -16px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.02)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Gradient top bar */}
+        <div style={{ height: 4, background: "linear-gradient(90deg, #2563EB 0%, #7C3AED 50%, #0EA5E9 100%)" }} />
+
+        <div style={{ padding: "24px 24px 20px" }}>
+          {/* Pill */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "5px 12px", marginBottom: 16 }}>
+            <Briefcase size={12} color="#2563EB" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: "0.04em" }}>
+              {total}+ OPEN POSITIONS
+            </span>
+          </div>
+
+          <h3 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.03em", margin: "0 0 6px", lineHeight: 1.2 }}>
+            Unlock all job listings
+          </h3>
+          <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 20px", lineHeight: 1.5 }}>
+            {query
+              ? <>Sign up free to see all <strong style={{ color: "#0F172A" }}>"{query}"</strong> results, apply in one click, and track your applications.</>
+              : "Sign up free to apply in one click, get tailored matches, and track every application."}
+          </p>
+
+          {/* Company logo strip */}
+          {logos.filter(Boolean).length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: -4 }}>
+                {logos.filter(Boolean).slice(0, 5).map((logo, i) => (
+                  <div key={i} style={{
+                    width: 32, height: 32, borderRadius: 8,
+                    border: "2px solid #fff",
+                    overflow: "hidden",
+                    marginLeft: i === 0 ? 0 : -8,
+                    background: "#EFF6FF",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                    zIndex: 5 - i,
+                    position: "relative",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 700, color: "#2563EB",
+                  }}>
+                    <img src={logo!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  </div>
+                ))}
+              </div>
+              <span style={{ fontSize: 12, color: "#64748B" }}>
+                + {Math.max(0, total - 4)} more from top companies
+              </span>
+            </div>
+          )}
+
+          {/* Value props */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+            {[
+              { Icon: Zap,        text: "One-click apply",     color: "#D97706", bg: "#FFFBEB" },
+              { Icon: Target,     text: "AI match scores",     color: "#2563EB", bg: "#EFF6FF" },
+              { Icon: BarChart2,  text: "Track applications",  color: "#7C3AED", bg: "#FAF5FF" },
+              { Icon: Bell,       text: "Job alerts",          color: "#059669", bg: "#ECFDF5" },
+            ].map(({ Icon, text, color, bg }) => (
+              <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, background: bg, borderRadius: 10, padding: "10px 12px" }}>
+                <Icon size={15} color={color} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTAs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Link href="/auth/signup" style={{ textDecoration: "none" }}>
+              <motion.div
+                whileHover={{ scale: 1.015, boxShadow: "0 12px 32px -8px rgba(37,99,235,0.45)" }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  borderRadius: 12, padding: "14px 0", textAlign: "center",
+                  background: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
+                  color: "#fff", fontSize: 14, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 16px -4px rgba(37,99,235,0.4)",
+                  position: "relative", overflow: "hidden",
+                }}
+              >
+                <motion.div
+                  style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)" }}
+                  animate={{ x: ["-100%", "200%"] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
+                />
+                <Sparkles size={14} />
+                Get started — it&apos;s free
+                <ArrowRight size={14} />
+              </motion.div>
+            </Link>
+
+            <Link href="/auth/login" style={{ textDecoration: "none" }}>
+              <div
+                style={{
+                  borderRadius: 12, padding: "12px 0", textAlign: "center",
+                  border: "1px solid #E2E8F0", color: "#64748B",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#BFDBFE"; e.currentTarget.style.color = "#2563EB"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.color = "#64748B"; }}
+              >
+                Already have an account? Sign in
+                <ChevronRight size={14} />
+              </div>
+            </Link>
+          </div>
+
+          <p style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: "#94A3B8" }}>
+            Free forever · No credit card required
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────
    FILTER CHIP
 ───────────────────────────── */
-function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
+function FilterChip({
+  label,
+  active = false,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <button style={{
-      fontSize: 12,
-      fontWeight: 500,
-      padding: "6px 14px",
-      borderRadius: 8,
-      background: active ? H.blue : H.surface,
-      color: active ? "#fff" : H.gray,
-      border: `1px solid ${active ? H.blue : H.grayBd}`,
-      cursor: "pointer",
-      transition: "all 0.2s",
-      whiteSpace: "nowrap",
-    }}>
+    <button
+      onClick={onClick}
+      style={{
+        fontSize: 12,
+        fontWeight: 500,
+        padding: "6px 14px",
+        borderRadius: 8,
+        background: active ? H.blue : H.surface,
+        color: active ? "#fff" : H.gray,
+        border: `1px solid ${active ? H.blue : H.grayBd}`,
+        cursor: "pointer",
+        transition: "all 0.2s",
+        whiteSpace: "nowrap",
+      }}
+    >
       {label}
     </button>
   );
@@ -821,11 +1150,54 @@ function FilterChip({ label, active = false }: { label: string; active?: boolean
 ───────────────────────────── */
 export default function SearchResultsPage() {
   const searchParams = useSearchParams();
-  const query    = searchParams.get("q") ?? "";
-  const locParam = searchParams.get("location") ?? "";
+  const query    = searchParams?.get("q") ?? "";
+  const locParam = searchParams?.get("location") ?? "";
+  const tabParam = searchParams?.get("tab") ?? "jobs";
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const userRole = user?.role ?? null;
   const router = useRouter();
+
+  const [activeTab, setActiveTab] = useState<"jobs" | "candidates">(
+    tabParam === "candidates" ? "candidates" : "jobs"
+  );
+
+  // Job type filter: "all" | "full_time" | "remote" | "contract" | "internship"
+  const [activeJobFilter, setActiveJobFilter] = useState<string>("all");
+  // Candidate filter (client-side)
+  const [activeCandidateFilter, setActiveCandidateFilter] = useState<string>("all");
+  // Modal
+  const [selectedJob, setSelectedJob] = useState<JobSearchResult | null>(null);
+  // Job pagination (load-more)
+  const [jobPage, setJobPage] = useState(1);
+  const [allJobResults, setAllJobResults] = useState<JobSearchResult[]>([]);
+  const jobFilterMounted = useRef(false);
+  // Candidate pagination (load-more)
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [allCandidateResults, setAllCandidateResults] = useState<FreelancerCardData[]>([]);
+  const candidateFilterMounted = useRef(false);
+
+  const handleTabChange = (tab: "jobs" | "candidates") => {
+    setActiveTab(tab);
+    setActiveJobFilter("all");
+    setActiveCandidateFilter("all");
+    setJobPage(1); setAllJobResults([]);
+    setCandidatePage(1); setAllCandidateResults([]);
+    // Reset job gate so it runs fresh on each visit to the tab
+    setJobGated(false); setJobStarted(false); setJobTimeLeft(JOB_TEASER);
+    const p = new URLSearchParams(searchParams?.toString() ?? "");
+    p.set("tab", tab);
+    router.replace(`/search?${p.toString()}`);
+  };
+
+  const jobSearchParams = {
+    q: query || undefined,
+    location: locParam || undefined,
+    page: jobPage,
+    limit: 20,
+    jobType: activeJobFilter !== "all" && activeJobFilter !== "remote" ? activeJobFilter : undefined,
+    remote: activeJobFilter === "remote" ? true : undefined,
+  };
 
   const handleCardClick = (candidateId: string) => {
     if (isAuthenticated) {
@@ -842,19 +1214,51 @@ export default function SearchResultsPage() {
   const [started,  setStarted]  = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data, isLoading: loading } = useCandidateSearch({
-    q: query || undefined,
-    location: locParam || undefined,
-    page: 1,
-    limit: 12,
-  });
+  // Jobs gate (same mechanism as candidates)
+  const JOB_TEASER = 5;
+  const [jobTimeLeft, setJobTimeLeft] = useState(JOB_TEASER);
+  const [jobGated,    setJobGated]    = useState(false);
+  const [jobStarted,  setJobStarted]  = useState(false);
+  const jobTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const results = data?.results ?? [];
-  const total   = data?.total   ?? 0;
+  const { data: jobData, isLoading: jobLoading, isFetching: jobFetching } = useJobSearch(
+    jobSearchParams,
+    { enabled: activeTab === "jobs" }
+  );
 
-  const freelancers: FreelancerCardData[] = results.map((r) => ({
+  // Accumulate job pages 2+ into state (page 1 is read directly from jobData)
+  useEffect(() => {
+    if (!jobData?.results || jobPage <= 1) return;
+    setAllJobResults(prev => {
+      const seen = new Set(prev.map(j => j.job_id));
+      const fresh = jobData.results.filter(j => !seen.has(j.job_id));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobData, jobPage]);
+
+  // Reset jobs when query/filter/location changes (skip on mount)
+  useEffect(() => {
+    if (!jobFilterMounted.current) { jobFilterMounted.current = true; return; }
+    setJobPage(1); setAllJobResults([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, locParam, activeJobFilter]);
+
+  const { data, isLoading: loading, isFetching: candidateFetching } = useCandidateSearch(
+    {
+      q: query || undefined,
+      location: locParam || undefined,
+      page: candidatePage,
+      limit: 20,
+    },
+    { enabled: activeTab === "candidates" }
+  );
+
+  const total = data?.total ?? 0;
+
+  const mapFreelancer = (r: NonNullable<typeof data>["results"][number]): FreelancerCardData => ({
     id:           r.candidate_id,
-    name:         r.full_name ?? "Candidate",  // null for guests → show placeholder
+    name:         r.full_name ?? "Candidate",
     title:        r.headline ?? "Candidate",
     location:     r.location ?? r.city ?? "Remote",
     skills:       r.skills,
@@ -867,14 +1271,51 @@ export default function SearchResultsPage() {
     rating:       0,
     jobs:         0,
     rate:         0,
-  }));
+  });
+
+  // Page-1 results derived directly (no state lag); accumulated pages go into state
+  const freelancers: FreelancerCardData[] =
+    candidatePage === 1
+      ? (data?.results ?? []).map(mapFreelancer)
+      : allCandidateResults;
+
+  // Accumulate candidate pages 2+ into state (page 1 is read directly from data)
+  useEffect(() => {
+    if (!data?.results || candidatePage <= 1) return;
+    setAllCandidateResults(prev => {
+      const seen = new Set(prev.map(f => String(f.id)));
+      const fresh = data.results.map(mapFreelancer).filter(f => !seen.has(String(f.id)));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, candidatePage]);
+
+  // Reset candidates when query/location changes (skip on mount)
+  useEffect(() => {
+    if (!candidateFilterMounted.current) { candidateFilterMounted.current = true; return; }
+    setCandidatePage(1); setAllCandidateResults([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, locParam]);
 
   // Authenticated users are never gated — gate only anonymous visitors
-  const shouldGate = gated && !isAuthenticated;
+  const shouldGate    = gated    && !isAuthenticated;
+  const shouldJobGate = jobGated && !isAuthenticated;
 
-  // Start countdown after data loads (skip entirely for authenticated users)
+  // Page-1 results derived directly; accumulated pages go into state
+  const jobResults  = jobPage === 1 ? (jobData?.results ?? []) : allJobResults;
+  const jobTotal    = jobData?.total ?? 0;
+  const hasMoreJobs = jobResults.length < jobTotal;
+  const hasCandidatesMore = freelancers.length < total;
+
+  // Client-side candidate filter
+  const filteredFreelancers = React.useMemo(() => {
+    if (activeCandidateFilter === "top_rated") return freelancers.filter(f => f.matchScore >= 50);
+    return freelancers;
+  }, [freelancers, activeCandidateFilter]);
+
+  // Candidate gate countdown
   useEffect(() => {
-    if (!loading && !started && !isAuthenticated) {
+    if (activeTab === "candidates" && !loading && !started && !isAuthenticated) {
       const t = setTimeout(() => {
         setStarted(true);
         timer.current = setInterval(() => {
@@ -886,10 +1327,29 @@ export default function SearchResultsPage() {
       }, 300);
       return () => clearTimeout(t);
     }
-  }, [loading]);
+  }, [loading, activeTab]);
+
+  // Jobs gate countdown
+  useEffect(() => {
+    if (activeTab === "jobs" && !jobLoading && !jobStarted && !isAuthenticated) {
+      const t = setTimeout(() => {
+        setJobStarted(true);
+        jobTimer.current = setInterval(() => {
+          setJobTimeLeft(t => {
+            if (t <= 1) { clearInterval(jobTimer.current!); setJobGated(true); return 0; }
+            return t - 1;
+          });
+        }, 1000);
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [jobLoading, activeTab]);
 
   useEffect(() => {
-    return () => { if (timer.current) clearInterval(timer.current); };
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+      if (jobTimer.current) clearInterval(jobTimer.current);
+    };
   }, []);
 
   return (
@@ -917,10 +1377,17 @@ export default function SearchResultsPage() {
       }}>
         {/* Progress bar */}
         <div style={{ height: 2, background: H.grayLt, overflow: "hidden" }}>
-          {started && !shouldGate && (
+          {activeTab === "candidates" && started && !shouldGate && (
             <motion.div
               style={{ height: "100%", background: H.gradient }}
               animate={{ width: `${(timeLeft / TEASER) * 100}%` }}
+              transition={{ duration: 0.4 }}
+            />
+          )}
+          {activeTab === "jobs" && jobStarted && !shouldJobGate && (
+            <motion.div
+              style={{ height: "100%", background: H.gradient }}
+              animate={{ width: `${(jobTimeLeft / JOB_TEASER) * 100}%` }}
               transition={{ duration: 0.4 }}
             />
           )}
@@ -1018,13 +1485,22 @@ export default function SearchResultsPage() {
 
             {/* Countdown */}
             <AnimatePresence>
-              {started && !shouldGate && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
+              {activeTab === "candidates" && started && !shouldGate && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                 >
                   <CountdownBadge seconds={timeLeft} total={TEASER} />
+                </motion.div>
+              )}
+              {activeTab === "jobs" && jobStarted && !shouldJobGate && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <CountdownBadge seconds={jobTimeLeft} total={JOB_TEASER} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1063,56 +1539,87 @@ export default function SearchResultsPage() {
       {/* ─── CONTENT ─── */}
       <div style={{ width: "94%", maxWidth: 1280, margin: "0 auto" }}>
 
+        {/* ─── TABS ─── */}
+        <div style={{ paddingTop: 20, paddingBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+          {(["jobs", "candidates"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "9px 18px",
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                border: `1px solid ${activeTab === tab ? H.blue : H.grayBd}`,
+                background: activeTab === tab ? H.blue : "transparent",
+                color: activeTab === tab ? "#fff" : H.gray,
+                transition: "all 0.18s",
+              }}
+            >
+              {tab === "jobs" ? <Briefcase size={14} /> : <User size={14} />}
+              {tab === "jobs" ? "Jobs" : "Candidates"}
+              {tab === "jobs" && jobTotal > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  background: activeTab === "jobs" ? "rgba(255,255,255,0.25)" : H.blueLt,
+                  color: activeTab === "jobs" ? "#fff" : H.blue,
+                  borderRadius: 6, padding: "1px 6px",
+                }}>
+                  {jobTotal}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Results header */}
-        <div style={{ paddingTop: 24, paddingBottom: 16 }}>
+        <div style={{ paddingTop: 16, paddingBottom: 16 }}>
           <AnimatePresence mode="wait">
-            {loading ? (
+            {(activeTab === "jobs" ? jobLoading : loading) ? (
               <motion.div key="loading" exit={{ opacity: 0 }} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ height: 24, width: 220, borderRadius: 8, background: H.grayBd }} className="animate-pulse" />
                 <div style={{ height: 14, width: 150, borderRadius: 6, background: H.grayLt }} className="animate-pulse" />
               </motion.div>
-            ) : (
-              <motion.div key="header" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            ) : activeTab === "jobs" ? (
+              <motion.div key="job-header" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-                  <h1 style={{ 
-                    fontSize: 24, 
-                    fontWeight: 700, 
-                    color: H.navy, 
-                    letterSpacing: "-0.02em", 
-                    lineHeight: 1, 
-                    margin: 0,
-                  }}>
-                    <AnimatedNumber to={total} /> freelancers found
+                  <h1 style={{ fontSize: 24, fontWeight: 700, color: H.navy, letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
+                    <AnimatedNumber to={jobTotal} /> jobs found
                   </h1>
                   {query && (
-                    <span style={{
-                      fontSize: 13, 
-                      fontWeight: 600,
-                      background: H.blueLt, 
-                      color: H.blue,
-                      border: `1px solid ${H.blueMd}`,
-                      borderRadius: 8, 
-                      padding: "4px 12px",
-                    }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, background: H.blueLt, color: H.blue, border: `1px solid ${H.blueMd}`, borderRadius: 8, padding: "4px 12px" }}>
                       "{query}"
                     </span>
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ 
-                    width: 8, 
-                    height: 8, 
-                    borderRadius: "50%", 
-                    background: H.success,
-                    boxShadow: `0 0 0 3px rgba(16,185,129,0.2)`,
-                  }} />
-                  <span style={{ fontSize: 13, color: H.gray }}>
-                    Sorted by AI match score
-                  </span>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: H.success, boxShadow: `0 0 0 3px rgba(16,185,129,0.2)` }} />
+                  <span style={{ fontSize: 13, color: H.gray }}>Sorted by newest</span>
                   <span style={{ color: H.grayBd }}>·</span>
-                  <span style={{ fontSize: 13, color: H.muted }}>
-                    Top {freelancers.length} shown
-                  </span>
+                  <span style={{ fontSize: 13, color: H.muted }}>Active positions only</span>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key="candidate-header" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                  <h1 style={{ fontSize: 24, fontWeight: 700, color: H.navy, letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
+                    <AnimatedNumber to={total} /> freelancers found
+                  </h1>
+                  {query && (
+                    <span style={{ fontSize: 13, fontWeight: 600, background: H.blueLt, color: H.blue, border: `1px solid ${H.blueMd}`, borderRadius: 8, padding: "4px 12px" }}>
+                      "{query}"
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: H.success, boxShadow: `0 0 0 3px rgba(16,185,129,0.2)` }} />
+                  <span style={{ fontSize: 13, color: H.gray }}>Sorted by AI match score</span>
+                  <span style={{ color: H.grayBd }}>·</span>
+                  <span style={{ fontSize: 13, color: H.muted }}>Top {filteredFreelancers.length} shown</span>
                 </div>
               </motion.div>
             )}
@@ -1120,94 +1627,228 @@ export default function SearchResultsPage() {
         </div>
 
         {/* Filter bar */}
-        <div style={{ 
-          display: "flex", 
-          gap: 8, 
-          paddingBottom: 20,
-          overflowX: "auto",
-        }}>
-          <FilterChip label="All" active />
-          <FilterChip label="Available Now" />
-          <FilterChip label="Top Rated" />
-          <FilterChip label="$50-100/hr" />
-          <FilterChip label="Verified" />
+        <div style={{ display: "flex", gap: 8, paddingBottom: 20, overflowX: "auto" }}>
+          {activeTab === "jobs" ? (
+            <>
+              {(
+                [
+                  { key: "all",        label: "All" },
+                  { key: "full_time",  label: "Full Time" },
+                  { key: "remote",     label: "Remote" },
+                  { key: "contract",   label: "Contract" },
+                  { key: "part_time",  label: "Part Time" },
+                  { key: "internship", label: "Internship" },
+                ] as { key: string; label: string }[]
+              ).map(({ key, label }) => (
+                <FilterChip
+                  key={key}
+                  label={label}
+                  active={activeJobFilter === key}
+                  onClick={() => setActiveJobFilter(key)}
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              {(
+                [
+                  { key: "all",        label: "All" },
+                  { key: "top_rated",  label: "Top Rated" },
+                ] as { key: string; label: string }[]
+              ).map(({ key, label }) => (
+                <FilterChip
+                  key={key}
+                  label={label}
+                  active={activeCandidateFilter === key}
+                  onClick={() => setActiveCandidateFilter(key)}
+                />
+              ))}
+            </>
+          )}
         </div>
 
         {/* Cards grid */}
         <div style={{ paddingBottom: 120, position: "relative" }}>
           <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div 
-                key="skeleton" 
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-                style={{ gap: 16 }}
-              >
-                {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} index={i} />)}
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="cards"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-                style={{ gap: 16 }}
-              >
-                {freelancers.length === 0 ? (
-                  <div style={{
-                    gridColumn: "1 / -1", 
-                    textAlign: "center",
-                    padding: "80px 20px", 
-                    color: H.gray,
-                  }}>
-                    <div style={{ 
-                      width: 64, 
-                      height: 64, 
-                      borderRadius: 16, 
-                      background: H.grayLt, 
-                      display: "grid", 
-                      placeItems: "center",
-                      margin: "0 auto 16px",
-                    }}>
-                      <Search size={28} color={H.muted} />
+            {activeTab === "jobs" ? (
+              jobLoading ? (
+                <motion.div key="job-skeleton" exit={{ opacity: 0 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ gap: 16 }}>
+                  {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} index={i} />)}
+                </motion.div>
+              ) : (
+                <motion.div key="job-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ gap: 16 }}>
+                  {jobResults.length === 0 ? (
+                    <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "80px 20px", color: H.gray }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 16, background: H.grayLt, display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+                        <Briefcase size={28} color={H.muted} />
+                      </div>
+                      <p style={{ fontSize: 16, fontWeight: 600, color: H.navy, marginBottom: 4 }}>No jobs found</p>
+                      <p style={{ fontSize: 14, color: H.gray }}>
+                        {query ? `Try adjusting your search for "${query}"` : "Try a different keyword or location"}
+                      </p>
                     </div>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: H.navy, marginBottom: 4 }}>
-                      No candidates found
-                    </p>
-                    <p style={{ fontSize: 14, color: H.gray }}>
-                      {query ? `Try adjusting your search for "${query}"` : "Try a different search"}
-                    </p>
-                  </div>
-                ) : (
-                  freelancers.map((f, i) => (
-                    <FreelancerCard key={f.id} f={f} index={i} blurred={shouldGate} onCardClick={handleCardClick} />
-                  ))
-                )}
-              </motion.div>
+                  ) : (
+                    jobResults.map((job, i) => (
+                      <JobCard key={job.job_id} job={job} index={i} onJobClick={setSelectedJob} />
+                    ))
+                  )}
+                </motion.div>
+              )
+            ) : (
+              loading ? (
+                <motion.div key="skeleton" exit={{ opacity: 0 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ gap: 16 }}>
+                  {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} index={i} />)}
+                </motion.div>
+              ) : (
+                <motion.div key="cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ gap: 16 }}>
+                  {filteredFreelancers.length === 0 ? (
+                    <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "80px 20px", color: H.gray }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 16, background: H.grayLt, display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+                        <Search size={28} color={H.muted} />
+                      </div>
+                      <p style={{ fontSize: 16, fontWeight: 600, color: H.navy, marginBottom: 4 }}>No candidates found</p>
+                      <p style={{ fontSize: 14, color: H.gray }}>
+                        {query ? `Try adjusting your search for "${query}"` : "Try a different search"}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredFreelancers.map((f, i) => (
+                      <FreelancerCard key={f.id} f={f} index={i} blurred={shouldGate} onCardClick={handleCardClick} />
+                    ))
+                  )}
+                </motion.div>
+              )
             )}
           </AnimatePresence>
 
-          {/* Ghost rows for preview effect */}
-          {!loading && !shouldGate && freelancers.length > 0 && (
-            <div 
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              style={{ gap: 16, marginTop: 16, filter: "blur(8px)", opacity: 0.15, pointerEvents: "none" }}
-            >
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} style={{
-                  background: H.surface, 
-                  borderRadius: 16, 
-                  height: CARD_HEIGHT,
+          {/* Load More — Candidates */}
+          {activeTab === "candidates" && !loading && hasCandidatesMore && !shouldGate && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 32 }}>
+              <p style={{ fontSize: 13, color: H.muted, margin: 0 }}>
+                Showing {freelancers.length} of {total} candidates
+              </p>
+              <motion.button
+                onClick={() => {
+                  if (candidatePage === 1 && data?.results) {
+                    setAllCandidateResults(data.results.map(mapFreelancer));
+                  }
+                  setCandidatePage(p => p + 1);
+                }}
+                disabled={candidateFetching}
+                whileHover={{ scale: candidateFetching ? 1 : 1.02 }}
+                whileTap={{ scale: candidateFetching ? 1 : 0.98 }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 28px", borderRadius: 12,
+                  background: candidateFetching ? H.grayLt : H.surface,
                   border: `1px solid ${H.grayBd}`,
-                }} />
+                  color: candidateFetching ? H.muted : H.navy,
+                  fontSize: 13, fontWeight: 600, cursor: candidateFetching ? "default" : "pointer",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  transition: "all 0.2s",
+                }}
+              >
+                {candidateFetching ? (
+                  <>
+                    <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${H.blue}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
+                    Loading…
+                  </>
+                ) : (
+                  <>
+                    Load more candidates
+                    <ChevronRight size={14} />
+                  </>
+                )}
+              </motion.button>
+            </div>
+          )}
+
+          {/* Ghost rows for preview effect (candidates only) */}
+          {activeTab === "candidates" && !loading && !shouldGate && filteredFreelancers.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              style={{ gap: 16, marginTop: 16, filter: "blur(8px)", opacity: 0.15, pointerEvents: "none" }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} style={{ background: H.surface, borderRadius: 16, height: CARD_HEIGHT, border: `1px solid ${H.grayBd}` }} />
               ))}
             </div>
           )}
 
-          {/* Gate overlay */}
+          {/* Ghost rows for preview effect (jobs only) */}
+          {activeTab === "jobs" && !jobLoading && !shouldJobGate && !isAuthenticated && jobResults.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              style={{ gap: 16, marginTop: 16, filter: "blur(8px)", opacity: 0.15, pointerEvents: "none" }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} style={{ background: H.surface, borderRadius: 16, height: 200, border: `1px solid ${H.grayBd}` }} />
+              ))}
+            </div>
+          )}
+
+          {/* Gate overlays */}
           <AnimatePresence>
-            {shouldGate && <GateOverlay query={query} count={total} />}
+            {activeTab === "candidates" && shouldGate && <GateOverlay query={query} count={total} />}
           </AnimatePresence>
+          <AnimatePresence>
+            {activeTab === "jobs" && shouldJobGate && (
+              <JobGateOverlay query={query} total={jobTotal} logos={jobResults.map(j => j.logo_url)} />
+            )}
+          </AnimatePresence>
+
+          {/* Load More — Jobs */}
+          {activeTab === "jobs" && !jobLoading && hasMoreJobs && !shouldJobGate && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 32 }}>
+              <p style={{ fontSize: 13, color: H.muted, margin: 0 }}>
+                Showing {jobResults.length} of {jobTotal} jobs
+              </p>
+              <motion.button
+                onClick={() => {
+                  // Snapshot page-1 results into state before going to page 2
+                  if (jobPage === 1 && jobData?.results) {
+                    setAllJobResults(jobData.results);
+                  }
+                  setJobPage(p => p + 1);
+                }}
+                disabled={jobFetching}
+                whileHover={{ scale: jobFetching ? 1 : 1.02 }}
+                whileTap={{ scale: jobFetching ? 1 : 0.98 }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "12px 28px", borderRadius: 12,
+                  background: jobFetching ? H.grayLt : H.surface,
+                  border: `1px solid ${H.grayBd}`,
+                  color: jobFetching ? H.muted : H.navy,
+                  fontSize: 13, fontWeight: 600, cursor: jobFetching ? "default" : "pointer",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  transition: "all 0.2s",
+                }}
+              >
+                {jobFetching ? (
+                  <>
+                    <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${H.blue}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
+                    Loading…
+                  </>
+                ) : (
+                  <>
+                    Load more jobs
+                    <ChevronRight size={14} />
+                  </>
+                )}
+              </motion.button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ─── JOB DETAIL MODAL ─── */}
+      <AnimatePresence>
+        {selectedJob && (
+          <JobDetailModal
+            job={selectedJob}
+            onClose={() => setSelectedJob(null)}
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

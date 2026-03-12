@@ -22,62 +22,6 @@ import {
 } from "../../types/auth.types";
 import { DeleteAccountRequest } from "../../validation/auth.schema";
 
-
-// export const signup = async (input: SignupInput) => {
-//   try {
-//     const { email, password, full_name, role } = input;
-
-//     const exists = await prisma.user.findUnique({ where: { email } });
-//     if (exists) throw new Error("Email already exists");
-
-//     const password_hash = await bcrypt.hash(password, 10);
-//     const user = await prisma.user.create({
-//       data: {
-//         email,
-//         password_hash,
-//         full_name,
-//         role,
-//         agency_id: null, 
-//         is_email_verified: false,
-//       },
-//     });
-
-//     const token = generateToken({ user_id: user.user_id, role: user.role });
-//     await sendVerificationEmail(user.email, user.user_id);
-
-//     // Send company-specific welcome + legacy-check emails immediately for company signups.
-//     try {
-//       // Accept both 'company' and 'company_admin' roles as company signups
-//       if (user.role === 'company' || user.role === 'company_admin') {
-//         // Use token payload key 'userId' for verify flow compatibility
-//         const verificationToken = generateToken({ userId: user.user_id }, '7d');
-//         const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
-//         const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
-//         console.log('[post-signup-email] Sending welcome email to', user.email);
-//         await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
-//         console.log('[post-signup-email] Welcome email send attempted for', user.email);
-
-//         // Legacy / upload link should point to the company's upload page (frontend)
-//         const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
-//         const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
-//         console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
-//         await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
-//         console.log('[post-signup-email] Legacy-check email send attempted for', user.email);
-//       }
-//     } catch (err) {
-//       console.error('Error sending post-signup company emails:', err);
-//     }
-
-//     return { user, token };
-//   } catch (error: any) {
-//     console.error("Signup Error:", error);
-//     return {
-//       error: true,
-//       message: error.message || "Signup failed",
-//     };
-//   }
-// };
-
 export const signup = async (input: SignupInput, req?: any) => {
   try {
     const { email, password, full_name, role } = input;
@@ -170,120 +114,25 @@ export const login = async ({ email, password }: LoginInput, req?: any): Promise
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) throw new Error("Invalid credentials");
 
-    const sessionId = uuidv4();
-
-    // ✅ for both company & company_admin
-    const companyId =
-      (user.role === "company" || user.role === "company_admin")
-        ? (user.companyProfile?.company_id ?? user.user_id)
-        : undefined;
-
-    if ((user.role === "company" || user.role === "company_admin") && !companyId) {
-      throw new Error("Company account is not initialized (missing company_id).");
-    }
-
-    const token = generateTokenWithSession(
-      user.user_id,
-      user.role,
-      sessionId,
-      user.agency_id || undefined,
-      undefined,     // deviceHash optional
-      companyId      // 👈 now included for both roles
+    // 2FA is mandatory — always issue a temp token after password check
+    const tempToken = jwt.sign(
+      { user_id: user.user_id, step: "mfa_required" },
+      process.env.JWT_SECRET!,
+      { expiresIn: "5m" }
     );
 
-    // DEV sanity check
-    // console.log("JWT payload on login:", jwt.decode(token));
-
-    await createSession({
-      userId: user.user_id,
-      jwtToken: token,
-      userAgent: req?.headers['user-agent'] || 'Unknown',
-      ipAddress: req ? getClientIP(req) : '127.0.0.1',
-      screenResolution: req?.body?.screenResolution,
-      timezone: req?.body?.timezone,
-      language: req?.body?.language
-    });
-
-    const cleanUser: CleanUser = {
-      user_id: user.user_id,
-      email: user.email,
-      is_email_verified: user.is_email_verified,
-      full_name: user.full_name,
-      role: user.role,
-      phone_number: user.phone_number,
-      position: user.position,
-      linkedin_url: user.linkedin_url,
-      agency_id: user.agency_id,
-      agency: user.agency,
-    };
-
-    let profileData: any = null;
-
-    if (user.role === 'candidate') {
-      const skills = user.candidateSkills.map(s => ({
-        skill_id: s.skill_id,
-        skill_name: s.skill_name,
-        skill_category: s.skill_category,
-        proficiency: s.proficiency,
-        years_experience: s.years_experience,
-        confidence_score: s.confidence_score,
-        source_type: s.source_type,
-        is_verified: s.is_verified
-      }));
-
-      profileData = user.candidateProfile
-        ? { ...user.candidateProfile,
-            created_at: user.candidateProfile.created_at.toISOString(),
-            updated_at: user.candidateProfile.updated_at.toISOString(),
-            skills }
-        : {
-            candidate_id: user.user_id,
-            about_me: null,
-            city: null,
-            created_at: new Date().toISOString(),
-            education: null,
-            experience: null,
-            headline: null,
-            job_benefits: null,
-            languages: null,
-            links: null,
-            location: null,
-            minimum_salary_amount: null,
-            payment_period: null,
-            postal_code: null,
-            preferred_locations: null,
-            profile_picture_url: null,
-            resume_url: null,
-            skills,
-            updated_at: new Date().toISOString(),
-            video_intro_url: null,
-          };
-    } else if (user.role === 'company' || user.role === 'company_admin') {
-      profileData = user.companyProfile
-        ? {
-            ...user.companyProfile,
-            created_at: user.companyProfile.created_at.toISOString(),
-            updated_at: user.companyProfile.updated_at.toISOString()
-          }
-        : null;
-    } else if (user.role === 'agency') {
-      profileData = user.agencyAdminProfile
-        ? {
-            ...user.agencyAdminProfile,
-            created_at: user.agencyAdminProfile.created_at.toISOString(),
-            updated_at: user.agencyAdminProfile.updated_at.toISOString()
-          }
-        : null;
+    // User has never configured 2FA → force setup
+    if (!user.mfa_secret) {
+      return { requiresMFASetup: true as const, tempToken };
     }
 
-    return { user: cleanUser, profile: profileData, token };
+    // User already has 2FA configured → require verification
+    return { requiresMFA: true as const, tempToken };
   } catch (error: any) {
     console.error("Login Error:", error);
     return { error: true, message: error.message || "Login failed" };
   }
 };
-
-
 
 export const resendVerificationEmail = async (userId: string) => {
   try {
@@ -701,4 +550,32 @@ export const getUserDeletionSummary = async (userId: string) => {
   } catch (error: any) {
     throw new Error(`Failed to get deletion summary: ${error.message}`);
   }
+};
+
+
+export const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { user_id: true, password_hash: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const bcrypt = require("bcrypt");
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+
+  if (!isPasswordValid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { user_id: userId },
+    data: { password_hash: newPasswordHash, updated_at: new Date() },
+  });
+
+  return { success: true, message: "Password changed successfully" };
 };

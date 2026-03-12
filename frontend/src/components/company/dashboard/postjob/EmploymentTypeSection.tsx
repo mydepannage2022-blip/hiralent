@@ -13,7 +13,7 @@ const EmploymentTypeSection = ({ isEditing, employmentTypes, toggleEmploymentTyp
     return isEditing ? (
         <>
             <div className="flex flex-wrap gap-4">
-                {["Full-time", "Part-time", "Remote", "Internship"].map((type) => (
+                {["Full-time", "Part-time", "Remote", "Internship", "Freelance"].map((type) => (
                     <StyledCheckbox
                         key={type}
                         label={type}
