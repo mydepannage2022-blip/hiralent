@@ -141,7 +141,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                             : "text-black hover:bg-gray-50 font-medium"
                           }`}
                       >
-                        <Icon size={14} className="flex-shrink-0 text-black font-medium" />
+                        <Icon size={14} className="shrink-0 text-black font-medium" />
                         {((isOpen && !isMobile) || isMobile) && (
                           <span className="text-sm font-normal">{item.name}</span>
                         )}
@@ -162,7 +162,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "px-3 py-3 justify-center"
                 } rounded-lg transition-all duration-200 hover:bg-gray-50`}
             >
-              <LogOut size={14} className="flex-shrink-0 text-red-600" />
+              <LogOut size={14} className="shrink-0 text-red-600" />
               {((isOpen && !isMobile) || isMobile) && (
                 <span className="text-red-600 text-sm font-normal">
                   Logout

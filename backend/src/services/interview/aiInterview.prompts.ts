@@ -12,11 +12,11 @@ Candidate Background (if available):
 - Skills: {candidateSkills}
 - Experience: {candidateExperience}
 
-IMPORTANT - Question Distribution (70% Soft Skills, 30% Technical):
-- 35% Behavioral (past experiences, STAR method) - SOFT SKILLS
-- 20% Situational (hypothetical scenarios) - SOFT SKILLS
-- 15% Competency (soft skills verification: communication, teamwork, leadership) - SOFT SKILLS
-- 30% Technical (role-specific skills and knowledge)
+IMPORTANT - Question Distribution ({softSkillWeight}% Soft Skills, {technicalWeight}% Technical):
+- Behavioral (past experiences, STAR method) - SOFT SKILLS
+- Situational (hypothetical scenarios) - SOFT SKILLS
+- Competency (soft skills verification: communication, teamwork, leadership) - SOFT SKILLS
+- Technical (role-specific skills and knowledge)
 
 Soft Skills Categories to Cover:
 - Communication: How they express ideas, listen, and articulate
@@ -27,7 +27,7 @@ Soft Skills Categories to Cover:
 - Critical Thinking: Analysis, evaluation, judgment
 
 Requirements:
-- Focus heavily on soft skills assessment (70% of questions)
+- Focus on soft skills assessment ({softSkillWeight}% of questions)
 - Technical questions should still relate to the job
 - Use STAR method prompts for behavioral questions
 - Vary difficulty appropriately for experience level
@@ -289,6 +289,71 @@ Return JSON:
 
 Be objective, fair, and thorough.
 NO markdown, ONLY valid JSON.
+  `,
+
+  GENERATE_OPENING_QUESTION: `
+Generate the first interview question for a {interviewType} interview.
+
+Role: {jobTitle}
+Required Skills: {requiredSkills}
+Experience Level: {experienceLevel}
+Job Description: {jobDescription}
+
+Candidate Background (if available):
+- Skills: {candidateSkills}
+- Experience: {candidateExperience}
+
+This is the OPENING question — it should be warm, open-ended, and invite the candidate to share about themselves or their background relevant to the role. Prefer a behavioral soft-skills question to ease them in.
+
+Return ONLY a single JSON object (no array):
+{
+  "questionId": "q1",
+  "questionText": "Tell me about...",
+  "type": "behavioral",
+  "category": "communication",
+  "expectedTopics": ["topic1", "topic2"],
+  "order": 1
+}
+
+NO markdown, NO array brackets, ONLY valid JSON object.
+  `,
+
+  GENERATE_NEXT_QUESTION: `
+You are an AI interviewer conducting a {interviewType} interview for the role of {jobTitle}.
+
+Required Skills: {requiredSkills}
+Job Description: {jobDescription}
+
+Conversation so far:
+{conversationHistory}
+
+Question distribution so far:
+- Soft skills questions asked: {softSkillsAsked} (behavioral + situational + competency)
+- Technical questions asked: {technicalAsked}
+- Questions answered: {questionsAnswered}
+- Questions remaining (including this one): {questionsRemaining}
+- Target by end: ~{targetSoftSkills} soft skills, ~{targetTechnical} technical
+
+Your task: Generate question #{nextQuestionNumber}.
+
+Rules:
+1. Make it CONVERSATIONAL — reference something specific the candidate said if relevant
+2. Don't repeat topics already covered
+3. Respect the distribution: if you're behind on technical questions and running out of slots, ask a technical one; otherwise follow the natural conversation
+4. Keep it natural and flowing — not robotic or disconnected
+5. Vary question types: behavioral, situational, competency, or technical
+
+Return ONLY a single JSON object (no array):
+{
+  "questionId": "q{nextQuestionNumber}",
+  "questionText": "...",
+  "type": "behavioral|situational|competency|technical",
+  "category": "communication|problem_solving|leadership|teamwork|adaptability|critical_thinking|technical_skills",
+  "expectedTopics": ["topic1", "topic2"],
+  "order": {nextQuestionNumber}
+}
+
+NO markdown, NO array brackets, ONLY valid JSON object.
   `,
 
   OVERALL_SENTIMENT_SUMMARY: `

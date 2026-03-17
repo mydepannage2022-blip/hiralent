@@ -167,6 +167,7 @@ export const assignInterview = async (params: AssignInterviewParams): Promise<{ 
       scheduled_date: params.scheduledDate,
       assigned_by: params.recruiterId,
       assigned_at: new Date(),
+      soft_skill_weight: params.softSkillWeight ?? 70,
       questions_asked: [],
       responses: [],
       transcript: [],
@@ -473,39 +474,39 @@ export const startInterview = async (params: StartInterviewParams): Promise<Inte
     throw new Error(`Interview cannot be started. Current status: ${interview.status}`);
   }
 
-  // Generate questions based on job and candidate profile
+  // Generate only the first question based on job and candidate profile
   const job = interview.application?.job;
   const candidateProfile = interview.candidate?.candidateProfile;
 
-  const questions = await generateInterviewQuestions({
+  const firstQuestion = await generateOpeningQuestion({
     jobTitle: job?.title || 'General Position',
     jobDescription: job?.description || '',
     requiredSkills: (job?.required_skills as string[]) || [],
     experienceLevel: job?.experience_level || 'mid',
     interviewType: interview.interview_type,
-    questionCount: 8,
     candidateProfile: candidateProfile ? {
       skills: (candidateProfile.skills as string[]) || [],
-      experience: [], // Could extract from experience JSON
+      experience: [],
     } : undefined,
   });
 
-  // Sort questions by order to ensure consistent sequencing
-  const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
+  // Ensure question has the right ID and order
+  firstQuestion.questionId = 'q1';
+  firstQuestion.order = 1;
 
-  // Update interview with questions and start time
+  // Update interview with first question and start time
   const updatedInterview = await prisma.aIInterviewResult.update({
     where: { interview_id: params.interviewId },
     data: {
       status: 'IN_PROGRESS',
       started_at: new Date(),
-      questions_asked: sortedQuestions as unknown as any,
-      total_questions: sortedQuestions.length,
+      questions_asked: [firstQuestion] as unknown as any,
+      total_questions: 8, // Target question count
       transcript: [{
         role: 'ai',
-        content: sortedQuestions[0]?.questionText || 'Welcome to your interview.',
+        content: firstQuestion.questionText,
         timestamp: new Date().toISOString(),
-        questionId: sortedQuestions[0]?.questionId,
+        questionId: firstQuestion.questionId,
       }] as unknown as any,
     },
   });
@@ -513,10 +514,10 @@ export const startInterview = async (params: StartInterviewParams): Promise<Inte
   return {
     interviewId: updatedInterview.interview_id,
     status: updatedInterview.status as AIInterviewStatus,
-    currentQuestion: sortedQuestions[0],
+    currentQuestion: firstQuestion,
     progress: {
       questionsAsked: 1,
-      totalQuestions: sortedQuestions.length,
+      totalQuestions: 8,
     },
     startedAt: updatedInterview.started_at || undefined,
   };
@@ -594,10 +595,100 @@ export const submitResponse = async (params: SubmitResponseParams): Promise<Inte
     },
   ];
 
-  // Determine next question (sort by order first)
-  const answeredQuestionIds = [...responses.map(r => r.questionId), params.questionId];
-  const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
-  const nextQuestion = sortedQuestions.find(q => !answeredQuestionIds.includes(q.questionId));
+  // Build full conversation history for dynamic question generation
+  const allResponses = [...responses, candidateResponse];
+  const totalQuestions = interview.total_questions || 8;
+
+  // Only count questions that were actually answered (not pre-generated ones)
+  const answeredQuestionIds = new Set(allResponses.map(r => r.questionId));
+  const answeredQuestions = questions.filter(q => answeredQuestionIds.has(q.questionId));
+
+  // Count only main question answers (follow-up answers don't count toward the limit)
+  const mainAnsweredCount = answeredQuestions.filter(q => q.type !== 'followup').length;
+
+  // Determine next question
+  let nextQuestion: InterviewQuestion | null = null;
+  let updatedQuestions = questions;
+
+  // Decide whether to ask a follow-up or move to the next main question
+  const isFollowUpAnswer = currentQuestion.type === 'followup';
+  const alreadyHasFollowUp = questions.some(
+    q => q.type === 'followup' && q.followUpTo === params.questionId
+  );
+  const answerIsWeak =
+    (analysis.completenessScore ?? 100) < 50 ||
+    (analysis.relevanceScore ?? 100) < 60;
+  const shouldAskFollowUp = !isFollowUpAnswer && !alreadyHasFollowUp && answerIsWeak;
+
+  if (shouldAskFollowUp) {
+    // Generate a follow-up — does NOT count toward main question limit
+    const followUp = await generateFollowUp({
+      originalQuestion: currentQuestion,
+      response: params.responseText,
+      analysis,
+    });
+    if (followUp) {
+      followUp.questionId = `fu_${params.questionId}`;
+      followUp.followUpTo = params.questionId;
+      followUp.order = questions.length + 1;
+      nextQuestion = followUp;
+      updatedQuestions = [...questions, followUp];
+    }
+  }
+
+  if (!nextQuestion && mainAnsweredCount < totalQuestions) {
+    // Check if there are already pre-generated questions waiting to be asked
+    // (backward compatibility: interviews started with old code had all 8 pre-generated)
+    const sortedByOrder = [...questions].sort((a, b) => a.order - b.order);
+    const existingNextQuestion = sortedByOrder.find(q => !answeredQuestionIds.has(q.questionId) && q.type !== 'followup');
+
+    if (existingNextQuestion) {
+      // Use pre-generated question (old-code interview) — no DB update needed for questions_asked
+      nextQuestion = existingNextQuestion;
+    } else {
+      // Dynamic generation: generate next question based on conversation history
+      const softSkillTypes = ['behavioral', 'situational', 'competency'];
+      const softSkillsAsked = answeredQuestions.filter(q => softSkillTypes.includes(q.type) && q.type !== 'followup').length;
+      const technicalAsked = answeredQuestions.filter(q => q.type === 'technical').length;
+
+      // Build conversation history with question text + candidate response (main questions only)
+      const conversationHistory = allResponses
+        .filter(r => {
+          const q = questions.find(q => q.questionId === r.questionId);
+          return q?.type !== 'followup';
+        })
+        .map(r => {
+          const q = questions.find(q => q.questionId === r.questionId);
+          return {
+            questionText: q?.questionText || '',
+            questionType: q?.type || 'behavioral',
+            responseText: r.responseText,
+          };
+        });
+
+      const nextQuestionNumber = mainAnsweredCount + 1;
+
+      nextQuestion = await generateNextQuestion({
+        jobTitle: job?.title || 'General Position',
+        jobDescription: job?.description || '',
+        requiredSkills: (job?.required_skills as string[]) || [],
+        interviewType: interview.interview_type,
+        conversationHistory,
+        nextQuestionNumber,
+        totalQuestions,
+        softSkillsAsked,
+        technicalAsked,
+        softSkillWeight: (interview as any).soft_skill_weight ?? 70,
+      });
+
+      // Use a unique ID based on current questions length to avoid conflicts
+      nextQuestion.questionId = `dq${questions.length + 1}`;
+      nextQuestion.order = nextQuestionNumber;
+
+      // Append newly generated question to questions_asked
+      updatedQuestions = [...questions, nextQuestion];
+    }
+  }
 
   // Add next question to transcript if exists
   if (nextQuestion) {
@@ -609,24 +700,22 @@ export const submitResponse = async (params: SubmitResponseParams): Promise<Inte
     });
   }
 
-  // Update interview
   const updatedInterview = await prisma.aIInterviewResult.update({
     where: { interview_id: params.interviewId },
     data: {
-      responses: [...responses, candidateResponse] as unknown as any,
+      responses: allResponses as unknown as any,
       transcript: [...transcript, ...newTranscriptEntries] as unknown as any,
+      questions_asked: updatedQuestions as unknown as any,
     },
   });
-
-  const updatedResponses = updatedInterview.responses as unknown as CandidateResponse[];
 
   return {
     interviewId: updatedInterview.interview_id,
     status: updatedInterview.status as AIInterviewStatus,
     currentQuestion: nextQuestion,
     progress: {
-      questionsAsked: updatedResponses.length + (nextQuestion ? 1 : 0),
-      totalQuestions: questions.length,
+      questionsAsked: mainAnsweredCount + (nextQuestion && nextQuestion.type !== 'followup' ? 1 : 0),
+      totalQuestions,
     },
     startedAt: updatedInterview.started_at || undefined,
   };
@@ -662,29 +751,41 @@ export const endInterview = async (params: EndInterviewParams): Promise<Intervie
   const transcript = (interview.transcript as unknown as TranscriptEntry[]) || [];
   const job = interview.application?.job;
 
-  // Calculate duration
-  const startedAt = interview.started_at || new Date();
   const completedAt = new Date();
-  const durationSeconds = Math.floor((completedAt.getTime() - startedAt.getTime()) / 1000);
 
-  // Analyze soft skills
-  const softSkills = await analyzeSoftSkills(transcript, responses);
+  const durationSeconds = interview.started_at
+    ? Math.round((completedAt.getTime() - new Date(interview.started_at).getTime()) / 1000)
+    : 0;
+
+  // Analyze soft skills (skip if no responses to avoid AI call failure)
+  const softSkills = responses.length > 0 ? await analyzeSoftSkills(transcript, responses) : {};
 
   // Compile sentiment analysis from responses
   const sentiment = compileSentimentAnalysis(responses);
 
-  // Generate final evaluation
-  const evaluation = await generateFinalEvaluation({
-    questions,
-    responses,
-    softSkills,
-    sentiment,
-    jobContext: {
-      jobTitle: job?.title || 'General Position',
-      requiredSkills: (job?.required_skills as string[]) || [],
-      jobDescription: job?.description || undefined,
-    },
-  });
+  // Generate final evaluation (skip AI call if no responses)
+  const evaluation = responses.length > 0
+    ? await generateFinalEvaluation({
+        questions,
+        responses,
+        softSkills,
+        sentiment,
+        jobContext: {
+          jobTitle: job?.title || 'General Position',
+          requiredSkills: (job?.required_skills as string[]) || [],
+          jobDescription: job?.description || undefined,
+        },
+      })
+    : {
+        qualification: 'NOT_QUALIFIED' as const,
+        overallScore: 0,
+        recommendation: 'Interview was ended before any questions were answered.',
+        fitScore: 0,
+        strengths: [],
+        areasForImprovement: [],
+        redFlags: ['Interview not completed'],
+        confidenceInAssessment: 'low' as const,
+      };
 
   // Update interview with final results
   const updatedInterview = await prisma.aIInterviewResult.update({
@@ -809,6 +910,7 @@ export const getInterviewDetails = async (interviewId: string): Promise<Intervie
     transcript: interview.transcript as unknown as TranscriptEntry[],
     questions: interview.questions_asked as unknown as InterviewQuestion[],
     responses: interview.responses as unknown as CandidateResponse[],
+    cheatingEvents: (interview.cheating_events as any[]) || [],
   };
 };
 
@@ -887,6 +989,75 @@ export const generateInterviewQuestions = async (params: GenerateQuestionsParams
     return [];
   }
 };
+
+/**
+ * Generate the opening (first) interview question
+ */
+async function generateOpeningQuestion(params: {
+  jobTitle: string;
+  jobDescription: string;
+  requiredSkills: string[];
+  experienceLevel: string;
+  interviewType: string;
+  candidateProfile?: { skills: string[]; experience: string[] };
+}): Promise<InterviewQuestion> {
+  const prompt = AI_INTERVIEW_PROMPTS.GENERATE_OPENING_QUESTION
+    .replace('{interviewType}', params.interviewType)
+    .replace('{jobTitle}', params.jobTitle)
+    .replace('{requiredSkills}', params.requiredSkills.join(', '))
+    .replace('{experienceLevel}', params.experienceLevel)
+    .replace('{jobDescription}', params.jobDescription || 'N/A')
+    .replace('{candidateSkills}', params.candidateProfile?.skills.join(', ') || 'N/A')
+    .replace('{candidateExperience}', params.candidateProfile?.experience.join(', ') || 'N/A');
+
+  const question = await generateInterviewAnalysisJSON('You are an expert HR interviewer AI.', prompt);
+  return question as InterviewQuestion;
+}
+
+/**
+ * Generate the next question dynamically based on full conversation history
+ */
+async function generateNextQuestion(params: {
+  jobTitle: string;
+  jobDescription: string;
+  requiredSkills: string[];
+  interviewType: string;
+  conversationHistory: Array<{ questionText: string; questionType: string; responseText: string }>;
+  nextQuestionNumber: number;
+  totalQuestions: number;
+  softSkillsAsked: number;
+  technicalAsked: number;
+  softSkillWeight: number;
+}): Promise<InterviewQuestion> {
+  const targetSoftSkills = Math.round(params.totalQuestions * (params.softSkillWeight / 100));
+  const targetTechnical = params.totalQuestions - targetSoftSkills;
+  const questionsRemaining = params.totalQuestions - (params.nextQuestionNumber - 1);
+
+  const historyText = params.conversationHistory
+    .map((entry, i) =>
+      `Q${i + 1} [${entry.questionType}]: ${entry.questionText}\nCandidate: ${entry.responseText}`
+    )
+    .join('\n\n');
+
+  const prompt = AI_INTERVIEW_PROMPTS.GENERATE_NEXT_QUESTION
+    .replace('{interviewType}', params.interviewType)
+    .replace('{jobTitle}', params.jobTitle)
+    .replace('{requiredSkills}', params.requiredSkills.join(', '))
+    .replace('{jobDescription}', params.jobDescription || 'N/A')
+    .replace('{conversationHistory}', historyText)
+    .replace('{softSkillsAsked}', params.softSkillsAsked.toString())
+    .replace('{technicalAsked}', params.technicalAsked.toString())
+    .replace('{questionsAnswered}', (params.nextQuestionNumber - 1).toString())
+    .replace('{questionsRemaining}', questionsRemaining.toString())
+    .replace('{targetSoftSkills}', targetSoftSkills.toString())
+    .replace('{targetTechnical}', targetTechnical.toString())
+    .replace('{softSkillWeight}', params.softSkillWeight.toString())
+    .replace('{technicalWeight}', (100 - params.softSkillWeight).toString())
+    .replace(/\{nextQuestionNumber\}/g, params.nextQuestionNumber.toString());
+
+  const question = await generateInterviewAnalysisJSON('You are an expert HR interviewer AI.', prompt);
+  return question as InterviewQuestion;
+}
 
 /**
  * Analyze a candidate's response using AI
@@ -984,8 +1155,14 @@ export const analyzeSoftSkills = async (
 /**
  * Compile sentiment analysis from all responses
  */
-const compileSentimentAnalysis = (responses: CandidateResponse[]): SentimentAnalysis => {
-  const perResponse = responses.map(r => {
+const compileSentimentAnalysis = (responses: CandidateResponse[]): SentimentAnalysis | null => {
+  const responsesWithText = responses.filter(r => (r.responseText || '').trim().length > 0);
+
+  if (responsesWithText.length === 0) {
+    return null;
+  }
+
+  const perResponse = responsesWithText.map(r => {
     const sentiment = (r.analysis as any)?.sentiment || {};
     return {
       questionId: r.questionId,
@@ -1002,7 +1179,6 @@ const compileSentimentAnalysis = (responses: CandidateResponse[]): SentimentAnal
   const tones = perResponse.map(p => p.tone);
   const engagements = perResponse.map(p => p.engagement);
 
-  // Generate summary
   const overallConfidence = getMostCommon(confidences) || 'medium';
   const overallTone = getMostCommon(tones) || 'neutral';
   const overallEngagement = getMostCommon(engagements) || 'moderately_engaged';
@@ -1014,7 +1190,7 @@ const compileSentimentAnalysis = (responses: CandidateResponse[]): SentimentAnal
       confidence: overallConfidence,
       tone: overallTone,
       engagement: overallEngagement,
-      consistency: 'consistent', // Could be calculated based on variance
+      consistency: 'consistent',
     },
     perResponse,
     summary,
@@ -1073,10 +1249,10 @@ export const generateFinalEvaluation = async (params: FinalEvaluationParams): Pr
 const INTERVIEW_EXPIRATION_HOURS = 48;
 
 /**
- * Abandonment window in hours (24 hours after started_at)
+ * Abandonment window in hours (1 hour after started_at)
  * If an interview is IN_PROGRESS for longer than this, mark as FAILED
  */
-const INTERVIEW_ABANDONMENT_HOURS = 24;
+const INTERVIEW_ABANDONMENT_HOURS = 1;
 
 /**
  * Check if a single interview is expired based on scheduled_date + expiration window
@@ -1257,18 +1433,14 @@ export const uploadInterviewVideo = async (params: UploadVideoParams): Promise<{
     throw new Error(`Cannot upload video. Interview status: ${interview.status}`);
   }
 
-  // Generate unique filename - always use .webm since that's what MediaRecorder produces
-  // Browser may send wrong MIME type (text/plain), so force correct type
   const timestamp = Date.now();
   const key = `interviews/${interviewId}/recording_${timestamp}.webm`;
   const correctMimeType = 'video/webm';
 
   console.log(`📤 Uploading video to S3: ${key} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
-  // Upload to S3/MinIO with correct content type
   await s3PutObject(key, videoBuffer, correctMimeType);
 
-  // Update interview with video URL
   await prisma.aIInterviewResult.update({
     where: { interview_id: interviewId },
     data: { video_url: key },
@@ -1277,6 +1449,36 @@ export const uploadInterviewVideo = async (params: UploadVideoParams): Promise<{
   console.log(`✅ Video uploaded successfully: ${key}`);
 
   return { videoUrl: key };
+};
+
+/**
+ * Log a face detection violation (proctoring)
+ */
+export const logViolation = async (
+  interviewId: string,
+  candidateId: string,
+  type: 'NO_FACE' | 'MULTIPLE_FACES' | 'TAB_SWITCH' | 'WINDOW_BLUR' | 'PHONE_DETECTED' | 'LOOKING_AWAY',
+  faceCount: number,
+): Promise<void> => {
+  const interview = await prisma.aIInterviewResult.findUnique({
+    where: { interview_id: interviewId },
+    select: { candidate_id: true, status: true, cheating_events: true },
+  });
+
+  if (!interview || interview.candidate_id !== candidateId) {
+    throw new Error('Unauthorized');
+  }
+
+  // TAB_SWITCH is logged even if interview just completed (race condition with endInterview)
+  if (interview.status !== 'IN_PROGRESS' && type !== 'TAB_SWITCH') return;
+
+  const existing = (interview.cheating_events as any[]) || [];
+  const newEvent = { type, timestamp: new Date().toISOString(), faceCount };
+
+  await prisma.aIInterviewResult.update({
+    where: { interview_id: interviewId },
+    data: { cheating_events: [...existing, newEvent] },
+  });
 };
 
 /**

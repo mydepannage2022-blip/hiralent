@@ -136,6 +136,7 @@ export interface AssignInterviewRequest {
   jobId: string;
   interviewType?: string;
   scheduledDate: string; // ISO date string
+  softSkillWeight?: number; // 0–100, defaults to 70
 }
 
 // Start Interview Response
@@ -188,6 +189,16 @@ export interface RecruiterInterviewListItem {
   overallScore?: number;
 }
 
+// ==================== Proctoring ====================
+
+export type ViolationType = 'NO_FACE' | 'MULTIPLE_FACES' | 'TAB_SWITCH' | 'WINDOW_BLUR' | 'PHONE_DETECTED' | 'LOOKING_AWAY';
+
+export interface CheatingEvent {
+  type: ViolationType;
+  timestamp: string;
+  faceCount: number;
+}
+
 // ==================== Detailed Results (Recruiter Only) ====================
 
 export interface InterviewDetailedResult {
@@ -203,6 +214,7 @@ export interface InterviewDetailedResult {
   transcript: TranscriptEntry[];
   questions: InterviewQuestion[];
   responses: CandidateResponse[];
+  cheatingEvents?: CheatingEvent[];
 }
 
 // ==================== API Response Wrapper ====================

@@ -15,6 +15,7 @@ interface UseVideoRecorderReturn {
   startRecording: () => void;
   stopRecording: () => Promise<Blob | null>;
   clearRecording: () => void;
+  getCurrentBlob: () => Blob | null;
 }
 
 /**
@@ -82,6 +83,14 @@ export function useVideoRecorder(
     }
 
     try {
+      // Guard: ensure stream tracks are still live before creating MediaRecorder
+      const liveTracks = stream.getTracks().filter(t => t.readyState === 'live');
+      if (liveTracks.length === 0) {
+        console.error('MediaRecorder: all stream tracks are ended — cannot start recording');
+        setError('Camera stream has ended. Please refresh the page.');
+        return;
+      }
+
       // Clear previous recording
       chunksRef.current = [];
       setVideoBlob(null);
@@ -104,8 +113,9 @@ export function useVideoRecorder(
       };
 
       recorder.onerror = (event: Event) => {
-        console.error('MediaRecorder error:', event);
-        setError('Recording error occurred');
+        const err = (event as any).error;
+        console.error('MediaRecorder error:', err?.name, err?.message, event);
+        setError(`Recording error: ${err?.name ?? 'unknown'}`);
         setIsRecording(false);
       };
 
@@ -170,6 +180,12 @@ export function useVideoRecorder(
     });
   }, [isRecording, videoBlob]);
 
+  // Synchronously build a blob from accumulated chunks (no need to stop recorder)
+  const getCurrentBlob = useCallback((): Blob | null => {
+    if (chunksRef.current.length === 0) return null;
+    return new Blob(chunksRef.current, { type: mimeTypeRef.current });
+  }, []);
+
   // Clear the current recording
   const clearRecording = useCallback(() => {
     chunksRef.current = [];
@@ -198,5 +214,6 @@ export function useVideoRecorder(
     startRecording,
     stopRecording,
     clearRecording,
+    getCurrentBlob,
   };
 }

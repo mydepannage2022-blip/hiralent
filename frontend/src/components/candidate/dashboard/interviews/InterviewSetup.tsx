@@ -143,7 +143,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onReady, onCancel }) =>
           </button>
           <button
             onClick={() => requestPermissions()}
-            className="px-6 py-2 bg-[#005DDC] text-white rounded-lg hover:bg-[#004EB7]"
+            className="px-6 py-2 bg-[#005DDC] text-white rounded-xl hover:bg-[#004EB7]"
           >
             Try Again
           </button>
@@ -184,7 +184,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onReady, onCancel }) =>
           <label className="block text-sm font-medium text-gray-700 mb-1">Camera</label>
           <button
             onClick={() => setShowVideoDropdown(!showVideoDropdown)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 overflow-hidden"
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:border-gray-300 overflow-hidden"
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Camera className="w-4 h-4 text-gray-500 shrink-0" />
@@ -220,7 +220,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onReady, onCancel }) =>
           <label className="block text-sm font-medium text-gray-700 mb-1">Microphone</label>
           <button
             onClick={() => setShowAudioDropdown(!showAudioDropdown)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 overflow-hidden"
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:border-gray-300 overflow-hidden"
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Mic className="w-4 h-4 text-gray-500 shrink-0" />
@@ -259,7 +259,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onReady, onCancel }) =>
           <Mic className="w-5 h-5 text-gray-500" />
           <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-linear-to-r from-green-400 to-green-500 rounded-full"
+              className="h-full bg-[#005DDC] rounded-full"
               animate={{ width: `${audioLevel}%` }}
               transition={{ duration: 0.1 }}
             />
@@ -303,13 +303,13 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onReady, onCancel }) =>
       <div className="max-w-2xl mx-auto flex justify-between">
         <button
           onClick={onCancel}
-          className="px-6 py-2.5 text-gray-600 hover:text-gray-800 font-medium"
+          className="px-6 py-2.5 text-gray-500 hover:text-gray-800 font-medium text-sm transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={onReady}
-          className="px-8 py-2.5 bg-[#005DDC] text-white rounded-lg font-medium hover:bg-[#004EB7] transition-colors"
+          className="px-8 py-2.5 bg-[#005DDC] text-white rounded-xl font-medium text-sm hover:bg-[#004EB7] transition-colors"
         >
           I'm Ready to Start
         </button>

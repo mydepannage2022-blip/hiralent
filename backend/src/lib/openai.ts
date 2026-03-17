@@ -25,13 +25,14 @@ export async function generateGeminiJSON(systemPrompt: string, userPrompt: strin
   
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
         generationConfig: {
           temperature: 0.1,
           topK: 1,
           topP: 0.95,
           maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
         }
       });
 

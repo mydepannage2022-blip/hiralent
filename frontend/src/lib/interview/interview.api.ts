@@ -165,6 +165,7 @@ export const endInterview = async (
 
 // ==================== Video API Functions ====================
 
+
 /**
  * Upload interview video recording
  * POST /api/v1/interviews/:interviewId/upload-video
@@ -179,7 +180,7 @@ export const uploadInterviewVideo = async (
   const fileName = `interview_${interviewId}.webm`;
   const videoFile = new File([videoBlob], fileName, { type: mimeType });
 
-  console.log(`📤 Uploading video: size=${(videoFile.size / 1024 / 1024).toFixed(2)}MB, type=${videoFile.type}, originalType=${videoBlob.type}`);
+  console.log(`📤 Uploading video: size=${(videoFile.size / 1024 / 1024).toFixed(2)}MB, type=${videoFile.type}`);
 
   const formData = new FormData();
   formData.append('video', videoFile);
@@ -211,6 +212,18 @@ export const uploadInterviewVideo = async (
 
   console.log('✅ Video upload successful');
   return data.data!;
+};
+
+/**
+ * Log a face detection violation (proctoring) — fire and forget
+ * POST /api/v1/interviews/:interviewId/log-violation
+ */
+export const logViolation = async (
+  interviewId: string,
+  type: 'NO_FACE' | 'MULTIPLE_FACES' | 'TAB_SWITCH' | 'WINDOW_BLUR' | 'PHONE_DETECTED' | 'LOOKING_AWAY',
+  faceCount: number,
+): Promise<void> => {
+  await interviewApi.post(`/interviews/${interviewId}/log-violation`, { type, faceCount });
 };
 
 /**

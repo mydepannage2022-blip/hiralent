@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Clock, User, Briefcase, Eye, RefreshCw } from "lucide-react";
+import { Calendar, Clock, User, Briefcase, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCompanyInterviews } from "@/src/lib/interview/interview.queries";
 import { InterviewStatusBadge, QualificationBadge, ScoreBadge } from "./InterviewStatusBadge";
 import { AIInterviewStatus, RecruiterInterviewListItem } from "@/src/types/interview.types";
@@ -13,9 +13,12 @@ interface InterviewListProps {
   onViewDetails?: (interviewId: string) => void;
 }
 
+const PAGE_SIZE = 8;
+
 export default function InterviewList({ onViewDetails }: InterviewListProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch } = useCompanyInterviews();
 
@@ -52,6 +55,12 @@ export default function InterviewList({ onViewDetails }: InterviewListProps) {
     return filtered;
   }, [data, activeTab, searchQuery]);
 
+  const totalPages = Math.ceil(filteredInterviews.length / PAGE_SIZE);
+  const paginated = filteredInterviews.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleTabChange = (tab: FilterTab) => { setActiveTab(tab); setPage(1); };
+  const handleSearch = (q: string) => { setSearchQuery(q); setPage(1); };
+
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all", label: "All" },
     { key: "pending", label: "Pending" },
@@ -77,20 +86,18 @@ export default function InterviewList({ onViewDetails }: InterviewListProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-          {/* Tabs */}
-          <div className="flex gap-2 flex-wrap">
+      <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div className="flex gap-1.5 flex-wrap">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                onClick={() => handleTabChange(tab.key)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.key
-                    ? "bg-[#001F3F] text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-[#005DDC] text-white"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 }`}
               >
                 {tab.label}
@@ -98,24 +105,22 @@ export default function InterviewList({ onViewDetails }: InterviewListProps) {
             ))}
           </div>
 
-          {/* Search and Refresh */}
           <div className="flex gap-2 items-center">
             <input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search candidate or job..."
-              className="w-full md:w-64 border border-gray-200 rounded-lg px-3 py-2 outline-none text-sm"
+              className="w-full md:w-60 border border-gray-200 rounded-lg px-3 py-1.5 outline-none text-sm focus:border-gray-300 transition-colors"
             />
             <button
               onClick={() => refetch()}
               disabled={isLoading}
-              className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
               title="Refresh"
             >
-              <RefreshCw className={`w-4 h-4 text-gray-600 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-4 h-4 text-gray-400 ${isLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
-        </div>
       </div>
 
       {/* List */}
@@ -129,33 +134,70 @@ export default function InterviewList({ onViewDetails }: InterviewListProps) {
           <p className="text-red-700">Failed to load interviews.</p>
           <button
             onClick={() => refetch()}
-            className="mt-2 text-sm text-[#001F3F] hover:underline"
+            className="mt-2 text-sm text-[#005DDC] hover:underline"
           >
             Try again
           </button>
         </div>
       ) : !filteredInterviews.length ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-10 text-center">
+        <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
           <p className="font-semibold text-gray-900">No interviews found</p>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             {searchQuery || activeTab !== "all"
               ? "Try adjusting your filters."
               : "Assign an interview to a candidate to get started."}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredInterviews.map((interview, index) => (
-            <InterviewCard
-              key={interview.interviewId}
-              interview={interview}
-              index={index}
-              onViewDetails={onViewDetails}
-              formatDate={formatDate}
-              formatTime={formatTime}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3">
+            {paginated.map((interview, index) => (
+              <InterviewCard
+                key={interview.interviewId}
+                interview={interview}
+                index={index}
+                onViewDetails={onViewDetails}
+                formatDate={formatDate}
+                formatTime={formatTime}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-medium text-gray-800">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredInterviews.length)}</span> of <span className="font-medium text-gray-800">{filteredInterviews.length}</span>
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-600" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                      p === page ? 'bg-[#005DDC] text-white' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -187,7 +229,7 @@ function InterviewCard({
         {/* Candidate Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#001F3F] to-[#003366] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            <div className="w-10 h-10 bg-[#005DDC] rounded-full flex items-center justify-center text-white font-semibold text-sm">
               {interview.candidateName
                 .split(" ")
                 .map((n) => n[0])
@@ -237,7 +279,7 @@ function InterviewCard({
           {interview.status === AIInterviewStatus.COMPLETED && onViewDetails && (
             <button
               onClick={() => onViewDetails(interview.interviewId)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#001F3F] border border-[#001F3F] rounded-lg hover:bg-[#001F3F] hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#005DDC] border border-[#005DDC] rounded-lg hover:bg-[#005DDC] hover:text-white transition-colors"
             >
               <Eye className="w-4 h-4" />
               View Details

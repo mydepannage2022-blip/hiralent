@@ -14,6 +14,8 @@ import {
   uploadVideoController,
   getVideoUrlController,
   streamVideoController,
+  logViolationController,
+  synthesizeTTSController,
 } from '../controller/interview/aiInterview.controller';
 
 const router = Router();
@@ -23,6 +25,10 @@ router.use(checkAuth);
 
 // ==================== Recruiter Routes ====================
 // Note: These routes must come BEFORE parameterized routes to avoid conflicts
+
+// Text-to-speech proxy (returns audio/mpeg, used to mix AI voice into recording)
+// POST /api/v1/interviews/tts
+router.post('/tts', synthesizeTTSController);
 
 // Assign an interview to a candidate (recruiter only)
 // POST /api/v1/interviews/assign
@@ -53,6 +59,10 @@ router.post('/:interviewId/respond', submitResponseController);
 // End the interview and get completion status
 // POST /api/v1/interviews/:interviewId/end
 router.post('/:interviewId/end', endInterviewController);
+
+// Log a face detection violation (proctoring)
+// POST /api/v1/interviews/:interviewId/log-violation
+router.post('/:interviewId/log-violation', logViolationController);
 
 // Upload interview video recording (candidate)
 // POST /api/v1/interviews/:interviewId/upload-video

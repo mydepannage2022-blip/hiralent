@@ -32,9 +32,9 @@ const statusConfig: Record<AIInterviewStatus, { label: string; bgColor: string; 
     textColor: 'text-green-800',
   },
   FAILED: {
-    label: 'Failed',
-    bgColor: 'bg-red-100',
-    textColor: 'text-red-800',
+    label: 'Not Completed',
+    bgColor: 'bg-gray-100',
+    textColor: 'text-gray-600',
   },
   EXPIRED: {
     label: 'Expired',

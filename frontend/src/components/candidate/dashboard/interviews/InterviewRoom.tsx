@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { AlertCircle, Loader2, VideoOff } from 'lucide-react';
-import { useMediaDevices, useTextToSpeech, useSpeechToText, useInterviewSession, useCameraBlockDetection } from '@/src/hooks/interview';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, Loader2, VideoOff, AlertTriangle } from 'lucide-react';
+import { useMediaDevices, useTextToSpeech, useSpeechToText, useInterviewSession, useCameraBlockDetection, useFaceDetection, usePhoneDetection } from '@/src/hooks/interview';
 import { useVideoRecorder } from '@/src/hooks/interview/useVideoRecorder';
-import { uploadInterviewVideo } from '@/src/lib/interview/interview.api';
-import { useProfile } from '@/src/context/ProfileContext';
+import { uploadInterviewVideo, logViolation } from '@/src/lib/interview/interview.api';
 import { useAuth } from '@/src/context/AuthContext';
 import VideoPreview from './VideoPreview';
 import LiveTranscript from './LiveTranscript';
@@ -33,21 +32,51 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   onError,
 }) => {
   // Get candidate profile data
-  const { profileData } = useProfile();
   const { user } = useAuth();
   const candidateName = user?.full_name || 'You';
-  const candidatePhoto = profileData?.profile_picture_url || null;
 
   const [isMuted, setIsMuted] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [tabSwitchWarning, setTabSwitchWarning] = useState(false);
+  const [windowBlurWarning, setWindowBlurWarning] = useState(false);
+
+  // Web Audio: mix mic + AI TTS into a single stream for MediaRecorder
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const [showTranscript, setShowTranscript] = useState(true);
+  const roomRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      roomRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const prevPhaseRef = useRef<string>('idle');
   const speakingQuestionIdRef = useRef<string | null>(null);
   const questionsAskedRef = useRef<Set<string>>(new Set());
   const welcomeShownRef = useRef(false);
+  // Hold q1 from appearing in chat until welcome message TTS finishes
+  const holdFirstQuestionRef = useRef(true);
   const closingHandledRef = useRef(false);
   const completeHandledRef = useRef(false);
   const recordingStartedRef = useRef(false);
+  const recordingStartTimeRef = useRef<Date | null>(null);
+  const phaseRef = useRef<string>('idle');
+  // Dedup ref: prevents React Strict Mode double-invocation from logging the same violation twice
+  const lastLoggedViolationRef = useRef<string | null>(null);
 
   // Custom hooks
   const {
@@ -60,7 +89,7 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     speak,
     cancel: cancelSpeech,
     isSpeaking,
-  } = useTextToSpeech();
+  } = useTextToSpeech(audioContextRef, destinationRef);
 
   const {
     transcript,
@@ -95,14 +124,49 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   // Combined camera status: disabled via browser OR physically blocked
   const isCameraUnavailable = !isCameraEnabled || isCameraBlocked;
 
-  // Video recording
+  // Face detection proctoring
+  const { lastViolation, faceCount, isNoFace, isMultipleFaces, isLookingAway } = useFaceDetection({
+    stream,
+    enabled: phase !== 'idle' && phase !== 'loading' && phase !== 'complete' && phase !== 'error',
+  });
+
+  // Log face violations to backend — dedup ref prevents double-logging from React Strict Mode
+  useEffect(() => {
+    if (!lastViolation) {
+      lastLoggedViolationRef.current = null; // reset when face normalizes
+      return;
+    }
+    if (lastLoggedViolationRef.current === lastViolation) return; // already logged
+    lastLoggedViolationRef.current = lastViolation;
+    logViolation(interviewId, lastViolation, faceCount).catch(() => {});
+  }, [lastViolation, interviewId]); // faceCount intentionally excluded — only log when violation type changes
+
+  // Phone detection proctoring
+  const { isPhoneDetected, lastViolation: phoneViolation } = usePhoneDetection({
+    stream,
+    enabled: phase !== 'idle' && phase !== 'loading' && phase !== 'complete' && phase !== 'error',
+  });
+
+  // Log phone violations to backend
+  const lastLoggedPhoneRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!phoneViolation) {
+      lastLoggedPhoneRef.current = null;
+      return;
+    }
+    if (lastLoggedPhoneRef.current === phoneViolation) return;
+    lastLoggedPhoneRef.current = phoneViolation;
+    logViolation(interviewId, 'PHONE_DETECTED', 0).catch(() => {});
+  }, [phoneViolation, interviewId]);
+
+  // Video recording — use mixed stream (mic + TTS) when available
   const {
     isRecording,
     isSupported: isRecordingSupported,
     startRecording,
     stopRecording,
-    error: recordingError,
-  } = useVideoRecorder(stream);
+    getCurrentBlob,
+  } = useVideoRecorder(recordingStream ?? stream);
 
   // Initialize media stream
   useEffect(() => {
@@ -118,12 +182,46 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     };
   }, [getStream, releaseStream]);
 
+  // Set up Web Audio mixing: combine mic audio + TTS audio into one stream for MediaRecorder
+  useEffect(() => {
+    if (!stream) return;
+
+    const audioCtx = new AudioContext();
+    const destination = audioCtx.createMediaStreamDestination();
+
+    // Tap mic audio into the mix
+    const micSource = audioCtx.createMediaStreamSource(stream);
+    micSource.connect(destination);
+
+    audioContextRef.current = audioCtx;
+    destinationRef.current = destination;
+
+    // Build combined stream: video track from camera + mixed audio track
+    const combined = new MediaStream([
+      ...stream.getVideoTracks(),
+      ...destination.stream.getAudioTracks(),
+    ]);
+    setRecordingStream(combined);
+
+    return () => {
+      audioCtx.close();
+      audioContextRef.current = null;
+      destinationRef.current = null;
+      setRecordingStream(null);
+    };
+  }, [stream]);
+
   // Initialize interview session on mount
   useEffect(() => {
     initSession();
   }, [initSession]);
 
-  // Start video recording when stream becomes available (if interview already started)
+  // Keep phaseRef in sync so event handlers always read current phase
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  // Start recording when stream is ready and interview is active
   useEffect(() => {
     if (
       stream &&
@@ -134,44 +232,146 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
       phase !== 'complete' &&
       phase !== 'error'
     ) {
-      console.log('🎬 Stream ready - starting video recording');
       recordingStartedRef.current = true;
+      recordingStartTimeRef.current = new Date();
       startRecording();
     }
   }, [stream, isRecordingSupported, phase, startRecording]);
+
+  // End interview if candidate navigates away (sidebar click = client-side unmount)
+  // visibilitychange does NOT fire for same-tab navigation — only unmount catches it.
+  // We get the blob synchronously from accumulated chunks (no need to stop recorder first).
+  useEffect(() => {
+    return () => {
+      const currentPhase = phaseRef.current;
+      if (currentPhase === 'complete' || currentPhase === 'idle' || currentPhase === 'error') return;
+      const token = localStorage.getItem('authToken');
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+      // Upload accumulated video chunks (client-side nav keeps the page alive, no keepalive needed)
+      const blob = getCurrentBlob();
+      if (blob && blob.size > 0) {
+        const formData = new FormData();
+        formData.append('video', blob, 'interview.webm');
+        fetch(`${baseUrl}/interviews/${interviewId}/upload-video`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }).catch(() => {});
+      }
+
+      // End the interview (keepalive in case of hard navigation)
+      fetch(`${baseUrl}/interviews/${interviewId}/end`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        keepalive: true,
+      }).catch(() => {});
+    };
+  }, [interviewId, getCurrentBlob]);
+
+  // Log window blur (candidate switches to another app without switching tabs)
+  useEffect(() => {
+    const lastBlurTimeRef = { current: 0 };
+    const COOLDOWN_MS = 5000; // prevent spam if focus flickers
+
+    const handleWindowBlur = () => {
+      // Delay so visibilitychange (tab switch) has time to fire first and set document.hidden
+      setTimeout(() => {
+        // If the page is now hidden, visibilitychange already handled it as TAB_SWITCH
+        if (document.hidden) return;
+        const currentPhase = phaseRef.current;
+        if (currentPhase === 'complete' || currentPhase === 'idle' || currentPhase === 'error') return;
+
+        const now = Date.now();
+        if (now - lastBlurTimeRef.current < COOLDOWN_MS) return;
+        lastBlurTimeRef.current = now;
+
+        logViolation(interviewId, 'WINDOW_BLUR', 0).catch(() => {});
+        setWindowBlurWarning(true);
+        setTimeout(() => setWindowBlurWarning(false), 4000);
+      }, 100);
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [interviewId]);
+
+  // Log tab switch violation and show warning banner (interview continues)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) return;
+      const currentPhase = phaseRef.current;
+      if (currentPhase === 'complete' || currentPhase === 'idle' || currentPhase === 'error') return;
+
+      logViolation(interviewId, 'TAB_SWITCH', 0).catch((e) => console.error('[TAB_SWITCH] logViolation failed:', e));
+
+      setTabSwitchWarning(true);
+      setTimeout(() => setTabSwitchWarning(false), 4000);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [interviewId]);
+
+  // Split text into sentences for multi-bubble rendering
+  const splitSentences = (text: string): string[] =>
+    text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+
+  // Add sentence bubbles to messages immediately (used in muted path)
+  const addSentenceBubbles = useCallback((text: string, questionId: string) => {
+    const sentences = splitSentences(text);
+    sentences.forEach((sentence, i) => {
+      const id = `${questionId}_s${i}`;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === id)) return prev; // deduplicate
+        return [...prev, { id, sender: 'ai' as const, text: sentence, timestamp: new Date() }];
+      });
+    });
+  }, []);
+
+  // Speak sentence by sentence, adding each bubble just before speaking it
+  const speakSentences = useCallback(async (text: string, questionId: string): Promise<void> => {
+    const sentences = splitSentences(text);
+    for (let i = 0; i < sentences.length; i++) {
+      const id = `${questionId}_s${i}`;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === id)) return prev; // deduplicate
+        return [...prev, { id, sender: 'ai' as const, text: sentences[i], timestamp: new Date() }];
+      });
+      await speak(sentences[i]);
+    }
+  }, [speak]);
+
+  // Helper to release q1 hold (message bubbles added by speakSentences / addSentenceBubbles)
+  const revealFirstQuestion = useCallback((question: { questionId: string }) => {
+    holdFirstQuestionRef.current = false;
+    questionsAskedRef.current.add(question.questionId);
+  }, []);
 
   // Add welcome message when interview starts (only on first question)
   useEffect(() => {
     if (phase === 'speaking' && !welcomeShownRef.current && currentQuestion && progress.current === 1) {
       welcomeShownRef.current = true;
-      const welcomeText = 'Hello! This is an AI interview. I will ask you a series of questions to assess your skills and experience. Please answer each question clearly and take your time. Let\'s begin.';
+      const welcomeText = `Hello ${candidateName}! Welcome to your AI interview. I will ask you a series of questions to assess your skills and experience. Please answer each question clearly and take your time. Let's begin.`;
 
-      // Start video recording when interview begins
+      // Start recording when interview begins
       if (!recordingStartedRef.current && isRecordingSupported && stream) {
         recordingStartedRef.current = true;
-        console.log('🎬 Starting video recording for interview');
+        recordingStartTimeRef.current = new Date();
         startRecording();
       }
-
-      setMessages([
-        {
-          id: 'welcome',
-          sender: 'ai',
-          text: welcomeText,
-          timestamp: new Date(),
-        },
-      ]);
 
       // Speak welcome message + first question together
       if (!isMuted) {
         // Mark this question as being handled to prevent duplicate TTS in phase transition
         speakingQuestionIdRef.current = currentQuestion.questionId;
 
-        speak(welcomeText)
+        speakSentences(welcomeText, 'welcome')
           .then(() => {
-            console.log('✅ Welcome message finished, now speaking first question');
-            // Speak the first question immediately after
-            return speak(currentQuestion.questionText);
+            console.log('✅ Welcome message finished, now revealing and speaking first question');
+            revealFirstQuestion(currentQuestion);
+            return speakSentences(currentQuestion.questionText, currentQuestion.questionId);
           })
           .then(() => {
             console.log('✅ First question finished, switching to listening');
@@ -179,7 +379,6 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
             setPhase('listening');
           })
           .catch((err) => {
-            // Check if ref is already null (user skipped)
             if (speakingQuestionIdRef.current === null) {
               console.log('ℹ️ TTS interrupted by user skip - ignoring error');
               return;
@@ -187,36 +386,32 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
             console.error('❌ Welcome/Question TTS error:', err);
             speakingQuestionIdRef.current = null;
             cancelSpeech();
-            setTimeout(() => {
-              setPhase('listening');
-            }, 1000);
+            // Still reveal q1 on error so candidate can read it
+            revealFirstQuestion(currentQuestion);
+            addSentenceBubbles(currentQuestion.questionText, currentQuestion.questionId);
+            setTimeout(() => setPhase('listening'), 1000);
           });
       } else {
-        // If muted, mark as handled and skip to listening
+        // If muted, add welcome + q1 sentence bubbles immediately
         speakingQuestionIdRef.current = currentQuestion.questionId;
+        addSentenceBubbles(welcomeText, 'welcome');
+        revealFirstQuestion(currentQuestion);
+        addSentenceBubbles(currentQuestion.questionText, currentQuestion.questionId);
         setTimeout(() => {
           speakingQuestionIdRef.current = null;
           setPhase('listening');
         }, 100);
       }
     }
-  }, [phase, currentQuestion, progress, isMuted, speak, setPhase, cancelSpeech, isRecordingSupported, stream, startRecording]);
+  }, [phase, currentQuestion, progress, isMuted, speak, speakSentences, addSentenceBubbles, setPhase, cancelSpeech, candidateName, revealFirstQuestion, isRecordingSupported, stream, startRecording]);
 
-  // Add new questions to message history
+  // Track new questions — actual bubbles are added by speakSentences / addSentenceBubbles
   useEffect(() => {
     if (currentQuestion && !questionsAskedRef.current.has(currentQuestion.questionId)) {
+      if (holdFirstQuestionRef.current && progress.current === 1) return;
       questionsAskedRef.current.add(currentQuestion.questionId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: currentQuestion.questionId,
-          sender: 'ai',
-          text: currentQuestion.questionText,
-          timestamp: new Date(),
-        },
-      ]);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion, progress]);
 
   // Handle phase transitions
   useEffect(() => {
@@ -230,31 +425,27 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
       speakingQuestionIdRef.current = currentQuestion.questionId;
       console.log('🎤 AI speaking question:', currentQuestion.questionText.substring(0, 50));
 
-      // AI speaks the question
+      // AI speaks the question sentence by sentence
       if (!isMuted) {
-        speak(currentQuestion.questionText)
+        speakSentences(currentQuestion.questionText, currentQuestion.questionId)
           .then(() => {
             console.log('✅ TTS finished, switching to listening');
             speakingQuestionIdRef.current = null;
             setPhase('listening');
           })
           .catch((err) => {
-            // Check if ref is already null (user skipped)
             if (speakingQuestionIdRef.current === null) {
               console.log('ℹ️ TTS interrupted by user skip - ignoring error');
               return;
             }
-            // Genuine TTS error
             console.error('❌ TTS error:', err);
             speakingQuestionIdRef.current = null;
-            // If TTS fails, cancel any ongoing speech and wait before listening
             cancelSpeech();
-            setTimeout(() => {
-              setPhase('listening');
-            }, 1000);
+            setTimeout(() => setPhase('listening'), 1000);
           });
       } else {
-        // If muted, skip to listening immediately
+        // If muted, add all sentence bubbles immediately and skip to listening
+        addSentenceBubbles(currentQuestion.questionText, currentQuestion.questionId);
         speakingQuestionIdRef.current = null;
         setPhase('listening');
       }
@@ -327,29 +518,18 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
       onComplete();
       console.log('⏱️ [TIMING] onComplete() called:', new Date().toISOString());
 
-      // Run video upload and endSession in background (fire and forget)
+      // Stop recording, upload video, end session — fire and forget
       const handleBackgroundProcessing = async (): Promise<void> => {
-        console.log('⏱️ [TIMING] Background processing started:', new Date().toISOString());
         try {
-          // Stop recording and upload video
-          if (isRecording || recordingStartedRef.current) {
-            try {
-              console.log('🛑 Stopping video recording...');
-              const videoBlob = await stopRecording();
-
-              if (videoBlob && videoBlob.size > 0) {
-                console.log(`📤 Uploading video in background (${(videoBlob.size / 1024 / 1024).toFixed(2)} MB)...`);
-                await uploadInterviewVideo(interviewId, videoBlob, (progress) => {
-                  console.log(`📤 Upload progress: ${progress}%`);
-                });
-                console.log('✅ Video uploaded successfully');
-              }
-            } catch (err) {
-              console.error('❌ Failed to upload video:', err);
+          if (recordingStartedRef.current) {
+            const blob = await stopRecording();
+            recordingStartedRef.current = false;
+            recordingStartTimeRef.current = null;
+            if (blob && blob.size > 0) {
+              await uploadInterviewVideo(interviewId, blob);
+              console.log('✅ Video uploaded successfully');
             }
           }
-
-          // End session (triggers AI evaluation in background)
           await endSession();
           console.log('✅ Interview session ended successfully');
         } catch (err) {
@@ -357,10 +537,9 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
         }
       };
 
-      // Fire and forget - don't block the redirect
       handleBackgroundProcessing();
     }
-  }, [phase, currentQuestion, isMuted, speak, setPhase, resetTranscript, startListening, stopListening, cancelSpeech, onComplete, setMessages, endSession, isRecording, stopRecording, interviewId]);
+  }, [phase, currentQuestion, isMuted, speak, setPhase, resetTranscript, startListening, stopListening, cancelSpeech, onComplete, setMessages, endSession, stopRecording, interviewId]);
 
   // Update transcript in session state
   useEffect(() => {
@@ -375,12 +554,6 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     }
   }, [sessionError, onError]);
 
-  // Log recording errors
-  useEffect(() => {
-    if (recordingError) {
-      console.error('❌ Video recording error:', recordingError);
-    }
-  }, [recordingError]);
 
   // Track if we were speaking when camera became unavailable
   const wasInterruptedWhileSpeakingRef = useRef(false);
@@ -485,7 +658,7 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   // Loading state
   if (phase === 'loading' || phase === 'idle') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-125 gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-[#005DDC]" />
         <p className="text-gray-600">Preparing your interview...</p>
       </div>
@@ -495,7 +668,7 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   // Error state
   if (phase === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-125 gap-4">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
@@ -514,7 +687,8 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   const currentTranscript = transcript + (interimTranscript ? ' ' + interimTranscript : '');
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 relative">
+    <div ref={roomRef} className="flex flex-col h-screen bg-[#111827] relative">
+
       {/* Camera Unavailable Warning Overlay (disabled or physically blocked) */}
       {isCameraUnavailable && phase !== 'complete' && (
         <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center">
@@ -544,36 +718,117 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
         </div>
       )}
 
-      {/* Main Content - 60/40 Split */}
+      {/* Main Content - 60/40 Split (75/25 in fullscreen) */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Video (60%) */}
-        <div className="w-3/5 p-6">
+        {/* Left Panel - Video */}
+        <div className={`${!showTranscript ? 'w-full' : isFullscreen ? 'w-3/4' : 'w-3/5'} p-6 relative transition-all duration-300`}>
+
+          {/* Violation Badges — stacked, centered in the video frame */}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none">
+            <AnimatePresence>
+              {(isNoFace || isMultipleFaces) && phase !== 'complete' && (
+                <motion.div
+                  key="face"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2 bg-amber-500/90 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg backdrop-blur-sm whitespace-nowrap"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  {isMultipleFaces ? 'Multiple people detected' : 'Please stay in frame'}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {isLookingAway && phase !== 'complete' && (
+                <motion.div
+                  key="looking-away"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2 bg-amber-500/90 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg backdrop-blur-sm whitespace-nowrap"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Please look at the camera
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {isPhoneDetected && phase !== 'complete' && (
+                <motion.div
+                  key="phone"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2 bg-red-500/90 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg backdrop-blur-sm whitespace-nowrap"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Phone detected
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {tabSwitchWarning && (
+                <motion.div
+                  key="tab-switch"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2 bg-orange-500/95 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-xl backdrop-blur-sm whitespace-nowrap"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Tab switch detected — this has been recorded
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {windowBlurWarning && (
+                <motion.div
+                  key="window-blur"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2 bg-orange-500/95 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-xl backdrop-blur-sm whitespace-nowrap"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Window switch detected — this has been recorded
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <VideoPreview
             stream={stream}
             isRecording={isRecording}
+            candidateName={candidateName}
+            isSpeaking={isSpeaking}
+            isListening={isListening}
           />
         </div>
 
-        {/* Right Panel - Transcript (40%) */}
-        <div className="w-2/5 p-6 pl-0">
-          <LiveTranscript
-            messages={messages}
-            currentTranscript={currentTranscript}
-            isListening={isListening}
-            onEndResponse={handleSubmit}
-            canSubmit={canSubmit && phase === 'listening'}
-            isSubmitting={phase === 'submitting'}
-            userName={candidateName}
-            candidatePhoto={candidatePhoto}
-          />
-        </div>
+        {/* Right Panel - Transcript */}
+        {showTranscript && (
+          <div className={`${isFullscreen ? 'w-1/4' : 'w-2/5'} p-6 pl-0 transition-all duration-300`}>
+            <LiveTranscript
+              messages={messages}
+              currentTranscript={currentTranscript}
+              isListening={isListening}
+              onEndResponse={handleSubmit}
+              canSubmit={canSubmit && phase === 'listening'}
+              isSubmitting={phase === 'submitting'}
+              userName={candidateName}
+            />
+          </div>
+        )}
       </div>
 
       {/* Bottom Bar */}
       <InterviewBottomBar
         jobTitle={jobTitle}
-        currentQuestion={progress.current}
-        totalQuestions={progress.total}
+        showTranscript={showTranscript}
+        onToggleTranscript={() => setShowTranscript((v) => !v)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
     </div>
   );

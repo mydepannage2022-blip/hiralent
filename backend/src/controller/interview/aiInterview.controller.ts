@@ -11,6 +11,7 @@ import {
   getRecruiterInterviews,
   uploadInterviewVideo,
   getInterviewVideoUrl,
+  logViolation,
 } from '../../services/interview/aiInterview.service';
 import { s3GetObjectStream } from '../../lib/s3';
 import prisma from '../../lib/prisma';
@@ -267,7 +268,7 @@ export const assignInterviewController = async (req: Request, res: Response) => 
       return res.status(403).json({ success: false, error: 'Access denied. Recruiter role required.' });
     }
 
-    const { candidateId, applicationId, jobId, interviewType, scheduledDate } = req.body;
+    const { candidateId, applicationId, jobId, interviewType, scheduledDate, softSkillWeight } = req.body;
 
     if (!candidateId) {
       return res.status(400).json({ success: false, error: 'candidateId is required' });
@@ -289,6 +290,7 @@ export const assignInterviewController = async (req: Request, res: Response) => 
       jobId,
       interviewType: interviewType || 'screening',
       scheduledDate: new Date(scheduledDate),
+      softSkillWeight: softSkillWeight !== undefined ? Number(softSkillWeight) : 70,
     });
 
     return res.status(201).json({ success: true, data: result });
@@ -444,6 +446,35 @@ export const getVideoUrlController = async (req: Request, res: Response) => {
 };
 
 /**
+ * Log a face detection violation (proctoring)
+ * POST /api/v1/interviews/:interviewId/log-violation
+ */
+export const logViolationController = async (req: Request, res: Response) => {
+  try {
+    const candidateId = req.user?.user_id;
+    if (!candidateId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const interviewId = req.params.interviewId as string;
+    const { type, faceCount } = req.body;
+
+    if (!type || !['NO_FACE', 'MULTIPLE_FACES', 'TAB_SWITCH', 'WINDOW_BLUR', 'PHONE_DETECTED', 'LOOKING_AWAY'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Invalid violation type' });
+    }
+
+    await logViolation(interviewId, candidateId, type, faceCount ?? 0);
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    if (err.message === 'Unauthorized') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+};
+
+/**
  * Stream video directly from S3 (bypasses CORS issues)
  * GET /api/v1/interviews/:interviewId/video-stream
  * Uses Authorization header from checkAuth middleware
@@ -507,5 +538,84 @@ export const streamVideoController = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Stream video error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+};
+
+// ─── TTS helpers ──────────────────────────────────────────────────────────────
+
+/** Split text into chunks ≤ maxLen chars, breaking at sentence/word boundaries */
+function splitIntoTTSChunks(text: string, maxLen = 200): string[] {
+  if (text.length <= maxLen) return [text];
+  const chunks: string[] = [];
+  // Split at sentence boundaries first
+  const sentences = text.split(/(?<=[.!?,])\s+/);
+  let current = '';
+  for (const sentence of sentences) {
+    if (sentence.length > maxLen) {
+      // Sentence itself is too long — split by words
+      const words = sentence.split(' ');
+      for (const word of words) {
+        if ((current + ' ' + word).trim().length > maxLen) {
+          if (current.trim()) chunks.push(current.trim());
+          current = word;
+        } else {
+          current = (current + ' ' + word).trim();
+        }
+      }
+    } else if ((current + ' ' + sentence).trim().length > maxLen) {
+      if (current.trim()) chunks.push(current.trim());
+      current = sentence;
+    } else {
+      current = (current + ' ' + sentence).trim();
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter(Boolean);
+}
+
+/**
+ * Text-to-Speech proxy (Google Translate TTS)
+ * POST /api/v1/interviews/tts
+ */
+export const synthesizeTTSController = async (req: Request, res: Response) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ success: false, error: 'text is required' });
+    }
+
+    const chunks = splitIntoTTSChunks(text.trim(), 200);
+    const audioBuffers: Buffer[] = [];
+
+    for (const chunk of chunks) {
+      const url =
+        `https://translate.google.com/translate_tts?ie=UTF-8` +
+        `&q=${encodeURIComponent(chunk)}&tl=en&client=tw-ob&ttsspeed=0.9`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Referer: 'https://translate.google.com/',
+          Accept: 'audio/mpeg, audio/*',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google TTS returned ${response.status}`);
+      }
+
+      audioBuffers.push(Buffer.from(await response.arrayBuffer()));
+    }
+
+    const audio = Buffer.concat(audioBuffers);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', audio.length);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(audio);
+  } catch (err: any) {
+    console.error('TTS error:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
