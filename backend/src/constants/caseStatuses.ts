@@ -63,14 +63,16 @@ export const isActiveVisaCase = (
   // Rejected or cancelled = not active
   if (embassyStatus === EMBASSY_STATUSES.REJECTED) return false;
   if (caseStatus === CASE_STATUSES.CANCELLED) return false;
+
+  // Visa approved = visa work is finished
+  if (embassyStatus === EMBASSY_STATUSES.APPROVED) return false;
   
   // Completed = not active
   if (caseStatus === CASE_STATUSES.COMPLETED) return false;
   
   // If embassy approved AND housing assigned, visa work is done
-  if (embassyStatus === EMBASSY_STATUSES.APPROVED && housingAgencyAssigned) {
-    return false;
-  }
+  // (kept for backward compatibility; handled above)
+  if (embassyStatus === EMBASSY_STATUSES.APPROVED && housingAgencyAssigned) return false;
   
   // If case moved to housing/integration phases, visa work is done
   if (caseStatus === CASE_STATUSES.HOUSING_ASSIGNED ||

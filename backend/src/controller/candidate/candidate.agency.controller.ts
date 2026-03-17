@@ -1,8 +1,19 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../utils/email.util";
+import {
+  renderEmailCallout,
+  renderEmailKeyValueTable,
+  renderTransactionalEmail,
+} from "../../services/emailTemplates.service";
 
 const prisma = new PrismaClient();
+
+const coerceSingleString = (value: unknown): string | null => {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return null;
+};
 
 /**
  * GET /api/v1/candidate/agencies/browse
@@ -84,8 +95,15 @@ export const browseAgenciesController = async (req: Request, res: Response) => {
 export const assignAgencyToCase = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = coerceSingleString((req.params as any).caseId);
     const { agencyId } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({
+        success: false,
+        message: "Case ID is required",
+      });
+    }
 
     // Validate request body
     if (!agencyId) {
@@ -217,73 +235,41 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
 
     // 8. Send notification to agency
     try {
-      const agencyEmailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-          .button { display: inline-block; padding: 14px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>New Case Assigned to You</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${agency.name}</strong> team,</p>
-            <p>You have been assigned a new relocation case by a candidate whose visa was recently approved!</p>
-            
-            <div class="info-box">
-              <h3 style="margin-top: 0; color: #1e40af;">Case Details</h3>
-              <p><strong>Case Number:</strong> ${caseData.case_number}</p>
-              <p><strong>Candidate:</strong> ${caseData.candidate.full_name}</p>
-              <p><strong>Route:</strong> ${caseData.origin_country} → ${
-        caseData.destination_country
-      }</p>
-              ${
-                caseData.destination_city
-                  ? `<p><strong>City:</strong> ${caseData.destination_city}</p>`
-                  : ""
-              }
-              <p><strong>Visa Status:</strong>Approved</p>
-              <p><strong>Service Type:</strong> ${caseData.service_type.replace(
-                "_",
-                " "
-              )}</p>
-            </div>
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const agencyCaseUrl = `${frontendUrl}/agency/dashboard/cases/${caseId}`;
 
-            <h3>What You Need to Do:</h3>
-            <ol style="margin: 15px 0; padding-left: 20px;">
-              <li>Log in to your agency dashboard</li>
-              <li>Review the complete case details</li>
-              <li>Contact the candidate to discuss housing needs</li>
-              <li>Begin searching for suitable accommodation</li>
-            </ol>
+      const caseDetailsHtml = renderEmailKeyValueTable([
+        { label: "Case number", value: caseData.case_number },
+        { label: "Candidate", value: caseData.candidate.full_name },
+        {
+          label: "Route",
+          value: `${caseData.origin_country} → ${caseData.destination_country}`,
+        },
+        { label: "City", value: caseData.destination_city || null },
+        { label: "Visa status", value: "Approved" },
+        { label: "Service type", value: caseData.service_type.replace("_", " ") },
+      ]);
 
-            <p style="margin-top: 20px;"><strong>The candidate is waiting to hear from you!</strong></p>
+      const actionsHtml = `
+        <ol style="margin: 0; padding-left: 18px;">
+          <li>Open your agency dashboard</li>
+          <li>Review the case details</li>
+          <li>Contact the candidate to discuss housing needs</li>
+        </ol>`;
 
-            <div style="text-align: center;">
-              <a href="${
-                process.env.FRONTEND_URL
-              }/agency/dashboard/cases/${caseId}" class="button">
-                View Case in Dashboard
-              </a>
-            </div>
-          </div>
-          <div class="footer">
-            <p>This is an automated notification from Hiralent.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+      const agencyEmailHtml = renderTransactionalEmail({
+        title: "New case assigned",
+        previewText: `A new case (${caseData.case_number}) was assigned to your agency.`,
+        greetingName: `${agency.name} team`,
+        introHtml:
+          "A candidate has selected your agency after visa approval. Please review the case and reach out promptly.",
+        sections: [
+          { title: "Case details", html: caseDetailsHtml },
+          { title: "What to do next", html: actionsHtml },
+        ],
+        cta: { label: "View case in dashboard", href: agencyCaseUrl },
+        tone: "info",
+      });
 
       await sendEmail({
         to: agency.email || "",
@@ -297,75 +283,41 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
 
     // 9. Send confirmation email to candidate
     try {
-      const candidateEmailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
-          .agency-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-          .button { display: inline-block; padding: 14px 32px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Housing Agency Confirmed</h1>
-          </div>
-          <div class="content">
-            <p>Hi <strong>${caseData.candidate.full_name}</strong>,</p>
-            
-            <div class="success-box">
-              <h3 style="margin-top: 0; color: #059669;">Great news! Your housing agency has been confirmed.</h3>
-              <p>You've successfully selected your relocation partner for finding accommodation in ${
-                caseData.destination_country
-              }.</p>
-            </div>
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const candidateCaseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
 
-            <div class="agency-box">
-              <h3 style="margin-top: 0; color: #1e40af;">Your Selected Agency</h3>
-              <p><strong>Name:</strong> ${agency.name}</p>
-              ${
-                agency.email
-                  ? `<p><strong>Email:</strong> ${agency.email}</p>`
-                  : ""
-              }
-            </div>
+      const selectedAgencyHtml = renderEmailKeyValueTable([
+        { label: "Agency", value: agency.name },
+        { label: "Email", value: agency.email || null },
+        { label: "Case number", value: caseData.case_number },
+        { label: "Destination", value: caseData.destination_country },
+      ]);
 
-            <h3>What Happens Next:</h3>
-            <ol style="margin: 15px 0; padding-left: 20px;">
-              <li><strong>Agency Review:</strong> The agency has been notified and will review your case</li>
-              <li><strong>Initial Contact:</strong> They will reach out to you within 2-3 business days</li>
-              <li><strong>Discuss Needs:</strong> You'll discuss your housing preferences and budget</li>
-              <li><strong>Property Search:</strong> They'll search for suitable accommodation options</li>
-              <li><strong>Selection:</strong> You'll review options and make your final selection</li>
-            </ol>
+      const timelineCallout = renderEmailCallout({
+        tone: "warning",
+        html: "Expect initial contact within 2–3 business days. The housing search typically takes 1–2 weeks.",
+      });
 
-            <p style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
-              <strong>⏰ Timeline:</strong> Expect initial contact within 2-3 business days. The full housing search typically takes 1-2 weeks.
-            </p>
+      const nextHtml = `
+        <ol style="margin: 0; padding-left: 18px;">
+          <li>The agency reviews your case</li>
+          <li>They contact you to discuss preferences and budget</li>
+          <li>They share options for your review</li>
+        </ol>
+        <div style="margin-top: 12px;">${timelineCallout}</div>`;
 
-            <div style="text-align: center;">
-              <a href="${
-                process.env.FRONTEND_URL
-              }/candidate/dashboard/cases/${caseId}" class="button">
-                View Case Details
-              </a>
-            </div>
-          </div>
-          <div class="footer">
-            <p>Need to change your agency? Visit your case dashboard.</p>
-            <p>This is an automated confirmation from Hiralent.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+      const candidateEmailHtml = renderTransactionalEmail({
+        title: "Housing agency confirmed",
+        previewText: `You selected ${agency.name} for case ${caseData.case_number}.`,
+        greetingName: caseData.candidate.full_name,
+        introHtml: "Your housing agency selection is confirmed. The agency has been notified.",
+        sections: [
+          { title: "Selected agency", html: selectedAgencyHtml },
+          { title: "What happens next", html: nextHtml },
+        ],
+        cta: { label: "View case details", href: candidateCaseUrl },
+        tone: "success",
+      });
 
       await sendEmail({
         to: caseData.candidate.email,
@@ -475,9 +427,16 @@ export const assignIntegrationAgencyToCase = async (
   res: Response
 ) => {
   try {
-    const { caseId } = req.params;
+    const caseId = coerceSingleString((req.params as any).caseId);
     const { agencyId } = req.body;
     const candidateId = req.user?.user_id;
+
+    if (!caseId) {
+      return res.status(400).json({
+        success: false,
+        message: "Case ID is required",
+      });
+    }
 
     if (!candidateId) {
       return res.status(401).json({
@@ -593,8 +552,15 @@ export const getIntegrationServicesController = async (
   res: Response
 ) => {
   try {
-    const { caseId } = req.params;
+    const caseId = coerceSingleString((req.params as any).caseId);
     const candidateId = req.user?.user_id;
+
+    if (!caseId) {
+      return res.status(400).json({
+        success: false,
+        message: "Case ID is required",
+      });
+    }
 
     if (!candidateId) {
       return res.status(401).json({

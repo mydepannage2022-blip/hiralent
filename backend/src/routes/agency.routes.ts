@@ -26,6 +26,11 @@ import {
   markReadyForArrival,
 } from "../controller/agency/agency.housing.controller";
 import { searchCandidatesController } from "../controller/agency/agency.candidate.controller";
+import {
+  bootstrapIntegrationServices,
+  getIntegrationServicesForCase,
+  updateIntegrationService,
+} from "../controller/agency/agency.integration.controller";
 
 const router = Router();
 
@@ -79,5 +84,14 @@ router.put("/cases/:caseId/housing", checkAuth, updateHousingDetails);
 router.put("/cases/:caseId/utilities", checkAuth, updateUtilityStatus);
 router.put("/cases/:caseId/arrival", checkAuth, updateArrivalDetails);
 router.put("/cases/:caseId/ready-for-arrival", checkAuth, markReadyForArrival);
+
+// Integration services (integration agency)
+router.get("/cases/:caseId/integration-services", checkAuth, getIntegrationServicesForCase);
+router.post("/cases/:caseId/integration-services/bootstrap", checkAuth, bootstrapIntegrationServices);
+router.put(
+  "/cases/:caseId/integration-services/:serviceId",
+  checkAuth,
+  updateIntegrationService
+);
 
 export default router;

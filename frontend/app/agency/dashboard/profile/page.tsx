@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import countryList from "country-list";
 import ISO6391 from "iso-639-1";
+import { Button } from "@/src/components/agency/ui/button";
 import {
   Building2,
   Mail,
   Phone,
   Globe,
+  MapPin,
   Calendar,
   CheckCircle,
   Clock,
@@ -221,35 +223,34 @@ export default function ProfilePage() {
   const getStatusBadge = (status: string) => {
     const badges = {
       PENDING: {
-        icon: Clock,
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        text: "Pending Review",
+        dot: "bg-amber-500",
+        color: "bg-amber-50 text-amber-700 border-amber-200",
+        text: "Pending",
       },
       APPROVED: {
-        icon: CheckCircle,
-        color: "bg-green-100 text-green-800 border-green-200",
+        dot: "bg-emerald-500",
+        color: "bg-emerald-50 text-emerald-700 border-emerald-200",
         text: "Verified",
       },
       REJECTED: {
-        icon: XCircle,
-        color: "bg-red-100 text-red-800 border-red-200",
+        dot: "bg-rose-500",
+        color: "bg-rose-50 text-rose-700 border-rose-200",
         text: "Rejected",
       },
       SUSPENDED: {
-        icon: XCircle,
-        color: "bg-gray-100 text-gray-800 border-gray-200",
+        dot: "bg-slate-500",
+        color: "bg-slate-50 text-slate-700 border-slate-200",
         text: "Suspended",
       },
     };
 
     const badge = badges[status as keyof typeof badges] || badges.PENDING;
-    const Icon = badge.icon;
 
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${badge.color}`}
+        className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium ${badge.color}`}
       >
-        <Icon className="w-4 h-4" />
+        <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
         {badge.text}
       </span>
     );
@@ -258,14 +259,14 @@ export default function ProfilePage() {
   const getTypeBadge = (type: string | null) => {
     if (!type) return null;
     const colors = {
-      VISA: "bg-blue-100 text-blue-800 border-blue-200",
-      RELOCATION: "bg-purple-100 text-purple-800 border-purple-200",
-      INTEGRATION: "bg-green-100 text-green-800 border-green-200",
+      VISA: "bg-blue-50 text-blue-700 border-blue-200",
+      RELOCATION: "bg-slate-50 text-slate-700 border-slate-200",
+      INTEGRATION: "bg-emerald-50 text-emerald-700 border-emerald-200",
     };
 
     return (
       <span
-        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
           colors[type as keyof typeof colors]
         }`}
       >
@@ -284,23 +285,22 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || "Profile not found"}</p>
-          <button
-            onClick={fetchProfile}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="max-w-md text-center">
+          <p className="mb-4 text-sm text-rose-600">
+            {error || "Profile not found"}
+          </p>
+          <Button onClick={fetchProfile} variant="soft" size="md">
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -308,51 +308,7 @@ export default function ProfilePage() {
 
   return (
     <div className="w-full">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              Agency Profile
-            </h1>
-            <p className="text-slate-600">
-              Manage your agency information and settings
-            </p>
-          </div>
-
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl"
-            >
-              <Edit className="w-5 h-5" />
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex gap-3">
-              <button
-                onClick={handleCancel}
-                className="flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all"
-              >
-                <X className="w-5 h-5" />
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-              >
-                <Save className="w-5 h-5" />
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          )}
-        </motion.div>
-
+      <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
           {/* Left Column - Profile Information */}
           <div className="lg:col-span-2 space-y-6">
@@ -361,111 +317,162 @@ export default function ProfilePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl shadow-xl p-8"
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-blue-600" />
-                Basic Information
-              </h2>
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-blue-600" />
+                  Basic info
+                </h2>
 
-              <div className="space-y-6">
-                {/* Agency Name */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Agency Name *
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedProfile.name || ""}
-                      onChange={(e) =>
-                        setEditedProfile({
-                          ...editedProfile,
-                          name: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                      <Building2 className="w-5 h-5 text-slate-400" />
-                      <span className="font-medium text-slate-800">
-                        {profile.name}
-                      </span>
+                {!isEditing ? (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving}
+                      variant="soft"
+                      size="sm"
+                    >
+                      <Save className="h-4 w-4" />
+                      {saving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm">
+                      <Building2 className="h-4 w-4" />
                     </div>
-                  )}
-                </div>
-
-                {/* Email (Read-only) */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Email Address
-                  </label>
-                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                    <Mail className="w-5 h-5 text-slate-400" />
-                    <span className="text-slate-700">
-                      {profile.email || "Not set"}
-                    </span>
-                    {profile.status === "APPROVED" && (
-                      <CheckCircle className="w-5 h-5 text-green-600 ml-auto" />
-                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-500">Agency name</p>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedProfile.name || ""}
+                          onChange={(e) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              name: e.target.value,
+                            })
+                          }
+                          className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      ) : (
+                        <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+                          {profile.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Phone */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Phone Number
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      value={editedProfile.phone || ""}
-                      onChange={(e) =>
-                        setEditedProfile({
-                          ...editedProfile,
-                          phone: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="+1 234 567 8900"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                      <Phone className="w-5 h-5 text-slate-400" />
-                      <span className="text-slate-700">
-                        {profile.phone || "Not set"}
-                      </span>
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm">
+                      <Mail className="h-4 w-4" />
                     </div>
-                  )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-500">Email</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <p className="min-w-0 truncate text-sm font-semibold text-slate-900">
+                          {profile.email || "Not set"}
+                        </p>
+                        {profile.status === "APPROVED" && (
+                          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        This email is used for account access.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Website */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Website
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="url"
-                      value={editedProfile.website || ""}
-                      onChange={(e) =>
-                        setEditedProfile({
-                          ...editedProfile,
-                          website: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="https://example.com"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                      <Globe className="w-5 h-5 text-slate-400" />
-                      <span className="text-slate-700">
-                        {profile.website || "Not set"}
-                      </span>
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm">
+                      <Phone className="h-4 w-4" />
                     </div>
-                  )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-500">Phone</p>
+                      {isEditing ? (
+                        <input
+                          type="tel"
+                          value={editedProfile.phone || ""}
+                          onChange={(e) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              phone: e.target.value,
+                            })
+                          }
+                          className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                          placeholder="+1 234 567 8900"
+                        />
+                      ) : (
+                        <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+                          {profile.phone || "Not set"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm">
+                      <Globe className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-500">Website</p>
+                      {isEditing ? (
+                        <input
+                          type="url"
+                          value={editedProfile.website || ""}
+                          onChange={(e) =>
+                            setEditedProfile({
+                              ...editedProfile,
+                              website: e.target.value,
+                            })
+                          }
+                          className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                          placeholder="https://example.com"
+                        />
+                      ) : profile.website ? (
+                        <a
+                          href={profile.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 block truncate text-sm font-semibold text-blue-700 hover:underline"
+                        >
+                          {profile.website}
+                        </a>
+                      ) : (
+                        <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+                          Not set
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -475,11 +482,11 @@ export default function ProfilePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-xl p-8"
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <FileText className="w-6 h-6 text-blue-600" />
-                About Agency
+              <h2 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <FileText className="h-4 w-4 text-blue-600" />
+                Description
               </h2>
               {isEditing ? (
                 <textarea
@@ -491,13 +498,21 @@ export default function ProfilePage() {
                     })
                   }
                   rows={6}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                   placeholder="Describe your agency's services, expertise, and what makes you unique..."
                 />
               ) : (
-                <p className="text-slate-700 leading-relaxed">
-                  {profile.service_description || "No description provided"}
-                </p>
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-5">
+                  {profile.service_description ? (
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                      {profile.service_description}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      No description provided.
+                    </p>
+                  )}
+                </div>
               )}
             </motion.div>
 
@@ -506,181 +521,156 @@ export default function ProfilePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-xl p-8"
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-6">
-                Service Coverage
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-                {/* Operating Countries */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-slate-700">
-                      Operating Countries
-                    </label>
-                    {isEditing && (
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() =>
-                            setShowCountryDropdown(!showCountryDropdown)
-                          }
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add
-                        </button>
-
-                        {showCountryDropdown && (
-  <div className="absolute left-0 bottom-full mb-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
-                            <div className="p-2">
-                              <input
-                                type="text"
-                                value={countrySearch}
-                                onChange={(e) =>
-                                  setCountrySearch(e.target.value)
-                                }
-                                placeholder="Search countries..."
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                autoFocus
-                              />
-                            </div>
-                            <div className="max-h-48 overflow-y-auto">
-                              {filteredCountries.map((country) => (
-                                <button
-                                  key={country}
-                                  onClick={() => handleAddCountry(country)}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-slate-700"
-                                  disabled={editedProfile.operating_countries?.includes(
-                                    country
-                                  )}
-                                >
-                                  {country}
-                                  {editedProfile.operating_countries?.includes(
-                                    country
-                                  ) && (
-                                    <span className="text-green-600 ml-2">
-                                      ✓
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {editedProfile.operating_countries &&
-                    editedProfile.operating_countries.length > 0 ? (
-                      editedProfile.operating_countries.map((country, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2"
-                        >
-                          {country}
-                          {isEditing && (
-                            <button
-                              onClick={() => handleRemoveCountry(idx)}
-                              className="hover:text-blue-900"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-slate-500 text-sm">
-                        No countries listed
-                      </span>
-                    )}
-                  </div>
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <MapPin className="h-4 w-4 text-blue-600" />
+                    Coverage
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Where you operate and the languages you support.
+                  </p>
                 </div>
 
-                {/* Languages Supported */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-slate-700">
-                      Languages Supported
-                    </label>
-                    {isEditing && (
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() =>
-                            setShowLanguageDropdown(!showLanguageDropdown)
-                          }
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add
-                        </button>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                    {(editedProfile.operating_countries?.length ?? 0)} countries
+                  </div>
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                    {(editedProfile.languages_supported?.length ?? 0)} languages
+                  </div>
+                </div>
+              </div>
 
-                        {showLanguageDropdown && (
-  <div className="absolute left-0 bottom-full mb-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
-                            <div className="p-2">
-                              <input
-                                type="text"
-                                value={languageSearch}
-                                onChange={(e) =>
-                                  setLanguageSearch(e.target.value)
-                                }
-                                placeholder="Search languages..."
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                autoFocus
-                              />
-                            </div>
-                            <div className="max-h-48 overflow-y-auto">
-                              {filteredLanguages.map((language) => (
-                                <button
-                                  key={language}
-                                  onClick={() => handleAddLanguage(language)}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 text-slate-700"
-                                  disabled={editedProfile.languages_supported?.includes(
-                                    language
-                                  )}
-                                >
-                                  {language}
-                                  {editedProfile.languages_supported?.includes(
-                                    language
-                                  ) && (
-                                    <span className="text-green-600 ml-2">
-                                      ✓
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 relative">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">Operating countries</p>
+                        <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">
+                          {editedProfile.operating_countries?.length ?? 0}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Add the countries where you can handle cases.
+                      </p>
+                    </div>
+
+                    {isEditing && (
+                      <div className="inline-block">
+                        <Button
+                          onClick={() => setShowCountryDropdown(true)}
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3 text-xs"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add
+                        </Button>
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {editedProfile.languages_supported &&
-                    editedProfile.languages_supported.length > 0 ? (
-                      editedProfile.languages_supported.map((lang, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2"
-                        >
-                          {lang}
-                          {isEditing && (
-                            <button
-                              onClick={() => handleRemoveLanguage(idx)}
-                              className="hover:text-purple-900"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
+
+                  {(editedProfile.operating_countries?.length ?? 0) > 0 ? (
+                    <div className="rounded-xl border border-slate-200/70 bg-white p-3">
+                      <div className="flex flex-wrap gap-2">
+                        {editedProfile.operating_countries?.map((country, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700"
+                          >
+                            {country}
+                            {isEditing && (
+                              <Button
+                                onClick={() => handleRemoveCountry(idx)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-full text-blue-700/70 hover:text-blue-800"
+                                title="Remove"
+                                aria-label="Remove country"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                      <p className="text-sm font-medium text-slate-700">No countries added</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {isEditing ? "Use Add to include your coverage." : "Edit your profile to add coverage."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">Languages supported</p>
+                        <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">
+                          {editedProfile.languages_supported?.length ?? 0}
                         </span>
-                      ))
-                    ) : (
-                      <span className="text-slate-500 text-sm">
-                        No languages listed
-                      </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Helps candidates know what you can support.
+                      </p>
+                    </div>
+
+                    {isEditing && (
+                      <div className="inline-block">
+                        <Button
+                          onClick={() => setShowLanguageDropdown(true)}
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3 text-xs"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add
+                        </Button>
+                      </div>
                     )}
                   </div>
+
+                  {(editedProfile.languages_supported?.length ?? 0) > 0 ? (
+                    <div className="rounded-xl border border-slate-200/70 bg-white p-3">
+                      <div className="flex flex-wrap gap-2">
+                        {editedProfile.languages_supported?.map((lang, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
+                          >
+                            {lang}
+                            {isEditing && (
+                              <Button
+                                onClick={() => handleRemoveLanguage(idx)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-full text-slate-500 hover:text-slate-700"
+                                title="Remove"
+                                aria-label="Remove language"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                      <p className="text-sm font-medium text-slate-700">No languages added</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {isEditing ? "Use Add to include supported languages." : "Edit your profile to add languages."}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -693,55 +683,63 @@ export default function ProfilePage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl shadow-xl p-6"
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-6">
+              <h2 className="mb-5 text-sm font-semibold text-slate-900">
                 Quick Stats
               </h2>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Users className="w-8 h-8 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-slate-600">Total Cases</p>
-                      <p className="text-2xl font-bold text-slate-800">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200/70 bg-blue-50 text-blue-700">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-500">Total cases</p>
+                      <p className="mt-1 text-2xl font-bold leading-none text-slate-900">
                         {stats?.totalCases || 0}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="w-8 h-8 text-green-600" />
-                    <div>
-                      <p className="text-sm text-slate-600">Active Cases</p>
-                      <p className="text-2xl font-bold text-slate-800">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200/70 bg-emerald-50 text-emerald-700">
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-500">Active</p>
+                      <p className="mt-1 text-2xl font-bold leading-none text-slate-900">
                         {stats?.activeCases || 0}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-8 h-8 text-purple-600" />
-                    <div>
-                      <p className="text-sm text-slate-600">Completed</p>
-                      <p className="text-2xl font-bold text-slate-800">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+                      <CheckCircle className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-500">Completed</p>
+                      <p className="mt-1 text-2xl font-bold leading-none text-slate-900">
                         {stats?.completedCases || 0}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Building2 className="w-8 h-8 text-yellow-600" />
-                    <div>
-                      <p className="text-sm text-slate-600">Total Clients</p>
-                      <p className="text-2xl font-bold text-slate-800">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-500">Clients</p>
+                      <p className="mt-1 text-2xl font-bold leading-none text-slate-900">
                         {stats?.totalClients || 0}
                       </p>
                     </div>
@@ -755,29 +753,29 @@ export default function ProfilePage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-xl p-6"
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-6">
+              <h2 className="mb-5 text-sm font-semibold text-slate-900">
                 Account Information
               </h2>
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Agency Type</p>
-                  {getTypeBadge(profile.type)}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-600">Agency type</p>
+                  <div>{getTypeBadge(profile.type)}</div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Status</p>
-                  {getStatusBadge(profile.status)}
+                <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-600">Status</p>
+                  <div>{getStatusBadge(profile.status)}</div>
                 </div>
 
                 {profile.rating && (
-                  <div>
-                    <p className="text-sm text-slate-600 mb-1">Rating</p>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                    <p className="text-sm font-medium text-slate-600">Rating</p>
                     <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                      <span className="font-bold text-slate-800">
+                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      <span className="text-sm font-semibold text-slate-900">
                         {profile.rating.toFixed(1)}
                       </span>
                     </div>
@@ -785,19 +783,19 @@ export default function ProfilePage() {
                 )}
 
                 {profile.success_rate && (
-                  <div>
-                    <p className="text-sm text-slate-600 mb-1">Success Rate</p>
-                    <span className="font-bold text-green-600">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                    <p className="text-sm font-medium text-slate-600">Success rate</p>
+                    <span className="text-sm font-semibold text-slate-900">
                       {(profile.success_rate * 100).toFixed(0)}%
                     </span>
                   </div>
                 )}
 
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Member Since</p>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-800">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-600">Member since</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Calendar className="h-4 w-4 text-slate-400" />
+                    <span>
                       {new Date(profile.created_at).toLocaleDateString(
                         "en-US",
                         {
@@ -810,17 +808,197 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Account ID</p>
-                  <span className="text-xs text-slate-500 font-mono">
+                <div className="rounded-xl border border-slate-200/70 bg-slate-50/40 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-600">Account ID</p>
+                  <p className="mt-2 break-all rounded-lg border border-slate-200/70 bg-white px-3 py-2 font-mono text-xs text-slate-600">
                     {profile.agency_id}
-                  </span>
+                  </p>
                 </div>
               </div>
             </motion.div>
           </div>
         </div>
       </div>
+
+      {/* Add Country Modal */}
+      <AnimatePresence>
+        {showCountryDropdown && isEditing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 4 }}
+              className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Add operating country"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-slate-900">Add country</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Select a country to add to your operating coverage.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setShowCountryDropdown(false);
+                    setCountrySearch("");
+                  }}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="bg-slate-50/40 px-6 py-5">
+                <input
+                  type="text"
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  placeholder="Search countries..."
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  autoFocus
+                />
+
+                <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200/70 bg-white p-1">
+                  {filteredCountries.length > 0 ? (
+                    filteredCountries.map((country) => (
+                      <Button
+                        key={country}
+                        onClick={() => handleAddCountry(country)}
+                        variant="ghost"
+                        className="h-auto w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-blue-50"
+                        disabled={editedProfile.operating_countries?.includes(country)}
+                      >
+                        <span className="truncate">{country}</span>
+                        {editedProfile.operating_countries?.includes(country) && (
+                          <span className="ml-2 shrink-0 text-emerald-600">✓</span>
+                        )}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-8 text-center">
+                      <p className="text-sm font-medium text-slate-700">No results</p>
+                      <p className="mt-1 text-xs text-slate-500">Try a different search.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-white px-6 py-4">
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => {
+                      setShowCountryDropdown(false);
+                      setCountrySearch("");
+                    }}
+                    variant="outline"
+                    size="md"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Language Modal */}
+      <AnimatePresence>
+        {showLanguageDropdown && isEditing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 4 }}
+              className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Add supported language"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-slate-900">Add language</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Select a language you can support.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setShowLanguageDropdown(false);
+                    setLanguageSearch("");
+                  }}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="bg-slate-50/40 px-6 py-5">
+                <input
+                  type="text"
+                  value={languageSearch}
+                  onChange={(e) => setLanguageSearch(e.target.value)}
+                  placeholder="Search languages..."
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  autoFocus
+                />
+
+                <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200/70 bg-white p-1">
+                  {filteredLanguages.length > 0 ? (
+                    filteredLanguages.map((language) => (
+                      <Button
+                        key={language}
+                        onClick={() => handleAddLanguage(language)}
+                        variant="ghost"
+                        className="h-auto w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-blue-50"
+                        disabled={editedProfile.languages_supported?.includes(language)}
+                      >
+                        <span className="truncate">{language}</span>
+                        {editedProfile.languages_supported?.includes(language) && (
+                          <span className="ml-2 shrink-0 text-emerald-600">✓</span>
+                        )}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-8 text-center">
+                      <p className="text-sm font-medium text-slate-700">No results</p>
+                      <p className="mt-1 text-xs text-slate-500">Try a different search.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-white px-6 py-4">
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => {
+                      setShowLanguageDropdown(false);
+                      setLanguageSearch("");
+                    }}
+                    variant="outline"
+                    size="md"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

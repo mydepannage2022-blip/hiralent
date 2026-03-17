@@ -3,7 +3,7 @@ import http from "http";
 import app from "./app";
 import { connectDB } from "./lib/mongo";
 import { loadDevStubs } from "./bootstrap/devStubs";
-import { setupSocketIO } from "./realtime/Socket.messaging";
+import { setupSocketIO } from "./realtime/socket.messaging";
 import { getScheduler } from "./services/scraping/scraping-scheduler";
 import { getInterviewScheduler } from "./scheduler/interview.scheduler";
 

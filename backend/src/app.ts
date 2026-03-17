@@ -54,6 +54,8 @@ import skillRadarRoutes from "./routes/skillRadar.routes";
 import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
+import documentValidationWebhookRoutes from './routes/webhook.documentValidation.routes';
+
 import schedulerRoutes from "./routes/scraping/scraping.routes";
 import internalRoutes from "./routes/internal.routes";
 import candidateJobsRoutes from "./routes/candidate/jobs.routes";
@@ -140,6 +142,8 @@ app.use('/api/v1', insightsRoutes);
 // job.routes.ts has a global router.use(checkAuth) that rejects all
 // unauthenticated requests to any /api/v1/* path.
 app.use("/api/v1/search", searchRoutes);
+// IMPORTANT: Webhooks MUST come before jobRoutes to avoid auth middleware
+app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
 
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
