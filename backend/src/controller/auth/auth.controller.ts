@@ -1,6 +1,36 @@
 import { Request, Response } from "express";
 import * as authService from "../../services/auth/auth.service";
 
+export const getMeController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.user_id;
+    if (!userId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const user = await (await import("../../lib/prisma")).default.user.findUnique({
+      where: { user_id: userId },
+      select: {
+        user_id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_email_verified: true,
+        phone_number: true,
+        agency_id: true,
+        mfa_enabled: true,
+      },
+    });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ user });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+};
+
 export const signupController = async (req: Request, res: Response) => {
   try {
     const data = await authService.signup(req.body, req);

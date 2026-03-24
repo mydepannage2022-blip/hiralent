@@ -373,8 +373,8 @@ function FlagOrbit() {
       {FLAG_CODES.map((code, i) => {
         const angle = (i * 360) / FLAG_CODES.length;
         const rad = (angle * Math.PI) / 180;
-        const x = Math.cos(rad) * radius;
-        const y = Math.sin(rad) * radius;
+        const x = Math.round(Math.cos(rad) * radius * 1000) / 1000;
+        const y = Math.round(Math.sin(rad) * radius * 1000) / 1000;
         return (
           <motion.div
             key={code}

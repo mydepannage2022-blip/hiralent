@@ -93,7 +93,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   }`}
               >
                 <div className="rounded-lg flex items-center justify-center">
-                  <img className="w-30 h-9" src="/images/logo.png" alt="Logo" />
+                  <SmartLink href="/">
+                    <img className="w-30 h-9" src="/images/logo.png" alt="Logo" />
+                  </SmartLink>
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
                   <p className="text-sm text-gray-500">Dashboard</p>

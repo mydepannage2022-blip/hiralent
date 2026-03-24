@@ -11,7 +11,7 @@ interface TabSelectorProps {
   companyLink?: string;
 }
 
-const TabSelector: React.FC<TabSelectorProps> = ({ 
+const TabSelector: React.FC<TabSelectorProps> = ({
   activeTab = 'candidate',
   candidateLink = "/auth/signup",
   companyLink = "/auth/companyRegister"
@@ -23,7 +23,6 @@ const TabSelector: React.FC<TabSelectorProps> = ({
       animate={{ opacity: 1 }}
       transition={{ delay: 0.4, duration: 0.5 }}
     >
-      
       <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
         <SmartLink
           href={candidateLink}

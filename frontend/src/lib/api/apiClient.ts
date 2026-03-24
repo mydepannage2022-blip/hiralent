@@ -32,7 +32,6 @@ export async function apiFetch<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       "Content-Type": "application/json",
     },
-    cache: "no-store",
   });
 
   if (!res.ok) {

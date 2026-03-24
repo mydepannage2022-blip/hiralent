@@ -82,7 +82,7 @@ model User {
   user_id           String    @id @default(uuid())
   agency_id         String?
   email             String    @unique
-  password_hash     String
+  password_hash     String?   // nullable — OAuth users have no password
   full_name         String
   role              String // candidate, company_admin, agency_admin, superadmin
   is_email_verified Boolean
@@ -94,6 +94,10 @@ model User {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   last_login_at     DateTime?
+
+  // OAuth
+  google_id         String?   @unique
+  auth_provider     String    @default("local") // "local" | "google"
 
   // NEW: MFA Support
   mfa_secret         String? // TOTP secret for 2FA

@@ -1,6 +1,5 @@
 "use client";
 import { useState, ReactNode } from "react";
-import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   User,
@@ -28,55 +27,24 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+const MENU_ITEMS = [
+  { name: "Dashboard",        icon: LayoutDashboard,   href: "/company/dashboard" },
+  { name: "Employer Profile", icon: User,              href: "/company/dashboard/employer-profile" },
+  { name: "Notifications",    icon: Bell,              href: "/company/dashboard/notifications" },
+  { name: "My Jobs",          icon: Briefcase,         href: "/company/dashboard/jobManagement" },
+  { name: "My Assessments",   icon: CheckSquare,       href: "/company/dashboard/assessmentManagement" },
+  { name: "Candidates",       icon: Users,             href: "/company/dashboard/candidates" },
+  { name: "AI Interviews",    icon: Video,             href: "/company/dashboard/interviews" },
+  { name: "Question Bank",    icon: BookOpen,          href: "/company/dashboard/questions" },
+  { name: "Review Queue",     icon: Clock,             href: "/company/dashboard/review-queue" },
+  { name: "Team",             icon: UsersRound,        href: "/company/dashboard/team" },
+  { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
+  { name: "Account Setting",  icon: Settings,         href: "/company/dashboard/settings" },
+];
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
-
-  const defaultMenu = [
-    { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
-    { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
-    // ✅ your existing sections
-    { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
-    { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
-    { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
-    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
-
-    // ✅ NEW SECTIONS
-    { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
-    { name: "Review Queue",     icon: Clock,           href: "/company/dashboard/review-queue" },
-    { name: "Team",             icon: UsersRound,       href: "/company/dashboard/team" },
-
-    { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
-    { name: "Account Setting",  icon: Settings,        href: "/company/dashboard/settings" },
-
-  ];
-
-  const postJobMenu = [
-    { name: "Dashboard",        icon: LayoutDashboard, href: "/company/dashboard" },
-    { name: "Employer Profile", icon: User,            href: "/company/dashboard/employer-profile" },
-    { name: "Notifications", icon: Bell,            href: "/company/dashboard/notifications" },
-    // ✅ also include here so they appear while on /postjob
-    { name: "My Jobs",          icon: Briefcase,       href: "/company/dashboard/jobManagement" },
-    { name: "My Assessments",   icon: CheckSquare,     href: "/company/dashboard/assessmentManagement" },
-    { name: "Candidates", icon: Users, href: "/company/dashboard/candidates" },
-    { name: "AI Interviews",    icon: Video,           href: "/company/dashboard/interviews" },
-
-    // ✅ NEW SECTIONS (also in postJobMenu)
-    { name: "Question Bank",    icon: BookOpen,        href: "/company/dashboard/questions" },
-    { name: "Review Queue",     icon: Clock,           href: "/company/dashboard/review-queue" },
-    { name: "Team",             icon: UsersRound,       href: "/company/dashboard/team" },
-
-    { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
-    { name: "Account Setting",  icon: Settings,        href: "/company/dashboard/settings" },
-
-  ];
-
-  // 👉 Switch menus based on route
-const menuItems = (pathname ?? "").startsWith("/company/dashboard/postjob")
-  ? postJobMenu
-  : defaultMenu;
 
   return (
     <ProtectedRoute>
@@ -90,7 +58,7 @@ const menuItems = (pathname ?? "").startsWith("/company/dashboard/postjob")
               isMobile={false}
               isMobileMenuOpen={false}
               setIsMobileMenuOpen={() => {}}
-              menuItems={menuItems}
+              menuItems={MENU_ITEMS}
             />
           </div>
 
@@ -108,7 +76,7 @@ const menuItems = (pathname ?? "").startsWith("/company/dashboard/postjob")
                   isMobile={true}
                   isMobileMenuOpen={isMobileMenuOpen}
                   setIsMobileMenuOpen={setIsMobileMenuOpen}
-                  menuItems={menuItems}
+                  menuItems={MENU_ITEMS}
                 />
               </div>
             </div>

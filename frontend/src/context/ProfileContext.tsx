@@ -104,48 +104,20 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     refreshProfile();
   };
 
-  // ✅ FIXED: Added authentication headers
   const refetch = useCallback(async () => {
-    console.log('🔄 ProfileContext: Starting refetch...');
-    
     try {
       setLoading(true);
 
-      // Get auth token
       const token = localStorage.getItem('authToken');
-      
-      const headers: any = { 
+      const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache"
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
-      
-      // Add Authorization header
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      console.log('📡 Fetching with headers:', { hasToken: !!token });
 
       const [profileRes, completenessRes] = await Promise.all([
-        fetch(`${CANDIDATE_BASE}/profile`, {
-          method: "GET",
-          credentials: "include",
-          headers,
-          cache: "no-store",
-        }),
-        fetch(`${CANDIDATE_BASE}/completeness`, {
-          method: "GET",
-          credentials: "include",
-          headers,
-          cache: "no-store",
-        }),
+        fetch(`${CANDIDATE_BASE}/profile`, { method: "GET", credentials: "include", headers }),
+        fetch(`${CANDIDATE_BASE}/completeness`, { method: "GET", credentials: "include", headers }),
       ]);
-
-      console.log('📡 Response status:', {
-        profile: profileRes.status,
-        completeness: completenessRes.status
-      });
 
       if (!profileRes.ok) throw new Error(`Profile fetch failed: ${profileRes.status}`);
       if (!completenessRes.ok) throw new Error(`Completeness fetch failed: ${completenessRes.status}`);
@@ -156,34 +128,20 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
       const newProfileData = profileJson?.data?.profile || profileJson?.data || profileJson;
       const newCompletenessData = completenessJson?.data || completenessJson;
 
-      console.log('✅ ProfileContext: Setting new data', {
-        profileKeys: Object.keys(newProfileData || {}),
-        completenessScore: newCompletenessData?.overall_score
-      });
-
-      // ✅ Update state
       setProfileData(newProfileData);
       setProfileCompleteness(newCompletenessData);
-      
-      // ✅ Force re-render by incrementing version
       setDataVersion(prev => prev + 1);
 
-      // Update localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem("profileData", JSON.stringify(newProfileData));
         localStorage.setItem("profileCompleteness", JSON.stringify(newCompletenessData));
       }
-
-      console.log('✅ ProfileContext: Refetch complete');
-      
     } catch (error) {
-      console.error("❌ ProfileContext.refetch error:", error);
-      
+      console.error("ProfileContext.refetch error:", error);
       if (typeof window !== "undefined") {
         localStorage.removeItem("profileData");
         localStorage.removeItem("profileCompleteness");
       }
-      
       throw error;
     } finally {
       setLoading(false);
@@ -192,36 +150,13 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
 
   // ✅ ADDED: Force refresh function
   const forceRefresh = useCallback(async () => {
-    console.log('🔄 Force refreshing profile data...');
-    
-    // Clear ALL cache first
     if (typeof window !== "undefined") {
       localStorage.removeItem("profileData");
       localStorage.removeItem("profileCompleteness");
     }
-    
-    // Clear state
-    setProfileData(null);
-    setProfileCompleteness(null);
-    
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Fetch fresh data
     await refetch();
-    
-    console.log('✅ Force refresh complete');
   }, [refetch]);
 
-  useEffect(() => {
-    console.log('📊 ProfileContext State Changed:', {
-      hasProfileData: !!profileData,
-      hasCompleteness: !!profileCompleteness,
-      profileDataKeys: profileData ? Object.keys(profileData) : [],
-      completenessScore: profileCompleteness?.overall_score,
-      dataVersion
-    });
-  }, [profileData, profileCompleteness, dataVersion]);
 
   const setAssessmentState = useCallback((newState: any) => {
     setAssessmentStateInternal((prev: any) => ({ ...prev, ...newState }));

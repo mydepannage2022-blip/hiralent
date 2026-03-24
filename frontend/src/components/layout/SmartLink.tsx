@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useNavigationLoading } from '../../context/NavigationLoadingContext';
 
 interface SmartLinkProps {
@@ -11,60 +11,30 @@ interface SmartLinkProps {
   replace?: boolean;
 }
 
-const SmartLink = ({ 
-  href, 
-  children, 
-  className = "", 
+const SmartLink = ({
+  href,
+  children,
+  className = "",
   onClick,
-  replace = false
+  replace = false,
 }: SmartLinkProps) => {
-  const router = useRouter();
-  const { startNavigation, stopNavigation } = useNavigationLoading();
+  const { startNavigation } = useNavigationLoading();
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Execute custom onClick if provided
-    if (onClick) {
-      onClick();
-    }
-
-    // Start loading
+  const handleClick = () => {
+    if (onClick) onClick();
     startNavigation();
-
-    try {``
-      // Direct router navigation
-      if (replace) {
-        router.replace(href);
-      } else {
-        router.push(href);
-      }
-    } catch (error) {
-      console.error('Navigation error:', error);
-      stopNavigation();
-    }
-
-    // Safety timeout
-    setTimeout(() => {
-      stopNavigation();
-    }, 3000);
   };
 
   return (
-    <div 
+    <Link
+      href={href}
+      replace={replace}
       onClick={handleClick}
       className={`${className} cursor-pointer`}
-      role="link"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          handleClick(e as any);
-        }
-      }}
+      prefetch={true}
     >
       {children}
-    </div>
+    </Link>
   );
 };
 

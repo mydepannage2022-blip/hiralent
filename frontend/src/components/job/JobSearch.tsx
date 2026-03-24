@@ -58,6 +58,7 @@ const JobSearch: React.FC<Props> = ({ locationOptions, onSearch, customStyles })
           isSearchable={true}
           className="w-full outline-none text-sm text-[#A5A5A5] border-0"
           styles={customStyles}
+          instanceId="job-search-location"
         />
       </div>
 

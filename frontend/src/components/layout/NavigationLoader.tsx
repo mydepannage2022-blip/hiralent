@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useNavigationLoading } from '../../context/NavigationLoadingContext';
 
 const NavigationLoader = () => {
-  const { isNavigating } = useNavigationLoading();
+  const { isNavigating, stopNavigation } = useNavigationLoading();
+  const pathname = usePathname();
+
+  // Stop the loader as soon as the new page pathname is active
+  useEffect(() => {
+    stopNavigation();
+  }, [pathname]);
 
   if (!isNavigating) return null;
 

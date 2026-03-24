@@ -294,6 +294,7 @@ const Hero = () => {
                       styles={locStyles}
                       components={selectComponents}
                       classNamePrefix="loc"
+                      instanceId="hero-location-select"
                     />
                   </div>
 

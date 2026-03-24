@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MapPin, DollarSign, Calendar, Globe, Clock,
   CheckCircle2, AlertCircle, Loader2, Lock, ArrowRight,
-  Briefcase, ChevronRight, Sparkles, Building2,
+  Briefcase, ChevronRight, Sparkles, Building2, UserCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { useCandidateJobEligibility } from "@/src/lib/candidate/jobs.queries";
@@ -33,6 +33,106 @@ function relDate(iso: string) {
   if (days === 1) return "1 day ago";
   if (days < 30) return `${days} days ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Not Eligible Panel
+───────────────────────────────────────────────────────────── */
+function NotEligiblePanel({ reasons }: { reasons: string[] }) {
+  const missingSkills = reasons
+    .filter(r => r.startsWith("MISSING_SKILL:"))
+    .map(r => r.split(":")[1]?.trim())
+    .filter(Boolean) as string[];
+
+  const otherReasons = reasons.filter(r => !r.startsWith("MISSING_SKILL:"));
+
+  const profileHref = missingSkills.length > 0
+    ? `/candidate/dashboard/candidate-profile?addSkills=${encodeURIComponent(missingSkills.join(","))}`
+    : "/candidate/dashboard/candidate-profile";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "11px 14px", borderRadius: 12,
+        background: "linear-gradient(135deg, #FFFBEB, #FEF3C7)",
+        border: "1px solid #FDE68A",
+      }}>
+        <AlertCircle size={15} color="#D97706" style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
+          Complete your profile to apply
+        </span>
+      </div>
+
+      {/* Missing skills list */}
+      {missingSkills.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <p style={{
+            fontSize: 10, fontWeight: 700, color: "#D97706",
+            textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            <Sparkles size={10} /> Missing skills
+          </p>
+          {missingSkills.slice(0, 5).map(skill => (
+            <div key={skill} style={{
+              fontSize: 12, color: "#78350F",
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 10px", borderRadius: 8, background: "#FFFBEB",
+              border: "1px solid #FDE68A",
+            }}>
+              <span style={{ color: "#D97706", flexShrink: 0 }}>•</span>
+              {skill}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Other reasons */}
+      {otherReasons.length > 0 && (
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
+          {otherReasons.map((r, i) => (
+            <li key={i} style={{
+              fontSize: 12, color: "#78350F",
+              display: "flex", alignItems: "flex-start", gap: 6,
+              padding: "7px 10px", borderRadius: 8, background: "#FFFBEB",
+            }}>
+              <span style={{ color: "#D97706", flexShrink: 0, marginTop: 1 }}>•</span>
+              {r === "PROFILE_NOT_READY" ? "Complete your profile first" :
+               r.startsWith("MISSING_FIELD:") ? `Missing: ${r.split(":")[1]}` : r}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* CTA → profile page */}
+      <Link href={profileHref} style={{ textDecoration: "none" }}>
+        <motion.div
+          whileHover={{ scale: 1.02, boxShadow: "0 8px 20px -6px rgba(217,119,6,0.35)" }}
+          whileTap={{ scale: 0.98 }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            padding: "12px 14px", borderRadius: 12,
+            background: "linear-gradient(135deg, #D97706 0%, #B45309 100%)",
+            color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            boxShadow: "0 4px 12px -4px rgba(217,119,6,0.4)",
+            position: "relative", overflow: "hidden",
+          }}
+        >
+          <motion.div
+            style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)" }}
+            animate={{ x: ["-100%", "200%"] }}
+            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 2 }}
+          />
+          <UserCircle2 size={14} />
+          Complete your profile
+          <ArrowRight size={13} />
+        </motion.div>
+      </Link>
+    </div>
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -220,58 +320,7 @@ function ApplyPanel({
   }
 
   /* Not eligible */
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "12px 14px", borderRadius: 12,
-        background: "#FFFBEB", border: "1px solid #FDE68A",
-      }}>
-        <AlertCircle size={16} color="#D97706" />
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#92400E" }}>
-          Complete your profile
-        </span>
-      </div>
-
-      {(eligQ.data?.reasons ?? []).length > 0 && (
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-          {(eligQ.data.reasons as string[]).slice(0, 4).map((r, i) => (
-            <li key={i} style={{
-              fontSize: 12, color: "#78350F",
-              display: "flex", alignItems: "flex-start", gap: 6,
-              padding: "8px 10px", borderRadius: 8, background: "#FFFBEB",
-            }}>
-              <span style={{ color: "#D97706", flexShrink: 0, marginTop: 1 }}>•</span>
-              {r.startsWith("MISSING_SKILL:") ? `Missing skill: ${r.split(":")[1]}` :
-               r === "PROFILE_NOT_READY" ? "Complete your profile first" :
-               r.startsWith("MISSING_FIELD:") ? `Missing: ${r.split(":")[1]}` :
-               r}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Link
-        href="/candidate/dashboard/profile"
-        style={{ textDecoration: "none" }}
-      >
-        <div
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            padding: "12px", borderRadius: 12,
-            border: "1px solid #FDE68A", background: "#FFFBEB",
-            color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#FEF3C7"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "#FFFBEB"; }}
-        >
-          Complete your profile
-          <ArrowRight size={13} />
-        </div>
-      </Link>
-    </div>
-  );
+  return <NotEligiblePanel reasons={eligQ.data?.reasons ?? []} />;
 }
 
 /* ─────────────────────────────────────────────────────────────

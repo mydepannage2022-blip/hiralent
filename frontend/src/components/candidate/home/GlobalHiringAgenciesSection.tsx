@@ -13,6 +13,7 @@ import {
   Globe,
   CheckCircle2,
 } from "lucide-react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl from "maplibre-gl";
 
 /* =========================

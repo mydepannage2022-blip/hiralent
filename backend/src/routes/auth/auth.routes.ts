@@ -7,8 +7,14 @@ import {
   resetPasswordController,
   resendVerificationController,
   deleteAccountController,
-  changePasswordController
+  changePasswordController,
+  getMeController,
 } from "../../controller/auth/auth.controller";
+import {
+  googleAuthController,
+  googleCallbackController,
+  googleCompleteController,
+} from "../../controller/auth/googleAuth.controller";
 import {
   setup2FAController,
   setupWithTokenController,
@@ -31,6 +37,7 @@ import {
 
 const router = express.Router();
 
+router.get("/me", checkAuth, getMeController);
 router.post("/signup", validateBody(SignupSchema), signupController);
 router.post("/login", validateBody(LoginSchema), loginController);
 router.post("/resend-verification", checkAuth, resendVerificationController);
@@ -40,6 +47,11 @@ router.post("/reset-password", validateBody(ResetPasswordSchema), resetPasswordC
 
 router.delete("/delete-account", checkAuth, validateBody(DeleteAccountSchema), deleteAccountController);
 router.put("/change-password", checkAuth, changePasswordController);
+
+// Google OAuth routes
+router.get("/google", googleAuthController);
+router.get("/google/callback", googleCallbackController);
+router.post("/google/complete", checkAuth, googleCompleteController);
 
 // 2FA routes
 router.post("/2fa/setup", checkAuth, setup2FAController);

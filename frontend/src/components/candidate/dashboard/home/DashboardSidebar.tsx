@@ -36,6 +36,18 @@ interface DashboardSidebarProps {
   setIsMobileMenuOpen: (open: boolean) => void;
 }
 
+const MENU_ITEMS: MenuItem[] = [
+  { name: 'Dashboard',        icon: LayoutDashboard, href: '/candidate/dashboard' },
+  { name: 'Profile',          icon: User,            href: '/candidate/dashboard/candidate-profile' },
+  { name: 'My Cases',         icon: FolderKanban,    href: '/candidate/dashboard/cases' },
+  { name: 'My Applications',  icon: ClipboardList,   href: '/candidate/dashboard/applications' },
+  { name: 'Jobs',             icon: Briefcase,       href: '/candidate/dashboard/jobs' },
+  { name: 'Messages',         icon: MessageSquare,   href: '/candidate/dashboard/messages' },
+  { name: 'Skills Assessment',icon: Subscript,       href: '/candidate/dashboard/skills-assessment' },
+  { name: 'AI Interviews',    icon: Video,           href: '/candidate/dashboard/interviews' },
+  { name: 'Settings',         icon: Settings,        href: '/candidate/dashboard/settings' },
+];
+
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isOpen,
   setIsOpen,
@@ -49,23 +61,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [activeItem, setActiveItem] = useState<string>('Dashboard');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const menuItems: MenuItem[] = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
-    { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
-    { name: 'My Cases', icon: FolderKanban, href: '/candidate/dashboard/cases' },
-    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
-    { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
-    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
-    // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
-    { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
-    { name: "AI Interviews", icon: Video, href: "/candidate/dashboard/interviews" },
-    { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
-
-  ];
-
   // Update active item based on current pathname
   useEffect(() => {
-    const currentItem = menuItems.find(item => item.href === pathname);
+    const currentItem = MENU_ITEMS.find(item => item.href === pathname);
     if (currentItem) {
       setActiveItem(currentItem.name);
     }
@@ -119,7 +117,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 (isOpen && !isMobile) || isMobile ? 'space-x-3' : 'justify-center hidden'
               }`}>
                 <div className="rounded-sm flex items-center justify-center">
-                  <img src="/images/logo.png" alt="Logo" className="w-30 h-9" />
+                  <SmartLink href="/">
+                    <img src="/images/logo.png" alt="Logo" className="w-30 h-9" />
+                  </SmartLink>
                 </div>
                 {((isOpen && !isMobile) || isMobile) && (
                   <div>
@@ -152,7 +152,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             {/* Navigation Menu */}
             <nav className="mt-6 text-black">
               <ul className="space-y-2 px-4">
-                {menuItems.map((item) => {
+                {MENU_ITEMS.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
 

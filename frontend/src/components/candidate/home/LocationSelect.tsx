@@ -170,8 +170,10 @@ function CustomSingleValue(props: any) {
 
 export default function LocationSelect({
   onChange,
+  instanceId = "location-select",
 }: {
   onChange: (value: any) => void;
+  instanceId?: string;
 }) {
   return (
     <Select
@@ -188,6 +190,7 @@ export default function LocationSelect({
       }}
       className="w-full"
       classNamePrefix="loc"
+      instanceId={instanceId}
     />
   );
 }

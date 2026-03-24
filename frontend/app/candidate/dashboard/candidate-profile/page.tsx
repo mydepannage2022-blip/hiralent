@@ -2,11 +2,13 @@
 import dynamic from 'next/dynamic';
 import { useProfileCompleteness } from '@/src/lib/profile/profile.queries'
 import { useProfile } from "@/src/context/ProfileContext";
-import React from 'react'
-import { useQueryClient } from '@tanstack/react-query'; 
+import React, { Suspense } from 'react'
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'next/navigation';
 import { BadgeSection } from '@/src/components/candidate/dashboard/profile/badges/BadgeSection';
 import ChatbotButton from "@/src/components/candidate/dashboard/chatbot/ChatbotButton";
+import AddSkillsModal from '@/src/components/candidate/dashboard/profile/AddSkillsModal';
 
 // Lazy load all components
 const Meta = dynamic(() => import('@/src/components/candidate/dashboard/profile/Meta'), {
@@ -58,6 +60,15 @@ const CertificationsSection = dynamic(() => import('@/src/components/candidate/d
 const LanguagesSection = dynamic(() => import('@/src/components/candidate/dashboard/profile/LanguagesSection'), {
   loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-xl mb-4"></div>
 });
+
+function AddSkillsModalWrapper() {
+  const searchParams = useSearchParams();
+  const rawSkills = searchParams.get("addSkills");
+  if (!rawSkills) return null;
+  const skills = rawSkills.split(",").map(s => s.trim()).filter(Boolean);
+  if (skills.length === 0) return null;
+  return <AddSkillsModal skills={skills} />;
+}
 
 const CandidateProfilePage = () => {
   const queryClient = useQueryClient();
@@ -131,6 +142,9 @@ const CandidateProfilePage = () => {
       key={`profile-page-${dataVersion}`}
       className="w-full"
     >
+      <Suspense fallback={null}>
+        <AddSkillsModalWrapper />
+      </Suspense>
       {/* ✅ page container: keeps everything from feeling zoomed */}
       <div className="mx-auto w-full max-w-[1180px] flex flex-col lg:flex-row items-start gap-3">
         

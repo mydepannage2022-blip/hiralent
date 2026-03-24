@@ -57,6 +57,7 @@ const CompanySearch: React.FC<Props> = ({ locationOptions, onSearch, customStyle
           isSearchable={true}
           className="w-full outline-none text-sm text-[#A5A5A5] border-0"
           styles={customStyles}
+          instanceId="company-search-location"
         />
       </div>
 

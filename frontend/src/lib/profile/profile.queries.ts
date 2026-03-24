@@ -168,8 +168,12 @@ export const useAddSkill = () => {
       await refreshProfileData(setProfileData, updateUser);
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error.message || 'Failed to add skill';
+      const data = error?.response?.data;
+      const errorMessage = data?.message || data?.error || error.message || 'Failed to add skill';
+      // Suppress "already exists" — not a real error from the user's perspective
+      if (errorMessage.toLowerCase().includes('already exists')) return;
       console.error('Add skill failed:', errorMessage);
+      console.log('[addSkill 400 details]', JSON.stringify(data, null, 2));
       toast.error(errorMessage);
     },
   });
