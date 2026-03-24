@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
-
-const prisma = new PrismaClient();
+import {
+  getUserWithPassword,
+  verifyPassword,
+  updatePassword,
+  updateMfaEnabled,
+  getNotificationsForUser,
+  getUserExportData,
+  getUserSettings,
+} from "../../services/agency/agency.settings.service";
 
 // PUT /api/v1/agency/settings/password - Change password
 export const changePassword = async (req: Request, res: Response) => {
@@ -31,11 +36,7 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
-    // Get user with current password
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      select: { user_id: true, password_hash: true },
-    });
+    const user = await getUserWithPassword(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -44,8 +45,10 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify current password
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    const isPasswordValid = await verifyPassword(
+      currentPassword,
+      user.password_hash
+    );
 
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -54,17 +57,7 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
-    // Hash new password
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
-    // Update password
-    await prisma.user.update({
-      where: { user_id: userId },
-      data: { 
-        password_hash: newPasswordHash,
-        updated_at: new Date()
-      },
-    });
+    await updatePassword(userId, newPassword);
 
     return res.status(200).json({
       success: true,
@@ -92,25 +85,14 @@ export const toggle2FA = async (req: Request, res: Response) => {
       });
     }
 
-    // Update mfa_enabled in User model
-    const updatedUser = await prisma.user.update({
-      where: { user_id: userId },
-      data: { 
-        mfa_enabled: enabled,
-        updated_at: new Date()
-      },
-      select: {
-        user_id: true,
-        mfa_enabled: true,
-      }
-    });
+    const updatedUser = await updateMfaEnabled(userId, enabled);
 
     return res.status(200).json({
       success: true,
-      message: `Two-factor authentication ${enabled ? 'enabled' : 'disabled'} successfully`,
+      message: `Two-factor authentication ${enabled ? "enabled" : "disabled"} successfully`,
       data: {
-        mfa_enabled: updatedUser.mfa_enabled
-      }
+        mfa_enabled: updatedUser.mfa_enabled,
+      },
     });
   } catch (error) {
     console.error("Toggle 2FA error:", error);
@@ -133,12 +115,7 @@ export const getNotifications = async (req: Request, res: Response) => {
       });
     }
 
-    // Get notifications for this user
-    const notifications = await prisma.notification.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: 50
-    });
+    const notifications = await getNotificationsForUser(userId);
 
     return res.status(200).json({
       success: true,
@@ -172,7 +149,6 @@ export const updateNotifications = async (req: Request, res: Response) => {
       });
     }
 
-    // For now, just return success
     // TODO: Create a UserNotificationPreferences table to store these settings
 
     return res.status(200).json({
@@ -207,50 +183,7 @@ export const exportData = async (req: Request, res: Response) => {
       });
     }
 
-    // Get user data with agency and cases
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      select: {
-        user_id: true,
-        email: true,
-        full_name: true,
-        role: true,
-        phone_number: true,
-        created_at: true,
-        agency: {
-          select: {
-            agency_id: true,
-            name: true,
-            email: true,
-            phone: true,
-            type: true,
-            status: true,
-            website: true,
-            service_description: true,
-            operating_countries: true,
-            languages_supported: true,
-            rating: true,
-            success_rate: true,
-            total_cases_handled: true,
-            created_at: true,
-            cases: {
-              select: {
-                case_id: true,
-                case_number: true,
-                service_type: true,
-                priority_level: true,
-                status: true,
-                origin_country: true,
-                destination_country: true,
-                destination_city: true,
-                created_at: true,
-                updated_at: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const user = await getUserExportData(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -259,7 +192,7 @@ export const exportData = async (req: Request, res: Response) => {
       });
     }
 
-    const exportData = {
+    const data = {
       user: {
         user_id: user.user_id,
         email: user.email,
@@ -272,14 +205,13 @@ export const exportData = async (req: Request, res: Response) => {
       exported_at: new Date().toISOString(),
     };
 
-    // Set headers for file download
     res.setHeader("Content-Type", "application/json");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=agency-data-${new Date().toISOString().split("T")[0]}.json`
     );
 
-    return res.status(200).json(exportData);
+    return res.status(200).json(data);
   } catch (error) {
     console.error("Export data error:", error);
     return res.status(500).json({
@@ -301,12 +233,7 @@ export const getSettings = async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-      select: {
-        mfa_enabled: true,
-      },
-    });
+    const user = await getUserSettings(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -319,7 +246,6 @@ export const getSettings = async (req: Request, res: Response) => {
       success: true,
       data: {
         mfa_enabled: user.mfa_enabled,
-        // Add other settings here as needed
       },
     });
   } catch (error) {

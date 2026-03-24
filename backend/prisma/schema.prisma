@@ -830,6 +830,16 @@ model CaseDocument {
   is_active            Boolean        @default(true)   // Track active document
   replaces_document_id String?                          // Link to replaced doc
   created_at    DateTime       @default(now())
+
+  // AI Validation Fields
+  ai_validation_status  String?   // valid, invalid, needs_review
+  ai_validation_job_id  String?   // Job ID from document-validator-service
+  ai_confidence_score   Float?    // Overall confidence (0.0 - 1.0)
+  ai_extracted_data     Json?     // Extracted fields (name, passport number, etc.)
+  ai_validation_signals Json?     // Array of validation check results
+  ai_validation_issues  Json?     // Array of issues found
+  ai_validated_at       DateTime? // When AI validation completed
+
   case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
 
   @@map("case_documents")

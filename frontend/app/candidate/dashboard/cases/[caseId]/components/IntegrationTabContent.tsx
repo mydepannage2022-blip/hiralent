@@ -1,21 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  Heart,
-  DollarSign,
-  FileText,
-  Wifi,
-  Bus,
   Users,
   CheckCircle,
-  Clock,
-  Download,
   Building2,
-  Sparkles,
   Mail,
   Phone,
+  RefreshCw,
 } from "lucide-react";
+
+import { Button } from "@/src/components/agency/ui/button";
 
 interface IntegrationService {
   service_id: string;
@@ -57,15 +53,9 @@ export default function IntegrationTabContent({
   setShowIntegrationAgencyBrowser,
   fetchCase,
 }: IntegrationTabContentProps) {
-  // Service icons mapping
-  const serviceIcons: Record<string, any> = {
-    healthcare: Heart,
-    banking: DollarSign,
-    tax_id: FileText,
-    telecom: Wifi,
-    transport: Bus,
-    integration_program: Users,
-  };
+  const integrationChosen = Boolean(caseData.integration_agency_id);
+  const canChooseIntegrationAgency =
+    caseData.status === "ready_for_arrival" && !integrationChosen;
 
   // Service labels
   const serviceLabels: Record<string, string> = {
@@ -89,15 +79,118 @@ export default function IntegrationTabContent({
     }
   };
 
+  const getStatusDotColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-emerald-500";
+      case "in_progress":
+        return "bg-amber-500";
+      default:
+        return "bg-slate-300";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "Completed";
+      case "in_progress":
+        return "In progress";
+      default:
+        return "Pending";
+    }
+  };
+
   // Calculate completion
   const services = caseData.integrationServices || [];
-  const completedServices = services.filter((s) => s.status === "completed");
-  const completionPercentage =
-    services.length > 0
-      ? Math.round((completedServices.length / services.length) * 100)
-      : 0;
-  const allServicesComplete =
-    completedServices.length === services.length && services.length > 0;
+
+  const sortedServices = useMemo(() => {
+    const SERVICE_TYPE_ORDER = [
+      "healthcare",
+      "banking",
+      "tax_id",
+      "telecom",
+      "transport",
+      "integration_program",
+    ] as const;
+
+    const orderIndex = (serviceType: string) => {
+      const index = SERVICE_TYPE_ORDER.indexOf(serviceType as any);
+      return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+    };
+
+    return [...services].sort((a, b) => {
+      const typeOrder = orderIndex(a.service_type) - orderIndex(b.service_type);
+      if (typeOrder !== 0) return typeOrder;
+      return a.created_at.localeCompare(b.created_at);
+    });
+  }, [services]);
+
+  if (!integrationChosen) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
+            <Building2 className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900">
+            Choose an Integration Agency
+          </h3>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+            Select an agency to help with post-arrival services like healthcare registration, banking, telecom, and transport.
+          </p>
+
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="soft"
+              className="justify-center gap-2"
+              onClick={() => setShowIntegrationAgencyBrowser(true)}
+              disabled={!canChooseIntegrationAgency}
+            >
+              <Building2 className="h-4 w-4" />
+              Choose Integration Agency
+            </Button>
+          </div>
+
+          {!canChooseIntegrationAgency && (
+            <p className="mx-auto mt-3 max-w-xl text-xs text-slate-500">
+              This becomes available once your housing agency marks you ready for arrival.
+            </p>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (services.length === 0) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
+            <Users className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900">
+            Integration in progress
+          </h3>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+            Your integration agency has been selected. This tab will update once they create your service checklist.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-center gap-2"
+              onClick={fetchCase}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -108,184 +201,127 @@ export default function IntegrationTabContent({
       {/* Left Column - Integration Services (2/3 width) */}
       <div className="lg:col-span-2 space-y-6">
         {/* Integration Services Card */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <Users className="h-4 w-4 text-blue-600" />
             Integration Services
-          </h2>
+          </h3>
+          <div className="mt-4 border-t border-slate-100" />
 
-          {services.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-xl">
-              <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-600 mb-1">No services available yet</p>
-              <p className="text-sm text-slate-500">
-                Integration services will be created when an agency is assigned
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {services.map((service, index) => {
-                const Icon = serviceIcons[service.service_type] || FileText;
-                const label =
-                  serviceLabels[service.service_type] || service.service_type;
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {sortedServices.map((service) => {
+              const label =
+                serviceLabels[service.service_type] || service.service_type;
 
-                const descriptions: Record<string, string> = {
-                  healthcare: "Register with national health insurance system",
-                  banking:
-                    "Open local bank account for salary and transactions",
-                  tax_id:
-                    "Obtain tax identification and social security number",
-                  telecom: "Set up mobile phone and internet connection",
-                  transport:
-                    "Register for public transport and driver's license",
-                  integration_program:
-                    "Enroll in language and cultural integration program",
-                };
-                const description = descriptions[service.service_type];
+              const descriptions: Record<string, string> = {
+                healthcare: "Register with the national health system",
+                banking: "Open a local bank account",
+                tax_id: "Obtain your tax/national identification",
+                telecom: "Set up phone and internet",
+                transport: "Register local transport/driver details",
+                integration_program: "Enroll in language & integration programs",
+              };
+              const description = descriptions[service.service_type];
 
-                const getStatusBadge = (status: string) => {
-                  switch (status) {
-                    case "completed":
-                      return {
-                        color: "bg-green-100 text-green-700 border-green-200",
-                        icon: <CheckCircle className="w-4 h-4" />,
-                        label: "Completed",
-                      };
-                    case "in_progress":
-                      return {
-                        color:
-                          "bg-yellow-100 text-yellow-700 border-yellow-200",
-                        icon: <Clock className="w-4 h-4" />,
-                        label: "In Progress",
-                      };
-                    default:
-                      return {
-                        color: "bg-slate-100 text-slate-600 border-slate-200",
-                        icon: <Clock className="w-4 h-4" />,
-                        label: "Pending",
-                      };
-                  }
-                };
-
-                const statusBadge = getStatusBadge(service.status);
-
-                return (
-                  <div
-                    key={service.service_id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          service.status === "completed"
-                            ? "bg-green-100"
-                            : service.status === "in_progress"
-                            ? "bg-yellow-100"
-                            : "bg-slate-200"
-                        }`}
-                      >
-                        <Icon
-                          className={`w-5 h-5 ${
-                            service.status === "completed"
-                              ? "text-green-600"
-                              : service.status === "in_progress"
-                              ? "text-yellow-600"
-                              : "text-slate-600"
-                          }`}
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700">
-                          {label}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+              return (
+                <div
+                  key={service.service_id}
+                  className="rounded-2xl border border-slate-200/70 bg-white p-5 transition-colors hover:border-blue-200"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {label}
+                      </p>
+                      {description && (
+                        <p className="mt-1 text-xs text-slate-600">
                           {description}
                         </p>
-                        {service.service_date && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            Completed: {formatDate(service.service_date)}
-                          </p>
-                        )}
-                        {service.notes && (
-                          <p className="text-xs text-slate-600 mt-1 italic">
-                            Note: {service.notes}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${getStatusColor(
+                        service.status
+                      )}`}
+                    >
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${statusBadge.color}`}
-                      >
-                        {statusBadge.icon}
-                        {statusBadge.label}
-                      </span>
+                        className={`h-2 w-2 rounded-full ${getStatusDotColor(
+                          service.status
+                        )}`}
+                        aria-hidden="true"
+                      />
+                      {getStatusLabel(service.status)}
+                    </span>
+                  </div>
+
+                  {(service.service_date || service.notes || service.proof_document) && (
+                    <div className="mt-4 space-y-2">
+                      {service.service_date && (
+                        <p className="text-xs text-slate-500">
+                          {service.status === "completed" ? "Completed" : "Updated"}: {formatDate(service.service_date)}
+                        </p>
+                      )}
+
+                      {service.notes && (
+                        <p className="text-xs text-slate-600">
+                          <span className="font-medium">Note:</span> {service.notes}
+                        </p>
+                      )}
 
                       {service.proof_document && (
                         <a
                           href={service.proof_document}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                          title="View Proof"
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200/70 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
                         >
-                          <Download className="w-4 h-4 text-slate-600" />
+                          View proof
                         </a>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Right Column - Agency Selection & Checklist (1/3 width) */}
       <div className="lg:col-span-1 space-y-6">
-        {/* Integration Agency Info Card */}
-        {caseData.integrationAgency && (
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Building2 className="w-5 h-5 text-blue-600" />
-              </div>
+        {/* Integration Agency Selection / Info Card */}
+        {caseData.integrationAgency ? (
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <Building2 className="h-4 w-4 text-blue-600" />
               Your Integration Agency
-            </h2>
-            <div className="space-y-3">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-700 font-medium mb-1">
-                  Agency Name
-                </p>
-                <p className="text-sm font-semibold text-blue-900">
+            </h3>
+            <div className="mt-4 border-t border-slate-100" />
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/60 p-4">
+                <p className="text-xs font-medium text-slate-500">Agency Name</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
                   {caseData.integrationAgency.name}
                 </p>
               </div>
               {caseData.integrationAgency.email && (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white p-3">
                   <Mail className="w-4 h-4 text-slate-500" />
                   <div className="flex-1">
-                    <p className="text-xs text-slate-500 mb-0.5">
-                      Contact Email
-                    </p>
-                    <p className="text-sm font-medium text-slate-700">
+                    <p className="text-xs font-medium text-slate-500">Email</p>
+                    <p className="mt-0.5 text-sm font-medium text-slate-900">
                       {caseData.integrationAgency.email}
                     </p>
                   </div>
                 </div>
               )}
               {caseData.integrationAgency.phone && (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white p-3">
                   <Phone className="w-4 h-4 text-slate-500" />
                   <div className="flex-1">
-                    <p className="text-xs text-slate-500 mb-0.5">
-                      Phone Number
-                    </p>
-                    <p className="text-sm font-medium text-slate-700">
+                    <p className="text-xs font-medium text-slate-500">Phone</p>
+                    <p className="mt-0.5 text-sm font-medium text-slate-900">
                       {caseData.integrationAgency.phone}
                     </p>
                   </div>
@@ -293,15 +329,31 @@ export default function IntegrationTabContent({
               )}
             </div>
           </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              Your Integration Agency
+            </h3>
+            <div className="mt-4 border-t border-slate-100" />
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center">
+              <Building2 className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <p className="text-sm font-medium text-slate-700">
+                Agency details not available yet
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Refresh this page in a moment to see contact info.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Integration Checklist Card */}
-        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-800 mb-3">
-            Integration Checklist
-          </h3>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-900">Checklist</h3>
+          <div className="mt-4 border-t border-slate-100" />
 
-          <ul className="space-y-2">
+          <ul className="mt-4 space-y-3">
             {Object.entries(serviceLabels).map(([type, label]) => {
               const service = services.find((s) => s.service_type === type);
               const isCompleted = service?.status === "completed";
@@ -309,14 +361,14 @@ export default function IntegrationTabContent({
               return (
                 <li key={type} className="flex items-center gap-2 text-sm">
                   {isCompleted ? (
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
                   ) : (
-                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full" />
+                    <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
                   )}
                   <span
                     className={
                       isCompleted
-                        ? "text-slate-700 font-medium"
+                        ? "font-medium text-slate-700"
                         : "text-slate-500"
                     }
                   >
