@@ -51,6 +51,10 @@ export function normalizeQuestions(payload: any): UiQuestion[] {
     skillTags: q.skillTags || null,
     functionSignature: null,
     timeLimitSec: null,
+    hasDiagram: q.hasDiagram ?? null,
+    diagramType: q.diagramType ?? null,
+    diagramCode: q.diagramCode ?? null,
+    diagramImageUrl: q.diagramImageUrl ?? null,
   }));
 }
 

@@ -70,6 +70,11 @@ type UiQuestion = {
   // language locking (real assessment may have required lang)
   requiredLanguage?: string | null;
   allowedLanguages?: string[] | null;
+  // diagram fields
+  hasDiagram?: boolean | null;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
 };
 
 type UiRunTest = {
@@ -141,7 +146,8 @@ function getDifficultyColor(difficulty?: string) {
 
 function extForLang(lang: string) {
   switch ((lang || "").toLowerCase()) {
-    case "javascript":        return "js";
+    case "javascript":
+    case "javascript-node":   return "js";
     case "typescript":
     case "typescript-strict": return "ts";
     case "java":              return "java";
@@ -158,6 +164,14 @@ function extForLang(lang: string) {
     case "scala":             return "scala";
     case "perl":              return "pl";
     case "r":                 return "r";
+    case "dart":              return "dart";
+    case "elixir":            return "ex";
+    case "haskell":           return "hs";
+    case "lua":               return "lua";
+    case "bash":              return "sh";
+    case "sql":               return "sql";
+    case "python-numpy":
+    case "python-ml":         return "py";
     default:                  return "py";
   }
 }
@@ -174,20 +188,54 @@ function defaultTemplateWithoutMain(language: string): string {
   switch (normalizeLang(language)) {
     case "javascript":
       return `// Write your solution here\n`;
+    case "javascript-node":
+      return `// Node.js — built-ins available (fs, path, crypto, stream…)\n// Write your solution here\n`;
     case "typescript":
     case "typescript-strict":
       return `// Write your solution here\n`;
     case "java":
-      return `class Solution {\n  // Write your solution here\n}\n`;
+      return `class Solution {\n    // Write your solution here\n}\n`;
     case "cpp":
     case "c++":
+      return `#include <bits/stdc++.h>\nusing namespace std;\n\n// Write your solution here\n`;
     case "c":
+      return `#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n// Write your solution here\n`;
     case "go":
+      return `package main\n\n// Write your solution here\n`;
     case "csharp":
+      return `using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\n// Write your solution here\n`;
     case "rust":
       return `// Write your solution here\n`;
-    default:
+    case "kotlin":
+      return `// Write your solution here\n`;
+    case "swift":
+      return `import Foundation\n\n// Write your solution here\n`;
+    case "php":
+      return `<?php\n// Write your solution here\n`;
+    case "scala":
+      return `object Solution {\n  // Write your solution here\n}\n`;
+    case "perl":
+      return `#!/usr/bin/perl\nuse strict;\nuse warnings;\n\n# Write your solution here\n`;
+    case "r":
       return `# Write your solution here\n`;
+    case "dart":
+      return `// Write your solution here\n`;
+    case "elixir":
+      return `defmodule Solution do\n  # Write your solution here\nend\n`;
+    case "haskell":
+      return `module Solution where\n\n-- Write your solution here\n`;
+    case "lua":
+      return `-- Write your solution here\n`;
+    case "bash":
+      return `#!/bin/bash\n# Write your solution here\n`;
+    case "sql":
+      return `-- Write your SQL query here\n-- SELECT ...\n`;
+    case "python-numpy":
+      return `import numpy as np\nimport pandas as pd\nfrom collections import defaultdict, Counter\nfrom typing import List, Optional\n\n# Write your solution here\n`;
+    case "python-ml":
+      return `import numpy as np\nimport pandas as pd\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom typing import List, Optional\n\n# Write your solution here\n`;
+    default:
+      return `from typing import List, Optional, Dict, Tuple\nfrom collections import defaultdict, Counter\nimport heapq\n\n# Write your solution here\n`;
   }
 }
 
@@ -205,24 +253,42 @@ function toNumber(x: any): number | null {
    Language catalog
 ================================ */
 
-const ALL_LANG_OPTIONS: { value: string; label: string }[] = [
-  { value: "python",           label: "Python" },
-  { value: "javascript",       label: "JavaScript" },
-  { value: "typescript",       label: "TypeScript" },
-  { value: "typescript-strict",label: "TypeScript (Strict)" },
-  { value: "java",             label: "Java" },
-  { value: "cpp",              label: "C++" },
-  { value: "c",                label: "C" },
-  { value: "go",               label: "Go" },
-  { value: "csharp",           label: "C#" },
-  { value: "ruby",             label: "Ruby" },
-  { value: "rust",             label: "Rust" },
-  { value: "kotlin",           label: "Kotlin" },
-  { value: "swift",            label: "Swift" },
-  { value: "php",              label: "PHP" },
-  { value: "scala",            label: "Scala" },
-  { value: "perl",             label: "Perl" },
-  { value: "r",                label: "R" },
+const ALL_LANG_OPTIONS: { value: string; label: string; group?: string }[] = [
+  // ── Python ──────────────────────────────────────────────────────────────────
+  { value: "python",           label: "Python",                 group: "Python"  },
+  { value: "python-numpy",     label: "Python · NumPy / Pandas",group: "Python"  },
+  { value: "python-ml",        label: "Python · ML (sklearn)",  group: "Python"  },
+  // ── JavaScript / TypeScript ─────────────────────────────────────────────────
+  { value: "javascript",       label: "JavaScript",             group: "JS / TS" },
+  { value: "javascript-node",  label: "JavaScript · Node.js",   group: "JS / TS" },
+  { value: "typescript",       label: "TypeScript",             group: "JS / TS" },
+  { value: "typescript-strict",label: "TypeScript (Strict)",    group: "JS / TS" },
+  // ── JVM ─────────────────────────────────────────────────────────────────────
+  { value: "java",             label: "Java",                   group: "JVM"     },
+  { value: "kotlin",           label: "Kotlin",                 group: "JVM"     },
+  { value: "scala",            label: "Scala",                  group: "JVM"     },
+  // ── Systems ─────────────────────────────────────────────────────────────────
+  { value: "cpp",              label: "C++",                    group: "Systems" },
+  { value: "c",                label: "C",                      group: "Systems" },
+  { value: "rust",             label: "Rust",                   group: "Systems" },
+  { value: "go",               label: "Go",                     group: "Systems" },
+  // ── Mobile / Other compiled ─────────────────────────────────────────────────
+  { value: "swift",            label: "Swift",                  group: "Mobile"  },
+  { value: "dart",             label: "Dart",                   group: "Mobile"  },
+  // ── Scripting ───────────────────────────────────────────────────────────────
+  { value: "ruby",             label: "Ruby",                   group: "Scripting"},
+  { value: "php",              label: "PHP",                    group: "Scripting"},
+  { value: "perl",             label: "Perl",                   group: "Scripting"},
+  { value: "lua",              label: "Lua",                    group: "Scripting"},
+  { value: "bash",             label: "Bash / Shell",           group: "Scripting"},
+  // ── Functional ──────────────────────────────────────────────────────────────
+  { value: "haskell",          label: "Haskell",                group: "Functional"},
+  { value: "elixir",           label: "Elixir",                 group: "Functional"},
+  // ── Data / Query ────────────────────────────────────────────────────────────
+  { value: "r",                label: "R",                      group: "Data"    },
+  { value: "sql",              label: "SQL",                    group: "Data"    },
+  // ── .NET ────────────────────────────────────────────────────────────────────
+  { value: "csharp",           label: "C#",                     group: ".NET"    },
 ];
 
 /* ================================
@@ -284,6 +350,254 @@ function formatInline(text: string): React.ReactNode[] {
   }
 
   return nodes;
+}
+
+/* ── LangDropdown ─────────────────────────────────────────────
+   Custom language selector — fixes native <select> invisible
+   options in dark mode.                                        */
+function LangDropdown({
+  value, options, onChange, disabled, isLight,
+}: {
+  value: string;
+  options: { value: string; label: string; group?: string }[];
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  isLight: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.value === value) ?? options[0];
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Build grouped list
+  const grouped: { group: string; items: typeof options }[] = [];
+  for (const opt of options) {
+    const g = opt.group ?? "Other";
+    const existing = grouped.find(x => x.group === g);
+    if (existing) existing.items.push(opt);
+    else grouped.push({ group: g, items: [opt] });
+  }
+
+  const menuBg   = isLight ? "bg-white border-slate-200 shadow-xl"         : "bg-[#1a1f2e] border-[#3d4451] shadow-2xl";
+  const groupLbl = isLight ? "text-slate-400"                               : "text-slate-500";
+  const itemHov  = isLight ? "hover:bg-blue-50 hover:text-blue-700"        : "hover:bg-[#1B73E8]/15 hover:text-cyan-300";
+  const itemSel  = isLight ? "bg-blue-50 text-blue-700 font-semibold"      : "bg-[#1B73E8]/25 text-cyan-300 font-semibold";
+  const itemDef  = isLight ? "text-slate-700"                               : "text-slate-300";
+  const divider  = isLight ? "border-slate-100"                             : "border-[#2d3451]";
+  const trigBg   = isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-[#2d3139] border-[#3d4451] text-slate-100";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
+        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 border text-sm font-medium transition-all ${trigBg} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:brightness-95"}`}
+      >
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isLight ? "bg-blue-500" : "bg-cyan-400"}`} />
+        <span>{selected?.label ?? value}</span>
+        <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform text-slate-400 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className={`absolute right-0 top-full mt-1 z-50 rounded-xl border overflow-y-auto ${menuBg}`}
+          style={{ minWidth: "200px", maxHeight: "320px" }}>
+          {grouped.map((grp, gi) => (
+            <div key={grp.group}>
+              {gi > 0 && <div className={`border-t ${divider}`} />}
+              <div className={`px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest ${groupLbl}`}>
+                {grp.group}
+              </div>
+              {grp.items.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+                    opt.value === value ? itemSel : `${itemDef} ${itemHov}`
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── RunnerDiagramViewer ──────────────────────────────────────
+   Renders a question's diagram (image + optional code) inside
+   the runner. Respects the runner's existing isLight theme.   */
+function RunnerDiagramViewer({
+  hasDiagram, diagramType, diagramCode, diagramImageUrl, isLight,
+}: {
+  hasDiagram?: boolean | null;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
+  isLight: boolean;
+}) {
+  const hasAny = !!(diagramImageUrl || diagramCode);
+  const [tab, setTab] = React.useState<"preview" | "code">(diagramImageUrl ? "preview" : "code");
+  const [zoom, setZoom] = React.useState(1);
+  const [fullscreen, setFullscreen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (diagramImageUrl) setTab("preview");
+    else if (diagramCode) setTab("code");
+  }, [diagramImageUrl, diagramCode]);
+
+  if (!hasAny && !hasDiagram) return null;
+
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const safeType = (diagramType || "diagram").toUpperCase();
+
+  const border  = isLight ? "border-slate-200"  : "border-[#3d4451]";
+  const headerBg = isLight ? "bg-slate-50"       : "bg-[#1e2330]";
+  const bodyBg  = isLight ? "bg-slate-100"       : "bg-[#181d28]";
+  const labelTxt = isLight ? "text-slate-500"    : "text-slate-400";
+  const titleTxt = isLight ? "text-slate-800"    : "text-slate-100";
+  const badgeCls = isLight
+    ? "bg-blue-50 text-blue-700 border border-blue-100"
+    : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
+  const tabActive = isLight
+    ? "bg-white border-slate-300 text-slate-800 shadow-sm"
+    : "bg-white/15 border-white/20 text-white";
+  const tabIdle   = isLight
+    ? "text-slate-400 border-transparent hover:bg-slate-200"
+    : "text-white/50 border-transparent hover:bg-white/10";
+  const toolBtn   = isLight
+    ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+    : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10";
+  const canvasBg  = isLight ? "bg-slate-200"     : "bg-[#0e1219]";
+
+  return (
+    <>
+      <div className={`rounded-xl border ${border} overflow-hidden`}>
+        {/* header */}
+        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${border} ${headerBg}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#1B73E8] to-[#1557B0] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              D
+            </div>
+            <div>
+              <div className={`text-xs font-semibold ${titleTxt}`}>Diagram</div>
+              <div className={`text-[10px] ${labelTxt}`}>Visual attached to this problem</div>
+            </div>
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeCls}`}>{safeType}</span>
+        </div>
+
+        {/* tab bar */}
+        <div className={`flex items-center justify-between px-3 py-2 border-b ${border} ${bodyBg}`}>
+          <div className="flex items-center gap-1.5">
+            {(["preview", "code"] as const).map(t => (
+              <button key={t} type="button"
+                disabled={t === "preview" ? !diagramImageUrl : !diagramCode}
+                onClick={() => setTab(t)}
+                className={`px-3 py-1 rounded-md text-xs border transition ${
+                  tab === t ? tabActive : tabIdle
+                } disabled:opacity-30 disabled:cursor-not-allowed`}>
+                {t === "preview" ? "Preview" : "Code"}
+              </button>
+            ))}
+          </div>
+          {/* toolbar */}
+          <div className="flex items-center gap-1.5">
+            {tab === "preview" && diagramImageUrl ? (
+              <>
+                {([["−", -0.15], ["+", +0.15]] as [string, number][]).map(([lbl, delta]) => (
+                  <button key={lbl} type="button"
+                    className={`w-7 h-7 rounded-md border text-sm flex items-center justify-center transition ${toolBtn}`}
+                    onClick={() => setZoom(z => clamp(+(z + delta).toFixed(2), 0.5, 3))}>
+                    {lbl}
+                  </button>
+                ))}
+                <button type="button"
+                  className={`px-2 py-1 rounded-md border text-[10px] transition ${toolBtn}`}
+                  onClick={() => setZoom(1)}>100%</button>
+                <button type="button"
+                  className={`px-2 py-1 rounded-md border text-[10px] transition ${toolBtn}`}
+                  onClick={() => setFullscreen(true)}>Full</button>
+                <button type="button"
+                  className={`px-2 py-1 rounded-md border text-[10px] transition ${toolBtn}`}
+                  onClick={() => window.open(diagramImageUrl, "_blank", "noopener,noreferrer")}>Open↗</button>
+              </>
+            ) : tab === "code" && diagramCode ? (
+              <button type="button"
+                className={`px-2 py-1 rounded-md border text-[10px] transition ${toolBtn}`}
+                onClick={() => navigator.clipboard.writeText(diagramCode).catch(() => {})}>Copy</button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* content */}
+        {tab === "preview" ? (
+          <div className={`relative ${canvasBg} min-h-[180px]`} style={{
+            backgroundImage: "linear-gradient(rgba(128,128,128,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(128,128,128,0.07) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }}>
+            {diagramImageUrl ? (
+              <div className="p-4 overflow-auto flex justify-center">
+                <img src={diagramImageUrl} alt="Question diagram"
+                  className="rounded-lg shadow-lg max-w-full h-auto select-none"
+                  style={{ transform: `scale(${zoom})`, transformOrigin: "top center",
+                    border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.08)" }}
+                />
+              </div>
+            ) : (
+              <div className={`p-6 text-sm ${labelTxt}`}>Diagram flagged but no image provided.</div>
+            )}
+          </div>
+        ) : (
+          <div className={`${canvasBg} p-4 overflow-auto max-h-64`}>
+            {diagramCode
+              ? <pre className={`text-xs leading-relaxed whitespace-pre-wrap font-mono ${isLight ? "text-slate-700" : "text-slate-300"}`}>{diagramCode}</pre>
+              : <div className={`text-sm ${labelTxt}`}>No diagram code provided.</div>}
+          </div>
+        )}
+      </div>
+
+      {/* fullscreen modal */}
+      {fullscreen && diagramImageUrl && (
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setFullscreen(false)}>
+          <div className="w-full max-w-5xl max-h-[90vh] bg-[#0e1219] rounded-xl overflow-hidden border border-white/10 shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 text-white">
+              <span className="text-sm font-semibold">Diagram <span className="text-white/50 font-normal">· {safeType}</span></span>
+              <div className="flex items-center gap-2">
+                <button type="button" className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-xs"
+                  onClick={() => setZoom(1)}>Reset</button>
+                <button type="button" className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-xs"
+                  onClick={() => setFullscreen(false)}>Close ✕</button>
+              </div>
+            </div>
+            <div className="overflow-auto p-6 max-h-[80vh] flex justify-center" style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+              backgroundSize: "22px 22px",
+            }}>
+              <img src={diagramImageUrl} alt="Diagram fullscreen"
+                className="rounded-lg shadow-2xl border border-white/10 bg-white max-w-full h-auto select-none"
+                style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function renderMarkdownLike(raw: string, isLight: boolean) {
@@ -539,6 +853,10 @@ function normalizeQuestionsAny(payload: any): UiQuestion[] {
         functionSignature: q.functionSignature ?? q.function_signature ?? undefined,
         requiredLanguage,
         allowedLanguages: finalAllowed,
+        hasDiagram: typeof q.hasDiagram === "boolean" ? q.hasDiagram : null,
+        diagramType: typeof q.diagramType === "string" ? q.diagramType : null,
+        diagramCode: typeof q.diagramCode === "string" ? q.diagramCode : null,
+        diagramImageUrl: typeof q.diagramImageUrl === "string" ? q.diagramImageUrl : null,
       } as UiQuestion;
     })
     .filter(Boolean) as UiQuestion[];
@@ -821,17 +1139,18 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
       return;
     }
     if (expiresAtIso) {
-      setTimeLeftMs(new Date(expiresAtIso).getTime() - Date.now());
+      const expireTime = new Date(expiresAtIso).getTime();
+      if (Number.isFinite(expireTime)) setTimeLeftMs(Math.max(0, expireTime - Date.now()));
       return;
     }
     setTimeLeftMs(null);
   }, [remainingSecondsServer, expiresAtIso]);
 
   useEffect(() => {
-    if (timeLeftMs === null || submitted || sessionExpiredByStatus) return;
-    const id = setInterval(() => setTimeLeftMs((prev) => (prev === null ? prev : prev - 1000)), 1000);
+    if (timeLeftMs === null || timeLeftMs <= 0 || submitted || sessionExpiredByStatus) return;
+    const id = setInterval(() => setTimeLeftMs((prev) => (prev === null || prev <= 0 ? prev : prev - 1000)), 1000);
     return () => clearInterval(id);
-  }, [timeLeftMs, submitted, sessionExpiredByStatus]);
+  }, [submitted, sessionExpiredByStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (timeLeftMs === null || submitted || sessionExpiredByStatus || autoSubmitOnceRef.current) return;
@@ -862,7 +1181,6 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
   });
 
   const [tabSwitchAlert, setTabSwitchAlert] = useState<string | null>(null);
-  const [tabSwitchWarning, setTabSwitchWarning] = useState(false);
   const lastVisibilityRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -887,7 +1205,6 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
               : `Tab switched away. Violations: ${next}/${MAX_TAB_SWITCHES}`;
           setToast(msg);
           setTabSwitchAlert(`Please focus on this tab. Violations recorded: ${next}/${MAX_TAB_SWITCHES}`);
-          if (next >= MAX_TAB_SWITCHES) setTabSwitchWarning(true);
           return next;
         });
         telemetry.mutate({ events: [{ type: "TAB_SWITCH", at: Date.now() }] } as any);
@@ -1125,7 +1442,7 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
       addTerminalLog(`command not found: '${cmd}'`, "error");
       addTerminalLog("Use 'help' for available commands", "info");
     },
-    [addTerminalLog, sessionId, sessionStatus, tabSwitches, locked, editorTabSwitches, runResult, activeQ, activeFileObj, files.length]
+    [addTerminalLog, sessionId, sessionStatus, tabSwitches, locked, editorTabSwitches, runResult, activeQ, activeFileObj, files.length] // onRunCodingNow intentionally omitted — declared later
   );
 
   /* ================================
@@ -1690,6 +2007,14 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
                 : <div className={`${isLight ? "text-slate-500" : "text-white/50"} text-sm`}>No statement provided.</div>
               }
 
+              <RunnerDiagramViewer
+                hasDiagram={activeQ.hasDiagram}
+                diagramType={activeQ.diagramType}
+                diagramCode={activeQ.diagramCode}
+                diagramImageUrl={activeQ.diagramImageUrl}
+                isLight={isLight}
+              />
+
               {activeQ.constraints?.length ? (
                 <div>
                   <h4 className={`text-xs font-bold uppercase tracking-widest mb-2 ${isLight ? "text-slate-600" : "text-slate-400"}`}>Constraints</h4>
@@ -1895,19 +2220,15 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
                 </div>
 
                 <div className="ml-auto flex items-center gap-2">
-                  <div className={`flex items-center gap-2 rounded px-2 py-1 border ${isLight ? "bg-slate-50 border-slate-200" : "bg-[#2d3139] border-[#3d4451]"}`}>
-                    <label className={`text-xs mr-1 font-medium ${isLight ? "text-slate-600" : "text-slate-500"}`}>Language</label>
+                  <div className="flex items-center gap-1.5">
                     {languageLocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
-                    <select
+                    <LangDropdown
                       value={languageLocked && requiredLangUI ? requiredLangUI : (activeFileObj?.language || "python")}
-                      onChange={(e) => { if (locked || languageLocked) return; changeLanguage(activeFileObj.id, e.target.value); }}
+                      options={languageOptions}
+                      onChange={(v) => { if (locked || languageLocked || !activeFileObj) return; changeLanguage(activeFileObj.id, v); }}
                       disabled={locked || languageLocked}
-                      className={`bg-transparent text-sm outline-none font-medium disabled:opacity-60 ${isLight ? "text-slate-800" : "text-slate-300"}`}
-                    >
-                      {languageOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                      isLight={isLight}
+                    />
                   </div>
 
                   <button
@@ -2191,48 +2512,50 @@ export default function HiralentRunner({ sessionId }: { sessionId: string }) {
       {/* ── Settings Modal ── */}
       {showSettings && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur z-50">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-2xl">
+          <div className={`${isLight ? "bg-white" : "bg-[#16191e] border border-[#2d3139]"} rounded-xl p-6 w-96 shadow-2xl`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Settings</h3>
-              <button onClick={() => setShowSettings(false)} className="p-1 rounded hover:bg-slate-100">
+              <h3 className={`text-lg font-bold ${isLight ? "text-slate-900" : "text-white"}`}>Settings</h3>
+              <button onClick={() => setShowSettings(false)} className={`p-1 rounded ${isLight ? "hover:bg-slate-100 text-slate-600" : "hover:bg-white/10 text-slate-400"}`}>
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className="text-sm font-medium block mb-2 text-slate-700">Theme</label>
+                <label className={`text-sm font-medium block mb-2 ${isLight ? "text-slate-700" : "text-slate-300"}`}>Theme</label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPrefs({ ...prefs, theme: "dark" })}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${prefs.theme === "dark" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${prefs.theme === "dark" ? "bg-[#1B73E8] text-white" : isLight ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "bg-white/8 text-slate-400 hover:bg-white/12"}`}
                   >
-                    <Moon className="w-4 h-4 inline mr-2" /> Dark
+                    <Moon className="w-4 h-4" /> Dark
                   </button>
                   <button
                     onClick={() => setPrefs({ ...prefs, theme: "light" })}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${prefs.theme === "light" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${prefs.theme === "light" ? "bg-[#1B73E8] text-white" : isLight ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "bg-white/8 text-slate-400 hover:bg-white/12"}`}
                   >
-                    <Sun className="w-4 h-4 inline mr-2" /> Light
+                    <Sun className="w-4 h-4" /> Light
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium block mb-2 text-slate-700">Font Size</label>
+                <label className={`text-sm font-medium block mb-2 ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                  Font Size <span className={`font-normal ${isLight ? "text-slate-400" : "text-slate-500"}`}>({prefs.fontSize || 14}px)</span>
+                </label>
                 <div className="flex items-center gap-4">
                   <input
                     type="range" min={12} max={20}
                     value={prefs.fontSize || 14}
                     onChange={(e) => setPrefs({ ...prefs, fontSize: Number(e.target.value) })}
-                    className="flex-1"
+                    className="flex-1 accent-[#1B73E8]"
                   />
-                  <span className="text-sm font-medium text-slate-700 w-10">{prefs.fontSize || 14}px</span>
+                  <span className={`text-sm font-mono font-semibold w-10 ${isLight ? "text-slate-700" : "text-slate-300"}`}>{prefs.fontSize || 14}</span>
                 </div>
               </div>
 
-              <div className="text-xs text-slate-500">
-                Tip: Ctrl/Cmd+K opens command palette • Ctrl/Cmd+Enter runs code • Esc closes modals.
+              <div className={`text-xs ${isLight ? "text-slate-400" : "text-slate-500"} border-t ${isLight ? "border-slate-100" : "border-white/8"} pt-3`}>
+                Ctrl/Cmd+K · command palette &nbsp;•&nbsp; Ctrl/Cmd+Enter · run &nbsp;•&nbsp; Esc · close modals
               </div>
             </div>
           </div>

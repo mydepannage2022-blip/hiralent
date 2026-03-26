@@ -147,6 +147,15 @@ export type UiQuestion = {
   skillTags?: string[] | null;
   functionSignature?: string | null;
   timeLimitSec?: number | null;
+
+  hasDiagram?: boolean | null;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
+
+  // language locking
+  requiredLanguage?: string | null;
+  allowedLanguages?: string[] | null;
 };
 
 export type UiRunResult = {
