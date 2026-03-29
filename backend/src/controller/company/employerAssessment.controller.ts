@@ -99,7 +99,7 @@ export const generateQuestionsForAssessment = asyncHandler(
     await EmployerAssessmentService.getById(company_id, assessment_id);
 
     // 2) Generate + attach
-    const result = await attachQuestionsToAssessment(assessment_id);
+    const result = await attachQuestionsToAssessment(assessment_id, req.headers.authorization);
 
     res.status(200).json({
       status: 'ok',

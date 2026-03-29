@@ -125,17 +125,6 @@ export default function InternalCandidateCard({ item, onInvite, onChat }: Props)
             <MessageSquare className="h-4 w-4" />
             Chat
           </button>
-
-          <button
-            className="inline-flex items-center gap-2 rounded-xl border bg-gray-50 px-3 py-2 text-sm hover:bg-gray-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              onInvite?.(id);
-            }}
-          >
-            <UserPlus className="h-4 w-4" />
-            Invite
-          </button>
         </div>
       </div>
     </div>

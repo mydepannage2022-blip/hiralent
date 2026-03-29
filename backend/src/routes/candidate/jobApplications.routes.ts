@@ -29,4 +29,5 @@ router.get("/applications", listMyApplications);
  */
 router.get("/applications/:id/timeline", getApplicationTimeline);
 
+
 export default router;

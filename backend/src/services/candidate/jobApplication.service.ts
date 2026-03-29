@@ -68,6 +68,12 @@ export class JobApplicationService {
           required_skills: true,
           min_profile_score: true,
           required_fields: true,
+          company: {
+    select: {
+      full_name: true,
+      companyProfile: { select: { company_name: true, display_name: true } },
+    },
+  },
         },
       }),
       this.prisma.profileCompleteness.findUnique({
@@ -79,6 +85,17 @@ export class JobApplicationService {
         select: { skills: true, resume_url: true, headline: true },
       }),
     ]);
+
+const candidateUser = await this.prisma.user.findUnique({
+  where: { user_id: candidateId },
+  select: { full_name: true },
+});
+const candidateName = candidateUser?.full_name ?? "A candidate";
+const companyName =
+  job.company?.companyProfile?.display_name ??
+  job.company?.companyProfile?.company_name ??
+  job.company?.full_name ??
+  "The company";
 
     if (!job) {
       const err: any = new Error("Job not found");
@@ -198,8 +215,8 @@ export class JobApplicationService {
           audience: NotificationAudience.CANDIDATE,
           recipient_id: candidateId,
           type: NotificationType.APPLICATION_CONFIRMED,
-          title: "Application sent ✅",
-          message: `Your application for "${job.title}" has been submitted.`,
+          title: `Application submitted to ${companyName}`,
+          message: `Your application for the "${job.title}" position at ${companyName} has been sent successfully.`,
           action_url: "/candidate/dashboard/applications",
           data: { jobId, applicationId: app.application_id },
           sent_via: "in_app",
@@ -212,8 +229,8 @@ export class JobApplicationService {
           audience: NotificationAudience.COMPANY,
           recipient_id: job.company_id,
           type: NotificationType.JOB_APPLICATION_RECEIVED,
-          title: "New applicant received 📩",
-          message: `A new candidate applied to "${job.title}".`,
+          title: `New application: ${job.title}`,
+          message: `${candidateName} just applied to your "${job.title}" position.`,
           action_url: `/company/dashboard/jobs/${job.job_id}/applicants`,
           data: { applicationId: app.application_id, jobId: job.job_id, candidateId },
           sent_via: "in_app",
@@ -427,4 +444,5 @@ export class JobApplicationService {
 
     return row;
   }
+  
 }

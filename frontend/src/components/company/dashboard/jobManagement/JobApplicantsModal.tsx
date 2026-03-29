@@ -420,7 +420,7 @@ const JobApplicantsModal: React.FC<JobApplicantsModalProps> = ({
     if (onInviteToAssessment) {
       await onInviteToAssessment(inviteTarget);
       closeInvite();
-      setToast("Invitation sent ✅");
+      setToast("Invitation sent");
       return;
     }
 
@@ -435,7 +435,7 @@ const JobApplicantsModal: React.FC<JobApplicantsModalProps> = ({
         expiresIso
       );
       closeInvite();
-      setToast("Invitation sent ✅");
+      setToast("Invitation sent");
     } catch (e) {
       console.error(e);
       alert("Failed to send invitation. Check backend logs + payload fields.");

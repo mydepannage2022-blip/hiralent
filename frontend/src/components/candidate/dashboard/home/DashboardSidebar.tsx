@@ -52,13 +52,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/candidate/dashboard' },
     { name: 'Profile', icon: User, href: '/candidate/dashboard/candidate-profile' },
+    { name: 'Notifications',  icon: Bell,  href: '/candidate/dashboard/notifications',},
     { name: 'My Cases', icon: FolderKanban, href: '/candidate/dashboard/cases' },
-    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
     { name: 'Jobs',  icon: Briefcase,  href: '/candidate/dashboard/jobs',},
-    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
-    // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
+    { name: "My Applications", icon: ClipboardList, href: "/candidate/dashboard/applications" },
     { name: 'Skills Assessment', icon: Subscript, href: '/candidate/dashboard/skills-assessment' },
     { name: "AI Interviews", icon: Video, href: "/candidate/dashboard/interviews" },
+    { name: 'Messages', icon: MessageSquare, href: '/candidate/dashboard/messages' },
+    // { name: 'Analytics', icon: Activity, href: '/candidate/dashboard/analytics' },
     { name: 'Settings', icon: Settings, href: '/candidate/dashboard/settings' },
 
   ];

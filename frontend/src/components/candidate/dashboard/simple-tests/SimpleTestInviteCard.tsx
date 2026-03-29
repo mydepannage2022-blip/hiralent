@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Clock, Play, MapPin } from "lucide-react";
+import { Clock, Play, MapPin, FlaskConical } from "lucide-react";
 import type { UiSimpleTestInvite } from "@/src/lib/simpleTest/simpleTest.api";
 
 type Props = {
@@ -10,61 +10,53 @@ type Props = {
   onStart: () => void;
 };
 
-export default function SimpleTestInviteCard({
-  invite,
-  loading,
-  onStart,
-}: Props) {
+export default function SimpleTestInviteCard({ invite, loading, onStart }: Props) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-      <div className="flex items-start justify-between gap-4">
-        {/* Left */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-slate-900">
-            {invite.jobTitle ?? "Job"}
-          </h3>
+    <div className="bg-white border border-gray-200 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/70 transition-colors">
 
-          <div className="text-sm text-slate-600 flex items-center gap-4 flex-wrap">
+      {/* Left — icon + info */}
+      <div className="min-w-0 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+          <FlaskConical className="w-4 h-4 text-emerald-600" />
+        </div>
+
+        <div className="min-w-0">
+          <div className="font-semibold text-gray-900 truncate text-[14px]">
+            {invite.jobTitle ?? "Warm-up Test"}
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
             {invite.location && (
               <span className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
+                <MapPin className="w-3 h-3" />
                 {invite.location}
               </span>
             )}
-
             {invite.timeLimitMin && (
               <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
+                <Clock className="w-3 h-3" />
                 {invite.timeLimitMin} min
               </span>
             )}
           </div>
-
-          <div className="text-xs text-slate-500">
-            {invite.testTitle ?? "Simple Warm-up Test"}
-          </div>
-
-          <div className="text-xs text-emerald-600 font-medium">
-            Unlimited attempts • Candidate-only score
-          </div>
-        </div>
-
-        {/* Right */}
-        <div className="flex flex-col items-end gap-3">
-          <span className="text-xs px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-600 font-medium">
-            {invite.status}
-          </span>
-
-          <button
-            onClick={onStart}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-50"
-          >
-            <Play className="h-4 w-4" />
-            {loading ? "Starting..." : "Start"}
-          </button>
         </div>
       </div>
+
+      {/* Right — status badge + button */}
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          {invite.status ?? "Accepted"}
+        </span>
+
+        <button
+          onClick={onStart}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+        >
+          <Play className="h-3.5 w-3.5 fill-white" />
+          {loading ? "Starting..." : "Start"}
+        </button>
+      </div>
+
     </div>
   );
 }

@@ -151,33 +151,55 @@ export const addSkill = async (
       throw new Error("Skill already exists");
     }
 
-    await prisma.candidateSkill.create({
-      data: {
-        candidate_id: candidateId,
-        skill_name: data.skill_name,
-        skill_category: data.skill_category,
-        proficiency: data.proficiency,
-        years_experience: data.years_experience || 0,
-        confidence_score: 1.0,
-        source_type: "manual_entry",
-        is_verified: true
-      }
-    });
+    // Transaction : insert dans CandidateSkill + sync CandidateProfile.skills
+    const { skillsCount } = await prisma.$transaction(async (tx) => {
+      // 1. Insérer le nouveau skill
+      await tx.candidateSkill.create({
+        data: {
+          candidate_id: candidateId,
+          skill_name: data.skill_name,
+          skill_category: data.skill_category,
+          proficiency: data.proficiency,
+          years_experience: data.years_experience || 0,
+          confidence_score: 1.0,
+          source_type: "manual_entry",
+          is_verified: true,
+        },
+      });
 
-    const skillsCount = await prisma.candidateSkill.count({
-      where: { candidate_id: candidateId }
+      // 2. Relire tous les skills pour avoir la liste complète et à jour
+      const allSkills = await tx.candidateSkill.findMany({
+        where: { candidate_id: candidateId },
+        select: { skill_name: true },
+      });
+
+      // 3. Sync vers CandidateProfile.skills (source secondaire)
+      await tx.candidateProfile.upsert({
+        where: { candidate_id: candidateId },
+        update: {
+          skills: allSkills.map((s) => s.skill_name),
+          updated_at: new Date(),
+        },
+        create: {
+          candidate_id: candidateId,
+          skills: allSkills.map((s) => s.skill_name),
+        },
+      });
+
+      return { skillsCount: allSkills.length };
     });
 
     const { calculateProfileCompleteness } = await import("./candidate.service");
     await calculateProfileCompleteness(candidateId);
-    // Après calculateProfileCompleteness
-   await triggerCandidateMatching(candidateId, "addSkill").catch(e => 
+
+    await triggerCandidateMatching(candidateId, "addSkill").catch((e) =>
       console.warn("Failed to trigger matching:", e)
-  );
+    );
+
     return {
       success: true,
       message: `Successfully added skill: ${data.skill_name}`,
-      skills_count: skillsCount
+      skills_count: skillsCount,
     };
   } catch (error) {
     console.error("Error adding skill:", error);

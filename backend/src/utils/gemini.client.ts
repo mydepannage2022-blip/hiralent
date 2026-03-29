@@ -19,30 +19,97 @@ export type GeminiInsightOutput = {
   kpis: {
     overallScore?: number;
     passProbability?: number;
-    reliabilityScore?: number; // based on telemetry + consistency
+    reliabilityScore?: number;
     riskLevel?: "low" | "medium" | "high";
     anomalies?: string[];
     timeManagement?: "good" | "average" | "poor";
   };
-
-  /**
-   * ✅ NEW: Radar categories recruiter-friendly (6–8 axes max)
-   * This is what company UI should use.
-   */
   radar_categories: RadarPointAI[];
-
-  /**
-   * Keep legacy radar_ai for compatibility (optional)
-   * Could be same as radar_categories or more detailed.
-   */
   radar_ai?: RadarPointAI[];
-
   strengths: Array<{ skill: string; evidenceQuestionIds: string[]; note?: string }>;
   weaknesses: Array<{ skill: string; evidenceQuestionIds: string[]; note?: string }>;
   recommendations: Array<{ skill: string; evidenceQuestionIds: string[]; note?: string }>;
   evidence_by_skill?: Record<string, Array<{ questionId: string; note?: string }>>;
-  confidence?: number; // 0..1
+  confidence?: number;
 };
+
+/* ─────────────────────────── ID anonymization ─────────────────────────── */
+
+/**
+ * Builds a stable mapping: real questionId → "Q1", "Q2", etc.
+ * Used to anonymize IDs before sending to Gemini AND to re-map them back.
+ */
+function buildIdMap(payload: any): Map<string, string> {
+  const map = new Map<string, string>();
+  let counter = 1;
+
+  function collect(v: any) {
+    if (!v || typeof v !== "object") return;
+    if (Array.isArray(v)) { v.forEach(collect); return; }
+
+    // Common ID field names used in your payload
+    const idFields = ["questionId", "question_id", "id", "sessionQuestionId"];
+    for (const field of idFields) {
+      if (typeof v[field] === "string" && v[field].length > 8) {
+        const real = v[field];
+        if (!map.has(real)) {
+          map.set(real, `Q${counter++}`);
+        }
+      }
+    }
+    Object.values(v).forEach(collect);
+  }
+
+  collect(payload);
+  return map;
+}
+
+/**
+ * Deep-replaces all real IDs in a plain object/string with their aliases.
+ */
+function anonymize(value: any, map: Map<string, string>): any {
+  if (typeof value === "string") {
+    let result = value;
+    map.forEach((alias, realId) => {
+      result = result.split(realId).join(alias);
+    });
+    return result;
+  }
+  if (Array.isArray(value)) return value.map((v) => anonymize(v, map));
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = anonymize(v, map);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Deep-replaces all aliases back to real IDs in Gemini's output.
+ * Used to restore evidenceQuestionIds so the frontend still works.
+ */
+function deanonymize(value: any, reverseMap: Map<string, string>): any {
+  if (typeof value === "string") {
+    let result = value;
+    reverseMap.forEach((realId, alias) => {
+      result = result.split(alias).join(realId);
+    });
+    return result;
+  }
+  if (Array.isArray(value)) return value.map((v) => deanonymize(v, reverseMap));
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = deanonymize(v, reverseMap);
+    }
+    return out;
+  }
+  return value;
+}
+
+/* ─────────────────────────── helpers ─────────────────────────── */
 
 function safeJsonParse<T>(txt: string): T | null {
   try {
@@ -62,12 +129,10 @@ function normalizeRadarPoint(p: any): RadarPointAI | null {
   if (!p || typeof p !== "object") return null;
   const label = String(p.label ?? "").trim();
   if (!label) return null;
-
   const score = clamp0_100(p.score);
   const evidence = Array.isArray(p.evidenceQuestionIds)
     ? p.evidenceQuestionIds.map(String).filter(Boolean)
     : [];
-
   return {
     label,
     score,
@@ -78,70 +143,51 @@ function normalizeRadarPoint(p: any): RadarPointAI | null {
 
 function normalizeOutput(raw: any): GeminiInsightOutput {
   const summary = raw?.summary ? String(raw.summary) : "";
-
   const kpis = raw?.kpis && typeof raw.kpis === "object" ? raw.kpis : {};
   const normalizedKpis = {
-    overallScore:
-      typeof kpis.overallScore === "number" ? clamp0_100(kpis.overallScore) : undefined,
-    passProbability:
-      typeof kpis.passProbability === "number"
-        ? Math.max(0, Math.min(100, Math.round(kpis.passProbability)))
-        : undefined,
-    reliabilityScore:
-      typeof kpis.reliabilityScore === "number" ? clamp0_100(kpis.reliabilityScore) : undefined,
-    riskLevel:
-      kpis.riskLevel === "low" || kpis.riskLevel === "medium" || kpis.riskLevel === "high"
-        ? kpis.riskLevel
-        : undefined,
+    overallScore: typeof kpis.overallScore === "number" ? clamp0_100(kpis.overallScore) : undefined,
+    passProbability: typeof kpis.passProbability === "number" ? Math.max(0, Math.min(100, Math.round(kpis.passProbability))) : undefined,
+    reliabilityScore: typeof kpis.reliabilityScore === "number" ? clamp0_100(kpis.reliabilityScore) : undefined,
+    riskLevel: kpis.riskLevel === "low" || kpis.riskLevel === "medium" || kpis.riskLevel === "high" ? kpis.riskLevel : undefined,
     anomalies: Array.isArray(kpis.anomalies) ? kpis.anomalies.map(String) : undefined,
-    timeManagement:
-      kpis.timeManagement === "good" ||
-      kpis.timeManagement === "average" ||
-      kpis.timeManagement === "poor"
-        ? kpis.timeManagement
-        : undefined,
+    timeManagement: kpis.timeManagement === "good" || kpis.timeManagement === "average" || kpis.timeManagement === "poor" ? kpis.timeManagement : undefined,
   };
-
   const radar_categories = Array.isArray(raw?.radar_categories)
     ? raw.radar_categories.map(normalizeRadarPoint).filter(Boolean)
     : [];
-
   const radar_ai = Array.isArray(raw?.radar_ai)
     ? raw.radar_ai.map(normalizeRadarPoint).filter(Boolean)
     : undefined;
-
-  const strengths = Array.isArray(raw?.strengths) ? raw.strengths : [];
-  const weaknesses = Array.isArray(raw?.weaknesses) ? raw.weaknesses : [];
-  const recommendations = Array.isArray(raw?.recommendations) ? raw.recommendations : [];
 
   return {
     summary,
     kpis: normalizedKpis,
     radar_categories: radar_categories as RadarPointAI[],
     radar_ai: radar_ai as RadarPointAI[] | undefined,
-    strengths,
-    weaknesses,
-    recommendations,
-    evidence_by_skill:
-      raw?.evidence_by_skill && typeof raw.evidence_by_skill === "object"
-        ? raw.evidence_by_skill
-        : undefined,
+    strengths: Array.isArray(raw?.strengths) ? raw.strengths : [],
+    weaknesses: Array.isArray(raw?.weaknesses) ? raw.weaknesses : [],
+    recommendations: Array.isArray(raw?.recommendations) ? raw.recommendations : [],
+    evidence_by_skill: raw?.evidence_by_skill && typeof raw.evidence_by_skill === "object" ? raw.evidence_by_skill : undefined,
     confidence: typeof raw?.confidence === "number" ? Math.max(0, Math.min(1, raw.confidence)) : 0.65,
   };
 }
 
+/* ─────────────────────────── main export ─────────────────────────── */
+
 export async function generateAssessmentInsightWithGemini(payload: any): Promise<GeminiInsightOutput> {
   if (!apiKey) throw new Error("GEMINI_API_KEY_MISSING");
+
+  // 1. Build ID alias map  (real → "Q1", "Q2", ...)
+  const idMap = buildIdMap(payload);
+  const reverseMap = new Map<string, string>();
+  idMap.forEach((alias, real) => reverseMap.set(alias, real));
+
+  // 2. Anonymize the payload before sending to Gemini
+  const anonymizedPayload = anonymize(payload, idMap);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
 
-  /**
-   * ✅ Key idea:
-   * - We DO NOT hardcode categories.
-   * - Gemini must cluster skillTags into 6–8 recruiter-friendly categories.
-   * - Labels must be SHORT and readable.
-   */
   const prompt = `
 You are an expert technical assessment evaluator (HackerRank-style).
 
@@ -153,21 +199,27 @@ You receive a JSON payload containing:
 - telemetry summary (copy/paste, tab switch, focus lost, etc.)
 - final scoring breakdown
 
+Question IDs in this payload are short aliases like "Q1", "Q2", etc.
+
+IMPORTANT — NEVER expose question IDs in human-readable text fields:
+- In "anomalies", "summary", "note" fields: describe issues using skill names and patterns only.
+  ✅ Good: "Significant performance variation across string manipulation tasks"
+  ❌ Bad:  "Performance variation (Q3 vs Q7)"
+- You MAY include question ID aliases (Q1, Q2, ...) ONLY inside the "evidenceQuestionIds" arrays.
+
 Task:
 1) Produce recruiter-friendly analytics: summary + KPIs + strengths/weaknesses/recommendations
-2) Produce a SMART skill radar, but NOT by listing every skill tag.
+2) Produce a SMART skill radar, clustering skillTags into 6–8 high-level categories.
 
-Radar requirements (VERY IMPORTANT):
+Radar requirements:
 - Build radar_categories by CLUSTERING the raw skillTags and question patterns into 6 to 8 high-level categories.
 - Each category label MUST be short (1 to 4 words) and readable by recruiters.
 - Avoid duplicate/near-duplicate labels.
-- Use evidenceQuestionIds to justify categories.
+- Use evidenceQuestionIds (aliases like Q1, Q2) to justify categories.
 - Scores are 0–100 integers.
-- Do NOT invent questionIds.
 
 Output rules:
 - Output MUST be valid JSON ONLY (no markdown, no commentary).
-- If you are unsure, still output radar_categories with best-effort categories.
 
 Return JSON with this schema:
 {
@@ -177,24 +229,24 @@ Return JSON with this schema:
     "passProbability": 0,
     "reliabilityScore": 0,
     "riskLevel": "low|medium|high",
-    "anomalies": ["..."],
+    "anomalies": ["describe patterns without IDs"],
     "timeManagement": "good|average|poor"
   },
   "radar_categories": [
-    { "label":"", "score":0, "evidenceQuestionIds":["..."], "note":"" }
+    { "label":"", "score":0, "evidenceQuestionIds":["Q1","Q2"], "note":"" }
   ],
   "radar_ai": [
-    { "label":"", "score":0, "evidenceQuestionIds":["..."], "note":"" }
+    { "label":"", "score":0, "evidenceQuestionIds":["Q1"], "note":"" }
   ],
-  "strengths": [ { "skill":"", "evidenceQuestionIds":["..."], "note":"" } ],
-  "weaknesses": [ { "skill":"", "evidenceQuestionIds":["..."], "note":"" } ],
-  "recommendations": [ { "skill":"", "evidenceQuestionIds":["..."], "note":"" } ],
-  "evidence_by_skill": { "Skill":[{"questionId":"...","note":""}] },
+  "strengths": [ { "skill":"", "evidenceQuestionIds":["Q1"], "note":"" } ],
+  "weaknesses": [ { "skill":"", "evidenceQuestionIds":["Q1"], "note":"" } ],
+  "recommendations": [ { "skill":"", "evidenceQuestionIds":["Q1"], "note":"" } ],
+  "evidence_by_skill": { "Skill":[{"questionId":"Q1","note":""}] },
   "confidence": 0.0
 }
 
 Payload:
-${JSON.stringify(payload)}
+${JSON.stringify(anonymizedPayload)}
 `.trim();
 
   const resp = await model.generateContent(prompt);
@@ -202,29 +254,80 @@ ${JSON.stringify(payload)}
 
   let parsed = safeJsonParse<any>(text);
 
-  // attempt extract JSON if model adds extra text
   if (!parsed) {
     const firstBrace = text.indexOf("{");
     const lastBrace = text.lastIndexOf("}");
     if (firstBrace >= 0 && lastBrace > firstBrace) {
-      const sliced = text.slice(firstBrace, lastBrace + 1);
-      parsed = safeJsonParse<any>(sliced);
+      parsed = safeJsonParse<any>(text.slice(firstBrace, lastBrace + 1));
     }
   }
 
   if (!parsed) throw new Error("GEMINI_OUTPUT_NOT_JSON");
 
-  const normalized = normalizeOutput(parsed);
+  // 3. Restore real IDs in evidenceQuestionIds arrays (so frontend still works)
+  //    but NOT in text fields — those stay clean
+  const restoredParsed = restoreEvidenceIds(parsed, reverseMap);
 
-  // Must have at least some radar categories
+  const normalized = normalizeOutput(restoredParsed);
+
   if (!Array.isArray(normalized.radar_categories) || normalized.radar_categories.length === 0) {
     normalized.radar_categories = [
       { label: "Overall", score: clamp0_100(payload?.final?.totalScore ?? payload?.final?.score ?? 0), evidenceQuestionIds: [], note: "Fallback radar" },
     ];
   }
 
-  // Ensure max 8 axes
   normalized.radar_categories = normalized.radar_categories.slice(0, 8);
 
   return normalized;
+}
+
+/**
+ * Restores real IDs only inside evidenceQuestionIds arrays and evidence_by_skill keys,
+ * leaving all human-readable text fields (anomalies, notes, summary) untouched.
+ */
+function restoreEvidenceIds(raw: any, reverseMap: Map<string, string>): any {
+  if (!raw || typeof raw !== "object") return raw;
+
+  function restoreIdArray(arr: any[]): string[] {
+    return arr.map((id) => {
+      const real = reverseMap.get(String(id));
+      return real ?? String(id);
+    });
+  }
+
+  function restoreItem(item: any): any {
+    if (!item || typeof item !== "object") return item;
+    return {
+      ...item,
+      evidenceQuestionIds: Array.isArray(item.evidenceQuestionIds)
+        ? restoreIdArray(item.evidenceQuestionIds)
+        : item.evidenceQuestionIds,
+    };
+  }
+
+  const out = { ...raw };
+
+  // radar_categories, radar_ai, strengths, weaknesses, recommendations
+  for (const field of ["radar_categories", "radar_ai", "strengths", "weaknesses", "recommendations"]) {
+    if (Array.isArray(out[field])) {
+      out[field] = out[field].map(restoreItem);
+    }
+  }
+
+  // evidence_by_skill: keys are skill names (fine), values have questionId fields
+  if (out.evidence_by_skill && typeof out.evidence_by_skill === "object") {
+    const restored: any = {};
+    for (const [skill, entries] of Object.entries(out.evidence_by_skill)) {
+      restored[skill] = Array.isArray(entries)
+        ? entries.map((e: any) => ({
+            ...e,
+            questionId: reverseMap.get(String(e.questionId)) ?? e.questionId,
+          }))
+        : entries;
+    }
+    out.evidence_by_skill = restored;
+  }
+
+  // kpis.anomalies — keep as-is (text only, no IDs)
+  return out;
 }

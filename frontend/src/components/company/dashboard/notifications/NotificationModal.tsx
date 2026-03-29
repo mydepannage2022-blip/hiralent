@@ -4,11 +4,13 @@ import NotificationItem, { Notification, NotificationTag } from './NotificationI
 import NotificationFilter, { FilterOption } from './NotificationFilter';
 import StyledCheckbox from '../../../company/dashboard/postjob/StyledCheckbox';
 
+// ✅ PAR
 interface NotificationModalProps {
     notifications: Notification[];
     onUpdate: (n: Notification[]) => void;
     isOpen: boolean;
     onClose: () => void;
+    onMarkRead?: (id: string) => void;  // ← AJOUTER
 }
 
 export default function NotificationModal({
@@ -16,6 +18,7 @@ export default function NotificationModal({
     onUpdate,
     isOpen,
     onClose,
+    onMarkRead,  
 }: NotificationModalProps) {
     const [activeFilter, setActiveFilter] = useState<NotificationTag | 'All'>('All');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -91,7 +94,10 @@ export default function NotificationModal({
                             selected={selectedIds.includes(n.id)}
                             onToggle={() => toggleItem(n.id)}
                             onStarToggle={() => updateNotification(n.id, { starred: !n.starred })}
-                            onReadToggle={() => updateNotification(n.id, { read: !n.read })}
+onReadToggle={() => {
+    if (!n.read && onMarkRead) onMarkRead(n.id);
+    updateNotification(n.id, { read: !n.read });
+}}
                         />
                     ))
                 ) : (

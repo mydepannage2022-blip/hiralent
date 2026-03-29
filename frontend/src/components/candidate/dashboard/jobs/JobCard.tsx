@@ -86,7 +86,7 @@ export default function JobCard({
               )}`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              {Math.round(matchScore!)}% Match
+              {matchScore!.toFixed(2)}% Match
             </span>
           )}
         </div>
@@ -116,9 +116,19 @@ export default function JobCard({
         )}
       </div>
 
-      {!!eligibility && !eligibility.eligible && (
-        <EligibilityReasons reasons={eligibility.reasons ?? []} />
-      )}
+{!!eligibility && (
+  <>
+    {!eligibility.eligible && (
+      <EligibilityReasons reasons={eligibility.reasons ?? []} />
+    )}
+    {eligibility.eligible && (eligibility.missingSkills?.length ?? 0) > 0 && (
+      <EligibilityReasons
+        reasons={eligibility.missingSkills!.map((s) => `MISSING_SKILL:${s}`)}
+        mode="suggestions"
+      />
+    )}
+  </>
+)}
 
       <div className="mt-4 flex items-center justify-between pt-4 border-t border-gray-100">
         <button
