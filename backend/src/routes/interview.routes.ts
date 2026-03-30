@@ -16,6 +16,8 @@ import {
   streamVideoController,
   logViolationController,
   synthesizeTTSController,
+  synthesizeTTSFallbackController,
+  submitResponseStreamController,
 } from '../controller/interview/aiInterview.controller';
 
 const router = Router();
@@ -29,6 +31,8 @@ router.use(checkAuth);
 // Text-to-speech proxy (returns audio/mpeg, used to mix AI voice into recording)
 // POST /api/v1/interviews/tts
 router.post('/tts', synthesizeTTSController);
+// POST /api/v1/interviews/tts/fallback (Google Translate, used when Unreal Speech fails)
+router.post('/tts/fallback', synthesizeTTSFallbackController);
 
 // Assign an interview to a candidate (recruiter only)
 // POST /api/v1/interviews/assign
@@ -55,6 +59,10 @@ router.post('/:interviewId/start', startInterviewController);
 // Submit a response to current question
 // POST /api/v1/interviews/:interviewId/respond
 router.post('/:interviewId/respond', submitResponseController);
+
+// Submit a response with SSE streaming (streams next question text in real-time)
+// POST /api/v1/interviews/:interviewId/respond-stream
+router.post('/:interviewId/respond-stream', submitResponseStreamController);
 
 // End the interview and get completion status
 // POST /api/v1/interviews/:interviewId/end

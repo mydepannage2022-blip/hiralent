@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff } from 'lucide-react';
 
 interface Message {
@@ -32,6 +32,16 @@ const LiveTranscript: React.FC<LiveTranscriptProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const [thinkingLabel, setThinkingLabel] = useState('Analyzing your response...');
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      setThinkingLabel('Analyzing your response...');
+      return;
+    }
+    const timer = setTimeout(() => setThinkingLabel('Preparing next question...'), 2000);
+    return () => clearTimeout(timer);
+  }, [isSubmitting]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -91,8 +101,50 @@ const LiveTranscript: React.FC<LiveTranscriptProps> = ({
           </motion.div>
         )}
 
+        {/* AI thinking indicator while submitting */}
+        {isSubmitting && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
+            <div className="max-w-[70%]">
+              <div className="text-xs text-gray-500 mb-1 text-left">Alex</div>
+              <div className="rounded-2xl px-4 py-3 flex items-center gap-2 overflow-hidden relative"
+                style={{
+                  background: 'linear-gradient(90deg, #f3f4f6, #e8eef8, #f3f4f6)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 2s ease-in-out infinite',
+                }}>
+                <div className="flex items-center gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-[#005DDC] inline-block"
+                      animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={thinkingLabel}
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-sm text-gray-500"
+                  >
+                    {thinkingLabel}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Waiting indicator when not listening */}
-        {!isListening && messages.length > 0 && (
+        {!isListening && !isSubmitting && messages.length > 0 && (
           <div className="flex justify-center">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <MicOff className="w-4 h-4" />

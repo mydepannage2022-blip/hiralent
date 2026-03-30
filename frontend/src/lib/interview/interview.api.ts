@@ -140,6 +140,51 @@ export const submitResponse = async (
 };
 
 /**
+ * Submit response with SSE streaming — yields question text chunks then done event
+ * POST /api/v1/interviews/:interviewId/respond-stream
+ */
+export async function* submitResponseStream(
+  interviewId: string,
+  data: SubmitResponseRequest
+): AsyncGenerator<
+  { type: 'chunk'; text: string } |
+  { type: 'done'; data: InterviewSessionResponse } |
+  { type: 'error'; error: string }
+> {
+  const token = localStorage.getItem('authToken');
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/respond-stream`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Stream failed: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const json = line.slice(6).trim();
+        if (json) yield JSON.parse(json);
+      }
+    }
+  }
+}
+
+/**
  * End the interview and get completion status
  * POST /api/v1/interviews/:interviewId/end
  */

@@ -242,6 +242,7 @@ export interface InterviewDetailedResult extends InterviewResultResponse {
   transcript: TranscriptEntry[];
   questions: InterviewQuestion[];
   responses: CandidateResponse[];
+  cheatingEvents: any[];
 }
 
 // Candidate's view of their assigned interviews

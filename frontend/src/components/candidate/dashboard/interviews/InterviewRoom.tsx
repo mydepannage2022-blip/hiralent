@@ -78,6 +78,13 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   // Dedup ref: prevents React Strict Mode double-invocation from logging the same violation twice
   const lastLoggedViolationRef = useRef<string | null>(null);
 
+  // Streaming TTS state
+  const streamBufferRef = useRef('');
+  const streamQueueRef = useRef<string[]>([]);
+  const isStreamSpeakingRef = useRef(false);
+  const streamSentenceCountRef = useRef(0);
+  const streamKeyRef = useRef('');
+
   // Custom hooks
   const {
     getStream,
@@ -89,6 +96,7 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     speak,
     cancel: cancelSpeech,
     isSpeaking,
+    prewarmAudio,
   } = useTextToSpeech(audioContextRef, destinationRef);
 
   const {
@@ -196,6 +204,9 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     audioContextRef.current = audioCtx;
     destinationRef.current = destination;
 
+    // Resume immediately — the user just clicked "Start Interview" so we have a user gesture context
+    audioCtx.resume().catch(() => {});
+
     // Build combined stream: video track from camera + mixed audio track
     const combined = new MediaStream([
       ...stream.getVideoTracks(),
@@ -215,6 +226,15 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
   useEffect(() => {
     initSession();
   }, [initSession]);
+
+  // Pre-warm the welcome TTS audio while startInterview() is still loading
+  // so the audio is ready to play the moment phase transitions to 'speaking'
+  useEffect(() => {
+    if (phase === 'loading') {
+      const welcomeText = `Hello ${candidateName}! Welcome to your AI interview. I will ask you a series of questions to assess your skills and experience. Please answer each question clearly and take your time. Let's begin.`;
+      prewarmAudio(welcomeText);
+    }
+  }, [phase, candidateName, prewarmAudio]);
 
   // Keep phaseRef in sync so event handlers always read current phase
   useEffect(() => {
@@ -588,27 +608,76 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
     }
   }, [isCameraUnavailable, phase, isListening, stopListening, cancelSpeech, startListening, setPhase]);
 
+  // Drain stream speaking queue — speaks sentences in order, one at a time
+  const drainStreamQueue = useCallback(async (): Promise<void> => {
+    if (isStreamSpeakingRef.current) return;
+    isStreamSpeakingRef.current = true;
+    while (streamQueueRef.current.length > 0) {
+      const sentence = streamQueueRef.current.shift()!;
+      const id = `${streamKeyRef.current}_s${streamSentenceCountRef.current++}`;
+      setMessages(prev => {
+        if (prev.some(m => m.id === id)) return prev;
+        return [...prev, { id, sender: 'ai' as const, text: sentence, timestamp: new Date() }];
+      });
+      if (!isMuted) await speak(sentence);
+    }
+    isStreamSpeakingRef.current = false;
+  }, [speak, isMuted]);
+
+  // Receive question text chunks from SSE stream — buffer and speak complete sentences
+  const handleStreamChunk = useCallback((chunk: string) => {
+    streamBufferRef.current += chunk;
+    const parts = streamBufferRef.current.split(/(?<=[.!?])\s+/);
+    if (parts.length > 1) {
+      const sentences = parts.slice(0, -1).filter(s => s.trim());
+      streamBufferRef.current = parts[parts.length - 1];
+      streamQueueRef.current.push(...sentences);
+      drainStreamQueue();
+    }
+  }, [drainStreamQueue]);
+
   const handleSubmit = useCallback(async () => {
     const fullTranscript = transcript + (interimTranscript ? ' ' + interimTranscript : '');
     const responseText = fullTranscript.trim();
 
     if (responseText) {
-      // Add candidate response to message history
       setMessages((prev) => [
         ...prev,
-        {
-          id: `response-${Date.now()}`,
-          sender: 'candidate',
-          text: responseText,
-          timestamp: new Date(),
-        },
+        { id: `response-${Date.now()}`, sender: 'candidate', text: responseText, timestamp: new Date() },
       ]);
     }
 
+    // Reset streaming state
+    streamBufferRef.current = '';
+    streamQueueRef.current = [];
+    isStreamSpeakingRef.current = false;
+    streamSentenceCountRef.current = 0;
+    streamKeyRef.current = `stream_${Date.now()}`;
+
+    let wasStreamed = false;
+    const chunkHandler = (chunk: string) => {
+      wasStreamed = true;
+      handleStreamChunk(chunk);
+    };
+
     stopListening();
-    await submitCurrentResponse();
-    // After submission, phase will change to 'closing' if it was the last question
-  }, [transcript, interimTranscript, stopListening, submitCurrentResponse]);
+    await submitCurrentResponse(chunkHandler);
+
+    if (wasStreamed) {
+      // Flush any remaining buffer (last sentence without punctuation)
+      const remaining = streamBufferRef.current.trim();
+      if (remaining) {
+        streamQueueRef.current.push(remaining);
+        streamBufferRef.current = '';
+        drainStreamQueue();
+      }
+      // Wait for all queued sentences to finish speaking
+      while (isStreamSpeakingRef.current || streamQueueRef.current.length > 0) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+      setPhase('listening');
+    }
+  }, [transcript, interimTranscript, stopListening, submitCurrentResponse, handleStreamChunk, drainStreamQueue, setPhase]);
 
   const handleEndInterview = useCallback(async () => {
     stopListening();

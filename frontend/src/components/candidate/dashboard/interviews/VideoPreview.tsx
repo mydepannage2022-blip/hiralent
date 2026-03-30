@@ -84,8 +84,8 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       {/* AI Interviewer PiP - Bottom Right */}
       <div className="absolute bottom-4 right-4 w-28 bg-[#111827]/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 p-3 flex flex-col items-center gap-2">
         {/* Circular photo */}
-        <div className="w-14 h-14 rounded-full bg-[#1f2937] border border-white/10 overflow-hidden flex items-center justify-center">
-          <span className="text-white/30 text-[10px]">Photo</span>
+        <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden">
+          <img src="/alex-avatar.png" alt="Alex" className="w-full h-full object-cover" />
         </div>
         {/* Name + audio bars */}
         <div className="flex items-center justify-between w-full px-0.5">
