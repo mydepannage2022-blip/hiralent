@@ -12,6 +12,7 @@ export const validateBody = (schema: ZodSchema) => {
       });
       return; // ensures return type is void
     }
+    req.body = result.data;
 
     next();
   };

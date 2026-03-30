@@ -23,6 +23,7 @@ import {
 
 import type { AuthUser } from '../../types/express';
 import { talentAIServiceClient } from "../../clients/talent-ai-service.client";
+import prisma from '../../lib/prisma';
 
 // ====================================================
 // ========== AUTH HELPERS ============================
@@ -393,4 +394,30 @@ export const generateJobDescription = async (req, res) => {
 export const improveJobDescription = async (req, res) => {
   const result = await talentAIServiceClient.improveDescription(req.body);
   res.json(result);
+};
+
+export const listJobAssessments = async (req, res) => {
+  try {
+    const companyId = req.user?.company_id;
+    const jobId = String(req.params.id);
+
+    const assessments = await prisma.employerAssessment.findMany({
+      where: {
+        company_id: companyId,
+        job_id: jobId,
+        status: "ACTIVE",
+      },
+      orderBy: { created_at: "desc" },
+      select: {
+        assessment_id: true,
+        title: true,
+        time_limit: true,
+      },
+    });
+
+    return res.json({ success: true, data: assessments });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, message: "INTERNAL_ERROR" });
+  }
 };

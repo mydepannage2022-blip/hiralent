@@ -21,7 +21,8 @@ function statusLabel(status?: string | null) {
 
 function statusPill(status?: string | null) {
   const s = (status || "").toUpperCase();
-  if (s.includes("HIRED") || s.includes("APPROV") || s.includes("ACCEPT")) return "bg-green-50 text-green-700 border-green-200";
+  if (s.includes("HIRED") || s.includes("APPROV") || s.includes("ACCEPT"))
+    return "bg-green-50 text-green-700 border-green-200";
   if (s.includes("REJECT")) return "bg-red-50 text-red-700 border-red-200";
   if (s.includes("ASSESSMENT")) return "bg-yellow-50 text-yellow-800 border-yellow-200";
   if (s.includes("REVIEW") || s.includes("PENDING") || s.includes("INTERVIEW") || s.includes("OFFER"))
@@ -39,8 +40,45 @@ function matchPill() {
 
 function formatMatch(v?: number | null) {
   if (v === null || v === undefined) return null;
-  // your API gives 67.6 style already. We'll display "68%".
   return `${Math.round(v)}%`;
+}
+
+/* -----------------------------
+   ✅ Deduplicate timeline items
+------------------------------ */
+
+function normalizeText(v: any): string {
+  return String(v ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function toSecondTimestamp(v: any): string {
+  if (!v) return "";
+  const t = new Date(v).getTime();
+  if (!Number.isFinite(t)) return "";
+  return String(Math.floor(t / 1000));
+}
+
+function makeTimelineKey(it: any): string {
+  const status = normalizeText(it?.status ?? it?.event_status ?? it?.type ?? it?.kind);
+  const title = normalizeText(it?.title ?? it?.label ?? it?.name);
+  const msg = normalizeText(it?.message ?? it?.description ?? it?.details ?? it?.note);
+  const at = toSecondTimestamp(it?.created_at ?? it?.createdAt ?? it?.timestamp ?? it?.date);
+  return [status, title, msg, at].join("|");
+}
+
+function dedupeTimeline(items: any[]): any[] {
+  const out: any[] = [];
+  const seen = new Set<string>();
+  for (const it of items ?? []) {
+    const key = makeTimelineKey(it);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(it);
+  }
+  return out;
 }
 
 export default function ApplicationDetailsPage() {
@@ -55,6 +93,15 @@ export default function ApplicationDetailsPage() {
   }, [params]);
 
   const q = useApplicationTimeline(appId ?? "", { enabled: !!appId });
+
+  // ✅ IMPORTANT: this hook MUST be before any conditional returns
+  const timelineItems = useMemo(() => {
+    const raw = q.data?.timeline ?? [];
+    return dedupeTimeline(raw);
+  }, [q.data?.timeline]);
+
+  const app = q.data?.application;
+  const latestMatch = timelineItems?.[0]?.relevance_score ?? null;
 
   if (!appId) {
     return (
@@ -74,9 +121,6 @@ export default function ApplicationDetailsPage() {
     );
   }
 
-  const app = q.data?.application;
-  const latestMatch = q.data?.timeline?.[0]?.relevance_score ?? null; // Timeline sorts latest first (below)
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto space-y-4">
@@ -92,7 +136,9 @@ export default function ApplicationDetailsPage() {
               </button>
 
               <h1 className="mt-3 text-xl font-bold text-gray-900">Application timeline</h1>
-              <p className="text-sm text-gray-600">Follow the exact steps your application went through.</p>
+              <p className="text-sm text-gray-600">
+                Follow the exact steps your application went through.
+              </p>
             </div>
 
             <div className="text-sm text-gray-600">
@@ -104,14 +150,20 @@ export default function ApplicationDetailsPage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {app?.status ? (
-              <span className={`px-2.5 py-1 rounded-full border text-sm inline-flex items-center gap-2 ${statusPill(app.status)}`}>
+              <span
+                className={`px-2.5 py-1 rounded-full border text-sm inline-flex items-center gap-2 ${statusPill(
+                  app.status
+                )}`}
+              >
                 <BadgeCheck className="w-4 h-4" />
                 {statusLabel(app.status)}
               </span>
             ) : null}
 
             {formatMatch(latestMatch) ? (
-              <span className={`px-2.5 py-1 rounded-full border text-sm inline-flex items-center gap-2 ${matchPill()}`}>
+              <span
+                className={`px-2.5 py-1 rounded-full border text-sm inline-flex items-center gap-2 ${matchPill()}`}
+              >
                 <TrendingUp className="w-4 h-4" />
                 {formatMatch(latestMatch)} Match
               </span>
@@ -125,7 +177,7 @@ export default function ApplicationDetailsPage() {
           )}
         </div>
 
-        <Timeline items={q.data?.timeline ?? []} isLoading={q.isLoading} />
+        <Timeline items={timelineItems} isLoading={q.isLoading} />
       </div>
     </div>
   );

@@ -37,6 +37,12 @@ type Question = {
 
   source?: string;
   aiGenerated?: boolean;
+
+  // diagram fields (same as QuestionEditor)
+  hasDiagram?: boolean;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
 };
 
 // ===================== Helpers =====================
@@ -158,6 +164,268 @@ function FormattedProblemText({ text }: { text: string }) {
   return <div className="space-y-2">{nodes}</div>;
 }
 
+// ===================== Diagram Viewer (read-only, mirrors QuestionEditor) =====================
+function DiagramViewer({
+  hasDiagram,
+  diagramType,
+  diagramCode,
+  diagramImageUrl,
+}: {
+  hasDiagram?: boolean;
+  diagramType?: string | null;
+  diagramCode?: string | null;
+  diagramImageUrl?: string | null;
+}) {
+  const hasAnyDiagram = !!(diagramImageUrl || diagramCode);
+  const [zoom, setZoom] = useState(1);
+  const [tab, setTab] = useState<"preview" | "code">(
+    diagramImageUrl ? "preview" : "code"
+  );
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!diagramImageUrl && diagramCode) setTab("code");
+    if (diagramImageUrl && !diagramCode) setTab("preview");
+  }, [diagramImageUrl, diagramCode]);
+
+  if (!hasAnyDiagram && !hasDiagram) return null;
+
+  const safeType = (diagramType || "diagram").toUpperCase();
+  const clamp = (v: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, v));
+
+  const copyCode = async () => {
+    if (!diagramCode) return;
+    try {
+      await navigator.clipboard.writeText(diagramCode);
+    } catch {}
+  };
+
+  const TBtn = ({
+    onClick,
+    title,
+    disabled,
+    children,
+  }: React.PropsWithChildren<{
+    onClick?: () => void;
+    title: string;
+    disabled?: boolean;
+  }>) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`px-2.5 py-2 rounded-md border text-xs flex items-center gap-2 transition ${
+        disabled
+          ? "bg-white/5 border-white/10 text-white/40 cursor-not-allowed"
+          : "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <>
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#1B73E8] to-[#1557B0] text-white flex items-center justify-center shadow-sm">
+              <span className="text-sm font-semibold">D</span>
+            </div>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold text-gray-900">Diagram</div>
+              <div className="text-xs text-gray-500">
+                Attached visual for the problem (ER / UML / flow / etc.)
+              </div>
+            </div>
+          </div>
+          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+            {safeType}
+          </span>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-900">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTab("preview")}
+                disabled={!diagramImageUrl}
+                className={`px-3 py-1.5 rounded-md text-xs border transition ${
+                  tab === "preview"
+                    ? "bg-white/15 text-white border-white/20"
+                    : "bg-transparent text-white/70 border-white/10 hover:bg-white/10"
+                } ${!diagramImageUrl ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("code")}
+                disabled={!diagramCode}
+                className={`px-3 py-1.5 rounded-md text-xs border transition ${
+                  tab === "code"
+                    ? "bg-white/15 text-white border-white/20"
+                    : "bg-transparent text-white/70 border-white/10 hover:bg-white/10"
+                } ${!diagramCode ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                Code
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {tab === "preview" ? (
+                <>
+                  <TBtn
+                    title="Zoom out"
+                    onClick={() =>
+                      setZoom((z) => clamp(+(z - 0.1).toFixed(2), 0.6, 2.5))
+                    }
+                    disabled={!diagramImageUrl}
+                  >
+                    <span className="text-base leading-none">−</span>
+                  </TBtn>
+                  <TBtn
+                    title="Zoom in"
+                    onClick={() =>
+                      setZoom((z) => clamp(+(z + 0.1).toFixed(2), 0.6, 2.5))
+                    }
+                    disabled={!diagramImageUrl}
+                  >
+                    <span className="text-base leading-none">+</span>
+                  </TBtn>
+                  <TBtn
+                    title="Reset zoom"
+                    onClick={() => setZoom(1)}
+                    disabled={!diagramImageUrl}
+                  >
+                    <span className="text-xs">100%</span>
+                  </TBtn>
+                  <TBtn
+                    title="Fullscreen"
+                    onClick={() => setIsFullscreen(true)}
+                    disabled={!diagramImageUrl}
+                  >
+                    <span className="text-xs">Full</span>
+                  </TBtn>
+                  <TBtn
+                    title="Open in new tab"
+                    onClick={() =>
+                      diagramImageUrl &&
+                      window.open(diagramImageUrl, "_blank", "noopener,noreferrer")
+                    }
+                    disabled={!diagramImageUrl}
+                  >
+                    <span className="text-xs">Open</span>
+                  </TBtn>
+                </>
+              ) : (
+                <TBtn title="Copy code" onClick={copyCode} disabled={!diagramCode}>
+                  <span className="text-xs">Copy</span>
+                </TBtn>
+              )}
+            </div>
+          </div>
+
+          {tab === "preview" ? (
+            <div className="relative bg-gray-950 min-h-[220px]">
+              <div
+                className="absolute inset-0 opacity-[0.12]"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.18) 1px, transparent 1px)",
+                  backgroundSize: "22px 22px",
+                }}
+              />
+              <div className="relative p-4 overflow-auto">
+                {diagramImageUrl ? (
+                  <div className="w-full flex justify-center">
+                    <img
+                      src={diagramImageUrl}
+                      alt="Question diagram"
+                      className="select-none rounded-lg shadow-2xl border border-white/10 bg-white"
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "top center",
+                        maxWidth: "100%",
+                        height: "auto",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-6 text-white/70 text-sm">
+                    Diagram flagged, but no image was provided.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-950 text-gray-100 p-4 overflow-auto min-h-[120px]">
+              {diagramCode ? (
+                <pre className="text-xs leading-relaxed whitespace-pre-wrap">
+                  {diagramCode}
+                </pre>
+              ) : (
+                <div className="text-white/70 text-sm">
+                  No diagram code was provided.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isFullscreen && diagramImageUrl && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[90vh] bg-gray-950 rounded-xl overflow-hidden border border-white/10 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 text-white">
+              <div className="text-sm font-semibold">
+                Diagram • <span className="text-white/70">{safeType}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-xs"
+                  onClick={() => setZoom(1)}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 text-xs"
+                  onClick={() => setIsFullscreen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto p-4 max-h-[80vh] flex justify-center">
+              <img
+                src={diagramImageUrl}
+                alt="Question diagram fullscreen"
+                className="rounded-lg border border-white/10 bg-white"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "top center",
+                  maxWidth: "100%",
+                  height: "auto",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ===================== Modal =====================
 function QuestionDetailModal({
   question,
@@ -209,7 +477,6 @@ function QuestionDetailModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* overlay */}
           <motion.button
             type="button"
             aria-label="Close overlay"
@@ -220,14 +487,12 @@ function QuestionDetailModal({
             exit={{ opacity: 0 }}
           />
 
-          {/* modal card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 10 }}
             className="relative w-full max-w-5xl h-[92vh] bg-white overflow-hidden flex flex-col rounded-xl shadow-2xl border border-gray-200"
           >
-            {/* header */}
             <div className="px-6 py-5 bg-gradient-to-r from-[#1B73E8] via-[#1565D8] to-[#1557B0] text-white">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -273,7 +538,6 @@ function QuestionDetailModal({
               </div>
             </div>
 
-            {/* tabs */}
             <div className="px-6 py-3 border-b bg-white">
               <div className="flex items-center gap-2">
                 <button
@@ -327,18 +591,22 @@ function QuestionDetailModal({
               </div>
             </div>
 
-            {/* body */}
             <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50">
-              {/* description */}
               {tab === "description" && (
-                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
+                  <DiagramViewer
+                    hasDiagram={question?.hasDiagram}
+                    diagramType={question?.diagramType}
+                    diagramCode={question?.diagramCode}
+                    diagramImageUrl={question?.diagramImageUrl}
+                  />
+
                   <div className="text-[15px] leading-7">
                     <FormattedProblemText text={statement} />
                   </div>
                 </div>
               )}
 
-              {/* MCQ */}
               {isMCQ && tab === "description" && (
                 <div className="mt-5 space-y-4">
                   {question.options && (
@@ -402,7 +670,6 @@ function QuestionDetailModal({
                 </div>
               )}
 
-              {/* Coding solution */}
               {isCoding && tab === "solution" && question.canonicalSolution && (
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
@@ -452,7 +719,6 @@ function QuestionDetailModal({
                 </div>
               )}
 
-              {/* Coding test cases */}
               {isCoding && tab === "testcases" && testCases.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                   <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -500,7 +766,6 @@ function QuestionDetailModal({
               )}
             </div>
 
-            {/* footer */}
             <div className="px-6 py-4 border-t bg-white flex justify-end">
               <button
                 onClick={onClose}

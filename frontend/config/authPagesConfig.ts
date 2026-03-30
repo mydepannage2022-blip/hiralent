@@ -178,10 +178,17 @@ export const authPagesConfig: Record<string, AuthPageConfig> = {
     subtitle: "Access your company dashboard to manage jobs and candidates"
   }  ,
   companyVerification: {
-  backgroundImage: "/images/company.webp",
-  testimonials: companyTestimonials,
-  title: "Document Verification",
-  subtitle: "Upload your company registration documents for AI verification"
+    backgroundImage: "/images/company.webp",
+    testimonials: companyTestimonials,
+    title: "Document Verification",
+    subtitle: "Upload your company registration documents for AI verification"
+  },
+
+  recoveryCode: {
+    backgroundImage: "/images/signup.webp",
+    testimonials: commonTestimonials,
+    title: "Account Recovery",
+    subtitle: "Use a backup recovery code to regain access to your account"
   }
 
 };

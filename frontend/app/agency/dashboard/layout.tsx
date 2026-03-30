@@ -3,6 +3,7 @@ import { useState, ReactNode } from 'react';
 import ProtectedRoute from '@/src/components/layout/ProtectedRoute';
 import DashboardSidebar from '@/src/components/company/dashboard/home/DashboardSidebar';
 import DashboardNavbar from '@/src/components/company/dashboard/home/DashboardNavbar';
+import { AgencyProfileProvider } from '@/src/context/AgencyProfileContext';
 import {
   LayoutDashboard,
   Building2,
@@ -30,8 +31,9 @@ export default function AgencyDashboardLayout({ children }: DashboardLayoutProps
 
   return (
     <ProtectedRoute>
-      <div className="w-full bg-[#F9F9F9] flex justify-center items-start min-h-screen">
-        <div className="w-full xl:max-w-9/10 flex justify-center items-start p-4 md:p-8 gap-4 md:gap-8">
+      <AgencyProfileProvider>
+        <div className="w-full bg-[#F9F9F9] flex justify-center items-start min-h-screen">
+          <div className="w-full xl:max-w-9/10 flex justify-center items-start p-4 md:p-8 gap-4 md:gap-8">
           
           {/* Desktop Sticky Sidebar */}
           <div className='hidden lg:flex justify-start items-start sticky top-8 self-start'>
@@ -79,6 +81,7 @@ export default function AgencyDashboardLayout({ children }: DashboardLayoutProps
           </div>
         </div>
       </div>
+      </AgencyProfileProvider>
     </ProtectedRoute>
   );
 }

@@ -15,6 +15,7 @@ import {
   suggestJobBasics,
   generateJobDescription,
   improveJobDescription,
+  listJobAssessments,
 } from '../controller/company/job.controller';
 
 const router = Router();
@@ -45,5 +46,6 @@ router.post('/jobs/ai/step1-suggest', suggestJobBasics);
 router.post('/jobs/ai/step2-generate', generateJobDescription);
 router.post('/jobs/ai/improve', improveJobDescription);
 
+router.get("/jobs/:id/assessments", listJobAssessments);
 
 export default router;

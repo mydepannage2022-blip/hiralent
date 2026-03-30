@@ -266,7 +266,7 @@ const LinksSection: React.FC = () => {
     return uniqByPlatformAndUrl([...autoLinks, ...linksFromProfile]);
   }, [autoLinks, linksFromProfile]);
 
-  // Search in view mode (so “not all links appear” is never because of UI)
+  // Search in view mode
   const filteredDisplay = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return displayLinks;
@@ -278,7 +278,6 @@ const LinksSection: React.FC = () => {
     });
   }, [displayLinks, query]);
 
-  // Sync editable state
   useEffect(() => {
     if (!isEditing) setLinks(linksFromProfile);
   }, [linksFromProfile, isEditing]);
@@ -356,23 +355,22 @@ const LinksSection: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl border border-gray-200 mb-6 overflow-hidden"
+      className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden"
     >
-      {/* top accent (Hiralent-ish, calm) */}
       <div className="h-1 w-full bg-gradient-to-r from-blue-500/60 via-sky-400/40 to-slate-200" />
 
-      {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between gap-4">
+      {/* Header (compact) */}
+      <div className="p-4 pb-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center border border-blue-200 shrink-0">
+            <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center border border-blue-200 shrink-0">
               <LinkIcon className="w-4 h-4 text-blue-700" />
             </div>
 
             <div className="min-w-0">
-              <h3 className="text-sm lg:text-lg font-semibold text-gray-900">Links</h3>
+              <h3 className="text-base font-semibold text-gray-900">Links</h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 Social profiles & portfolios (deduped with CV autofill).
               </p>
@@ -382,7 +380,7 @@ const LinksSection: React.FC = () => {
           {!isEditing ? (
             <button
               onClick={handleEdit}
-              className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-xs lg:text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               Edit
@@ -392,7 +390,7 @@ const LinksSection: React.FC = () => {
               <button
                 onClick={handleCancel}
                 disabled={isUpdating}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
                 Cancel
@@ -400,7 +398,7 @@ const LinksSection: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={isUpdating}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs lg:text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
                 {isUpdating ? "Saving..." : "Save"}
@@ -409,55 +407,55 @@ const LinksSection: React.FC = () => {
           )}
         </div>
 
-        {/* Search + Count (view mode) */}
+        {/* Search + Count (compact) */}
         {!isEditing && hasContent && (
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search links (platform / username / url)…"
-                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search links…"
+                className="w-full pl-10 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
-            <span className="hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full border bg-gray-50 text-gray-700 tabular-nums">
+            <span className="hidden sm:inline-flex text-[11px] px-2 py-1 rounded-full border bg-gray-50 text-gray-700 tabular-nums">
               {filteredDisplay.length}/{displayLinks.length}
             </span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="px-6 pb-6">
+      {/* Content (compact) */}
+      <div className="px-4 pb-4">
         {!isEditing ? (
           <div>
             {hasContent ? (
               filteredDisplay.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                   {filteredDisplay.map((link, index) => {
                     const meta = platformMeta(link.platform);
                     const pretty = getPrettyText(link);
-
                     const isMail = (link.platform || "").toLowerCase() === "email";
+
                     return (
                       <a
                         key={`${link.platform}-${link.url}-${index}`}
                         href={link.url}
                         target={isMail ? undefined : "_blank"}
                         rel={isMail ? undefined : "noopener noreferrer"}
-                        className="group relative p-4 rounded-xl border border-gray-200 bg-white hover:shadow-sm hover:border-blue-200 transition-all"
+                        className="group relative p-3 rounded-xl border border-gray-200 bg-white hover:shadow-sm hover:border-blue-200 transition-all"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl border bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-9 h-9 rounded-xl border bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
                             {meta.icon}
                           </div>
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border ${meta.pill}`}
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] border ${meta.pill}`}
                               >
                                 {meta.label}
                               </span>
@@ -465,19 +463,18 @@ const LinksSection: React.FC = () => {
                               <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                             </div>
 
-                            <p className="mt-2 text-sm font-semibold text-gray-900 break-words">
+                            <p className="mt-1.5 text-sm font-semibold text-gray-900 break-words">
                               {pretty || meta.label}
                             </p>
 
-                            {/* subtle hint if it is auto-detected */}
                             {autoLinks.some(
                               (a) =>
                                 a.platform?.toLowerCase() === link.platform?.toLowerCase() &&
                                 canonicalizeUrl(a.url) === canonicalizeUrl(link.url)
                             ) && (
-                              <div className="mt-2 inline-flex items-center gap-1 text-[11px] text-gray-500">
+                              <div className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] text-gray-500">
                                 <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                Auto-detected from CV
+                                Auto from CV
                               </div>
                             )}
                           </div>
@@ -487,7 +484,7 @@ const LinksSection: React.FC = () => {
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
+                <div className="flex flex-col items-center justify-center py-7 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
                   <p className="text-sm text-gray-700 font-medium">No results</p>
                   <p className="text-xs text-gray-500 mt-1">Try another keyword.</p>
                   <button
@@ -499,14 +496,14 @@ const LinksSection: React.FC = () => {
                 </div>
               )
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-11 h-11 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                   <Plus className="w-6 h-6 text-gray-400" />
                 </div>
-                <p className="text-gray-500 text-xs lg:text-sm">Add your portfolio and social links</p>
+                <p className="text-gray-500 text-xs sm:text-sm">Add your portfolio and social links</p>
                 <button
                   onClick={handleEdit}
-                  className="mt-3 text-blue-600 text-xs lg:text-sm font-medium hover:text-blue-700"
+                  className="mt-2.5 text-blue-600 text-xs sm:text-sm font-medium hover:text-blue-700"
                 >
                   Add links
                 </button>
@@ -514,18 +511,16 @@ const LinksSection: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Auto detected (read-only) */}
             {autoLinks.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-gray-900">Auto-detected</p>
-                  <span className="text-[11px] text-gray-500">
-                    From CandidateProfile.personal_info (CV extraction)
-                  </span>
+                  <span className="text-[11px] text-gray-500">From CV</span>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="mt-2.5 grid grid-cols-1 md:grid-cols-3 gap-2.5">
                   {autoLinks.map((l, i) => {
                     const meta = platformMeta(l.platform);
                     const isMail = (l.platform || "").toLowerCase() === "email";
@@ -535,10 +530,10 @@ const LinksSection: React.FC = () => {
                         href={l.url}
                         target={isMail ? undefined : "_blank"}
                         rel={isMail ? undefined : "noopener noreferrer"}
-                        className="group p-3 rounded-xl border border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                        className="group p-2.5 rounded-xl border border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl border bg-gray-50 flex items-center justify-center">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl border bg-gray-50 flex items-center justify-center">
                             {meta.icon}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -552,20 +547,20 @@ const LinksSection: React.FC = () => {
                   })}
                 </div>
 
-                <p className="mt-3 text-[11px] text-gray-500">
+                <p className="mt-2.5 text-[11px] text-gray-500">
                   To change these, update your CV and re-run autofill.
                 </p>
               </div>
             )}
 
             {/* Editable links */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-gray-900">Custom links</p>
-                <span className="text-[11px] text-gray-500">Saved in CandidateProfile.links</span>
+                <span className="text-[11px] text-gray-500">CandidateProfile.links</span>
               </div>
 
-              <div className="mt-3 space-y-3">
+              <div className="mt-2.5 space-y-2.5">
                 <AnimatePresence initial={false}>
                   {links.map((link, index) => {
                     const meta = platformMeta(link.platform);
@@ -577,9 +572,9 @@ const LinksSection: React.FC = () => {
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-200">
                           <div className="md:col-span-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                            <label className="block text-[11px] font-medium text-gray-700 mb-1">
                               Platform
                             </label>
                             <select
@@ -596,8 +591,11 @@ const LinksSection: React.FC = () => {
                               <option value="email">Email</option>
                               <option value="other">Other</option>
                             </select>
+
                             <div className="mt-2 inline-flex items-center gap-2 text-[11px] text-gray-600">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${meta.pill}`}>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${meta.pill}`}
+                              >
                                 {meta.icon}
                                 {meta.label}
                               </span>
@@ -605,24 +603,28 @@ const LinksSection: React.FC = () => {
                           </div>
 
                           <div className="md:col-span-7">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                            <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                              URL
+                            </label>
                             <input
                               type="text"
                               value={link.url}
                               onChange={(e) => handleLinkChange(index, "url", e.target.value)}
                               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                              placeholder="e.g. https://github.com/username or username"
+                              placeholder="e.g. https://github.com/username"
                             />
 
-                            <label className="block text-xs font-medium text-gray-700 mb-1 mt-3">
+                            <label className="block text-[11px] font-medium text-gray-700 mb-1 mt-2.5">
                               Display name (optional)
                             </label>
                             <input
                               type="text"
                               value={link.display_name || ""}
-                              onChange={(e) => handleLinkChange(index, "display_name", e.target.value)}
+                              onChange={(e) =>
+                                handleLinkChange(index, "display_name", e.target.value)
+                              }
                               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                              placeholder="e.g. chara0211"
+                              placeholder="Label shown in the card"
                             />
                           </div>
 
@@ -643,9 +645,11 @@ const LinksSection: React.FC = () => {
                 </AnimatePresence>
 
                 {/* Add new */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 p-3 border-2 border-dashed border-gray-300 rounded-xl bg-white">
                   <div className="md:col-span-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
+                    <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                      Platform
+                    </label>
                     <select
                       value={newLink.platform}
                       onChange={(e) => setNewLink({ ...newLink, platform: e.target.value })}
@@ -663,22 +667,26 @@ const LinksSection: React.FC = () => {
                   </div>
 
                   <div className="md:col-span-7">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                    <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                      URL
+                    </label>
                     <input
                       type="text"
                       value={newLink.url}
                       onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      placeholder="e.g. linkedin.com/in/… or in/… or username"
+                      placeholder="e.g. linkedin.com/in/…"
                     />
 
-                    <label className="block text-xs font-medium text-gray-700 mb-1 mt-3">
+                    <label className="block text-[11px] font-medium text-gray-700 mb-1 mt-2.5">
                       Display name (optional)
                     </label>
                     <input
                       type="text"
                       value={newLink.display_name || ""}
-                      onChange={(e) => setNewLink({ ...newLink, display_name: e.target.value })}
+                      onChange={(e) =>
+                        setNewLink({ ...newLink, display_name: e.target.value })
+                      }
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Label shown in the card"
                     />

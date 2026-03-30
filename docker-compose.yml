@@ -30,5 +30,44 @@ services:
       "
     restart: "no"
 
+  document-validator:
+    build:
+      context: ./document-validator-service
+      dockerfile: Dockerfile
+    container_name: document-validator-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - SERVICE_PORT=8002
+      - SERVICE_NAME=document-validator-service
+      - REDIS_URL=redis://host.docker.internal:6379/2
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=hiralent-uploads
+      - MINIO_REGION=us-east-1
+      - MINIO_SECURE=false
+      - MIN_OCR_CONFIDENCE=0.85
+      - OCR_LANGUAGES=eng+fra+ara+spa+deu+por+rus+chi_sim+ita+nld+jpn+kor
+      - TESSERACT_PATH=/usr/bin/tesseract
+      - MAX_FILE_SIZE_MB=50
+      - ALLOWED_MIME_TYPES=application/pdf,image/jpeg,image/png,image/jpg
+      - MAX_WORKERS=4
+      - JOB_TIMEOUT_SECONDS=300
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./document-validator-service/logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   minio_data:

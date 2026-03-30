@@ -1,10 +1,16 @@
-import { PrismaClient, JobStatus, Prisma, MatchingEventType, MatchingEntityType } from '@prisma/client';
+import {
+  PrismaClient,
+  JobStatus,
+  Prisma,
+  MatchingEventType,
+  MatchingEntityType,
+} from "@prisma/client";
 import {
   Job,
   CreateJobRequest,
   JobListFilters,
   JobListResponse,
-} from '../../types/job.types';
+} from "../../types/job.types";
 
 import { MatchingOutboxService } from "../matching/outbox.service";
 
@@ -13,11 +19,138 @@ const outbox = new MatchingOutboxService(prisma);
 
 const makeJobDedupeKey = (jobId: string) => `JOB_UPDATED:${jobId}`;
 
+// --- Simple Test constants
+const SIMPLE_TEST_TITLE = "Quick Platform Check";
+const SIMPLE_TEST_DESC =
+  "A short test to confirm you can use the platform (1 coding + 1 MCQ, easy).";
+
+// Exclude questions already used by real assessments/templates
+function simpleTestQuestionBaseWhere(requiredSkills: string[]) {
+  const skillFilter =
+    requiredSkills?.length
+      ? { skillTags: { hasSome: requiredSkills } }
+      : {};
+
+  return {
+    difficulty: "easy",
+    ...skillFilter,
+    // 🚫 Must not overlap with real assessments/templates
+    assessments: { none: {} }, // AssessmentQuestion relation on Question
+    templateAssessments: { none: {} }, // AssessmentTemplateQuestion relation on Question
+  } as const;
+}
+
+async function pickOneQuestion(
+  tx: Prisma.TransactionClient,
+  where: any,
+  type: "coding" | "mcq"
+) {
+  const rows = await tx.question.findMany({
+    where: {
+      ...where,
+      type,
+      status: "approved", // keep only approved if you use this
+    },
+    select: { id: true },
+    take: 30,
+  });
+
+  if (rows.length === 0) return null;
+  const random = rows[Math.floor(Math.random() * rows.length)];
+  return random.id;
+}
+
+async function ensureJobSimpleTest(
+  tx: Prisma.TransactionClient,
+  args: { jobId: string; companyId: string; requiredSkills: string[] }
+) {
+  // already exists?
+  const existing = await tx.jobSimpleTest.findUnique({
+    where: { job_id: args.jobId },
+    select: { test_id: true, is_system: true, version: true },
+  });
+
+  // If exists => keep
+  if (existing) return existing.test_id;
+
+  // 1) prefer skill-tagged easy questions
+  const baseWhere = simpleTestQuestionBaseWhere(args.requiredSkills);
+
+  let codingId = await pickOneQuestion(tx, baseWhere, "coding");
+  let mcqId = await pickOneQuestion(tx, baseWhere, "mcq");
+
+  // 2) fallback: random EASY (no skillTags required)
+  if (!codingId) {
+    codingId = await pickOneQuestion(
+      tx,
+      simpleTestQuestionBaseWhere([]),
+      "coding"
+    );
+  }
+  if (!mcqId) {
+    mcqId = await pickOneQuestion(
+      tx,
+      simpleTestQuestionBaseWhere([]),
+      "mcq"
+    );
+  }
+
+  // If still missing coding → we cannot build the test
+  if (!codingId) {
+    throw new Error("SIMPLE_TEST_NO_EASY_CODING_QUESTION_FOUND");
+  }
+
+  const createdTest = await tx.jobSimpleTest.create({
+    data: {
+      job_id: args.jobId,
+      company_id: args.companyId,
+      title: SIMPLE_TEST_TITLE,
+      description: SIMPLE_TEST_DESC,
+      time_limit_min: 10,
+
+      // ✅ REMOVED: passing_score (does not exist in Prisma model)
+      // passing_score: 60,
+
+      is_system: true,
+      version: 1,
+    },
+    select: { test_id: true },
+  });
+
+  // attach questions (order: coding then mcq)
+  const links: Prisma.JobSimpleTestQuestionCreateManyInput[] = [
+    {
+      test_id: createdTest.test_id,
+      question_id: codingId,
+      kind: "CODING",
+      order: 1,
+    },
+  ];
+
+  if (mcqId) {
+    links.push({
+      test_id: createdTest.test_id,
+      question_id: mcqId,
+      kind: "MCQ",
+      order: 2,
+    });
+  }
+
+  await tx.jobSimpleTestQuestion.createMany({ data: links });
+
+  return createdTest.test_id;
+}
+
 /**
  * Crée un job appartenant à une company (user avec rôle company/company_admin)
  */
-export async function createJob(companyId: string, data: CreateJobRequest): Promise<Job> {
-  const companyUser = await prisma.user.findUnique({ where: { user_id: companyId } });
+export async function createJob(
+  companyId: string,
+  data: CreateJobRequest
+): Promise<Job> {
+  const companyUser = await prisma.user.findUnique({
+    where: { user_id: companyId },
+  });
 
   if (!companyUser) throw new Error(`Company user with ID ${companyId} not found`);
   if (!["company", "company_admin"].includes(companyUser.role)) {
@@ -44,7 +177,9 @@ export async function createJob(companyId: string, data: CreateJobRequest): Prom
         reporting_to: data.reporting_to ?? null,
         team_size: data.team_size ?? null,
 
-        application_deadline: data.application_deadline ? new Date(data.application_deadline) : null,
+        application_deadline: data.application_deadline
+          ? new Date(data.application_deadline)
+          : null,
         max_applications: data.max_applications ?? null,
         auto_reject_after: data.auto_reject_after ?? null,
         screening_questions: data.screening_questions ?? [],
@@ -52,6 +187,13 @@ export async function createJob(companyId: string, data: CreateJobRequest): Prom
         visa_sponsored: data.visa_sponsored ?? null,
         relocation_assistance: data.relocation_assistance ?? null,
       },
+    });
+
+    // ✅ AUTO attach system simple test (1 coding + 1 mcq easy)
+    await ensureJobSimpleTest(tx, {
+      jobId: created.job_id,
+      companyId,
+      requiredSkills: created.required_skills ?? [],
     });
 
     // ✅ Trigger matching ONLY if the job is created ACTIVE
@@ -185,9 +327,6 @@ export async function updateJob(
 }
 
 /**
- * ✅ FIXED: Supprime un job avec gestion correcte des FK
- */
-/**
  * ✅ FIXED: Supprime un job avec gestion correcte de TOUTES les FK
  */
 export async function deleteJob(jobId: string): Promise<void> {
@@ -215,76 +354,40 @@ export async function deleteJob(jobId: string): Promise<void> {
     }
 
     // 2) Delete ALL child records in correct order (most dependent → least dependent)
-    
-    // Delete interview schedules (references applications)
-    await tx.interviewSchedule.deleteMany({
-      where: { job_id: jobId },
-    });
+    await tx.interviewSchedule.deleteMany({ where: { job_id: jobId } });
 
-    // Get all application IDs first
     const applicationIds = await tx.jobApplication.findMany({
       where: { job_id: jobId },
       select: { application_id: true },
     });
-    
-    // Delete AI interview results (references applications)
+
     if (applicationIds.length > 0) {
-      const appIds = applicationIds.map(a => a.application_id);
-      
+      const appIds = applicationIds.map((a) => a.application_id);
+
       await tx.aIInterviewResult.deleteMany({
         where: { application_id: { in: appIds } },
       });
-      
-      // Delete job application score history
+
       await tx.jobApplicationScoreHistory.deleteMany({
         where: { application_id: { in: appIds } },
       });
-      
-      // Delete job application event outbox
+
       await tx.jobApplicationEventOutbox.deleteMany({
         where: { application_id: { in: appIds } },
       });
     }
 
-    // Delete skill assessments for this job
-    await tx.skillAssessment.deleteMany({
-      where: { job_id: jobId },
-    });
+    await tx.skillAssessment.deleteMany({ where: { job_id: jobId } });
+    await tx.employerAssessment.deleteMany({ where: { job_id: jobId } });
+    await tx.candidateProgressTracker.deleteMany({ where: { job_id: jobId } });
+    await tx.relocationCase.deleteMany({ where: { job_id: jobId } });
 
-    // Delete employer assessments for this job
-    await tx.employerAssessment.deleteMany({
-      where: { job_id: jobId },
-    });
-
-    // Delete progress trackers
-    await tx.candidateProgressTracker.deleteMany({
-      where: { job_id: jobId },
-    });
-
-    // Delete relocation cases
-    await tx.relocationCase.deleteMany({
-      where: { job_id: jobId },
-    });
-
-    // Delete job applications (this should remove most dependencies)
-    await tx.jobApplication.deleteMany({
-      where: { job_id: jobId },
-    });
-
-    // Delete job recommendations
-    await tx.jobRecommendation.deleteMany({
-      where: { job_id: jobId },
-    });
-
-    // Delete job vector
-    await tx.jobVector.deleteMany({
-      where: { job_id: jobId },
-    });
+    await tx.jobApplication.deleteMany({ where: { job_id: jobId } });
+    await tx.jobRecommendation.deleteMany({ where: { job_id: jobId } });
+    await tx.jobVector.deleteMany({ where: { job_id: jobId } });
 
     // 3) Finally, delete the job itself
-    await tx.companyJob.delete({
-      where: { job_id: jobId },
-    });
+    await tx.companyJob.delete({ where: { job_id: jobId } });
   });
 }
 
@@ -296,7 +399,6 @@ export async function patchJobStatus(
   status: JobStatus
 ): Promise<Job> {
   const job = await prisma.$transaction(async (tx) => {
-    // 1) Lire le statut AVANT
     const before = await tx.companyJob.findUnique({
       where: { job_id: jobId },
       select: { job_id: true, status: true },
@@ -306,17 +408,14 @@ export async function patchJobStatus(
       throw new Error(`Job ${jobId} not found`);
     }
 
-    // 2) Mettre à jour le statut
     const updated = await tx.companyJob.update({
       where: { job_id: jobId },
       data: { status },
       select: { job_id: true, status: true },
     });
 
-    // 3) Trigger UNIQUEMENT si NON ACTIVE → ACTIVE
     const becameActive =
-      before.status !== JobStatus.ACTIVE &&
-      updated.status === JobStatus.ACTIVE;
+      before.status !== JobStatus.ACTIVE && updated.status === JobStatus.ACTIVE;
 
     if (becameActive) {
       await outbox.enqueue(tx, {
@@ -340,7 +439,7 @@ export async function patchJobStatus(
 export async function getCompanyJobs(companyId: string): Promise<Job[]> {
   const rows = await prisma.companyJob.findMany({
     where: { company_id: companyId },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: "desc" },
     include: {
       _count: {
         select: { applications: true },
@@ -361,14 +460,14 @@ export async function getCompanyJobs(companyId: string): Promise<Job[]> {
  */
 export async function getCompanyJobsById(
   companyId: string,
-  onlyActive = false,
+  onlyActive = false
 ): Promise<Job[]> {
   const rows = await prisma.companyJob.findMany({
     where: {
       company_id: companyId,
       ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: "desc" },
     include: {
       _count: {
         select: { applications: true },
@@ -387,9 +486,7 @@ export async function getCompanyJobsById(
 /**
  * Listing filtré + pagination
  */
-export async function listJobs(
-  filters: JobListFilters,
-): Promise<JobListResponse> {
+export async function listJobs(filters: JobListFilters): Promise<JobListResponse> {
   const {
     company_id,
     status,
@@ -403,8 +500,8 @@ export async function listJobs(
     search_term,
     page = 1,
     limit = 20,
-    sort_by = 'created_at',
-    sort_order = 'desc',
+    sort_by = "created_at",
+    sort_order = "desc",
   } = filters;
 
   const where: Prisma.CompanyJobWhereInput = {
@@ -414,7 +511,7 @@ export async function listJobs(
     ...(experience_level ? { experience_level } : {}),
     ...(remote_option ? { remote_option } : {}),
     ...(urgency_level ? { urgency_level } : {}),
-    ...(status && status !== 'ALL'
+    ...(status && status !== "ALL"
       ? Array.isArray(status)
         ? { status: { in: status } }
         : { status }
@@ -422,24 +519,9 @@ export async function listJobs(
     ...(search_term
       ? {
           OR: [
-            {
-              title: {
-                contains: search_term,
-                mode: 'insensitive',
-              },
-            },
-            {
-              description: {
-                contains: search_term,
-                mode: 'insensitive',
-              },
-            },
-            {
-              location: {
-                contains: search_term,
-                mode: 'insensitive',
-              },
-            },
+            { title: { contains: search_term, mode: "insensitive" } },
+            { description: { contains: search_term, mode: "insensitive" } },
+            { location: { contains: search_term, mode: "insensitive" } },
           ],
         }
       : {}),
@@ -471,7 +553,7 @@ export async function listJobs(
     page,
     total_pages,
     has_next: page < total_pages,
-    has_previous: page > 1,
+    has_previous: page > total_pages,
   };
 }
 
@@ -481,7 +563,7 @@ export async function listJobs(
 export async function getJobApplicantsForJob(jobId: string) {
   const applications = await prisma.jobApplication.findMany({
     where: { job_id: jobId },
-    orderBy: { applied_at: 'desc' },
+    orderBy: { applied_at: "desc" },
     include: {
       candidate: {
         select: {
@@ -500,20 +582,20 @@ export async function getJobApplicantsForJob(jobId: string) {
   });
 
   return applications.map((a) => {
-    const fullName = (a.candidate.full_name ?? '').trim();
+    const fullName = (a.candidate.full_name ?? "").trim();
 
     return {
       application_id: a.application_id,
       candidate_id: a.candidate_id,
       job_id: a.job_id,
       status: a.status,
-      stage: a.status ?? 'RECEIVED',
+      stage: a.status ?? "RECEIVED",
       score: a.assessment_score ?? null,
       match_score: null,
       applied_at: a.applied_at,
       created_at: a.applied_at,
-      candidate_name: fullName || 'Unnamed candidate',
-      candidate_email: a.candidate.email ?? '',
+      candidate_name: fullName || "Unnamed candidate",
+      candidate_email: a.candidate.email ?? "",
       headline: a.candidate.candidateProfile?.headline ?? null,
       location: a.candidate.candidateProfile?.location ?? null,
     };

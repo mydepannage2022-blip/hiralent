@@ -374,11 +374,12 @@ export interface ProfilePictureUploadResult{
 
 
 
-// Basic Info Update Types
 export interface UpdateBasicInfoInput {
   full_name?: string;
   phone_number?: string;
   email?: string;
+  about_me?: string;
+  location?: string;
 }
 
 export interface BasicInfoUpdateResult {
@@ -628,7 +629,7 @@ export interface SkillRemoveResult {
 export interface SkillsUpdateResult {
   success: boolean;
   message: string;
-  skills: PopulatedSkill[];
+  skills: PopulatedSkill[];c
   total_skills_count: number;
 }
 export type ProjectData = {

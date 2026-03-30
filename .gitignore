@@ -22,4 +22,5 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-chroma_db/*.sqlite3
+
+# VSCode settings

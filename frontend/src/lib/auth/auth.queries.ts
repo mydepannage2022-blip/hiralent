@@ -1,6 +1,7 @@
 import toast from 'react-hot-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { signup, updateLocation, updateSalary, login as loginapi, uploadResume, verifyEmail, resendVerificationEmail, uploadProfilePicture, createCompanyProfile, uploadCompanyDocument, resetPassword, forgotPassword, deleteAccount, getUserSessions, terminateAllOtherSessions, terminateSession } from './auth.api';
+import { setup2FAAPI, setupWithTokenAPI, enable2FAAPI, disable2FAAPI, verifyLogin2FAAPI, verifyRecoveryCodeAPI } from './twoFactor.api';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
@@ -46,57 +47,197 @@ export const useLogin = () => {
   const { setProfileData } = useProfile();
   const router = useRouter();
 
-
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
+      const d = data as any;
+
+      // MFA required — let the login page handle the 2FA step
+      if (d.requiresMFA || d.requiresMFASetup) {
+        return;
+      }
+
+      // Error response (returned as 200 with error flag)
+      if (d.error || !d.user) {
+        const errorMessage = d.message || 'Login failed';
+        toast.error(errorMessage);
+        return;
+      }
 
       if (typeof window !== 'undefined') {
         localStorage.clear();
         sessionStorage.clear();
       }
 
-      if (data.error === true || data.success === false) {
-        const errorMessage = data.message || 'Login failed';
-        toast.error(errorMessage);
+      toast.success('Login successful!');
+      login(d.user, d.token);
+      if (d.profile) {
+        setProfileData(d.profile);
+      }
+
+      // Priority 1: callbackUrl query param
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/')) {
+        router.push(callbackUrl);
         return;
       }
 
-      toast.success('Login successful!');
-      login(data.user, data.token);
-      if (data.profile) {
-        setProfileData(data.profile);
-        console.log('Profile data set in context:', data.profile);
-      }
-
+      // Priority 2: stored redirect path
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterLogin');
-        console.log('Redirecting to stored path:', redirectPath);
         router.push(redirectPath);
-      } else {
-        // YEH BHI LOG KARO
-        console.log('No stored redirect, checking role:', data.user.role);
+        return;
+      }
 
-        if (data.user.role === 'candidate') {
-          console.log('Redirecting to candidate dashboard');
-          router.push('/candidate/dashboard');
-        } else if (data.user.role === 'company_admin') {
-          console.log('Redirecting to company dashboard');
-          router.push('/company/dashboard');
-        } else if (data.user.role === 'agency_admin') {
-          console.log('Redirecting to agency dashboard');
-          router.push('/agency/dashboard');
-        } else {
-          console.log('Unknown role, redirecting to home');
-          router.push('/');
-        }
+      // Fallback: role-based dashboard redirect
+      const role = d.user?.role;
+      if (role === 'candidate') {
+        router.push('/candidate/dashboard');
+      } else if (role === 'company_admin') {
+        router.push('/company/dashboard');
+      } else if (role === 'agency_admin') {
+        router.push('/agency/dashboard');
+      } else {
+        router.push('/');
       }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error.message || 'Login failed';
       console.error('Login failed:', errorMessage);
       toast.error(errorMessage);
+    },
+  });
+};
+
+export const useSetup2FA = () => {
+  return useMutation({
+    mutationFn: setup2FAAPI,
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to set up 2FA');
+    },
+  });
+};
+
+export const useSetupWithToken = () => {
+  return useMutation({
+    mutationFn: setupWithTokenAPI,
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to generate QR code');
+    },
+  });
+};
+
+export const useEnable2FA = () => {
+  const { user, updateUser } = useAuth();
+  return useMutation({
+    mutationFn: enable2FAAPI,
+    onSuccess: () => {
+      toast.success('Two-factor authentication enabled!');
+      if (user) updateUser({ ...user, mfa_enabled: true });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Invalid code. Please try again.');
+    },
+  });
+};
+
+export const useDisable2FA = () => {
+  const { user, updateUser } = useAuth();
+  return useMutation({
+    mutationFn: disable2FAAPI,
+    onSuccess: () => {
+      toast.success('Two-factor authentication disabled.');
+      if (user) updateUser({ ...user, mfa_enabled: false });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Invalid code. Please try again.');
+    },
+  });
+};
+
+export const useVerifyLogin2FA = () => {
+  const { login } = useAuth();
+  const { setProfileData } = useProfile();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: ({ tempToken, mfaToken }: { tempToken: string; mfaToken: string }) =>
+      verifyLogin2FAAPI(tempToken, mfaToken),
+    onSuccess: (data: any) => {
+      if (data?.error || !data?.user) {
+        toast.error(data?.message || 'Verification failed');
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      login(data.user, data.token);
+      if (data.profile) setProfileData(data.profile);
+
+      // If recovery codes are present this is first-time setup — let the login page show them
+      if (data.recoveryCodes?.length > 0) return;
+
+      toast.success('Login successful!');
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/')) {
+        router.push(callbackUrl);
+        return;
+      }
+
+      const role = data.user?.role;
+      if (role === 'candidate') router.push('/candidate/dashboard');
+      else if (role === 'company_admin') router.push('/company/dashboard');
+      else if (role === 'agency_admin') router.push('/agency/dashboard');
+      else router.push('/');
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error.message || 'Verification failed';
+      toast.error(msg);
+    },
+  });
+};
+
+export const useVerifyRecoveryCode = () => {
+  const { login } = useAuth();
+  const { setProfileData } = useProfile();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: ({ tempToken, recoveryCode }: { tempToken: string; recoveryCode: string }) =>
+      verifyRecoveryCodeAPI(tempToken, recoveryCode),
+    onSuccess: (data: any) => {
+      if (data?.error || !data?.user) {
+        toast.error(data?.message || 'Verification failed');
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      toast.success('Login successful!');
+      login(data.user, data.token);
+      if (data.profile) setProfileData(data.profile);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/')) {
+        router.push(callbackUrl);
+        return;
+      }
+
+      const role = data.user?.role;
+      if (role === 'candidate') router.push('/candidate/dashboard');
+      else if (role === 'company_admin') router.push('/company/dashboard');
+      else if (role === 'agency_admin') router.push('/agency/dashboard');
+      else router.push('/');
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error.message || 'Recovery code verification failed';
+      toast.error(msg);
     },
   });
 };

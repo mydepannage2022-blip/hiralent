@@ -77,6 +77,9 @@ export interface UserWithProfiles {
   linkedin_url: string | null;
   company_role: string | null;
   branding_notes: string | null;
+  mfa_enabled: boolean;
+  mfa_secret: string | null;
+  mfa_recovery_codes: string | null;
   created_at: Date;
   updated_at: Date;
   last_login_at: Date | null;
@@ -120,6 +123,7 @@ export interface CleanUser {
   position: string | null;
   linkedin_url: string | null;
   agency_id: string | null;
+  mfa_enabled?: boolean;
   agency?: {
     agency_id: string;
     name: string;
@@ -211,6 +215,18 @@ export interface LoginSuccess {
   token: string;
 }
 
+// MFA required intermediate response (user already configured 2FA)
+export interface MFARequired {
+  requiresMFA: true;
+  tempToken: string;
+}
+
+// MFA setup required (user has never configured 2FA — mandatory first-time setup)
+export interface MFASetupRequired {
+  requiresMFASetup: true;
+  tempToken: string;
+}
+
 // Error login response (unchanged)
 export interface LoginError {
   error: true;
@@ -218,7 +234,7 @@ export interface LoginError {
 }
 
 // Union type for login response (unchanged)
-export type LoginResponse = LoginSuccess | LoginError;
+export type LoginResponse = LoginSuccess | MFARequired | MFASetupRequired | LoginError;
 
 
 

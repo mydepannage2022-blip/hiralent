@@ -5,6 +5,11 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import {
+  validateDocumentQuick,
+  validateDocumentDeep,
+  DocumentType,
+} from "../../clients/document-validator.client";
 
 const prisma = new PrismaClient();
 
@@ -39,6 +44,18 @@ const uploadToMinIO = async (
   const url = `http://127.0.0.1:9000/hiralent-uploads/${key}`;
   return { url, key };
 };
+
+// Map internal document types to validator types
+function mapToValidatorType(docType: string): DocumentType {
+  const mapping: Record<string, DocumentType> = {
+    passport: "passport_copy",
+    visa_application: "visa_application_form",
+    bank_statement: "bank_statement",
+    employment_letter: "employment_letter",
+    proof_of_accommodation: "accommodation_proof",
+  };
+  return mapping[docType] || "passport_copy";
+}
 
 export const getCandidateCases = async (req: Request, res: Response) => {
   try {
@@ -92,7 +109,7 @@ export const getCandidateCases = async (req: Request, res: Response) => {
 export const getCaseById = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -193,7 +210,7 @@ export const getCaseById = async (req: Request, res: Response) => {
 export const uploadCaseDocument = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
     const { document_type, notes } = req.body;
 
     if (!userId) {
@@ -208,6 +225,13 @@ export const uploadCaseDocument = async (req: Request, res: Response) => {
       where: {
         case_id: caseId,
         candidate_id: userId,
+      },
+      include: {
+        candidate: {
+          select: {
+            full_name: true,
+          },
+        },
       },
     });
 
@@ -251,7 +275,7 @@ export const uploadCaseDocument = async (req: Request, res: Response) => {
 
     // Upload to MinIO
     console.log("✅ Uploading to MinIO...");
-    const { url } = await uploadToMinIO(req.file, caseId, document_type);
+    const { url, key } = await uploadToMinIO(req.file, caseId, document_type);
 
     // Create document record
     const document = await prisma.caseDocument.create({
@@ -271,6 +295,62 @@ export const uploadCaseDocument = async (req: Request, res: Response) => {
     });
 
     console.log("✅ Upload successful!");
+
+    // Run AI validation (non-blocking - fallback to manual review if it fails)
+    try {
+      console.log("🤖 Running AI validation...");
+
+      // Step 1: Quick validation (synchronous - format, size, pages)
+      const quickResult = await validateDocumentQuick({
+        document_id: document.document_id,
+        storage_key: key,
+        document_type: mapToValidatorType(document_type),
+        mime_type: req.file.mimetype,
+        expected_data: { full_name: caseData.candidate?.full_name || "" },
+      });
+
+      if (!quickResult.ok || !quickResult.data?.can_proceed_to_deep_validation) {
+        // Quick validation failed - update document status
+        await prisma.caseDocument.update({
+          where: { document_id: document.document_id },
+          data: { status: "validation_failed" },
+        });
+
+        console.log("❌ Quick validation failed");
+        return res.status(400).json({
+          success: false,
+          message: "Document validation failed",
+          checks: quickResult.data?.checks || [],
+        });
+      }
+
+      console.log("✅ Quick validation passed");
+
+      // Step 2: Queue deep validation (asynchronous - OCR + NLP)
+      const deepResult = await validateDocumentDeep({
+        document_id: document.document_id,
+        case_id: caseId,
+        storage_key: key,
+        document_type: mapToValidatorType(document_type),
+        mime_type: req.file.mimetype,
+        expected_data: { full_name: caseData.candidate?.full_name || "" },
+      });
+
+      if (deepResult.ok && deepResult.data?.validation_job_id) {
+        // Store validation job ID
+        await prisma.caseDocument.update({
+          where: { document_id: document.document_id },
+          data: { ai_validation_job_id: deepResult.data.validation_job_id },
+        });
+        console.log(
+          `✅ Deep validation queued (job: ${deepResult.data.validation_job_id})`
+        );
+      }
+    } catch (validationError) {
+      // Don't fail the upload if validation service is down
+      console.error("[Validation] Service unavailable:", validationError);
+      console.log("⚠️  Validation skipped - document will require manual review");
+    }
 
     return res.status(201).json({
       success: true,
@@ -292,7 +372,7 @@ export const uploadCaseDocument = async (req: Request, res: Response) => {
 export const getCaseDocuments = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -336,7 +416,8 @@ export const getCaseDocuments = async (req: Request, res: Response) => {
 export const deleteCaseDocument = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId, documentId } = req.params;
+    const caseId = req.params.caseId as string;
+    const documentId = req.params.documentId as string;
 
     if (!userId) {
       return res.status(401).json({
@@ -407,7 +488,7 @@ export const confirmDocumentReplacement = async (
 ) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId } = req.params;
+    const caseId = req.params.caseId as string;
     const { oldDocumentId, newDocumentId } = req.body;
 
     if (!userId) {
@@ -491,7 +572,8 @@ export const cancelDocumentReplacement = async (
 ) => {
   try {
     const userId = req.user?.user_id;
-    const { caseId, documentId } = req.params;
+    const caseId = req.params.caseId as string;
+    const documentId = req.params.documentId as string;
 
     if (!userId) {
       return res.status(401).json({

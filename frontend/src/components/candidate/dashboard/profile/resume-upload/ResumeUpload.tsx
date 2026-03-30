@@ -140,10 +140,11 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
     return null;
   };
 
-  // ✅ FIXED WIDTH CARD (won't grow on long names/urls)
+  //  FIXED WIDTH CARD (won't grow on long names/urls)
   const fixedCard =
-    "w-full max-w-[380px] lg:max-w-[380px] lg:min-w-[380px] shrink-0 " +
+    "w-full max-w-[360px] lg:max-w-[360px] shrink-0 " +
     "rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] overflow-hidden";
+
 
   return (
     <>

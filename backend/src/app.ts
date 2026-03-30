@@ -54,6 +54,8 @@ import skillRadarRoutes from "./routes/skillRadar.routes";
 import mockAssessmentRoutes from "./routes/mockAssessment.routes";
 import competeRoutes from "./routes/compete.routes";
 import subscriptionRoutes from './routes/subscription.routes';
+import documentValidationWebhookRoutes from './routes/webhook.documentValidation.routes';
+
 import schedulerRoutes from "./routes/scraping/scraping.routes";
 import internalRoutes from "./routes/internal.routes";
 import candidateJobsRoutes from "./routes/candidate/jobs.routes";
@@ -68,12 +70,28 @@ import companyInternalCandidatesRoutes from "./routes/company.internalCandidates
 import candidateNotificationsRoutes from "./routes/candidate/notifications.routes";
 import companyNotificationsRoutes from "./routes/company.notifications.routes";
 import assessmentTemplateRoutes from "./routes/company.assessmentTemplate.routes";
+import searchRoutes from "./routes/search.routes";
+import teamRoutes from './routes/team.routes';
+import employerRoutes from './routes/employer.routes';
+
+//Candidate Assessments Space
+import assessmentSessionRoutes from "./routes/candidate/assessmentSession.routes";
+import assessmentAnswerRoutes from "./routes/candidate/assessmentAnswer.routes";
+import assessmentTelemetryRoutes from "./routes/candidate/assessmentTelemetry.routes";
+import assessmentExecutionRoutes from "./routes/candidate/assessmentExecution.routes";
+import assessmentInsightsRoutes from "./routes/companyAssessmentInsights.routes";
+import candidateSimpleTestRoutes from "./routes/candidateSimpleTest.routes";
+import candidateInvitesRoutes from "./routes/candidateInvites.routes";
+import companyHiringFlowRoutes from "./routes/companyHiringFlow.routes";
+import candidateAssessmentHistoryRoutes from "./routes/candidate/assessmentHistory.routes";
 
 // Mount routes
 app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
+app.use('/api/v1/company/team', teamRoutes);
+app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/company', companyRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/ocr', ocrRoutes);
@@ -120,6 +138,13 @@ app.use('/api/v1/admin', adminVerificationRoutes);
 app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
+// Public candidate search — must be mounted BEFORE jobRoutes because
+// job.routes.ts has a global router.use(checkAuth) that rejects all
+// unauthenticated requests to any /api/v1/* path.
+app.use("/api/v1/search", searchRoutes);
+// IMPORTANT: Webhooks MUST come before jobRoutes to avoid auth middleware
+app.use('/api/v1/webhooks', documentValidationWebhookRoutes);
+
 app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", assessmentTemplateRoutes);
@@ -138,7 +163,16 @@ app.use("/internal/matching/candidate", internalCandidateRoutes);
 app.use("/internal/matching/company", internalCompanyRoutes);
 app.use("/internal/matching", matchingInternalRoutes);
 app.use("/api/v1", companyCandidateRankingRoutes);
-
+app.use("/api/v1", assessmentSessionRoutes);
+app.use("/api/v1", assessmentAnswerRoutes);
+app.use("/api/v1", assessmentTelemetryRoutes);
+app.use("/api/v1", assessmentExecutionRoutes);
+app.use("/api/v1", assessmentInsightsRoutes);
+// Simple test + Invites + Hiring flow
+app.use("/api/v1", candidateInvitesRoutes);
+app.use("/api/v1", candidateSimpleTestRoutes);
+app.use("/api/v1", companyHiringFlowRoutes);
+app.use("/api/v1", candidateAssessmentHistoryRoutes);
 
 //Scraping Candidates
 app.use("/internal", internalRoutes);

@@ -5,6 +5,8 @@ import { useProfile } from "@/src/context/ProfileContext";
 import React from 'react'
 import { useQueryClient } from '@tanstack/react-query'; 
 import toast from 'react-hot-toast';
+import { BadgeSection } from '@/src/components/candidate/dashboard/profile/badges/BadgeSection';
+import ChatbotButton from "@/src/components/candidate/dashboard/chatbot/ChatbotButton";
 
 // Lazy load all components
 const Meta = dynamic(() => import('@/src/components/candidate/dashboard/profile/Meta'), {
@@ -125,56 +127,69 @@ const CandidateProfilePage = () => {
   }
 
   return (
-    <div key={`profile-page-${dataVersion}`} className='w-full flex flex-col lg:flex-row justify-start items-start gap-3'>
-      {/* Left Column - Main Profile Sections */}
-      <div className='w-full lg:w-2/3 bg-white rounded-xl flex flex-col justify-start items-center gap-2 lg:gap-4 p-1 lg:p-3'>
-        <Meta />
+    <div
+      key={`profile-page-${dataVersion}`}
+      className="w-full"
+    >
+      {/* ✅ page container: keeps everything from feeling zoomed */}
+      <div className="mx-auto w-full max-w-[1180px] flex flex-col lg:flex-row items-start gap-3">
         
-        <div className="w-full">
-          <Personal />
-        </div>
-        
-        <div className="w-full">
-          <SkillsSection/>
-        </div>
-        
-        <div className="w-full flex flex-col lg:flex-row gap-4">
-          <div className='w-full lg:w-1/2'>
-            <ExperienceSection/>
+        {/* ✅ Left Column (reduced width) */}
+        <section className="w-full lg:w-[760px] xl:w-[740px] bg-white rounded-xl flex flex-col items-center gap-2 lg:gap-4 p-1 lg:p-3">
+          <Meta />
+
+          <div className="w-full">
+            <Personal />
           </div>
-          <div className='w-full lg:w-1/2'>
-            <EducationSection/>
+
+          <div className="w-full">
+            <SkillsSection />
           </div>
-        </div>
 
-        <div className="w-full">
-          <ProjectsSection />
-        </div>
+          <div className="w-full flex flex-col lg:flex-row gap-4">
+            <div className="w-full lg:w-1/2">
+              <ExperienceSection />
+            </div>
+            <div className="w-²full lg:w-1/2">
+              <EducationSection />
+            </div>
+          </div>
 
-        <div className="w-full">
-          <CertificationsSection />
-        </div>
+          <div className="w-full">
+            <ProjectsSection />
+          </div>
 
-        <div className="w-full">
-          <LanguagesSection />
-        </div>
-        
-        <div className="w-full">
-          <LinksSection/>
-        </div>
-        
-        <div className="w-full">
-          <JobBenefitsSection />
-        </div>
-      </div>
-      
-      {/* Right Column - Resume Related Components */}
-      <div className='w-full lg:w-1/3 flex flex-col justify-start items-start gap-2'>
-        <ResumeUpload onAutofillApplied={handleAutofillApplied} />
-        <ResumeLink />
+          <div className="w-full">
+            <CertificationsSection />
+          </div>
+
+          <div className="w-full">
+            <LanguagesSection />
+          </div>
+
+          <div className="w-full">
+            <LinksSection />
+          </div>
+
+          <div className="w-full">
+            <JobBenefitsSection />
+          </div>
+        </section>
+
+        {/*  Right Column (fixed + narrow) */}
+        <aside className="w-full lg:w-[340px] xl:w-[320px] shrink-0 flex flex-col gap-2">
+          <BadgeSection />
+          <ResumeUpload className="w-full" onAutofillApplied={handleAutofillApplied} />
+          <ResumeLink className="w-full" />
+          <ChatbotButton />
+
+          
+
+        </aside>
       </div>
     </div>
-  )
+  );
+
 }
 
 export default CandidateProfilePage;
