@@ -59,7 +59,7 @@ export default function InterviewSetupPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <Loader2 className="w-8 h-8 animate-spin text-[#005DDC]" />
       </div>
     );
@@ -67,7 +67,7 @@ export default function InterviewSetupPage() {
 
   if (error || !interview) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-100 gap-4">
         <AlertCircle className="w-12 h-12 text-red-500" />
         <p className="text-gray-600">{error || 'Interview not found'}</p>
         <button
@@ -82,34 +82,36 @@ export default function InterviewSetupPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-4">
       {/* Back Button */}
       <button
         onClick={handleCancel}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 text-sm transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
-      {/* Setup Card */}
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        className="bg-[#005DDC] rounded-2xl px-6 py-5 text-white"
       >
-        {/* Header */}
-        <div className="bg-linear-to-r from-[#005DDC] to-[#0047AB] p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">Setup Your Interview</h1>
-          <p className="text-blue-100">
-            Let's make sure your camera and microphone are working properly for your interview with {interview.companyName || 'the company'}
-          </p>
-        </div>
+        <h1 className="text-xl font-bold leading-tight">Camera & Microphone Setup</h1>
+        <p className="text-blue-100 text-sm mt-1">
+          Make sure everything is working before starting your interview with {interview.companyName || 'the company'}
+        </p>
+      </motion.div>
 
-        {/* Setup Component */}
-        <div className="p-6">
-          <InterviewSetup onReady={handleReady} onCancel={handleCancel} />
-        </div>
+      {/* Setup Component */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="bg-white border border-gray-200 rounded-2xl p-6"
+      >
+        <InterviewSetup onReady={handleReady} onCancel={handleCancel} />
       </motion.div>
     </div>
   );

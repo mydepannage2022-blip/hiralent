@@ -148,6 +148,7 @@ export interface AssignInterviewParams {
   jobId: string;
   interviewType: string;
   scheduledDate: Date;           // When the interview is scheduled
+  softSkillWeight?: number;      // % of soft skill questions (0-100), defaults to 70
 }
 
 export interface StartInterviewParams {
@@ -241,6 +242,7 @@ export interface InterviewDetailedResult extends InterviewResultResponse {
   transcript: TranscriptEntry[];
   questions: InterviewQuestion[];
   responses: CandidateResponse[];
+  cheatingEvents: any[];
 }
 
 // Candidate's view of their assigned interviews

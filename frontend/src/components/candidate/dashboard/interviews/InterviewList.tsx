@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Search, Loader2 } from 'lucide-react';
+import { Video, Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import InterviewCard from './InterviewCard';
 import type { CandidateInterviewListItem, AIInterviewStatus } from '@/src/types/interview.types';
 
@@ -16,6 +16,8 @@ interface InterviewListProps {
 
 type FilterTab = 'all' | 'pending' | 'completed';
 
+const PAGE_SIZE = 6;
+
 const InterviewList: React.FC<InterviewListProps> = ({
   interviews,
   isLoading,
@@ -25,12 +27,16 @@ const InterviewList: React.FC<InterviewListProps> = ({
 }) => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const filterTabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'pending', label: 'Pending' },
     { key: 'completed', label: 'Completed' },
   ];
+
+  const handleFilterChange = (filter: FilterTab) => { setActiveFilter(filter); setPage(1); };
+  const handleSearch = (q: string) => { setSearchQuery(q); setPage(1); };
 
   const filteredInterviews = interviews.filter((interview) => {
     // Filter by status
@@ -55,6 +61,9 @@ const InterviewList: React.FC<InterviewListProps> = ({
 
     return true;
   });
+
+  const totalPages = Math.ceil(filteredInterviews.length / PAGE_SIZE);
+  const paginated = filteredInterviews.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -90,7 +99,7 @@ const InterviewList: React.FC<InterviewListProps> = ({
           {filterTabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
+              onClick={() => handleFilterChange(tab.key)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeFilter === tab.key
                   ? 'bg-white text-[#005DDC] shadow-sm'
@@ -109,7 +118,7 @@ const InterviewList: React.FC<InterviewListProps> = ({
             type="text"
             placeholder="Search by job or company..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005DDC] focus:border-transparent w-full sm:w-64"
           />
         </div>
@@ -133,18 +142,55 @@ const InterviewList: React.FC<InterviewListProps> = ({
           </p>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredInterviews.map((interview) => (
-              <InterviewCard
-                key={interview.interviewId}
-                interview={interview}
-                onStart={() => onStartInterview(interview.interviewId)}
-                onView={() => onViewInterview(interview.interviewId)}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <AnimatePresence mode="popLayout">
+              {paginated.map((interview) => (
+                <InterviewCard
+                  key={interview.interviewId}
+                  interview={interview}
+                  onStart={() => onStartInterview(interview.interviewId)}
+                  onView={() => onViewInterview(interview.interviewId)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-medium text-gray-800">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredInterviews.length)}</span> of <span className="font-medium text-gray-800">{filteredInterviews.length}</span>
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-600" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                      p === page ? 'bg-[#005DDC] text-white' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

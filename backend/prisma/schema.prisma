@@ -622,6 +622,12 @@ model AIInterviewResult {
   assigned_by         String?           // Recruiter user_id who assigned the interview
   assigned_at         DateTime?         // When the interview was assigned
   assignedByUser      User?             @relation("AssignedInterviews", fields: [assigned_by], references: [user_id])
+
+  // Proctoring
+  cheating_events     Json?             // [{type: 'NO_FACE'|'MULTIPLE_FACES', timestamp, faceCount}]
+
+  // Question distribution
+  soft_skill_weight   Int?              @default(70) // % of soft skill questions (0-100), rest is technical
 }
 
 enum AIInterviewStatus {

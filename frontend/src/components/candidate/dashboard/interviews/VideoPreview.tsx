@@ -1,28 +1,28 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import { VideoOff } from 'lucide-react';
+import { useAudioLevel } from '@/src/hooks/interview/useAudioLevel';
 
 interface VideoPreviewProps {
   stream: MediaStream | null;
   isVideoEnabled?: boolean;
-  isAudioEnabled?: boolean;
   isRecording?: boolean;
-  showControls?: boolean;
-  onToggleVideo?: () => void;
-  onToggleAudio?: () => void;
+  candidateName?: string;
+  isSpeaking?: boolean;
+  isListening?: boolean;
 }
 
 const VideoPreview: React.FC<VideoPreviewProps> = ({
   stream,
   isVideoEnabled = true,
-  isAudioEnabled = true,
   isRecording = false,
-  showControls = false,
-  onToggleVideo,
-  onToggleAudio,
+  candidateName = 'You',
+  isSpeaking = false,
+  isListening = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioLevels = useAudioLevel(stream, isListening);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -60,59 +60,55 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
       )}
 
-      {/* Status Indicators */}
-      <div className="absolute top-4 left-4 flex gap-2">
-        <div className={`flex items-center gap-1.5 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm ${
-          !isVideoEnabled ? 'opacity-50' : ''
-        }`}>
-          {isVideoEnabled ? (
-            <Video className="w-4 h-4 text-green-400" />
-          ) : (
-            <VideoOff className="w-4 h-4 text-red-400" />
-          )}
-          <span>{isVideoEnabled ? 'Camera On' : 'Camera Off'}</span>
-        </div>
-        <div className={`flex items-center gap-1.5 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm ${
-          !isAudioEnabled ? 'opacity-50' : ''
-        }`}>
-          {isAudioEnabled ? (
-            <Mic className="w-4 h-4 text-green-400" />
-          ) : (
-            <MicOff className="w-4 h-4 text-red-400" />
-          )}
-          <span>{isAudioEnabled ? 'Mic On' : 'Mic Off'}</span>
-        </div>
+      {/* Candidate Name + talking indicator - Bottom Left */}
+      <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-[#111827]/80 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
+        <span className="text-white text-sm font-medium">{candidateName}</span>
+        {isListening && (
+          <div className="flex items-end gap-0.5 h-4">
+            {audioLevels.map((level, i) => {
+              // Progressive slope: bars grow taller left → right
+              const slopeMultiplier = 0.4 + (i / (audioLevels.length - 1)) * 0.6;
+              const height = Math.max(15 + i * 8, level * 100 * slopeMultiplier);
+              return (
+                <span
+                  key={i}
+                  className="w-0.75 rounded-full bg-white transition-all duration-75"
+                  style={{ height: `${Math.min(100, height)}%` }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Controls */}
-      {showControls && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
-          {onToggleVideo && (
-            <button
-              onClick={onToggleVideo}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                isVideoEnabled
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-red-600 hover:bg-red-500 text-white'
-              }`}
-            >
-              {isVideoEnabled ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-            </button>
-          )}
-          {onToggleAudio && (
-            <button
-              onClick={onToggleAudio}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                isAudioEnabled
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-red-600 hover:bg-red-500 text-white'
-              }`}
-            >
-              {isAudioEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-            </button>
+      {/* AI Interviewer PiP - Bottom Right */}
+      <div className="absolute bottom-4 right-4 w-28 bg-[#111827]/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 p-3 flex flex-col items-center gap-2">
+        {/* Circular photo */}
+        <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden">
+          <img src="/alex-avatar.png" alt="Alex" className="w-full h-full object-cover" />
+        </div>
+        {/* Name + audio bars */}
+        <div className="flex items-center justify-between w-full px-0.5">
+          <span className="text-gray-300 text-xs font-medium">Alex</span>
+          {isSpeaking && (
+            <div className="flex items-end gap-0.5 h-4">
+              {[0, 1, 2, 3].map((i) => {
+                const slopeMultiplier = 0.4 + (i / 3) * 0.6;
+                return (
+                  <span
+                    key={i}
+                    className="w-0.75 rounded-full bg-white transition-all duration-75"
+                    style={{
+                      height: `${15 + i * 8 + slopeMultiplier * 40}%`,
+                      animation: `pulse ${0.3 + i * 0.1}s ease-in-out infinite alternate`,
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

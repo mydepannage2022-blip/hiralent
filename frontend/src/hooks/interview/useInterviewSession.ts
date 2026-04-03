@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import {
   startInterview,
   submitResponse as submitResponseApi,
+  submitResponseStream,
   endInterview,
 } from '../../lib/interview/interview.api';
 import type {
@@ -38,7 +39,7 @@ interface UseInterviewSessionReturn extends InterviewSessionState {
   initSession: () => Promise<void>;
   setPhase: (phase: InterviewPhase) => void;
   updateTranscript: (transcript: string) => void;
-  submitCurrentResponse: () => Promise<void>;
+  submitCurrentResponse: (onChunk?: (text: string) => void) => Promise<void>;
   endSession: () => Promise<void>;
   resetError: () => void;
 }
@@ -109,10 +110,8 @@ export function useInterviewSession(interviewId: string): UseInterviewSessionRet
   }, []);
 
   // Submit current response and get next question
-  const submitCurrentResponse = useCallback(async () => {
-    if (!state.session || !state.currentQuestion) {
-      return;
-    }
+  const submitCurrentResponse = useCallback(async (onChunk?: (text: string) => void) => {
+    if (!state.session || !state.currentQuestion) return;
 
     const transcript = state.currentTranscript.trim();
     if (!transcript) {
@@ -122,63 +121,79 @@ export function useInterviewSession(interviewId: string): UseInterviewSessionRet
 
     setState(prev => ({ ...prev, phase: 'submitting', isLoading: true, error: null }));
 
-    // Calculate response duration
     const duration = questionStartTimeRef.current
       ? Math.round((new Date().getTime() - questionStartTimeRef.current.getTime()) / 1000)
       : 0;
 
+    const requestData = {
+      questionId: state.currentQuestion.questionId,
+      responseText: transcript,
+      responseDuration: duration,
+    };
+
     try {
-      console.log('📤 Submitting response for question:', state.currentQuestion.questionId);
-      // API already handles auth via interceptors and returns unwrapped data
-      const sessionData = await submitResponseApi(interviewId, {
-        questionId: state.currentQuestion.questionId,
-        responseText: transcript,
-        responseDuration: duration,
-      });
-      console.log('📥 Response submitted. Next question:', sessionData.currentQuestion?.questionId || 'none');
+      if (onChunk) {
+        // Streaming path — yields chunks of question text then done event
+        let chunkReceived = false;
+        let sessionData: InterviewSessionResponse | null = null;
 
-      // Check if interview is complete (no more questions)
-      if (sessionData.status === 'COMPLETED' || !sessionData.currentQuestion) {
-        console.log('🏁 Last question answered. Preparing closing message...');
+        for await (const event of submitResponseStream(interviewId, requestData)) {
+          if (event.type === 'chunk') {
+            chunkReceived = true;
+            onChunk(event.text);
+          } else if (event.type === 'done') {
+            sessionData = event.data;
+          } else if (event.type === 'error') {
+            throw new Error(event.error);
+          }
+        }
 
-        // Set to 'closing' phase to allow closing message to be spoken
+        if (!sessionData) throw new Error('No session data received');
+
+        if (sessionData.status === 'COMPLETED' || !sessionData.currentQuestion) {
+          setState(prev => ({ ...prev, session: sessionData!, currentQuestion: null, currentTranscript: '', phase: 'closing', isLoading: false }));
+          return;
+        }
+
+        questionStartTimeRef.current = new Date();
+        setState(prev => ({
+          ...prev,
+          session: sessionData!,
+          currentQuestion: sessionData!.currentQuestion || null,
+          currentTranscript: '',
+          // If chunks were streamed, InterviewRoom already spoke them — skip speaking phase
+          phase: chunkReceived ? 'transitioning' : 'speaking',
+          progress: { current: sessionData!.progress.questionsAsked, total: sessionData!.progress.totalQuestions },
+          isLoading: false,
+          questionStartTime: new Date(),
+        }));
+      } else {
+        // Regular (non-streaming) path
+        console.log('📤 Submitting response for question:', state.currentQuestion.questionId);
+        const sessionData = await submitResponseApi(interviewId, requestData);
+        console.log('📥 Response submitted. Next question:', sessionData.currentQuestion?.questionId || 'none');
+
+        if (sessionData.status === 'COMPLETED' || !sessionData.currentQuestion) {
+          console.log('🏁 Last question answered. Preparing closing message...');
+          setState(prev => ({ ...prev, session: sessionData, currentQuestion: null, currentTranscript: '', phase: 'closing', isLoading: false }));
+          return;
+        }
+
+        questionStartTimeRef.current = new Date();
         setState(prev => ({
           ...prev,
           session: sessionData,
-          currentQuestion: null,
+          currentQuestion: sessionData.currentQuestion || null,
           currentTranscript: '',
-          phase: 'closing',
+          phase: 'speaking',
+          progress: { current: sessionData.progress.questionsAsked, total: sessionData.progress.totalQuestions },
           isLoading: false,
+          questionStartTime: new Date(),
         }));
-
-        // Don't call endInterview yet - let InterviewRoom handle it after closing message
-        return;
       }
-
-      // Move to next question
-      questionStartTimeRef.current = new Date();
-
-      setState(prev => ({
-        ...prev,
-        session: sessionData,
-        currentQuestion: sessionData.currentQuestion || null,
-        currentTranscript: '',
-        phase: 'speaking', // AI will speak next question
-        progress: {
-          current: sessionData.progress.questionsAsked,
-          total: sessionData.progress.totalQuestions,
-        },
-        isLoading: false,
-        questionStartTime: new Date(),
-      }));
     } catch (err: any) {
       console.error('Failed to submit response:', err);
-      setState(prev => ({
-        ...prev,
-        phase: 'listening', // Go back to listening phase
-        isLoading: false,
-        error: err.message || 'Failed to submit response',
-      }));
+      setState(prev => ({ ...prev, phase: 'listening', isLoading: false, error: err.message || 'Failed to submit response' }));
     }
   }, [interviewId, state.session, state.currentQuestion, state.currentTranscript]);
 

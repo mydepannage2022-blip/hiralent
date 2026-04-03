@@ -47,6 +47,7 @@ export default function AssignInterviewModal({
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>("");
+  const [softSkillWeight, setSoftSkillWeight] = useState(70);
 
   // Data state
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -159,6 +160,7 @@ export default function AssignInterviewModal({
       setSelectedJobId("");
       setSelectedApplicant(null);
       setScheduledDate("");
+      setSoftSkillWeight(70);
       setError(null);
     }
   }, [open]);
@@ -177,13 +179,24 @@ export default function AssignInterviewModal({
         applicationId: selectedApplicant.application_id,
         jobId: selectedJobId,
         scheduledDate: new Date(scheduledDate).toISOString(),
+        softSkillWeight,
       };
 
       await assignInterview(payload);
       onSuccess?.();
       onClose();
-    } catch (err) {
-      // Error is handled by the hook
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error || err?.message || '';
+      if (status === 409 || message.includes('already assigned')) {
+        setError('This candidate already has an interview assigned for this job.');
+      } else if (status === 404 || message.includes('not found')) {
+        setError('Application or candidate not found. Please refresh and try again.');
+      } else if (message.includes('does not match') || message.includes('does not belong')) {
+        setError('The selected candidate does not match this job.');
+      } else {
+        setError('Failed to assign interview. Please try again.');
+      }
     }
   };
 
@@ -202,7 +215,7 @@ export default function AssignInterviewModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[11000] flex items-center justify-center p-4"
+          className="fixed inset-0 z-11000 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -225,7 +238,7 @@ export default function AssignInterviewModal({
             className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-[0_24px_80px_rgba(15,23,42,0.55)] border border-slate-200/80"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] px-6 py-4 text-white">
+            <div className="bg-[#005DDC] px-6 py-4 text-white">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
@@ -256,7 +269,7 @@ export default function AssignInterviewModal({
               {/* Error */}
               {(error || assignError) && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{error || assignError?.message || "An error occurred"}</span>
                 </div>
               )}
@@ -271,7 +284,7 @@ export default function AssignInterviewModal({
                   value={selectedJobId}
                   onChange={(e) => setSelectedJobId(e.target.value)}
                   disabled={loadingJobs}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#001F3F] focus:ring-1 focus:ring-[#001F3F] transition-colors disabled:bg-gray-50"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#005DDC] focus:ring-1 focus:ring-[#005DDC] transition-colors disabled:bg-gray-50"
                 >
                   <option value="">
                     {loadingJobs ? "Loading jobs..." : "Select a job..."}
@@ -305,7 +318,7 @@ export default function AssignInterviewModal({
                     setSelectedApplicant(applicant || null);
                   }}
                   disabled={!selectedJobId || loadingApplicants}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#001F3F] focus:ring-1 focus:ring-[#001F3F] transition-colors disabled:bg-gray-50"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#005DDC] focus:ring-1 focus:ring-[#005DDC] transition-colors disabled:bg-gray-50"
                 >
                   <option value="">
                     {!selectedJobId
@@ -337,11 +350,36 @@ export default function AssignInterviewModal({
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   min={getMinDate()}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#001F3F] focus:ring-1 focus:ring-[#001F3F] transition-colors"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#005DDC] focus:ring-1 focus:ring-[#005DDC] transition-colors"
                 />
                 <p className="mt-1.5 text-xs text-gray-500">
                   The candidate will be notified about this interview time.
                 </p>
+              </div>
+
+              {/* Question Distribution */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Question Distribution
+                </label>
+                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                  <span className="text-blue-600">Soft Skills {softSkillWeight}%</span>
+                  <span className="text-gray-500">Technical {100 - softSkillWeight}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={softSkillWeight}
+                  onChange={(e) => setSoftSkillWeight(Number(e.target.value))}
+                  className="w-full accent-[#005DDC] cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
               </div>
 
               {/* Actions */}
@@ -361,7 +399,7 @@ export default function AssignInterviewModal({
                     !selectedApplicant ||
                     !scheduledDate
                   }
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-[#001F3F] rounded-xl hover:bg-[#003366] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-[#005DDC] rounded-xl hover:bg-[#004EB7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isAssigning ? (
                     <>

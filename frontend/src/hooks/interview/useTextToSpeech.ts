@@ -1,221 +1,203 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef, RefObject } from 'react';
 
-interface TextToSpeechState {
+interface UseTextToSpeechReturn {
   isSpeaking: boolean;
-  isPaused: boolean;
   isSupported: boolean;
-  voices: SpeechSynthesisVoice[];
-  selectedVoice: SpeechSynthesisVoice | null;
-  rate: number;
-  pitch: number;
-}
-
-interface UseTextToSpeechReturn extends TextToSpeechState {
   speak: (text: string) => Promise<void>;
-  pause: () => void;
-  resume: () => void;
   cancel: () => void;
-  setVoice: (voice: SpeechSynthesisVoice) => void;
-  setRate: (rate: number) => void;
-  setPitch: (pitch: number) => void;
+  prewarmAudio: (text: string) => void;
 }
 
-export function useTextToSpeech(): UseTextToSpeechReturn {
-  const [state, setState] = useState<TextToSpeechState>({
-    isSpeaking: false,
-    isPaused: false,
-    isSupported: false,
-    voices: [],
-    selectedVoice: null,
-    rate: 0.9,  // Slightly slower for natural sound
-    pitch: 1.1, // Slightly higher for warmer tone
-  });
-
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+export function useTextToSpeech(
+  audioContextRef?: RefObject<AudioContext | null>,
+  destinationRef?: RefObject<MediaStreamAudioDestinationNode | null>,
+): UseTextToSpeechReturn {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const resolveRef = useRef<(() => void) | null>(null);
-  const rejectRef = useRef<((reason?: any) => void) | null>(null);
+  // Cache pre-fetched blob URLs by text so first TTS plays instantly
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
 
-  // Check browser support and load voices
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      setState(prev => ({ ...prev, isSupported: false }));
-      return;
+  const cancel = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current = null;
     }
-
-    setState(prev => ({ ...prev, isSupported: true }));
-
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices.length > 0) {
-        const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
-
-        // Score voices to find the most natural-sounding one
-        const scoredVoices = englishVoices.map(voice => {
-          let score = 0;
-          const name = voice.name.toLowerCase();
-
-          // Prefer female voices (often sound more natural)
-          const femaleNames = ['samantha', 'karen', 'victoria', 'susan', 'zira',
-                               'hazel', 'fiona', 'moira', 'tessa', 'ava', 'allison'];
-          if (femaleNames.some(fn => name.includes(fn))) score += 10;
-          if (name.includes('female')) score += 8;
-
-          // Prefer neural/natural/premium voices
-          if (name.includes('neural') || name.includes('natural')) score += 15;
-          if (name.includes('premium') || name.includes('enhanced')) score += 12;
-
-          // Prefer US English
-          if (voice.lang === 'en-US') score += 3;
-
-          // Avoid robotic-sounding voices
-          if (name.includes('david') || name.includes('mark')) score -= 2;
-
-          return { voice, score };
-        });
-
-        scoredVoices.sort((a, b) => b.score - a.score);
-        const bestVoice = scoredVoices[0]?.voice || englishVoices[0] || availableVoices[0];
-
-        setState(prev => ({
-          ...prev,
-          voices: availableVoices,
-          selectedVoice: prev.selectedVoice || bestVoice,
-        }));
-      }
-    };
-
-    // Load voices immediately
-    loadVoices();
-
-    // Some browsers load voices asynchronously
-    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-
-    return () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-    };
+    if (resolveRef.current) {
+      resolveRef.current();
+      resolveRef.current = null;
+    }
+    setIsSpeaking(false);
+    // Also cancel any Web Speech API fallback that may be running
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }, []);
 
-  // Speak text
-  const speak = useCallback((text: string): Promise<void> => {
+  // ── Backend TTS via Google Translate proxy ──────────────────────────────────
+  const speakWithBackend = useCallback(async (text: string): Promise<void> => {
+    // Use pre-fetched cached blob URL if available (avoids network latency on first play)
+    const cached = audioCacheRef.current.get(text);
+    let url: string;
+
+    if (cached) {
+      // Remove from cache — blob URLs are one-time use (will be revoked on finish)
+      audioCacheRef.current.delete(text);
+      url = cached;
+    } else {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text }),
+        }
+      );
+      if (!response.ok) throw new Error(`TTS ${response.status}`);
+      const blob = await response.blob();
+      url = URL.createObjectURL(blob);
+    }
+    const audio = new Audio();
+    audioRef.current = audio;
+
+    // Route through AudioContext so the AI voice is captured in the recording
+    const audioCtx = audioContextRef?.current;
+    const destination = destinationRef?.current;
+    if (audioCtx && destination) {
+      // Resume context if suspended (browser autoplay policy)
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      const source = audioCtx.createMediaElementSource(audio);
+      source.connect(destination);          // → MediaRecorder stream
+      source.connect(audioCtx.destination); // → speakers
+    }
+
+    audio.src = url;
+
+    return new Promise<void>((resolve) => {
+      resolveRef.current = resolve;
+
+      const finish = () => {
+        URL.revokeObjectURL(url);
+        setIsSpeaking(false);
+        resolveRef.current = null;
+        resolve();
+      };
+
+      audio.onended = finish;
+      audio.onerror = (e) => { console.error('[TTS] audio.onerror', e); finish(); };
+
+      setIsSpeaking(true);
+      audio.play().catch((e) => { console.error('[TTS] audio.play() failed:', e); finish(); });
+    });
+  }, [audioContextRef, destinationRef]);
+
+  // ── Web Speech API fallback ─────────────────────────────────────────────────
+  const speakWithSpeechSynthesis = useCallback((text: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      if (!state.isSupported || !window.speechSynthesis) {
-        reject(new Error('Speech synthesis not supported'));
+      if (typeof window === 'undefined' || !window.speechSynthesis) {
+        resolve();
         return;
       }
 
-      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
-
       const utterance = new SpeechSynthesisUtterance(text);
-      utteranceRef.current = utterance;
-      resolveRef.current = resolve;
-      rejectRef.current = reject;
 
-      // Set voice settings
-      if (state.selectedVoice) {
-        utterance.voice = state.selectedVoice;
-      }
-      utterance.rate = state.rate;
-      utterance.pitch = state.pitch;
+      // Pick best available English voice
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find((v) => /libby/i.test(v.name)) ||
+        voices.find((v) => v.lang === 'en-GB') ||
+        voices.find((v) => v.lang.startsWith('en'));
+      if (preferred) utterance.voice = preferred;
+      utterance.rate = 0.88;
 
-      // Event handlers
-      utterance.onstart = () => {
-        setState(prev => ({ ...prev, isSpeaking: true, isPaused: false }));
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => { setIsSpeaking(false); resolve(); };
+      utterance.onerror = (e) => {
+        setIsSpeaking(false);
+        if (e.error === 'interrupted' || e.error === 'canceled') resolve();
+        else reject(new Error(e.error));
       };
 
-      utterance.onend = () => {
-        setState(prev => ({ ...prev, isSpeaking: false, isPaused: false }));
-        // Only resolve if we haven't already rejected
-        if (resolveRef.current) {
-          resolveRef.current();
-          resolveRef.current = null;
-          rejectRef.current = null;
-        }
-      };
-
-      utterance.onerror = (event) => {
-        setState(prev => ({ ...prev, isSpeaking: false, isPaused: false }));
-        // Reject the promise on error (triggers .catch())
-        if (rejectRef.current) {
-          // Don't log 'canceled' or 'interrupted' - these are usually user-initiated
-          if (event.error !== 'canceled' && event.error !== 'interrupted') {
-            console.error('Speech synthesis error:', event.error);
-          }
-          rejectRef.current(new Error(event.error));
-          rejectRef.current = null;
-          resolveRef.current = null;
-        }
-      };
-
-      utterance.onpause = () => {
-        setState(prev => ({ ...prev, isPaused: true }));
-      };
-
-      utterance.onresume = () => {
-        setState(prev => ({ ...prev, isPaused: false }));
-      };
-
-      // Start speaking
       window.speechSynthesis.speak(utterance);
     });
-  }, [state.isSupported, state.selectedVoice, state.rate, state.pitch]);
-
-  // Pause speech
-  const pause = useCallback(() => {
-    if (state.isSupported && window.speechSynthesis) {
-      window.speechSynthesis.pause();
-    }
-  }, [state.isSupported]);
-
-  // Resume speech
-  const resume = useCallback(() => {
-    if (state.isSupported && window.speechSynthesis) {
-      window.speechSynthesis.resume();
-    }
-  }, [state.isSupported]);
-
-  // Cancel speech
-  const cancel = useCallback(() => {
-    if (state.isSupported && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setState(prev => ({ ...prev, isSpeaking: false, isPaused: false }));
-    }
-  }, [state.isSupported]);
-
-  // Set voice
-  const setVoice = useCallback((voice: SpeechSynthesisVoice) => {
-    setState(prev => ({ ...prev, selectedVoice: voice }));
   }, []);
 
-  // Set rate (0.1 to 10)
-  const setRate = useCallback((rate: number) => {
-    setState(prev => ({ ...prev, rate: Math.max(0.1, Math.min(10, rate)) }));
-  }, []);
-
-  // Set pitch (0 to 2)
-  const setPitch = useCallback((pitch: number) => {
-    setState(prev => ({ ...prev, pitch: Math.max(0, Math.min(2, pitch)) }));
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (state.isSupported && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+  // ── Google Translate TTS fallback ──────────────────────────────────────────
+  const speakWithGoogleTranslate = useCallback(async (text: string): Promise<void> => {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts/fallback`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text }),
       }
-    };
-  }, [state.isSupported]);
+    );
+    if (!response.ok) throw new Error(`Fallback TTS ${response.status}`);
 
-  return {
-    ...state,
-    speak,
-    pause,
-    resume,
-    cancel,
-    setVoice,
-    setRate,
-    setPitch,
-  };
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio();
+    audioRef.current = audio;
+
+    const audioCtx = audioContextRef?.current;
+    const destination = destinationRef?.current;
+    if (audioCtx && destination) {
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      const source = audioCtx.createMediaElementSource(audio);
+      source.connect(destination);
+      source.connect(audioCtx.destination);
+    }
+
+    audio.src = url;
+
+    return new Promise<void>((resolve) => {
+      resolveRef.current = resolve;
+      const finish = () => { URL.revokeObjectURL(url); setIsSpeaking(false); resolveRef.current = null; resolve(); };
+      audio.onended = finish;
+      audio.onerror = () => finish();
+      setIsSpeaking(true);
+      audio.play().catch(() => finish());
+    });
+  }, [audioContextRef, destinationRef]);
+
+  // ── Pre-fetch TTS audio in the background so first play is instant ──────────
+  const prewarmAudio = useCallback((text: string): void => {
+    if (audioCacheRef.current.has(text)) return; // already cached
+    const token = localStorage.getItem('authToken');
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    })
+      .then((r) => (r.ok ? r.blob() : Promise.reject()))
+      .then((blob) => { audioCacheRef.current.set(text, URL.createObjectURL(blob)); })
+      .catch(() => {}); // silent — speak() will fetch normally if cache miss
+  }, []);
+
+  // ── Public speak: Unreal Speech → Google Translate → Web Speech API ─────────
+  const speak = useCallback(async (text: string): Promise<void> => {
+    try {
+      await speakWithBackend(text);
+    } catch {
+      try {
+        await speakWithGoogleTranslate(text);
+      } catch {
+        await speakWithSpeechSynthesis(text);
+      }
+    }
+  }, [speakWithBackend, speakWithGoogleTranslate, speakWithSpeechSynthesis]);
+
+  return { isSpeaking, isSupported: true, speak, cancel, prewarmAudio };
 }
