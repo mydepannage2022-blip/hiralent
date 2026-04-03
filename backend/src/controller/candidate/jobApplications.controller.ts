@@ -75,3 +75,4 @@ export async function getApplicationTimeline(req: any, res: any) {
     return res.status(status).json({ ok: false, error: String(e?.message ?? e) });
   }
 }
+

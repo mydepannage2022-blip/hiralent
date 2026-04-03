@@ -3,18 +3,26 @@ import { PrismaClient, DifficultyLevel } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// ── AI fallback config (mirrors seed-assessment-templates.ts) ─────────────────
+const AI_FALLBACK_BASE_URL = process.env.APP_URL || "http://localhost:5000";
+const MAX_QUESTIONS_PER_BATCH_CALL = 3;  // keeps Gemini from timing out
+const BATCH_CALL_TIMEOUT_MS = 300_000;   // 5 min — same as ai-question-generation.service.ts fix
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 5_000;
+// ─────────────────────────────────────────────────────────────────────────────
+
 function mapDifficultyToQuestionDifficulty(d: DifficultyLevel): string {
   switch (d) {
-    case "BEGINNER":
-      return "easy";
-    case "INTERMEDIATE":
-      return "medium";
+    case "BEGINNER":  return "easy";
+    case "INTERMEDIATE": return "medium";
     case "ADVANCED":
-    case "EXPERT":
-      return "hard";
-    default:
-      return "medium";
+    case "EXPERT":    return "hard";
+    default:          return "medium";
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Small DTO for frontend
@@ -22,25 +30,220 @@ export interface AttachedQuestionDTO {
   id: string;
   title: string;
   description: string;
-  problemStatement?: string; // ✅ NEW (useful for coding questions)
-  difficulty: string; // easy/medium/hard
-  type: string; // coding/mcq/debugging...
+  problemStatement?: string;
+  difficulty: string;
+  type: string;
   skillTags: string[];
   order: number;
   points: number;
   isReserve: boolean;
+  override?: any | null;
+}
 
-  override?: any | null; // ✅ NEW (Json override per assessment)
+// ── AI fallback helpers ───────────────────────────────────────────────────────
+
+/**
+ * Build a clean topic string for Gemini that will NOT bleed into skillTags.
+ * Format: "<skill_category> — <skills joined by comma>"
+ * Example: "Security — security, auth, jwt, vulnerability"
+ *
+ * Deliberately simple — Gemini uses this as a context hint, not as a tag list.
+ */
+function buildAITopic(
+  skillCategory: string,
+  skills: string[],
+  difficulty: string
+): string {
+  const skillHint = skills.slice(0, 4).join(", ");
+  // Use em-dash so Gemini clearly separates category from skills
+  return `${skillCategory} — ${skillHint} (${difficulty})`;
+}
+
+async function callGenerateBatch(
+  topic: string,
+  difficulty: "easy" | "medium" | "hard",
+  count: number,
+  attempt: number,
+  authToken: string,
+  excludeTitles: string[] = []  // ← NEW: Add this parameter
+): Promise<string[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BATCH_CALL_TIMEOUT_MS);
+
+  try {
+    // ← NEW: Add exclusion instruction to the request
+    const excludeInstruction = excludeTitles.length 
+      ? `\nIMPORTANT: Do NOT generate questions with these titles (already generated): ${excludeTitles.join(", ")}`
+      : "";
+
+    const response = await fetch(
+      `${AI_FALLBACK_BASE_URL}/api/questions/generate-batch`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          topics: [topic],
+          difficulty,
+          countPerTopic: count,
+          excludeTitles: excludeTitles,  // ← NEW: Send to backend
+          excludeInstruction: excludeInstruction,  // ← Optional: Add to prompt
+        }),
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error(
+        `    ❌ [AI FALLBACK attempt ${attempt}] HTTP ${response.status}: ${err}`
+      );
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      success: boolean;
+      questions?: Array<{ id: string }>;
+      error?: string;
+    };
+
+    if (!data.success || !data.questions?.length) {
+      console.error(
+        `    ❌ [AI FALLBACK attempt ${attempt}] No questions. Error: ${data.error ?? "unknown"}`
+      );
+      return [];
+    }
+
+    const ids = data.questions.map((q) => q.id);
+
+    // Approve so they're immediately usable in the assessment
+    await prisma.question.updateMany({
+      where: { id: { in: ids } },
+      data: { status: "approved" },
+    });
+
+    return ids;
+  } catch (err: any) {
+    clearTimeout(timer);
+    const reason = err?.name === "AbortError" ? "TIMEOUT" : err?.message;
+    console.error(`    ❌ [AI FALLBACK attempt ${attempt}] Failed: ${reason}`);
+    return [];
+  }
 }
 
 /**
- * Generate + attach questions from Wafaa's Question bank
- * - fills assessment_questions table
- * - updates employer_assessments.question_ids + auto_generated
- * - returns the attached questions (for UI)
+ * Generate `needed` questions via the existing /generate-batch endpoint,
+ * splitting into chunks of MAX_QUESTIONS_PER_BATCH_CALL with retries.
+ * 
+ * FIX: Track generated titles and pass exclusion list to Gemini
+ * so each chunk knows what titles to avoid.
+ */
+async function generateQuestionsViaAI(args: {
+  skillCategory: string;
+  skills: string[];
+  difficulty: "easy" | "medium" | "hard";
+  needed: number;
+  authToken: string;
+}): Promise<string[]> {
+  const { skillCategory, skills, difficulty, needed, authToken } = args;
+
+  const topic = buildAITopic(skillCategory, skills, difficulty);
+
+  console.log(
+    `  🤖 [AI FALLBACK] Generating ${needed} question(s) — topic: "${topic}"`
+  );
+  console.log(
+    `         Chunks of ≤${MAX_QUESTIONS_PER_BATCH_CALL}, ${MAX_RETRIES} retries each`
+  );
+
+  const collected: string[] = [];
+  const generatedTitles: string[] = []; // ← NEW: Track titles to avoid duplicates
+  let remaining = needed;
+  let chunkIndex = 0;
+
+  while (remaining > 0 && collected.length < needed) {
+    const chunkSize = Math.min(remaining, MAX_QUESTIONS_PER_BATCH_CALL);
+    chunkIndex++;
+
+    console.log(
+      `    📦 Chunk ${chunkIndex}: requesting ${chunkSize} question(s) (${remaining} remaining)`
+    );
+
+    let chunkIds: string[] = [];
+    let success = false;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
+      // ← NEW: Pass exclusion list to callGenerateBatch
+      chunkIds = await callGenerateBatch(
+        topic, 
+        difficulty, 
+        chunkSize, 
+        attempt, 
+        authToken,
+        generatedTitles  // ← Pass what we already generated
+      );
+
+      if (chunkIds.length > 0) {
+        success = true;
+        break;
+      }
+
+      if (attempt <= MAX_RETRIES) {
+        console.log(
+          `    🔄 Retrying chunk ${chunkIndex} in ${RETRY_DELAY_MS / 1000}s... (attempt ${attempt + 1}/${MAX_RETRIES + 1})`
+        );
+        await sleep(RETRY_DELAY_MS);
+      }
+    }
+
+    if (!success) {
+      console.warn(
+        `    ⚠️  Chunk ${chunkIndex} failed after all retries — continuing with what we have`
+      );
+    } else {
+      collected.push(...chunkIds);
+      
+      // ← NEW: After successful chunk, fetch titles and add to exclusion list
+      const newQuestions = await prisma.question.findMany({
+        where: { id: { in: chunkIds } },
+        select: { title: true },
+      });
+      generatedTitles.push(...newQuestions.map((q) => q.title));
+      
+      console.log(
+        `    ✅ Chunk ${chunkIndex}: got ${chunkIds.length} (total so far: ${collected.length})`
+      );
+    }
+
+    remaining -= chunkSize;
+    if (remaining > 0) await sleep(2_000);
+  }
+
+  const finalIds = Array.from(new Set(collected)).slice(0, needed);
+  console.log(
+    `  ${finalIds.length >= needed ? "✅" : "⚠️ "} [AI FALLBACK] Generated ${finalIds.length}/${needed} question(s)`
+  );
+
+  return finalIds;
+}
+
+// ── Public service functions ──────────────────────────────────────────────────
+
+/**
+ * Generate + attach questions from the Question bank.
+ * Falls back to AI generation (chunked, with retries) when the bank
+ * doesn't have enough questions for the assessment's skills + difficulty.
+ *
+ * Pass `authToken` (the company user's JWT) so the internal
+ * /generate-batch call can pass the checkAuth middleware.
  */
 export async function attachQuestionsToAssessment(
-  assessmentId: string
+  assessmentId: string,
+  authToken?: string  // ← NEW: pass req.headers.authorization token here
 ): Promise<{
   assessment_id: string;
   question_count: number;
@@ -51,65 +254,95 @@ export async function attachQuestionsToAssessment(
     where: { assessment_id: assessmentId },
   });
 
-  if (!assessment) {
-    throw new Error("Assessment not found");
-  }
+  if (!assessment) throw new Error("Assessment not found");
 
   const skills = assessment.extracted_skills ?? [];
   const totalQuestions = assessment.total_questions || 20;
-  const difficultyStr = mapDifficultyToQuestionDifficulty(assessment.difficulty);
+  const difficultyStr = mapDifficultyToQuestionDifficulty(
+    assessment.difficulty
+  ) as "easy" | "medium" | "hard";
 
-  // 2) Fetch candidate questions from Wafaa’s bank
+  // 2) Fetch candidates from DB
   const candidateQuestions = await prisma.question.findMany({
     where: {
       difficulty: difficultyStr,
       status: "approved",
-      ...(skills.length
-        ? {
-            skillTags: {
-              hasSome: skills,
-            },
-          }
-        : {}),
+      ...(skills.length ? { skillTags: { hasSome: skills } } : {}),
     },
-    take: totalQuestions * 3, // get more than we shuffle
+    take: totalQuestions * 4,
   });
 
-  if (candidateQuestions.length === 0) {
-    throw new Error(
-      `No questions found for difficulty=${difficultyStr} and skills=[${skills.join(
-        ", "
-      )}]`
+  // 3) Fisher–Yates shuffle
+  const pool = [...candidateQuestions];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  let selectedIds = pool.slice(0, totalQuestions).map((q) => q.id);
+
+  // 4) AI fallback when DB doesn't have enough ─────────────────────────────
+  if (selectedIds.length < totalQuestions && authToken) {
+    const needed = totalQuestions - selectedIds.length;
+
+    console.log(
+      `  ⚠️  Only ${selectedIds.length}/${totalQuestions} questions in DB for assessment ${assessmentId}. Requesting ${needed} from AI...`
+    );
+
+    // Derive a readable skill_category from the assessment's skill_category field
+    // (falls back to first skill tag if not set)
+    const skillCategory =
+      (assessment as any).skill_category ||
+      (skills.length > 0 ? skills[0] : "General");
+
+    const aiIds = await generateQuestionsViaAI({
+      skillCategory,
+      skills,
+      difficulty: difficultyStr,
+      needed,
+      authToken: authToken.replace(/^Bearer\s+/i, ""), // strip "Bearer " prefix if present
+    });
+
+    selectedIds = Array.from(new Set([...selectedIds, ...aiIds]));
+
+    if (selectedIds.length < totalQuestions) {
+      console.warn(
+        `  ⚠️  After AI fallback: ${selectedIds.length}/${totalQuestions} questions available for assessment ${assessmentId}.`
+      );
+    }
+  } else if (selectedIds.length < totalQuestions && !authToken) {
+    console.warn(
+      `  ⚠️  Only ${selectedIds.length}/${totalQuestions} questions found and no authToken provided — skipping AI fallback.`
     );
   }
 
-  // 3) Shuffle (Fisher–Yates)
-  for (let i = candidateQuestions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [candidateQuestions[i], candidateQuestions[j]] = [
-      candidateQuestions[j],
-      candidateQuestions[i],
-    ];
-  }
+  // 5) Load full question objects for the selected IDs
+  const selectedQuestions = await prisma.question.findMany({
+    where: { id: { in: selectedIds } },
+  });
 
-  const selected = candidateQuestions.slice(0, totalQuestions);
+  // Preserve the order of selectedIds
+  const orderedQuestions = selectedIds
+    .map((id) => selectedQuestions.find((q) => q.id === id))
+    .filter(Boolean) as typeof selectedQuestions;
 
-  // Payload we’ll return to frontend
-  const questionsPayload: AttachedQuestionDTO[] = selected.map((q, index) => ({
-    id: q.id,
-    title: q.title,
-    description: q.description,
-    problemStatement: q.problemStatement ?? undefined, // ✅ NEW
-    difficulty: q.difficulty,
-    type: q.type,
-    skillTags: q.skillTags,
-    order: index + 1,
-    points: 1,
-    isReserve: false,
-    override: null, // ✅ NEW
-  }));
+  const questionsPayload: AttachedQuestionDTO[] = orderedQuestions.map(
+    (q, index) => ({
+      id: q.id,
+      title: q.title,
+      description: q.description,
+      problemStatement: q.problemStatement ?? undefined,
+      difficulty: q.difficulty,
+      type: q.type,
+      skillTags: q.skillTags,
+      order: index + 1,
+      points: 1,
+      isReserve: false,
+      override: null,
+    })
+  );
 
-  // 4) Transaction: update AssessmentQuestion + EmployerAssessment.question_ids
+  // 6) Persist in transaction
   await prisma.$transaction(async (tx) => {
     await tx.assessmentQuestion.deleteMany({
       where: { assessment_id: assessmentId },
@@ -122,14 +355,14 @@ export async function attachQuestionsToAssessment(
         order: q.order,
         points: q.points,
         isReserve: q.isReserve,
-        override: null, // ✅ NEW
+        override: null,
       })),
     });
 
     await tx.employerAssessment.update({
       where: { assessment_id: assessmentId },
       data: {
-        question_ids: selected.map((q) => q.id),
+        question_ids: orderedQuestions.map((q) => q.id),
         auto_generated: true,
       },
     });
@@ -137,14 +370,14 @@ export async function attachQuestionsToAssessment(
 
   return {
     assessment_id: assessmentId,
-    question_count: selected.length,
+    question_count: questionsPayload.length,
     questions: questionsPayload,
   };
 }
 
 /**
  * Load already attached questions (no generation, just select + join).
- * ✅ Applies override fallback so UI can display customized text directly.
+ * Applies override fallback so UI can display customized text directly.
  */
 export async function getQuestionsForAssessment(
   assessmentId: string
@@ -157,12 +390,12 @@ export async function getQuestionsForAssessment(
 
   return rows.map((row, index) => {
     const o: any = row.override ?? {};
-
     return {
       id: row.question.id,
       title: o.title ?? row.question.title,
       description: o.description ?? row.question.description,
-      problemStatement: o.problemStatement ?? row.question.problemStatement ?? undefined,
+      problemStatement:
+        o.problemStatement ?? row.question.problemStatement ?? undefined,
       difficulty: row.question.difficulty,
       type: row.question.type,
       skillTags: row.question.skillTags,
@@ -175,46 +408,40 @@ export async function getQuestionsForAssessment(
 }
 
 /**
- * ✅ Update per-assessment question override (does NOT modify global Question bank)
+ * Update per-assessment question override (does NOT modify global Question bank).
  * Used by: PATCH /api/employer-assessments/:assessment_id/questions/:question_id/override
- *
- * NOTE: This assumes AssessmentQuestion has an `id` primary key.
- * If your model uses a composite key, tell me and I’ll adapt this to @@unique([assessment_id, question_id]).
  */
 export async function updateAssessmentQuestionOverride(args: {
   company_id: string;
   assessment_id: string;
   question_id: string;
-  override: any; // Json
+  override: any;
 }) {
   const { company_id, assessment_id, question_id, override } = args;
 
-  // 1) Ownership check
   const assessment = await prisma.employerAssessment.findFirst({
     where: { assessment_id, company_id },
     select: { assessment_id: true },
   });
-
   if (!assessment) throw new Error("Assessment not found or forbidden");
 
-  // 2) Find join row
   const row = await prisma.assessmentQuestion.findFirst({
     where: { assessment_id, question_id },
     select: { id: true },
   });
-
   if (!row) throw new Error("Question not attached to this assessment");
 
-  // 3) Update override JSON
   return prisma.assessmentQuestion.update({
     where: { id: row.id },
     data: { override: override ?? null },
   });
 }
 
-//Actions Sur l'attach des questions pour l'assessment 
+/**
+ * Attach questions by explicit IDs (append or replace mode).
+ */
 export async function attachQuestionsByIdsToAssessment(args: {
-  company_id: string; 
+  company_id: string;
   assessment_id: string;
   question_ids: string[];
   mode?: "append" | "replace";
@@ -226,37 +453,28 @@ export async function attachQuestionsByIdsToAssessment(args: {
   const { assessment_id, mode = "append" } = args;
   const question_ids = (args.question_ids ?? []).filter(Boolean);
 
-  if (!question_ids.length) {
-    throw new Error("question_ids is required");
-  }
+  if (!question_ids.length) throw new Error("question_ids is required");
 
-  // Ensure assessment exists
   const assessment = await prisma.employerAssessment.findUnique({
     where: { assessment_id },
     select: { assessment_id: true },
   });
   if (!assessment) throw new Error("Assessment not found");
 
-  // Ensure all questions exist
   const found = await prisma.question.findMany({
     where: { id: { in: question_ids } },
     select: { id: true },
   });
   const foundIds = new Set(found.map((q) => q.id));
   const missing = question_ids.filter((id) => !foundIds.has(id));
-  if (missing.length) {
-    throw new Error(`Some questions not found: ${missing.join(", ")}`);
-  }
+  if (missing.length) throw new Error(`Some questions not found: ${missing.join(", ")}`);
 
   await prisma.$transaction(async (tx) => {
     if (mode === "replace") {
-      await tx.assessmentQuestion.deleteMany({
-        where: { assessment_id },
-      });
+      await tx.assessmentQuestion.deleteMany({ where: { assessment_id } });
 
       await tx.assessmentQuestion.createMany({
         data: question_ids.map((qid, idx) => ({
-          // if your schema requires id:
           id: crypto.randomUUID(),
           assessment_id,
           question_id: qid,
@@ -269,12 +487,8 @@ export async function attachQuestionsByIdsToAssessment(args: {
 
       await tx.employerAssessment.update({
         where: { assessment_id },
-        data: {
-          question_ids: question_ids,
-          auto_generated: false,
-        },
+        data: { question_ids, auto_generated: false },
       });
-
       return;
     }
 
@@ -289,19 +503,20 @@ export async function attachQuestionsByIdsToAssessment(args: {
     const toAdd = question_ids.filter((id) => !existingIds.has(id));
 
     if (!toAdd.length) {
-      // Still keep question_ids in sync
-      const currentIds = existingRows.map((r) => r.question_id);
       await tx.employerAssessment.update({
         where: { assessment_id },
         data: {
-          question_ids: currentIds,
+          question_ids: existingRows.map((r) => r.question_id),
           auto_generated: false,
         },
       });
       return;
     }
 
-    const maxOrder = existingRows.reduce((m, r) => Math.max(m, r.order ?? 0), 0);
+    const maxOrder = existingRows.reduce(
+      (m, r) => Math.max(m, r.order ?? 0),
+      0
+    );
 
     await tx.assessmentQuestion.createMany({
       data: toAdd.map((qid, i) => ({
@@ -315,30 +530,21 @@ export async function attachQuestionsByIdsToAssessment(args: {
       })),
     });
 
-    // sync employerAssessment.question_ids
-    const updatedIds = [...existingRows.map((r) => r.question_id), ...toAdd];
-
     await tx.employerAssessment.update({
       where: { assessment_id },
       data: {
-        question_ids: updatedIds,
+        question_ids: [...existingRows.map((r) => r.question_id), ...toAdd],
         auto_generated: false,
       },
     });
   });
 
-  // Return updated attached questions for UI
   const questions = await getQuestionsForAssessment(assessment_id);
-
-  return {
-    assessment_id,
-    attached_count: question_ids.length,
-    questions,
-  };
+  return { assessment_id, attached_count: question_ids.length, questions };
 }
 
 /**
- * Detach a question from an assessment (does NOT delete the Question globally)
+ * Detach a question from an assessment (does NOT delete the Question globally).
  */
 export async function detachQuestionFromAssessment(args: {
   assessment_id: string;
@@ -356,12 +562,8 @@ export async function detachQuestionFromAssessment(args: {
     const deleted = await tx.assessmentQuestion.deleteMany({
       where: { assessment_id, question_id },
     });
+    if (!deleted.count) throw new Error("Question not attached to this assessment");
 
-    if (!deleted.count) {
-      throw new Error("Question not attached to this assessment");
-    }
-
-    // Re-pack orders
     const rows = await tx.assessmentQuestion.findMany({
       where: { assessment_id },
       orderBy: { order: "asc" },
@@ -388,7 +590,7 @@ export async function detachQuestionFromAssessment(args: {
 }
 
 /**
- * Reorder questions for an assessment
+ * Reorder questions for an assessment.
  */
 export async function reorderAssessmentQuestions(args: {
   assessment_id: string;
@@ -396,7 +598,6 @@ export async function reorderAssessmentQuestions(args: {
 }): Promise<{ assessment_id: string; questions: AttachedQuestionDTO[] }> {
   const { assessment_id } = args;
   const ordered = (args.ordered_question_ids ?? []).filter(Boolean);
-
   if (!ordered.length) throw new Error("ordered_question_ids is required");
 
   const assessment = await prisma.employerAssessment.findUnique({
@@ -412,27 +613,21 @@ export async function reorderAssessmentQuestions(args: {
     });
 
     const existingIds = new Set(existing.map((r) => r.question_id));
-
-    // Ensure ordered contains only attached questions
     const invalid = ordered.filter((qid) => !existingIds.has(qid));
     if (invalid.length) {
       throw new Error(`Some questions are not attached: ${invalid.join(", ")}`);
     }
 
-    // Optional: if ordered doesn't include all, append the missing at end
-    const missing = existing
+    const missingFromOrdered = existing
       .map((r) => r.question_id)
       .filter((qid) => !ordered.includes(qid));
 
-    const finalOrder = [...ordered, ...missing];
-
+    const finalOrder = [...ordered, ...missingFromOrdered];
     const byQid = new Map(existing.map((r) => [r.question_id, r.id]));
 
     for (let i = 0; i < finalOrder.length; i++) {
-      const qid = finalOrder[i];
-      const id = byQid.get(qid);
+      const id = byQid.get(finalOrder[i]);
       if (!id) continue;
-
       await tx.assessmentQuestion.update({
         where: { id },
         data: { order: i + 1 },
@@ -441,14 +636,10 @@ export async function reorderAssessmentQuestions(args: {
 
     await tx.employerAssessment.update({
       where: { assessment_id },
-      data: {
-        question_ids: finalOrder,
-        auto_generated: false,
-      },
+      data: { question_ids: finalOrder, auto_generated: false },
     });
   });
 
   const questions = await getQuestionsForAssessment(assessment_id);
-
   return { assessment_id, questions };
 }

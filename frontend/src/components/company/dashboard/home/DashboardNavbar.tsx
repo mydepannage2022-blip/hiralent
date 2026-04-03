@@ -11,55 +11,9 @@ import { usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
 import NotificationModal from '../notifications/NotificationModal';
 import { Notification } from '../notifications/NotificationItem';
+import { useNotifications, useMarkNotificationRead } from '@/src/lib/notifications/notifications.queries';
+import { companyTagFromType, formatTime } from '@/src/lib/notifications/notifications.ui';
 
-// Example notifications
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title:
-      'Prime Works Ltd has started following your profile. Visit their page to see their latest job postings and company updates just now.',
-    tag: 'Message',
-    time: '22:14 AM',
-    read: false,
-    starred: true
-  },
-  {
-    id: '2',
-    title: 'Your resume has been successfully submitted for Tech Nova Inc.check out your dashboard for real time status updates...',
-    tag: 'Meeting',
-    time: '22:14 AM',
-    read: false
-  },
-  {
-    id: '3',
-    title: 'Your profile is almost complete! Add a few more details to increase your visibility to employers and get personalized job suggestions.',
-    tag: 'Message',
-    time: '22:14 AM',
-    read: true
-  },
-  {
-    id: '4',
-    title: 'Your resume has been successfully submitted for the ‘Product Design’ position at Global Crop Solution. We’ll keep you updated on the next steps.',
-    tag: 'Meeting',
-    time: '22:14 AM',
-    read: true
-  },
-  {
-    id: '5',
-    title: `Google's service, offered free of charge, instantly translates words, phrases, and web pages between English and over 100 other languages.`,
-    tag: 'Message',
-    time: '22:14 AM',
-    read: true
-  },
-  {
-    id: '6',
-    title: 'Exciting opportunity! A ‘Digital Marketing Specialist’ role has just been posted at Bright Solutions Group. Check your dashboard for more  information and apply now.',
-    tag: 'New Applications',
-    time: '22:14 AM',
-    read: false,
-    starred: true
-  },
-];
 
 interface DashboardNavbarProps {
   isMobileMenuOpen?: boolean;
@@ -74,7 +28,20 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const { profileData } = useProfile();
   const pathname = usePathname();
 
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+const { data } = useNotifications('COMPANY', { limit: 100 });
+const markRead = useMarkNotificationRead('COMPANY');
+
+const notifications: Notification[] = (data?.items ?? []).map((n) => ({
+  id: n.notification_id,
+  title: n.title,
+  message: n.message,
+  tag: companyTagFromType(n.type),
+  time: formatTime(n.created_at),
+  read: !!n.read_at,
+  starred: !!n.starred_at,
+}));
+
+const unreadCount = notifications.filter((n) => !n.read).length;
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => e.preventDefault();
@@ -99,8 +66,20 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     );
   const pathnameSafe = pathname ?? "";
   const getPageInfo = () => {
+
+const candidateDetailsRegex =
+  /^\/company\/dashboard\/candidates(\/external)?\/[0-9a-fA-F-]{36}$/;
+
+if (candidateDetailsRegex.test(pathnameSafe)) {
+  return {
+    title: "Candidate Profile",
+    description: "Review candidate details.",
+  };
+}
+const assessmentDetailsRegex =
+  /^\/company\/dashboard\/assessmentManagement\/[0-9a-fA-F-]{36}$/;
       // ✅ dynamic details route
-  if (pathnameSafe.startsWith("/company/dashboard/assessmentManagement/")) {
+  if (assessmentDetailsRegex.test(pathnameSafe)) {
     return {
       title: "Assessment Details",
       description: "Configure and manage questions",
@@ -120,6 +99,13 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       description: "View and manage case details and documents",
     };
   }
+  // ✅ Assessment Templates page (must be BEFORE assessmentManagement/* rule)
+if (pathnameSafe === "/company/dashboard/assessmentManagement/templates") {
+  return {
+    title: "Assessment Templates",
+    description: "Browse and reuse ready-made assessment templates.",
+  };
+}
     switch (pathname) {
       case '/company/dashboard/employer-profile':
         return { title: 'Profile', description: 'Updating your information will offer you the most relevent content' };
@@ -136,10 +122,10 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       case "/company/dashboard/candidates/internal":
         return { title: "Candidates", description: "Ranked internal candidates (registered users)" };
       case "/company/dashboard/candidates/external":
-        return { title: "Candidates", description: "Ranked external candidates (scraped sources)" };
+        return { title: "Candidates", description: "External candidates (scraped sources)" };
       
      case '/company/dashboard/notifications':
-        return { title: 'Notifications', description: 'Updating your information will offer you the most relevent content' };
+        return { title: 'Notifications', description: 'Stay updated with important alerts and updates' };
       case '/company/dashboard/manage-hiring':
         return { title: 'Manage Hiring', description: 'Updating your information will offer you the most relevent content' };
       case '/company/dashboard/messages':
@@ -205,20 +191,24 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             className="cursor-pointer hover:text-gray-600 transition-colors relative"
           >
             <IoIosNotificationsOutline className="text-2xl sm:text-3xl lg:text-4xl xl:text-2xl" />
-            {notifications.some((n) => !n.read) && (
-              <span className="absolute -top-1 -right-1 bg-[#005DDC] text-white text-[10px] rounded-full px-1.5 py-[1px]">
-                {notifications.filter((n) => !n.read).length}
-              </span>
-            )}
+{unreadCount > 0 && (
+  <span className="absolute -top-1 -right-1 bg-[#005DDC] text-white text-[10px] rounded-full px-1.5 py-[1px]">
+    {unreadCount}
+  </span>
+)}
           </button>
 
           {/* Notification Modal */}
-          <NotificationModal
-            notifications={notifications}
-            onUpdate={setNotifications}
-            isOpen={isNotifOpen}
-            onClose={() => setIsNotifOpen(false)}
-          />
+
+{isNotifOpen && (
+  <NotificationModal
+    notifications={notifications}
+    onUpdate={() => {}}
+    isOpen={isNotifOpen}
+    onClose={() => setIsNotifOpen(false)}
+    onMarkRead={(id) => markRead.mutateAsync({ notificationId: id })}
+  />
+)}
         </div>
 
         {/* Profile */}

@@ -15,6 +15,8 @@ import {
   uniqNormalized,
 } from "../../utils/eligibility.util";
 
+const ELIGIBILITY_SCORE_THRESHOLD = 60;
+
 export class CandidateJobsService {
   constructor(private prisma: PrismaClient) {}
 
@@ -54,28 +56,36 @@ export class CandidateJobsService {
       };
     }
 
-    const [profile, completeness] = await Promise.all([
-      this.prisma.candidateProfile.findUnique({
-        where: { candidate_id: candidateId },
-        select: {
-          candidate_id: true,
-          resume_url: true,
-          resume_application_url: true, // ✅ add
-          headline: true,
-          profile_picture_url: true,
-          skills: true,
-          preferred_locations: true, // ✅ add
-          about_me: true,
-        },
-      }),
-      this.prisma.profileCompleteness.findUnique({
-        where: { candidate_id: candidateId },
-        select: { overall_score: true },
-      }),
-    ]);
+const [profile, completeness, skillRows] = await Promise.all([
+  this.prisma.candidateProfile.findUnique({
+    where: { candidate_id: candidateId },
+    select: {
+      candidate_id: true,
+      resume_url: true,
+      resume_application_url: true,
+      headline: true,
+      profile_picture_url: true,
+      skills: true,
+      preferred_locations: true,
+      about_me: true,
+    },
+  }),
+  this.prisma.profileCompleteness.findUnique({
+    where: { candidate_id: candidateId },
+    select: { overall_score: true },
+  }),
+  this.prisma.candidateSkill.findMany({
+    where: { candidate_id: candidateId },
+    select: { skill_name: true },
+  }),
+]);
 
-    const reasons: string[] = [];
-    const candidateSkills = uniqNormalized(safeArray(profile?.skills));
+const reasons: string[] = [];
+
+// Merge des deux sources — identique au worker Python
+const profileSkills = uniqNormalized(safeArray(profile?.skills));
+const tableSkills = skillRows.map((s) => normalize(s.skill_name));
+const candidateSkills = [...new Set([...profileSkills, ...tableSkills])];
 
     // 1) Profile completeness / min score
     const profileScore = completeness?.overall_score;
@@ -104,8 +114,6 @@ export class CandidateJobsService {
       headline: () => !!profile?.headline,
       profile_picture_url: () => !!profile?.profile_picture_url,
       about_me: () => !!profile?.about_me,
-
-      // ✅ add
       skills: () => Array.isArray(profile?.skills) && profile.skills.length > 0,
       preferred_locations: () => hasPreferredLocations(),
     };
@@ -113,24 +121,55 @@ export class CandidateJobsService {
     for (const f of requiredFields) {
       const key = normalize(f);
       const checker = fieldMap[key];
-
       if (!checker) {
-        // unknown rule => safer to block
-        // (tu peux laisser ça: si un nouveau champ arrive, on veut le voir)
         missingFields.push(f);
         reasons.push(`UNKNOWN_REQUIRED_FIELD:${f}`);
         continue;
       }
-
       if (!checker()) missingFields.push(f);
     }
 
     reasons.push(...buildMissingFieldReasons(missingFields));
 
-    // 3) Skills gate
+    // 3) Skills gate — LLM semantic check
     const reqSkills = uniqNormalized(safeArray(job.required_skills));
-    const missingSkills = missing(reqSkills, candidateSkills);
-    reasons.push(...buildMissingSkillReasons(missingSkills));
+    let missingSkills: string[] = [];
+
+    if (reqSkills.length > 0) {
+      try {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const model = genAI.getGenerativeModel({
+          model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+          generationConfig: { temperature: 0.2, maxOutputTokens: 300 },
+        });
+
+        const prompt = `You are a technical recruiter evaluating candidate skills.
+Required skills: ${JSON.stringify(reqSkills)}
+Candidate skills: ${JSON.stringify(candidateSkills)}
+Be flexible: "sentence-transformers" covers "embedding", "qdrant" covers "vector store", "fastapi" covers "rest api".
+Only mark missing if candidate has NO related knowledge.
+Respond ONLY with valid JSON: {"truly_missing": ["skill1"]}
+If nothing missing: {"truly_missing": []}`;
+
+        const result = await model.generateContent(prompt);
+        let text = result.response.text().trim();
+        if (text.startsWith("```")) {
+          text = text.split("```")[1];
+          if (text.startsWith("json")) text = text.slice(4);
+          text = text.trim();
+        }
+        const parsed = JSON.parse(text);
+        missingSkills = Array.isArray(parsed.truly_missing) ? parsed.truly_missing : [];
+      } catch {
+        // Fallback: exact match
+        missingSkills = missing(reqSkills, candidateSkills);
+      }
+
+      if (missingSkills.length > 0) {
+        reasons.push(...buildMissingSkillReasons(missingSkills));
+      }
+    }
 
     const eligible = reasons.length === 0;
 
@@ -146,6 +185,10 @@ export class CandidateJobsService {
 
   // ---------------------------------------------
   // B) Jobs list (ACTIVE only)
+  // Same eligibility logic as Recommended:
+  //   - job has match_score >= 60 in DB → eligible directly (no LLM)
+  //   - job has match_score < 60 in DB → LLM decides
+  //   - job has NO match_score in DB → LLM decides from scratch
   // ---------------------------------------------
   async getJobs(
     candidateId: string,
@@ -190,11 +233,51 @@ export class CandidateJobsService {
       }),
     ]);
 
+    // ── Fetch match scores for all jobs in this page ──
+    const jobIds = jobs.map((j) => j.job_id);
+    const recommendations = await this.prisma.jobRecommendation.findMany({
+      where: {
+        candidate_id: candidateId,
+        job_id: { in: jobIds },
+      },
+      select: {
+        job_id: true,
+        match_score: true,
+        missing_skills: true,
+        is_eligible: true,
+      },
+    });
+    const recMap = new Map(recommendations.map((r) => [r.job_id, r]));
+
+    // ── Build items with consistent eligibility ──
     const items: JobListItemDTO[] = await Promise.all(
-      jobs.map(async (j) => ({
-        ...j,
-        eligibility: await this.computeEligibility(candidateId, j.job_id),
-      }))
+      jobs.map(async (j) => {
+        const rec = recMap.get(j.job_id);
+        const score = rec?.match_score ?? 0;
+
+        // ── Job exists in recommendations with score >= threshold → eligible directly ──
+        if (rec && score >= ELIGIBILITY_SCORE_THRESHOLD) {
+          return {
+            ...j,
+            match_score: score,
+            eligibility: {
+              eligible: true,
+              reasons: [],
+              missingSkills: safeArray(rec.missing_skills),
+              missingFields: [],
+            },
+          };
+        }
+
+        // ── Job exists in recommendations but score < threshold → LLM decides ──
+        // ── Job has NO recommendation at all → LLM decides from scratch ──
+        const eligibility = await this.computeEligibility(candidateId, j.job_id);
+        return {
+          ...j,
+          match_score: score > 0 ? score : undefined,
+          eligibility,
+        };
+      })
     );
 
     const filtered =
@@ -254,19 +337,24 @@ export class CandidateJobsService {
 
     let items: JobListItemDTO[] = recs
       .filter((r) => r.job.status === "ACTIVE")
-      .map((r) => ({
-        ...r.job,
-        match_score: r.match_score,
-        eligibility: {
-          eligible: r.is_eligible,
-          reasons: safeArray(r.reason_codes),
-          missingSkills: safeArray(r.missing_skills),
-          missingFields: safeArray(r.reason_codes)
-            .filter((x) => String(x).startsWith("MISSING_FIELD:"))
-            .map((x) => String(x).split(":")[1])
-            .filter(Boolean),
-        },
-      }));
+      .map((r) => {
+        const score = r.match_score ?? 0;
+        const isEligibleByScore = score >= ELIGIBILITY_SCORE_THRESHOLD;
+        const reasonCodes = isEligibleByScore ? [] : safeArray(r.reason_codes);
+        return {
+          ...r.job,
+          match_score: score,
+          eligibility: {
+            eligible: isEligibleByScore || r.is_eligible,
+            reasons: reasonCodes,
+            missingSkills: safeArray(r.missing_skills),
+            missingFields: reasonCodes
+              .filter((x) => String(x).startsWith("MISSING_FIELD:"))
+              .map((x) => String(x).split(":")[1])
+              .filter(Boolean),
+          },
+        };
+      });
 
     if (query.eligible !== undefined) {
       items = items.filter((x) => x.eligibility.eligible === query.eligible);

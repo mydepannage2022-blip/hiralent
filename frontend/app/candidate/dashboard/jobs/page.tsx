@@ -86,9 +86,8 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ✅ Keep page padding */}
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
+<div className="h-full bg-gray-50 overflow-hidden flex flex-col">
+  <div className="px-4 sm:px-6 lg:px-8 py-8 flex flex-col flex-1 overflow-hidden">
         {/* Tabs */}
         <div className="bg-white rounded-lg border border-gray-200 mb-6">
           <div className="flex items-center">
@@ -125,7 +124,7 @@ export default function JobsPage() {
         )}
 
         {/* ✅ Main layout: fixed height + right column scroll */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:h-[calc(100vh-220px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 overflow-hidden">
           {/* ✅ Desktop filters (sticky) */}
           <div className="hidden lg:block">
             <div className="sticky top-6">

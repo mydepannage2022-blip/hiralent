@@ -162,9 +162,6 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
             },
           });
 
-          // A6: Confirmation already sent by applyToJob(), so no need here.
-          // But if you want redundancy, you can also notify here.
-
           // Follow-up events (idempotent)
           if (computedTrigger === "INTERVIEW_REQUIRED") {
             await upsertOutbox(
@@ -185,7 +182,6 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
         // A4) STATUS TRANSITIONS + A6 NOTIFICATIONS
         // =========================================
         if (ev.type === JobApplicationEventType.INTERVIEW_REQUIRED) {
-          // idempotent status update
           if (app.status !== JobApplicationStatus.INTERVIEW_REQUIRED) {
             await tx.jobApplication.update({
               where: { application_id: app.application_id },
@@ -206,29 +202,15 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
               },
             });
 
-            // A6: Interview invitation
             await notifyCandidate({
               type: NotificationType.INTERVIEW_INVITE,
-              title: "Interview required 🎤",
-              message: `Next step for "${app.job.title}": interview required.`,
+              title: "Your profile scored well",
+              message: `Based on your match score for "${app.job.title}", you are likely to be invited to an interview. This is an automated signal — no recruiter has confirmed this yet.`,
               action_url: "/candidate/dashboard/applications",
               data: {
                 applicationId: app.application_id,
                 jobId: app.job_id,
                 trigger: "INTERVIEW_REQUIRED",
-              },
-            });
-
-            // A6: status change (optional if you want both)
-            await notifyCandidate({
-              type: NotificationType.APPLICATION_STATUS_CHANGED,
-              title: "Application status updated",
-              message: `Your application for "${app.job.title}" is now: INTERVIEW_REQUIRED.`,
-              action_url: "/candidate/dashboard/applications",
-              data: {
-                applicationId: app.application_id,
-                jobId: app.job_id,
-                status: "INTERVIEW_REQUIRED",
               },
             });
           }
@@ -255,29 +237,15 @@ export async function runJobApplicationOutboxOnce(limit = 50) {
               },
             });
 
-            // A6: Assessment invitation
             await notifyCandidate({
               type: NotificationType.ASSESSMENT_INVITE,
-              title: "Skills assessment required 🧠",
-              message: `Next step for "${app.job.title}": complete the skills assessment.`,
+              title: "You may be invited to an assessment",
+              message: `Your profile score for "${app.job.title}" suggests you could be a good fit. You are likely to receive a skills assessment invitation — completing it improves your chances but is not a guarantee.`,
               action_url: "/candidate/dashboard/skills-assessment",
               data: {
                 applicationId: app.application_id,
                 jobId: app.job_id,
                 trigger: "ASSESSMENT_REQUIRED",
-              },
-            });
-
-            // A6: status change (optional)
-            await notifyCandidate({
-              type: NotificationType.APPLICATION_STATUS_CHANGED,
-              title: "Application status updated",
-              message: `Your application for "${app.job.title}" is now: ASSESSMENT_REQUIRED.`,
-              action_url: "/candidate/dashboard/applications",
-              data: {
-                applicationId: app.application_id,
-                jobId: app.job_id,
-                status: "ASSESSMENT_REQUIRED",
               },
             });
           }

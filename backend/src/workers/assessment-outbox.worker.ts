@@ -30,42 +30,57 @@ async function processOutbox(sessionId: string) {
 
   // ✅ 3) Generate Gemini insight
   await enqueueAssessmentInsight({ sessionId });
-    // ✅ 4) Notify company: candidate completed assessment
-  const session = await prisma.candidateAssessmentSession.findUnique({
-    where: { session_id: sessionId },
-    select: {
-      session_id: true,
-      candidate_id: true,
-      assessment_id: true,
-      assessment: {
-        select: {
-          title: true,
-          company_id: true,
-          job_id: true,
+    
+// ✅ 4) Notify company: candidate completed assessment
+const session = await prisma.candidateAssessmentSession.findUnique({
+  where: { session_id: sessionId },
+  select: {
+    session_id: true,
+    candidate_id: true,
+    assessment_id: true,
+    assessment: {
+      select: {
+        title: true,
+        company_id: true,
+        job_id: true,
+        job: {
+          select: { title: true },
         },
       },
     },
-  });
+  },
+});
 
-  if (session?.assessment?.company_id) {
-    await prisma.notification.create({
+if (session?.assessment?.company_id) {
+  // Fetch candidate name
+  const candidateUser = await prisma.user.findUnique({
+    where: { user_id: session.candidate_id },
+    select: { full_name: true },
+  });
+  const candidateName = candidateUser?.full_name ?? "A candidate";
+  const assessmentTitle = session.assessment.title;
+  const jobTitle = session.assessment.job?.title;
+
+  await prisma.notification.create({
+    data: {
+      audience: NotificationAudience.COMPANY,
+      recipient_id: session.assessment.company_id,
+      type: NotificationType.APPLICATION_STATUS_CHANGED,
+      title: `Assessment completed: ${assessmentTitle}`,
+      message: jobTitle
+        ? `${candidateName} completed the assessment for the "${jobTitle}" position.`
+        : `${candidateName} completed the "${assessmentTitle}" assessment.`,
+      action_url: `/company/dashboard/employer-assessments/${session.assessment_id}/analytics`,
       data: {
-        audience: NotificationAudience.COMPANY,
-        recipient_id: session.assessment.company_id,
-        type: NotificationType.APPLICATION_STATUS_CHANGED, // ✅ si pas existant, mets APPLICATION_STATUS_CHANGED ou un type que tu as
-        title: "Assessment completed ✅",
-        message: `A candidate completed "${session.assessment.title}".`,
-        action_url: `/company/dashboard/employer-assessments/${session.assessment_id}/analytics`,
-        data: {
-          sessionId: session.session_id,
-          assessmentId: session.assessment_id,
-          candidateId: session.candidate_id,
-          jobId: session.assessment.job_id,
-        },
-        sent_via: "in_app",
+        sessionId: session.session_id,
+        assessmentId: session.assessment_id,
+        candidateId: session.candidate_id,
+        jobId: session.assessment.job_id,
       },
-    });
-  }
+      sent_via: "in_app",
+    },
+  });
+}
 
 }
 

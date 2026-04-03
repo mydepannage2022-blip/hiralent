@@ -43,7 +43,8 @@ export default function CandidateNotificationsList() {
     const items = data?.items ?? [];
     return items.map((n) => ({
       id: n.notification_id,
-      title: buildTitle(n),
+      title: n.title,          
+      message: n.message,      
       tag: candidateTagFromType(n.type),
       time: formatTime(n.created_at),
       read: !!n.read_at,

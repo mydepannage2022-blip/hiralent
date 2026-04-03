@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 
 // Configuration
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-const AI_TIMEOUT = 60000; // 30 secondes
+const AI_TIMEOUT = 60_000; // 60s base timeout — batch uses ×5 = 300s
 
 // Types
 interface AIQuestionRequest {
@@ -144,7 +144,7 @@ export class AIQuestionGenerationService {
           countPerTopic: countPerTopic // ← CORRIGÉ: "countPerTopic" au lieu de "count_per_topic"
         },
         { 
-          timeout: AI_TIMEOUT * 2,
+          timeout: AI_TIMEOUT * 5, // 300s — Gemini needs more time for complex topics (C#/.NET/Mobile)
           headers: {
             'Content-Type': 'application/json'
           }

@@ -28,8 +28,8 @@ export class CompanyHiringFlowService {
         audience: NotificationAudience.COMPANY,
         recipient_id: app.job.company_id,
         type: NotificationType.JOB_APPLICATION_RECEIVED,
-        title: "New applicant received 📩",
-        message: `${app.candidate.full_name ?? "A candidate"} applied to "${app.job.title}".`,
+        title: `New application: ${app.job.title}`,
+        message: `${app.candidate.full_name ?? "A candidate"} applied to your "${app.job.title}" position.`,
         action_url: `/company/dashboard/jobs/${app.job_id}/applicants`,
         data: {
           applicationId: app.application_id,
@@ -156,8 +156,8 @@ export class CompanyHiringFlowService {
           audience: NotificationAudience.CANDIDATE,
           recipient_id: app.candidate_id,
           type: NotificationType.SIMPLE_TEST_INVITE,
-          title: "Quick warm-up test (optional) ✅",
-          message: `You can try the warm-up test "${test.title}" for "${app.job.title}". It won’t affect your real assessment.`,
+          title: `Warm-up test for "${app.job.title}"`,
+          message: `A practice test is available for the "${app.job.title}" position. It's optional and won't affect your real assessment.`,
           action_url: "/candidate/dashboard/simple-tests",
           data: {
             inviteId: inv.invite_id,
@@ -233,8 +233,8 @@ export class CompanyHiringFlowService {
         audience: NotificationAudience.CANDIDATE,
         recipient_id: app.candidate_id,
         type: NotificationType.SIMPLE_TEST_INVITE,
-        title: "Warm-up test available (optional) ✅",
-        message: `A warm-up test "${test.title}" is available for "${app.job.title}". It won’t affect your skills assessment.`,
+        title: `Practice test ready for "${app.job.title}"`,
+        message: `You can warm up before your skills assessment for "${app.job.title}". Optional — results are only visible to you.`,
         action_url: "/candidate/dashboard/simple-tests",
         data: {
           applicationId: app.application_id,
@@ -300,8 +300,8 @@ export class CompanyHiringFlowService {
           audience: NotificationAudience.CANDIDATE,
           recipient_id: app.candidate_id,
           type: NotificationType.ASSESSMENT_INVITE,
-          title: "Skills assessment invitation 🧠",
-          message: `You’ve been invited to "${assessment.title}" for "${app.job.title}".`,
+          title: `Assessment invite: ${assessment.title}`,
+          message: `You've been invited to complete the "${assessment.title}" assessment for the "${app.job.title}" position. Check your Skills Assessment page.`,
           action_url: "/candidate/dashboard/skills-assessment/invites",
           data: {
             inviteId: inv.invite_id,

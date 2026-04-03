@@ -1,4 +1,3 @@
-// frontend/src/lib/candidate/jobs.queries.ts
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -36,12 +35,25 @@ export function useCandidateRecommendedJobs(q: JobListQuery, opts?: { enabled?: 
   });
 }
 
-export function useCandidateJobEligibility(jobId: string, opts?: { enabled?: boolean }) {
+// ── FIX 4b : ajout de l'option pollUntilEligible ──
+// Quand activé, le hook poll toutes les 8s tant que eligible === false.
+// S'arrête automatiquement dès que le worker Python a recalculé (eligible → true).
+export function useCandidateJobEligibility(
+  jobId: string,
+  opts?: { enabled?: boolean; pollUntilEligible?: boolean }
+) {
   return useQuery({
     queryKey: candidateJobsKeys.eligibility(jobId),
     queryFn: () => apiCandidateJobEligibility(jobId),
     enabled: (opts?.enabled ?? true) && !!jobId,
-    staleTime: 5_000,
+    // staleTime 0 → toujours re-fetch quand invalidé après ajout de skill
+    staleTime: 0,
+    // Poll toutes les 8s si activé ET que le candidat n'est pas encore eligible.
+    // false = pas de polling (comportement par défaut conservé pour les autres pages).
+    refetchInterval: opts?.pollUntilEligible
+      ? (query) => (query.state.data?.eligible === false ? 8_000 : false)
+      : false,
+    refetchIntervalInBackground: false,
   });
 }
 

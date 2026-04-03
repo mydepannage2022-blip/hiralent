@@ -1,176 +1,221 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 import {
-    Eye,
-    ChevronUp,
-    ChevronDown,
-    FolderOpen,
-    FileSearch2,
+  Briefcase,
+  Users,
+  TrendingUp,
+  CheckCircle,
+  Loader2,
+  FileText,
 } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
 
-interface ChartDataItem {
-    day: string;
-    views: number;
-    applied: number;
-    opened: number;
+type JobStatus = "ACTIVE" | "DRAFT" | "PAUSED" | "CLOSED" | "CANCELLED" | "ARCHIVED"
+  | "Active" | "Draft" | "Paused" | "Closed" | "Cancelled" | "Archived";
+
+type JobType = "full_time" | "part_time" | "contract" | "internship" | "freelance";
+
+interface CompanyJob {
+  job_id: string;
+  title: string;
+  status: JobStatus;
+  job_type: JobType | null;
+  created_at: string;
+  applications_count?: number;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 const DashboardJobStatistics = () => {
-    const [selectedPeriod, setSelectedPeriod] = useState<"Week" | "Month" | "Year">("Week");
+  const { token } = useAuth();
+  const [jobs, setJobs] = useState<CompanyJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"jobs" | "applications">("jobs");
 
-    const chartData: ChartDataItem[] = [
-        { day: "Sun", views: 1000, applied: 800, opened: 500 },
-        { day: "Mon", views: 1500, applied: 1200, opened: 700 },
-        { day: "Tue", views: 2200, applied: 1800, opened: 1100 },
-        { day: "Wed", views: 2800, applied: 2300, opened: 1400 },
-        { day: "Thu", views: 4200, applied: 3800, opened: 2000 },
-        { day: "Fri", views: 4800, applied: 4300, opened: 2500 },
-        { day: "Sat", views: 5000, applied: 4500, opened: 2800 },
-    ];
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    const fetchJobs = async () => {
+      setLoading(true);
+      try {
+        const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+        const res = await fetch(`${BASE}/jobs/company/my-jobs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) setJobs(data.data || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, [token]);
 
-    const periods: ("Week" | "Month" | "Year")[] = ["Week", "Month", "Year"];
+  // ── Stats (all honest & computable from available data) ────────
 
-    return (
-        <div className="bg-white w-full rounded-xl p-6">
-            {/* Header */}
-            <div className="flex items-start justify-between flex-col sm:flex-row mb-6">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Job statistics</h3>
-                    <p className="text-sm text-gray-500">Showing Job statistics Jul 19-25</p>
-                </div>
-                <div className="flex space-x-2 mt-2 sm:mt-0">
-                    {periods.map((period) => (
-                        <button
-                            key={period}
-                            onClick={() => setSelectedPeriod(period)}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${selectedPeriod === period
-                                    ? "bg-black text-white"
-                                    : "text-gray-600 hover:bg-gray-100"
-                                }`}
-                        >
-                            {period}
-                        </button>
-                    ))}
-                </div>
-            </div>
+  const totalJobs = jobs.length;
+  const totalApplications = jobs.reduce((s, j) => s + (j.applications_count ?? 0), 0);
+  const activeJobs = jobs.filter((j) =>
+    j.status === "ACTIVE" || j.status === "Active"
+  ).length;
+  const jobsWithApps = jobs.filter((j) => (j.applications_count ?? 0) > 0);
+  const avgApplications =
+    jobsWithApps.length === 0
+      ? 0
+      : Math.round(totalApplications / jobsWithApps.length);
 
-            {/* Legends */}
-            <div className="flex gap-4 mb-4">
-                <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-600 rounded-full" />
-                    <span className="text-sm text-gray-600">Job views</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-400 rounded-full" />
-                    <span className="text-sm text-gray-600">Job Applied</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                    <span className="text-sm text-gray-600">Job Opened</span>
-                </div>
-            </div>
+  // Jobs created per month (current year) — pure creation count
+  const currentYear = new Date().getFullYear();
+  const chartData = MONTHS.map((month, idx) => {
+    const monthJobs = jobs.filter((j) => {
+      const d = new Date(j.created_at);
+      return d.getFullYear() === currentYear && d.getMonth() === idx;
+    });
+    return {
+      month,
+      jobs: monthJobs.length,
+      applications: monthJobs.reduce((s, j) => s + (j.applications_count ?? 0), 0),
+    };
+  });
 
-            {/* Chart */}
-            <div className="w-full h-64 mb-4">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis
-                            dataKey="day"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 12, fill: "#6b7280" }}
-                        />
-                        <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 12, fill: "#6b7280" }}
-                            tickFormatter={(value) => `${value / 1000}k`}
-                        />
-                        <Line dataKey="views" stroke="#2563eb" strokeWidth={2} dot={false} />
-                        <Line dataKey="applied" stroke="#60a5fa" strokeWidth={2} dot={false} />
-                        <Line dataKey="opened" stroke="#facc15" strokeWidth={2} dot={false} />
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
+  // Top 3 jobs by applications
+  const topJobs = [...jobs]
+    .filter((j) => (j.applications_count ?? 0) > 0)
+    .sort((a, b) => (b.applications_count ?? 0) - (a.applications_count ?? 0))
+    .slice(0, 3);
 
-            {/* Stats Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                    {
-                        label: "Job opened",
-                        value: 34,
-                        change: "This week",
-                        gain: "8.4",
-                        positive: true,
-                        icon: FolderOpen,
-                    },
-                    {
-                        label: "Job views",
-                        value: 120,
-                        change: "This week",
-                        gain: "8.4",
-                        positive: true,
-                        icon: Eye,
-                    },
-                    {
-                        label: "Job applied",
-                        value: 45,
-                        change: "This month",
-                        gain: "8.4",
-                        positive: false,
-                        icon: FileSearch2,
-                    },
-                ].map((stat, idx) => {
-                    const Icon = stat.icon;
-                    return (
-                        <div
-                            key={idx}
-                            className="flex flex-col border rounded-xl py-3 px-4 gap-1"
-                        >
-                            {/* Row 1 - Icon */}
-                            <div className="flex items-center">
-                                <Icon className="w-8 h-8 text-[#757575]" />
-                            </div>
+  const periodLabel = `Jan – Dec ${currentYear}`;
 
-                            {/* Row 2 - Label + Value */}
-                            <div className="flex justify-between items-center">
-                                <p className="text-[#757575]">{stat.label}</p>
-                                <p className="text-lg font-bold text-[#353535]">{stat.value}</p>
-                            </div>
-
-                            {/* Row 3 - Change */}
-                            <div className="flex justify-between items-center">
-                                <div className="text-[#A5A5A5]">
-                                    {stat.change}
-                                </div>
-                                <div
-                                    className={`flex items-center text-sm font-medium ${stat.positive ? "text-green-600" : "text-red-600"
-                                        }`}
-                                >
-                                    {stat.positive ? (
-                                        <ChevronUp className="w-4 h-4 mr-1" />
-                                    ) : (
-                                        <ChevronDown className="w-4 h-4 mr-1" />
-                                    )}
-                                    {stat.gain}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+  return (
+    <div className="bg-white w-full rounded-xl p-6">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-col sm:flex-row mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Job statistics</h3>
+          <p className="text-sm text-gray-500">Showing {periodLabel}</p>
         </div>
-    );
+        <div className="flex space-x-2 mt-2 sm:mt-0">
+          {(["jobs", "applications"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                view === v ? "bg-black text-white" : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {v === "jobs" ? "Jobs" : "Applied"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Loading statistics...</span>
+        </div>
+      ) : (
+        <>
+          {/* 4 stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: "Total Jobs",   value: totalJobs,         icon: Briefcase,   color: "#1B73E8" },
+              { label: "Active",       value: activeJobs,        icon: CheckCircle, color: "#16A34A" },
+              { label: "Applications", value: totalApplications, icon: Users,       color: "#7C3AED" },
+              { label: "Avg / Job",    value: avgApplications,   icon: TrendingUp,  color: "#EA580C" },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="flex flex-col border rounded-xl py-3 px-4 gap-1">
+                <Icon className="w-5 h-5 mb-1" style={{ color }} />
+                <p className="text-xl font-bold text-[#353535]">{value}</p>
+                <p className="text-xs text-[#757575]">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Bar chart — jobs created OR applications per month */}
+          <div className="w-full h-52 mb-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barSize={14}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                    fontSize: "12px",
+                  }}
+                />
+                <Bar dataKey={view} fill="#1B73E8" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Top jobs by applications */}
+          {topJobs.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                Top jobs by applications
+              </p>
+              <div className="space-y-2">
+                {topJobs.map((job) => {
+                  const pct =
+                    totalApplications === 0
+                      ? 0
+                      : Math.round(
+                          ((job.applications_count ?? 0) / totalApplications) * 100
+                        );
+                  return (
+                    <div key={job.job_id} className="flex items-center gap-3">
+                      <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="truncate text-gray-700 font-medium max-w-[160px]">
+                            {job.title}
+                          </span>
+                          <span className="text-gray-500 flex-shrink-0 ml-2">
+                            {job.applications_count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full"
+                            style={{ width: `${pct}%`, backgroundColor: "#1B73E8" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 };
 
 export default DashboardJobStatistics;

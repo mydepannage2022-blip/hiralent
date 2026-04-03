@@ -11,6 +11,8 @@ import { usePathname } from 'next/navigation';
 import SmartLink from '../../../layout/SmartLink';
 import NotificationModal from '../notifications/NotificationModal';
 import { Notification } from '../notifications/NotificationItem';
+import { useNotifications, useMarkNotificationRead } from '@/src/lib/notifications/notifications.queries';
+import { candidateTagFromType, formatTime } from '@/src/lib/notifications/notifications.ui';
 
 interface DashboardNavbarProps {
   isMobileMenuOpen?: boolean;
@@ -27,53 +29,21 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const pathname = usePathname() ?? "";
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title:
-        'Prime Works Ltd has started following your profile. Visit their page to see their latest job postings and company updates just now.',
-      tag: 'Message',
-      time: '22:14 AM',
-      read: false,
-      starred: true
-    },
-    {
-      id: '2',
-      title: 'Your resume has been successfully submitted for Tech Nova Inc.check out your dashboard for real time status updates...',
-      tag: 'Apply Result',
-      time: '22:14 AM',
-      read: false
-    },
-    {
-      id: '3',
-      title: 'Your profile is almost complete! Add a few more details to increase your visibility to employers and get personalized job suggestions.',
-      tag: 'Message',
-      time: '22:14 AM',
-      read: true
-    },
-    {
-      id: '4',
-      title: "Your resume has been successfully submitted for the 'Product Design' position at Global Crop Solution. We'll keep you updated on the next steps.",
-      tag: 'Apply Result',
-      time: '22:14 AM',
-      read: true
-    },
-    {
-      id: '5',
-      title: `Google's service, offered free of charge, instantly translates words, phrases, and web pages between English and over 100 other languages.`,
-      tag: 'Message',
-      time: '22:14 AM',
-      read: true
-    },
-    {
-      id: '6',
-      title: "Exciting opportunity! A 'Digital Marketing Specialist' role has just been posted at Bright Solutions Group. Check your dashboard for more information and apply now.",
-      tag: 'New Job',
-      time: '22:14 AM',
-      read: false,
-      starred: true
-    },
-  ]);
+
+const { data } = useNotifications('CANDIDATE', { limit: 100 });
+const markRead = useMarkNotificationRead('CANDIDATE');
+
+const notifications: Notification[] = (data?.items ?? []).map((n) => ({
+  id: n.notification_id,
+  title: n.title,
+  message: n.message,
+  tag: candidateTagFromType(n.type),
+  time: formatTime(n.created_at),
+  read: !!n.read_at,
+  starred: !!n.starred_at,
+}));
+
+const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleNotificationClick = () => {
     setIsNotifOpen((prev) => !prev);
@@ -105,12 +75,46 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
   // ✅ Dynamic page titles
   const getPageInfo = () => {
+// ✅ Assessment Invite Details: /candidate/dashboard/skills-assessment/invites/[inviteId]
+const inviteDetailsRegex =
+  /^\/candidate\/dashboard\/skills-assessment\/invites\/[0-9a-fA-F-]{36}$/;
+
+if (inviteDetailsRegex.test(pathname)) {
+  return {
+    title: "Assessment Rules",
+    description: "Please read and accept before starting.",
+  };
+}
+
+    // ✅ Assessment Invites page (must be before skills-assessment check)
+if (pathname.startsWith("/candidate/dashboard/skills-assessment/invites")) {
+  return {
+    title: "Assessment Invites",
+    description: "Open an invite, accept rules, then start.",
+  };
+}
+
+// ✅ Assessment History page (must be before skills-assessment check)
+if (pathname.startsWith("/candidate/dashboard/skills-assessment/history")) {
+  return {
+    title: "Assessment History",
+    description: "Your submitted assessments.",
+  };
+}
+
     // ✅ Skills Assessment dynamic route
     if (pathname.startsWith('/candidate/dashboard/skills-assessment')) {
       return {
         title: 'Skills Assessment',
         description: 'Access and manage your skills assessments',
       };
+    }
+    
+      if (pathname.startsWith("/candidate/dashboard/simple-tests")) {
+    return {
+      title: "Sample Test",
+      description: "Practice before the real assessment",
+    };
     }
 
     if (pathname.startsWith('/candidate/dashboard/interviews')) {
@@ -119,6 +123,14 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
         description: 'Complete your AI-powered video interviews',
       };
     }
+
+    // ✅ Job details: /candidate/dashboard/jobs/[jobId]
+if (pathname.startsWith("/candidate/dashboard/jobs/") && pathname !== "/candidate/dashboard/jobs") {
+  return {
+    title: "Job Details",
+    description: "View job information and apply.",
+  };
+}
 
     // ✅ Application details: /candidate/dashboard/applications/[appId]
     // IMPORTANT: must be BEFORE switch
@@ -272,20 +284,22 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             className="cursor-pointer hover:text-gray-600 transition-colors relative"
           >
             <IoIosNotificationsOutline className='text-2xl sm:text-3xl lg:text-4xl xl:text-2xl' />
-            {notifications.some((n) => !n.read) && (
-              <span className="absolute -top-1 -right-1 bg-[#005DDC] text-white text-[10px] rounded-full px-1.5 py-[1px]">
-                {notifications.filter((n) => !n.read).length}
-              </span>
-            )}
+{unreadCount > 0 && (
+  <span className="absolute -top-1 -right-1 bg-[#005DDC] text-white text-[10px] rounded-full px-1.5 py-[1px]">
+    {unreadCount}
+  </span>
+)}
           </button>
 
           {isNotifOpen && (
-            <NotificationModal
-              notifications={notifications}
-              onUpdate={setNotifications}
-              isOpen={isNotifOpen}
-              onClose={() => setIsNotifOpen(false)}
-            />
+// ✅ PAR
+<NotificationModal
+  notifications={notifications}
+  onUpdate={() => {}}
+  isOpen={isNotifOpen}
+  onClose={() => setIsNotifOpen(false)}
+  onMarkRead={(id) => markRead.mutateAsync({ notificationId: id })}
+/>
           )}
         </div>
 

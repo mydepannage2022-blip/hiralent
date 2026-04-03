@@ -1,6 +1,7 @@
 # app/workers/worker.py
 from __future__ import annotations
-
+from google.generativeai.client import configure as genai_configure
+from google.generativeai.generative_models import GenerativeModel
 import time
 import logging
 import hashlib
@@ -23,6 +24,63 @@ from app.clients.backend_updates import (
 
 log = logging.getLogger("matching.worker")
 
+import json
+
+ELIGIBILITY_SCORE_THRESHOLD = 60.0
+
+def _llm_check_skills_coverage(
+    required_skills: List[str],
+    candidate_skills: List[str],
+) -> Tuple[bool, List[str]]:
+    if not required_skills:
+        return True, []
+    if not candidate_skills:
+        return False, required_skills
+
+    prompt = f"""You are a technical recruiter evaluating candidate skills.
+
+Required skills for the job:
+{json.dumps(required_skills)}
+
+Candidate's skills:
+{json.dumps(candidate_skills)}
+
+For each required skill, determine if the candidate covers it — even indirectly.
+Be flexible: "qdrant" covers "vector store", "sentence-transformers" covers "embeddings", "FastAPI" covers "REST API".
+Only mark a skill as missing if the candidate has NO related knowledge whatsoever.
+
+Respond ONLY with valid JSON, no markdown:
+{{"truly_missing": ["skill1", "skill2"]}}
+
+If nothing is missing: {{"truly_missing": []}}"""
+
+    try:
+        from google.generativeai.client import configure as genai_configure
+        from google.generativeai.generative_models import GenerativeModel
+
+        genai_configure(api_key=settings.GEMINI_API_KEY)
+        model = GenerativeModel(
+            model_name=settings.GEMINI_MODEL or "gemini-2.0-flash",
+            generation_config={"temperature": 0.2, "max_output_tokens": 300},
+        )
+        response = model.generate_content(prompt)
+        text = (response.text or "").strip()
+
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+
+        data = json.loads(text)
+        truly_missing = data.get("truly_missing", [])
+        return len(truly_missing) == 0, truly_missing
+
+    except Exception as e:
+        log.warning("LLM skill check failed, falling back to exact match: %s", e)
+        cand_set = set(s.lower() for s in candidate_skills)
+        truly_missing = [s for s in required_skills if s.lower() not in cand_set]
+        return len(truly_missing) == 0, truly_missing
 
 def _normalize_job_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -46,11 +104,13 @@ def _normalize_candidate_snapshot(snap: Dict[str, Any]) -> Dict[str, Any]:
     pc = pc_list[0] if isinstance(pc_list, list) and len(pc_list) > 0 else {}
 
     skills = set()
-
+    
+    # Source 1 — CandidateProfile.skills (array de strings)
     for s in (profile.get("skills") or []):
         if isinstance(s, str) and s.strip():
             skills.add(s.strip())
-
+    
+    # Source 2 — CandidateSkill table (objets avec skill_name)
     for row in structured:
         name = (row or {}).get("skill_name")
         if isinstance(name, str) and name.strip():
@@ -89,14 +149,27 @@ def _is_present(value: Any) -> bool:
     return True
 
 
-def _eligibility(job: Dict[str, Any], cand: Dict[str, Any]) -> Tuple[bool, List[str], List[str]]:
+def _eligibility(
+    job: Dict[str, Any],
+    cand: Dict[str, Any],
+    match_score: float = 0.0,
+) -> Tuple[bool, List[str], List[str]]:
     reason_codes: List[str] = []
-    missing_skills: List[str] = []
 
     status = (_get(job, "status") or "ACTIVE").upper()
     if status != "ACTIVE":
         reason_codes.append("JOB_NOT_ACTIVE")
+        return False, reason_codes, []
 
+    required_skills = _get(job, "required_skills") or []
+    candidate_skills = _get(cand, "skills") or []
+
+    # ── Score >= threshold: eligible, LLM just for suggestions ──
+    if match_score >= ELIGIBILITY_SCORE_THRESHOLD:
+        _, missing_skills = _llm_check_skills_coverage(required_skills, candidate_skills)
+        return True, [], missing_skills
+
+    # ── Score < threshold: hard checks + LLM decides eligibility ──
     min_score = _get(job, "min_profile_score")
     cand_score = _get(cand, "profile_score")
     if min_score is not None and cand_score is not None:
@@ -108,14 +181,12 @@ def _eligibility(job: Dict[str, Any], cand: Dict[str, Any]) -> Tuple[bool, List[
         if not _is_present(_get(cand, f)):
             reason_codes.append(f"MISSING_FIELD:{f}")
 
-    req_skills = set([s.lower() for s in (_get(job, "required_skills") or [])])
-    cand_skills = set([s.lower() for s in (_get(cand, "skills") or [])])
-    for s in req_skills:
-        if s not in cand_skills:
-            missing_skills.append(s)
+    all_covered, missing_skills = _llm_check_skills_coverage(required_skills, candidate_skills)
+    if not all_covered:
+        for s in missing_skills:
+            reason_codes.append(f"MISSING_SKILL:{s}")
 
-    is_eligible = len(reason_codes) == 0
-    return is_eligible, reason_codes, missing_skills
+    return len(reason_codes) == 0, reason_codes, missing_skills
 
 
 def _skill_match(job: Dict[str, Any], cand: Dict[str, Any]) -> float:
@@ -129,30 +200,28 @@ def _skill_match(job: Dict[str, Any], cand: Dict[str, Any]) -> float:
 
 def _rank_jobs(items: List[Dict[str, Any]], cand: Dict[str, Any]) -> List[Dict[str, Any]]:
     for it in items:
-        job = it["job"]
-        vector_score = float(it.get("vector_score", 0.0))
-        sm = _skill_match(job, cand)
-        it["skill_match"] = sm
-
-        final_score = (0.75 * vector_score) + (0.25 * sm)  # 0..1
-        it["final_score"] = final_score
-        it["match_score"] = round(final_score * 100, 2)  # 0..100
-
+        if "final_score" not in it:  # ✅ ne recalcule que si pas déjà fait
+            job = it["job"]
+            vector_score = float(it.get("vector_score", 0.0))
+            sm = _skill_match(job, cand)
+            it["skill_match"] = sm
+            final_score = (0.75 * vector_score) + (0.25 * sm)
+            it["final_score"] = final_score
+            it["match_score"] = round(final_score * 100, 2)
     items.sort(key=lambda x: x["final_score"], reverse=True)
     return items
 
 
 def _rank_candidates(items: List[Dict[str, Any]], job: Dict[str, Any]) -> List[Dict[str, Any]]:
     for it in items:
-        cand = it["candidate"]
-        vector_score = float(it.get("vector_score", 0.0))
-        sm = _skill_match(job, cand)
-        it["skill_match"] = sm
-
-        final_score = (0.75 * vector_score) + (0.25 * sm)  # 0..1
-        it["final_score"] = final_score
-        it["match_score"] = round(final_score * 100, 2)  # 0..100
-
+        if "final_score" not in it:  # ✅ ne recalcule que si pas déjà fait
+            cand = it["candidate"]
+            vector_score = float(it.get("vector_score", 0.0))
+            sm = _skill_match(job, cand)
+            it["skill_match"] = sm
+            final_score = (0.75 * vector_score) + (0.25 * sm)
+            it["final_score"] = final_score
+            it["match_score"] = round(final_score * 100, 2)
     items.sort(key=lambda x: x["final_score"], reverse=True)
     return items
 
@@ -241,15 +310,24 @@ def process_task(task: dict) -> None:
 
                 filtered: List[Dict[str, Any]] = []
                 for it in top200:
-                    cand_norm = it["candidate"]
-                    is_eligible, reason_codes, missing_skills = _eligibility(snap, cand_norm)
+                    cand_norm = it["candidate"]  # ✅ c'est un candidat ici
+
+                    vector_score = float(it.get("vector_score", 0.0))
+                    sm = _skill_match(snap, cand_norm)  # ✅ snap=job, cand_norm=candidate
+                    it["skill_match"] = sm
+                    final_score = (0.75 * vector_score) + (0.25 * sm)
+                    it["final_score"] = final_score
+                    it["match_score"] = round(final_score * 100, 2)
+
+                    ms = it["match_score"]
+                    is_eligible, reason_codes, missing_skills = _eligibility(snap, cand_norm, ms)
                     it["is_eligible"] = is_eligible
                     it["reason_codes"] = reason_codes
                     it["missing_skills"] = missing_skills
                     filtered.append(it)
 
                 top50 = filtered[:50]
-                ranked = _rank_candidates(top50, snap)
+                ranked = _rank_jobs(top50, snap)  # ✅ re-trie seulement, scores déjà là
                 top10 = ranked[:10]
 
                 by_candidate: Dict[str, List[Dict[str, Any]]] = {}
@@ -326,15 +404,24 @@ def process_task(task: dict) -> None:
 
                 filtered: List[Dict[str, Any]] = []
                 for it in top200:
-                    job_norm = it["job"]
-                    is_eligible, reason_codes, missing_skills = _eligibility(job_norm, cand)
+                    job_norm = it["job"]  # ✅ CANDIDATE_UPDATED itère sur des jobs
+
+                    vector_score = float(it.get("vector_score", 0.0))
+                    sm = _skill_match(job_norm, cand)  # ✅ cand=le candidat courant
+                    it["skill_match"] = sm
+                    final_score = (0.75 * vector_score) + (0.25 * sm)
+                    it["final_score"] = final_score
+                    it["match_score"] = round(final_score * 100, 2)
+
+                    ms = it["match_score"]
+                    is_eligible, reason_codes, missing_skills = _eligibility(job_norm, cand, ms)
                     it["is_eligible"] = is_eligible
                     it["reason_codes"] = reason_codes
                     it["missing_skills"] = missing_skills
                     filtered.append(it)
 
                 top50 = filtered[:50]
-                ranked = _rank_jobs(top50, cand)
+                ranked = _rank_candidates(top50, cand)  # ✅ re-trie seulement
                 top10 = ranked[:10]
 
                 recos: List[Dict[str, Any]] = []

@@ -23,28 +23,29 @@ export default function Timeline({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Loader2 className="w-5 h-5 animate-spin text-[#1B73E8]" />
+        <p className="text-xs text-gray-400">Loading timeline…</p>
       </div>
     );
   }
 
   if (!sorted?.length) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-        <div className="mx-auto w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4">
-          <Clock className="w-6 h-6 text-gray-600" />
+      <div className="flex flex-col items-center justify-center py-14 text-center">
+        <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-3">
+          <Clock className="w-4 h-4 text-gray-400" />
         </div>
-        <p className="text-gray-700 font-medium">No timeline events yet.</p>
-        <p className="text-gray-500 text-sm mt-1">
-          Events will appear as your application gets processed.
+        <p className="text-sm font-medium text-gray-700 mb-1">No updates yet</p>
+        <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
+          Events will appear here as your application is processed.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="pt-1 pb-4">
       {sorted.map((it, idx) => (
         <TimelineItem
           key={it.history_id}

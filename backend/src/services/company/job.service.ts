@@ -24,40 +24,68 @@ const SIMPLE_TEST_TITLE = "Quick Platform Check";
 const SIMPLE_TEST_DESC =
   "A short test to confirm you can use the platform (1 coding + 1 MCQ, easy).";
 
-// Exclude questions already used by real assessments/templates
+/**
+ * Build a Prisma WHERE clause to find easy questions for the sample test.
+ *
+ * Priority 1 (skill-matched):
+ *   difficulty=easy AND skillTags overlaps job.required_skills AND status=approved
+ *
+ * Priority 2 (fallback — called with requiredSkills=[]):
+ *   difficulty=easy AND status=approved  (any easy question from the full bank)
+ *
+ * NO assessments:none / templateAssessments:none filter —
+ *    those filters were shrinking the pool to near-zero,
+ *    causing the same question to repeat every time.
+ *    Sample tests are practice-only, so reusing questions is fine.
+ */
 function simpleTestQuestionBaseWhere(requiredSkills: string[]) {
-  const skillFilter =
-    requiredSkills?.length
-      ? { skillTags: { hasSome: requiredSkills } }
-      : {};
-
   return {
     difficulty: "easy",
-    ...skillFilter,
-    // 🚫 Must not overlap with real assessments/templates
-    assessments: { none: {} }, // AssessmentQuestion relation on Question
-    templateAssessments: { none: {} }, // AssessmentTemplateQuestion relation on Question
-  } as const;
+    status: "approved",
+    ...(requiredSkills.length > 0
+      ? { skillTags: { hasSome: requiredSkills } }
+      : {}),
+  };
 }
 
+/**
+ * Pick ONE random approved question of a given type from the full matching pool.
+ *
+ * Strategy:
+ *   1. COUNT how many questions match the WHERE
+ *   2. Pick a random offset (0 → count-1)
+ *   3. Fetch exactly that one row using skip + findFirst
+ *
+ * This guarantees true randomness across the ENTIRE question bank,
+ * not just the first 30 rows returned by insertion order.
+ *
+ * Note: status:"approved" is already included in simpleTestQuestionBaseWhere,
+ * but we keep it here too as a safety net.
+ */
 async function pickOneQuestion(
   tx: Prisma.TransactionClient,
-  where: any,
+  where: ReturnType<typeof simpleTestQuestionBaseWhere>,
   type: "coding" | "mcq"
-) {
-  const rows = await tx.question.findMany({
-    where: {
-      ...where,
-      type,
-      status: "approved", // keep only approved if you use this
-    },
+): Promise<string | null> {
+  const fullWhere = { ...where, type, status: "approved" };
+
+  // Step 1 — count the full pool
+  const total = await tx.question.count({ where: fullWhere });
+
+  if (total === 0) return null;
+
+  // Step 2 — random offset across the FULL pool
+  const randomSkip = Math.floor(Math.random() * total);
+
+  // Step 3 — fetch exactly that one record
+  const row = await tx.question.findFirst({
+    where: fullWhere,
+    orderBy: { id: "asc" }, // stable order so skip is deterministic
+    skip: randomSkip,
     select: { id: true },
-    take: 30,
   });
 
-  if (rows.length === 0) return null;
-  const random = rows[Math.floor(Math.random() * rows.length)];
-  return random.id;
+  return row?.id ?? null;
 }
 
 async function ensureJobSimpleTest(

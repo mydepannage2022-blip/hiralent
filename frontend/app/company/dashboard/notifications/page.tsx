@@ -43,7 +43,8 @@ export default function NotificationsPage() {
     const items = data?.items ?? [];
     return items.map((n) => ({
       id: n.notification_id,
-      title: buildTitle(n),
+      title: n.title,          // ← use backend title directly
+      message: n.message,      // ← ADD backend message
       tag: companyTagFromType(n.type),
       time: formatTime(n.created_at),
       read: !!n.read_at,
