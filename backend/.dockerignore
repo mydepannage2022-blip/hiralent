@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────
+#  FILE LOCATION: backend/.dockerignore
+#  PURPOSE: Tells Docker what NOT to upload when building
+#           Without this, your 928MB node_modules gets uploaded every time!
+# ─────────────────────────────────────────────────────────────
+
+# The biggest offender — Docker installs these fresh inside the container
+node_modules
+
+# Git history — not needed in the image
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local env files — secrets should come from docker-compose env_file
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode
+.idea
+
+# TypeScript build output (workers run tsx directly, no build needed)
+dist
+build
+
+# Test files
+coverage
+*.test.ts
+*.spec.ts

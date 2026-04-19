@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-#  FILE LOCATION: talent-ai-service/matching-candidate-job/Dockerfile
+#  FILE LOCATION: talent-ai-service/job-creation-ai/Dockerfile
 # ─────────────────────────────────────────────────────────────
 
 FROM python:3.11-slim
@@ -12,13 +12,11 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the full service source
-COPY app ./app
-COPY run.py .
-COPY run_worker.py .
+# Copy the rest of the service
+COPY . .
 
-# Port for the API (the worker doesn't expose a port)
-EXPOSE 8011
+# Expose the port the app runs on
+EXPOSE 8003
 
-# Default CMD — docker-compose overrides this per service
-CMD ["python", "run.py"]
+# Start the FastAPI app with uvicorn (no --reload in production)
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8003"]

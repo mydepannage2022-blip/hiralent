@@ -7,8 +7,8 @@ import {
   Loader2,
   AlertTriangle,
   Briefcase,
-  DollarSign,
   ArrowUpRight,
+  Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../../context/AuthContext";
@@ -36,36 +36,39 @@ interface CompanyJob {
 }
 
 function formatJobType(t?: JobType | null) {
-  if (!t) return "—";
+  if (!t) return null;
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function daysRemainingFromDeadline(deadline?: string | null, createdAt?: string): { label: string; urgent: boolean } {
-  // Use application_deadline if available, fallback to created_at + 30
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7) return `${diff}d ago`;
+  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
+  return `${Math.floor(diff / 30)}mo ago`;
+}
+
+function urgentDeadline(deadline?: string | null, createdAt?: string): string | null {
   const target = deadline
     ? new Date(deadline).getTime()
     : new Date(createdAt ?? "").getTime() + 30 * 86400000;
-
   const diff = Math.floor((target - Date.now()) / 86400000);
-
-  if (diff < 0) return { label: "Expired", urgent: true };
-  if (diff === 0) return { label: "Last day", urgent: true };
-  return { label: `${diff}d left`, urgent: diff <= 5 };
+  if (diff < 0) return "Expired";
+  if (diff === 0) return "Last day";
+  if (diff <= 7) return `${diff}d left`;
+  return null;
 }
+
+const norm = (s: string) => s.toUpperCase();
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string; bg: string; border: string }> = {
   ACTIVE:    { label: "Active",    dot: "#16a34a", text: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
-  Active:    { label: "Active",    dot: "#16a34a", text: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
   DRAFT:     { label: "Draft",     dot: "#d97706", text: "#b45309", bg: "#fffbeb", border: "#fde68a" },
-  Draft:     { label: "Draft",     dot: "#d97706", text: "#b45309", bg: "#fffbeb", border: "#fde68a" },
   PAUSED:    { label: "Paused",    dot: "#6366f1", text: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
-  Paused:    { label: "Paused",    dot: "#6366f1", text: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
   CLOSED:    { label: "Closed",    dot: "#ef4444", text: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-  Closed:    { label: "Closed",    dot: "#ef4444", text: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
   CANCELLED: { label: "Cancelled", dot: "#9ca3af", text: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
-  Cancelled: { label: "Cancelled", dot: "#9ca3af", text: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
   ARCHIVED:  { label: "Archived",  dot: "#9ca3af", text: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
-  Archived:  { label: "Archived",  dot: "#9ca3af", text: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
 };
 
 const DashboardRecentlyPostedJobs = () => {
@@ -77,7 +80,6 @@ const DashboardRecentlyPostedJobs = () => {
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-
     const fetchJobs = async () => {
       setLoading(true);
       setError(null);
@@ -104,25 +106,34 @@ const DashboardRecentlyPostedJobs = () => {
         setLoading(false);
       }
     };
-
     fetchJobs();
   }, [token]);
+
+  const activeCount = jobs.filter((j) => norm(j.status) === "ACTIVE").length;
+  const totalApps = jobs.reduce((s, j) => s + (j.applications_count ?? 0), 0);
 
   return (
     <div className="bg-white rounded-xl p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-base sm:text-xl font-semibold text-[#222222]">
-          Recently Posted Jobs
-        </h3>
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">Recently Posted Jobs</h3>
         <button
           onClick={() => router.push("/company/dashboard/jobManagement")}
-          className="text-xs sm:text-base font-medium text-[#222222] flex items-center gap-1 sm:gap-2 hover:text-[#1B73E8] transition-colors group"
+          className="text-xs font-medium text-gray-500 flex items-center gap-1 hover:text-[#1B73E8] transition-colors group"
         >
           View All
-          <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
+
+      {/* Summary bar */}
+      {!loading && !error && jobs.length > 0 && (
+        <p className="text-xs text-gray-400 mb-5">
+          <span className="font-semibold text-green-600">{activeCount} active</span>
+          {" · "}
+          <span className="font-semibold text-gray-700">{totalApps}</span> total applications
+        </p>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -156,96 +167,77 @@ const DashboardRecentlyPostedJobs = () => {
         </div>
       )}
 
-      {/* Table */}
+      {/* Job Cards */}
       {!loading && !error && jobs.length > 0 && (
-        <div className="overflow-x-auto">
-          <div className="min-w-[780px]">
+        <div className="space-y-2">
+          {jobs.map((job) => {
+            const statusCfg = STATUS_CONFIG[norm(job.status)] ?? STATUS_CONFIG["DRAFT"];
+            const deadline = urgentDeadline(job.application_deadline, job.created_at);
+            const apps = job.applications_count ?? 0;
+            const jobType = formatJobType(job.job_type);
 
-            {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] bg-[#F4F4F4] text-[#515151] text-xs font-semibold px-4 py-2.5 rounded-xl mb-2">
-              <div>Job</div>
-              <div>Status</div>
-              <div>Applications</div>
-              <div>Salary</div>
-              <div>Actions</div>
-            </div>
+            return (
+              <div
+                key={job.job_id}
+                className="flex items-center gap-4 px-4 py-3.5 rounded-xl border border-gray-100 hover:border-[#1B73E8]/20 hover:bg-[#FAFBFF] transition-all"
+              >
+                {/* Icon */}
+                <div className="w-9 h-9 rounded-lg bg-[#EAF2FE] flex items-center justify-center flex-shrink-0">
+                  <Briefcase className="w-4 h-4 text-[#1B73E8]" />
+                </div>
 
-            {/* Rows */}
-            {jobs.map((job) => {
-              const statusCfg = STATUS_CONFIG[job.status] ?? STATUS_CONFIG["DRAFT"];
-              const { label: deadlineLabel, urgent } = daysRemainingFromDeadline(
-                job.application_deadline,
-                job.created_at
-              );
-
-              return (
-                <div
-                  key={job.job_id}
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center px-4 py-3.5 border-b border-[#F0F0F0] hover:bg-[#FAFBFF] transition-colors"
-                >
-                  {/* Job info */}
-                  <div className="min-w-0 pr-3">
-                    <p className="text-sm font-semibold text-[#222222] truncate" title={job.title}>
-                      {job.title}
-                    </p>
-                    <p className="text-xs text-[#9ca3af] mt-0.5">
-                      {formatJobType(job.job_type)}
-                      {" · "}
-                      <span className={urgent ? "text-red-400 font-semibold" : ""}>
-                        {deadlineLabel}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <span
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border"
-                      style={{
-                        backgroundColor: statusCfg.bg,
-                        color: statusCfg.text,
-                        borderColor: statusCfg.border,
-                      }}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: statusCfg.dot }}
-                      />
-                      {statusCfg.label}
-                    </span>
-                  </div>
-
-                  {/* Applications */}
-                  <div className="flex items-center gap-1.5 text-sm text-[#222222]">
-                    <Users className="w-4 h-4 text-[#9ca3af] shrink-0" />
-                    <span className="font-semibold">{job.applications_count ?? 0}</span>
-                    <span className="text-[#9ca3af] text-xs">apps</span>
-                  </div>
-
-                  {/* Salary */}
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full border border-[#d1d5db] flex items-center justify-center shrink-0">
-                      <DollarSign className="w-3 h-3 text-[#6b7280]" />
-                    </div>
-                    <span className="truncate text-xs text-[#444]" title={job.salary_range ?? "—"}>
-                      {job.salary_range ?? "—"}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div>
-                    <button
-                      onClick={() => router.push(`/company/dashboard/jobManagement/${job.job_id}`)}
-                      className="inline-flex items-center gap-1.5 border border-[#282828] text-[#282828] px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-[#1B73E8] hover:text-white hover:border-[#1B73E8] transition-all"
-                    >
-                      View
-                      <ArrowUpRight className="w-3 h-3" />
-                    </button>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{job.title}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    {jobType && <span className="text-[11px] text-gray-400">{jobType}</span>}
+                    {jobType && <span className="text-gray-300">·</span>}
+                    <span className="text-[11px] text-gray-400">{timeAgo(job.created_at)}</span>
+                    {deadline && (
+                      <>
+                        <span className="text-gray-300">·</span>
+                        <span className="text-[11px] font-semibold text-red-500 flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          {deadline}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Status badge */}
+                <div className="flex-shrink-0 hidden sm:block">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border"
+                    style={{
+                      backgroundColor: statusCfg.bg,
+                      color: statusCfg.text,
+                      borderColor: statusCfg.border,
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusCfg.dot }} />
+                    {statusCfg.label}
+                  </span>
+                </div>
+
+                {/* Applications */}
+                <div className="flex-shrink-0 flex items-center gap-1 min-w-[56px]">
+                  <Users className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-800">{apps}</span>
+                  <span className="text-[11px] text-gray-400">apps</span>
+                </div>
+
+                {/* Action */}
+                <button
+                  onClick={() => router.push(`/company/dashboard/jobManagement/${job.job_id}`)}
+                  className="flex-shrink-0 inline-flex items-center gap-1 border border-gray-200 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#1B73E8] hover:text-white hover:border-[#1B73E8] transition-all"
+                >
+                  View
+                  <ArrowUpRight className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

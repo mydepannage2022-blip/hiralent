@@ -1,11 +1,85 @@
+# ─────────────────────────────────────────────────────────────
+#  FILE LOCATION: talent-ai-service/matching-candidate-job/docker-compose.yml
+#
+#  START:   docker compose up -d
+#  STOP:    docker compose down
+#  LOGS:    docker compose logs -f
+#  REBUILD: docker compose up -d --build
+# ─────────────────────────────────────────────────────────────
+
 services:
+
+  # ── Infrastructure: Redis ────────────────────────────────────
   redis-matching:
     image: redis:7
+    container_name: hiralent_matching_redis
+    restart: unless-stopped
     ports:
-      - "6382:6379"   # 👈 PORT EXTERNE 6382
+      - "6382:6379"
     command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_matching_data:/data
+    networks:
+      - matching-net
 
+  # ── Infrastructure: Qdrant ───────────────────────────────────
   qdrant:
     image: qdrant/qdrant
+    container_name: hiralent_matching_qdrant
+    restart: unless-stopped
     ports:
       - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - matching-net
+
+  # ── API: FastAPI on port 8011 ────────────────────────────────
+  matching-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hiralent_matching_api
+    restart: unless-stopped
+    command: python run.py
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis-matching:6379/0
+      QDRANT_URL: http://qdrant:6333
+    ports:
+      - "8011:8011"
+    depends_on:
+      - redis-matching
+      - qdrant
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - matching-net
+
+  # ── Worker: Background queue processor ──────────────────────
+  matching-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hiralent_matching_queue_worker
+    restart: unless-stopped
+    command: python run_worker.py
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis-matching:6379/0
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      - redis-matching
+      - qdrant
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - matching-net
+
+volumes:
+  redis_matching_data:
+  qdrant_data:
+
+networks:
+  matching-net:
+    driver: bridge

@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────
+#  FILE LOCATION: backend/docker-compose.workers.yml
+#
+#  START:   docker compose -f docker-compose.workers.yml up -d
+#  STOP:    docker compose -f docker-compose.workers.yml down
+#  LOGS:    docker compose -f docker-compose.workers.yml logs -f
+# ─────────────────────────────────────────────────────────────
+
+# Shared environment block — applied to every worker
+# This replaces every "localhost" / "127.0.0.1" with host.docker.internal
+# so containers can reach services running on your Windows machine.
+# Your .env file is NEVER modified.
+x-worker-env: &worker-env
+  REDIS_URL: redis://host.docker.internal:6379
+  DATABASE_URL: ${DATABASE_URL_DOCKER}
+  S3_ENDPOINT: http://host.docker.internal:9000
+  CLAMAV_HOST: host.docker.internal
+  AI_SERVICE_URL: http://host.docker.internal:8000
+  AI_SERVICE_BASE_URL: http://host.docker.internal:8001
+  TALENT_AI_BASE_URL: http://host.docker.internal:8003
+  MATCHING_AI_BASE_URL: http://host.docker.internal:8011
+
+x-worker-base: &worker-base
+  build:
+    context: .
+    dockerfile: Dockerfile.workers
+  env_file: .env
+  environment:
+    <<: *worker-env
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  restart: unless-stopped
+  networks:
+    - workers-net
+
+services:
+
+  # ── Worker 1 ── Job Application Outbox ──────────────────────
+  job-application-outbox:
+    <<: *worker-base
+    container_name: hiralent_job_application_outbox
+    command: npx tsx src/workers/jobApplication-outbox.runner.ts
+
+  # ── Worker 2 ── Matching Worker ─────────────────────────────
+  matching-worker:
+    <<: *worker-base
+    container_name: hiralent_matching_worker
+    command: npm run worker:matching
+
+  # ── Worker 3 ── Assessment Outbox ───────────────────────────
+  assessment-outbox:
+    <<: *worker-base
+    container_name: hiralent_assessment_outbox
+    command: npx tsx src/workers/assessment-outbox.worker.ts
+
+  # ── Worker 4 ── Assessment Insight ──────────────────────────
+  assessment-insight:
+    <<: *worker-base
+    container_name: hiralent_assessment_insight
+    command: npx tsx src/workers/assessment-insight.worker.ts
+
+  # ── Worker 5 ── Run Worker (Code Execution) ─────────────────
+  run-worker:
+    <<: *worker-base
+    container_name: hiralent_run_worker
+    command: npx tsx src/workers/run.worker.ts
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # ── Worker 6 ── Assessment Invite Sweeper ───────────────────
+  assessment-invite-sweeper:
+    <<: *worker-base
+    container_name: hiralent_assessment_invite_sweeper
+    command: npx tsx src/workers/assessmentInviteSweeper.worker.ts
+
+networks:
+  workers-net:
+    driver: bridge

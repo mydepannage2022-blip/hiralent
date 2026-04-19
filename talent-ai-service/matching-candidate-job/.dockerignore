@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+#  FILE LOCATION: talent-ai-service/matching-candidate-job/.dockerignore
+# ─────────────────────────────────────────────────────────────
+
+# Python cache — never needed inside Docker
+__pycache__
+*.pyc
+*.pyo
+.Python
+
+# Virtual environment — Docker installs from requirements.txt
+.venv
+venv
+env
+
+# Git
+.git
+.gitignore
+
+# Secrets — passed at runtime via env_file, never baked into image
+.env
+.env.local
+
+# Logs
+*.log
+*.stub.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea

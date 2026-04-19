@@ -866,6 +866,7 @@ export async function listEmployerAssessments(
       // ✅ fetch sessions to compute the 3 counts
       sessions: {
         select: {
+          candidate_id: true,
           status: true,
           total_score: true,
         },
@@ -876,17 +877,19 @@ export async function listEmployerAssessments(
   return list.map((a) => {
     const sessions = (a as any).sessions ?? [];
 
-    // Total = any session exists (invited + started)
-    const candidate_count = sessions.length;
+    // Deduplicate by candidate_id — keep the most advanced session per candidate
+    const byCandidateMap = new Map<string, any>();
+    for (const s of sessions) {
+      const existing = byCandidateMap.get(s.candidate_id);
+      if (!existing || s.status === 'SUBMITTED') {
+        byCandidateMap.set(s.candidate_id, s);
+      }
+    }
+    const uniqueSessions = Array.from(byCandidateMap.values());
 
-    // Completed = submitted (done, regardless of score)
-    const completed_count = sessions.filter(
-      (s: any) => s.status === 'SUBMITTED'
-    ).length;
-
-    // To Evaluate = submitted BUT score not yet computed
-    // (HackerRank style: needs review by company or scoring worker)
-    const to_evaluate_count = sessions.filter(
+    const candidate_count = uniqueSessions.length;
+    const completed_count = uniqueSessions.filter((s: any) => s.status === 'SUBMITTED').length;
+    const to_evaluate_count = uniqueSessions.filter(
       (s: any) =>
         s.status === 'SUBMITTED' &&
         (s.total_score === null || s.total_score === undefined)
@@ -898,6 +901,7 @@ export async function listEmployerAssessments(
       candidate_count,
       completed_count,
       to_evaluate_count,
+      candidate_ids: Array.from(byCandidateMap.keys()),
     };
   });
 }

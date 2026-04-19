@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────
+#  FILE LOCATION: talent-ai-service/job-creation-ai/.dockerignore
+# ─────────────────────────────────────────────────────────────
+
+# Python cache — never needed in Docker
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment — Docker installs its own from requirements.txt
+.venv
+venv
+env
+
+# Git
+.git
+.gitignore
+
+# Local env secrets
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea

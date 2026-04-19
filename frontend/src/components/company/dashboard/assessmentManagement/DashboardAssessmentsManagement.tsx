@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   Plus,
   Search,
-  Calendar,
   Building,
   Users,
   Sparkles,
@@ -480,7 +479,9 @@ const AssessmentsManagement: React.FC = () => {
       total: assessments.length,
       active: assessments.filter((a) => a.status === "ACTIVE").length,
       draft: assessments.filter((a) => a.status === "DRAFT").length,
-      candidates: assessments.reduce((acc, a) => acc + (a.candidate_count || 0), 0),
+      candidates: new Set(
+        assessments.flatMap((a) => (a as any).candidate_ids ?? [])
+      ).size,
     }),
     [assessments]
   );
@@ -745,23 +746,17 @@ const AssessmentsManagement: React.FC = () => {
                         </div>
 
                         <div className="shrink-0 flex gap-2 lg:flex-col lg:items-end">
-                          <div className="px-3 py-2 rounded-sm border border-gray-300 flex items-center gap-2 min-w-[150px]">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                            <div className="leading-tight flex justify-between items-center w-full">
-                              <div className="text-[10px] font-bold text-emerald-700/80">Completed</div>
-                              <div className="text-[15px] font-black text-gray-900">{completed}</div>
-                            </div>
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[12px] font-semibold text-emerald-700">{completed} completed</span>
                           </div>
 
-                          <div className="px-3 py-2 rounded-sm border border-gray-300 flex items-center gap-2 min-w-[150px]">
-                            <ClipboardList className="w-4 h-4 text-amber-700" />
-                            <div className="leading-tight flex justify-between items-center w-full">
-                              <div className="text-[10px] font-bold text-amber-700/80">To Evaluate</div>
-                              <div className="text-[15px] font-black text-gray-900">{toEvaluate}</div>
-                            </div>
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
+                            <ClipboardList className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-[12px] font-semibold text-amber-700">{toEvaluate} to evaluate</span>
                           </div>
 
-                          <div className="hidden lg:block text-[11px] text-gray-500 font-semibold mt-1">
+                          <div className="hidden lg:block text-[11px] text-gray-400 font-medium mt-1 text-right">
                             Open details →
                           </div>
                         </div>

@@ -19,68 +19,49 @@ const outbox = new MatchingOutboxService(prisma);
 
 const makeJobDedupeKey = (jobId: string) => `JOB_UPDATED:${jobId}`;
 
-// --- Simple Test constants
+// ─────────────────────────────────────────────────────────────────────────────
+//  Simple Test constants
+// ─────────────────────────────────────────────────────────────────────────────
 const SIMPLE_TEST_TITLE = "Quick Platform Check";
 const SIMPLE_TEST_DESC =
   "A short test to confirm you can use the platform (1 coding + 1 MCQ, easy).";
 
-/**
- * Build a Prisma WHERE clause to find easy questions for the sample test.
- *
- * Priority 1 (skill-matched):
- *   difficulty=easy AND skillTags overlaps job.required_skills AND status=approved
- *
- * Priority 2 (fallback — called with requiredSkills=[]):
- *   difficulty=easy AND status=approved  (any easy question from the full bank)
- *
- * NO assessments:none / templateAssessments:none filter —
- *    those filters were shrinking the pool to near-zero,
- *    causing the same question to repeat every time.
- *    Sample tests are practice-only, so reusing questions is fine.
- */
-function simpleTestQuestionBaseWhere(requiredSkills: string[]) {
-  return {
-    difficulty: "easy",
-    status: "approved",
-    ...(requiredSkills.length > 0
-      ? { skillTags: { hasSome: requiredSkills } }
-      : {}),
-  };
-}
+const API_BASE_URL = process.env.APP_URL || "http://localhost:5000";
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY || "";
 
-/**
- * Pick ONE random approved question of a given type from the full matching pool.
- *
- * Strategy:
- *   1. COUNT how many questions match the WHERE
- *   2. Pick a random offset (0 → count-1)
- *   3. Fetch exactly that one row using skip + findFirst
- *
- * This guarantees true randomness across the ENTIRE question bank,
- * not just the first 30 rows returned by insertion order.
- *
- * Note: status:"approved" is already included in simpleTestQuestionBaseWhere,
- * but we keep it here too as a safety net.
- */
-async function pickOneQuestion(
+// ─────────────────────────────────────────────────────────────────────────────
+//  Step 1 — DB lookup: easy + skill-matched ONLY
+//  Returns null immediately if no matching question exists (no random fallback)
+// ─────────────────────────────────────────────────────────────────────────────
+async function findSkillMatchedQuestion(
   tx: Prisma.TransactionClient,
-  where: ReturnType<typeof simpleTestQuestionBaseWhere>,
-  type: "coding" | "mcq"
+  type: "coding" | "mcq",
+  requiredSkills: string[]
 ): Promise<string | null> {
-  const fullWhere = { ...where, type, status: "approved" };
+  // No skills on the job → skip DB entirely, go straight to AI
+  if (requiredSkills.length === 0) return null;
 
-  // Step 1 — count the full pool
-  const total = await tx.question.count({ where: fullWhere });
+  const total = await tx.question.count({
+    where: {
+      status: "approved",
+      difficulty: "easy",
+      type,
+      skillTags: { hasSome: requiredSkills },
+    },
+  });
 
   if (total === 0) return null;
 
-  // Step 2 — random offset across the FULL pool
+  // Random pick within the SKILL-MATCHED pool only
   const randomSkip = Math.floor(Math.random() * total);
-
-  // Step 3 — fetch exactly that one record
   const row = await tx.question.findFirst({
-    where: fullWhere,
-    orderBy: { id: "asc" }, // stable order so skip is deterministic
+    where: {
+      status: "approved",
+      difficulty: "easy",
+      type,
+      skillTags: { hasSome: requiredSkills },
+    },
+    orderBy: { id: "asc" },
     skip: randomSkip,
     select: { id: true },
   });
@@ -88,46 +69,152 @@ async function pickOneQuestion(
   return row?.id ?? null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Step 3 — AI generation: generates a question on-the-fly matching the job
+//  Topic is built from jobTitle + requiredSkills so the question is relevant
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateQuestionViaAI(
+  type: "coding" | "mcq",
+  requiredSkills: string[],
+  jobTitle: string
+): Promise<string | null> {
+  try {
+    // Build a clean, focused topic — e.g. "Junior Frontend Developer — React, TypeScript"
+    const skillsLabel =
+      requiredSkills.length > 0
+        ? requiredSkills.slice(0, 3).join(", ") // max 3 skills to keep prompt focused
+        : jobTitle;
+
+    const topic = `Junior ${jobTitle} — ${skillsLabel}`;
+
+    console.log(
+      `[SimpleTest] No skill-matched ${type} in DB → AI generating — topic: "${topic}"`
+    );
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/questions/generate-batch`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-key": INTERNAL_SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          topics: [topic],
+          difficulty: "easy",
+          countPerTopic: 1,
+          questionType: type, // tells the generator which type to produce
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.warn(
+        `[SimpleTest] AI generate-batch HTTP ${response.status}: ${err}`
+      );
+      return null;
+    }
+
+    const data = (await response.json()) as {
+      success: boolean;
+      questions?: Array<{ id: string }>;
+      error?: string;
+    };
+
+    if (!data.success || !data.questions?.length) {
+      console.warn(
+        `[SimpleTest] AI returned no questions: ${data.error ?? "unknown"}`
+      );
+      return null;
+    }
+
+    const questionId = data.questions[0].id;
+
+    // Auto-approve so it's immediately usable
+    await prisma.question.update({
+      where: { id: questionId },
+      data: { status: "approved" },
+    });
+
+    console.log(
+      `[SimpleTest] AI generated ${type} question ${questionId} for topic "${topic}"`
+    );
+
+    return questionId;
+  } catch (err: any) {
+    console.error(
+      `[SimpleTest] AI generation failed for ${type}:`,
+      err?.message ?? err
+    );
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  resolveQuestion — Step 1 then Step 3, nothing in between
+//
+//  Step 1: DB — easy + skill-matched → return immediately if found
+//  Step 3: AI — generate matching the job's skills → return if succeeded
+//  null  : if both fail (very rare edge case)
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  resolveQuestionIds — runs OUTSIDE the transaction (AI calls can take 30s+)
+//  Returns { codingId, mcqId } before the transaction opens.
+// ─────────────────────────────────────────────────────────────────────────────
+async function resolveQuestionIds(
+  requiredSkills: string[],
+  jobTitle: string
+): Promise<{ codingId: string | null; mcqId: string | null }> {
+  // Step 1 — DB lookup using plain prisma (no tx needed for reads)
+  const [dbCoding, dbMcq] = await Promise.all([
+    findSkillMatchedQuestion(prisma as unknown as Prisma.TransactionClient, "coding", requiredSkills),
+    findSkillMatchedQuestion(prisma as unknown as Prisma.TransactionClient, "mcq", requiredSkills),
+  ]);
+
+  // Step 3 — AI fallback only for missing types
+  const [codingId, mcqId] = await Promise.all([
+    dbCoding
+      ? (console.log(`[SimpleTest] DB found skill-matched coding: ${dbCoding}`), Promise.resolve(dbCoding))
+      : (console.log(`[SimpleTest] DB has no skill-matched easy coding for skills [${requiredSkills.join(", ")}] → calling AI`),
+         generateQuestionViaAI("coding", requiredSkills, jobTitle)),
+    dbMcq
+      ? (console.log(`[SimpleTest] DB found skill-matched mcq: ${dbMcq}`), Promise.resolve(dbMcq))
+      : (console.log(`[SimpleTest] DB has no skill-matched easy mcq for skills [${requiredSkills.join(", ")}] → calling AI`),
+         generateQuestionViaAI("mcq", requiredSkills, jobTitle)),
+  ]);
+
+  return { codingId, mcqId };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ensureJobSimpleTest — fast DB-only writes, receives pre-resolved question IDs
+// ─────────────────────────────────────────────────────────────────────────────
 async function ensureJobSimpleTest(
   tx: Prisma.TransactionClient,
-  args: { jobId: string; companyId: string; requiredSkills: string[] }
+  args: {
+    jobId: string;
+    companyId: string;
+    jobTitle: string;
+    codingId: string | null;
+    mcqId: string | null;
+  }
 ) {
-  // already exists?
+  // Already exists — keep it
   const existing = await tx.jobSimpleTest.findUnique({
     where: { job_id: args.jobId },
-    select: { test_id: true, is_system: true, version: true },
+    select: { test_id: true },
   });
-
-  // If exists => keep
   if (existing) return existing.test_id;
 
-  // 1) prefer skill-tagged easy questions
-  const baseWhere = simpleTestQuestionBaseWhere(args.requiredSkills);
-
-  let codingId = await pickOneQuestion(tx, baseWhere, "coding");
-  let mcqId = await pickOneQuestion(tx, baseWhere, "mcq");
-
-  // 2) fallback: random EASY (no skillTags required)
-  if (!codingId) {
-    codingId = await pickOneQuestion(
-      tx,
-      simpleTestQuestionBaseWhere([]),
-      "coding"
-    );
-  }
-  if (!mcqId) {
-    mcqId = await pickOneQuestion(
-      tx,
-      simpleTestQuestionBaseWhere([]),
-      "mcq"
+  // coding is required — mcq is optional
+  if (!args.codingId) {
+    throw new Error(
+      `SIMPLE_TEST_NO_CODING_QUESTION — DB empty + AI failed for job: "${args.jobTitle}"`
     );
   }
 
-  // If still missing coding → we cannot build the test
-  if (!codingId) {
-    throw new Error("SIMPLE_TEST_NO_EASY_CODING_QUESTION_FOUND");
-  }
-
+  // Create the test
   const createdTest = await tx.jobSimpleTest.create({
     data: {
       job_id: args.jobId,
@@ -135,43 +222,32 @@ async function ensureJobSimpleTest(
       title: SIMPLE_TEST_TITLE,
       description: SIMPLE_TEST_DESC,
       time_limit_min: 10,
-
-      // ✅ REMOVED: passing_score (does not exist in Prisma model)
-      // passing_score: 60,
-
       is_system: true,
       version: 1,
     },
     select: { test_id: true },
   });
 
-  // attach questions (order: coding then mcq)
+  // Attach questions
   const links: Prisma.JobSimpleTestQuestionCreateManyInput[] = [
-    {
-      test_id: createdTest.test_id,
-      question_id: codingId,
-      kind: "CODING",
-      order: 1,
-    },
+    { test_id: createdTest.test_id, question_id: args.codingId, kind: "CODING", order: 1 },
   ];
-
-  if (mcqId) {
-    links.push({
-      test_id: createdTest.test_id,
-      question_id: mcqId,
-      kind: "MCQ",
-      order: 2,
-    });
+  if (args.mcqId) {
+    links.push({ test_id: createdTest.test_id, question_id: args.mcqId, kind: "MCQ", order: 2 });
   }
 
   await tx.jobSimpleTestQuestion.createMany({ data: links });
 
+  console.log(
+    `[SimpleTest] Created test ${createdTest.test_id} for job "${args.jobTitle}" — coding: ${args.codingId} | mcq: ${args.mcqId ?? "none (AI failed)"}`
+  );
+
   return createdTest.test_id;
 }
 
-/**
- * Crée un job appartenant à une company (user avec rôle company/company_admin)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  createJob
+// ─────────────────────────────────────────────────────────────────────────────
 export async function createJob(
   companyId: string,
   data: CreateJobRequest
@@ -180,11 +256,13 @@ export async function createJob(
     where: { user_id: companyId },
   });
 
-  if (!companyUser) throw new Error(`Company user with ID ${companyId} not found`);
+  if (!companyUser)
+    throw new Error(`Company user with ID ${companyId} not found`);
   if (!["company", "company_admin"].includes(companyUser.role)) {
     throw new Error(`User ${companyId} is not a company user`);
   }
 
+  // Create the job immediately — no AI blocking
   const job = await prisma.$transaction(async (tx) => {
     const created = await tx.companyJob.create({
       data: {
@@ -195,7 +273,6 @@ export async function createJob(
         salary_range: data.salary_range ?? null,
         required_skills: data.required_skills ?? [],
         status: data.status ?? JobStatus.DRAFT,
-
         job_type: data.job_type,
         experience_level: data.experience_level,
         education_level: data.education_level,
@@ -204,27 +281,17 @@ export async function createJob(
         department: data.department,
         reporting_to: data.reporting_to ?? null,
         team_size: data.team_size ?? null,
-
         application_deadline: data.application_deadline
           ? new Date(data.application_deadline)
           : null,
         max_applications: data.max_applications ?? null,
         auto_reject_after: data.auto_reject_after ?? null,
         screening_questions: data.screening_questions ?? [],
-
         visa_sponsored: data.visa_sponsored ?? null,
         relocation_assistance: data.relocation_assistance ?? null,
       },
     });
 
-    // ✅ AUTO attach system simple test (1 coding + 1 mcq easy)
-    await ensureJobSimpleTest(tx, {
-      jobId: created.job_id,
-      companyId,
-      requiredSkills: created.required_skills ?? [],
-    });
-
-    // ✅ Trigger matching ONLY if the job is created ACTIVE
     if (created.status === JobStatus.ACTIVE) {
       await outbox.enqueue(tx, {
         eventType: MatchingEventType.JOB_UPDATED,
@@ -238,22 +305,36 @@ export async function createJob(
     return created;
   });
 
+  // Fire-and-forget: resolve questions via DB/AI then attach the SimpleTest
+  // Runs entirely in the background — does not block the API response
+  resolveQuestionIds(data.required_skills ?? [], job.title)
+    .then(({ codingId, mcqId }) =>
+      ensureJobSimpleTest(prisma as unknown as Prisma.TransactionClient, {
+        jobId: job.job_id,
+        companyId,
+        jobTitle: job.title,
+        codingId,
+        mcqId,
+      })
+    )
+    .catch((err) =>
+      console.error(`[SimpleTest] Background creation failed for job ${job.job_id}:`, err?.message ?? err)
+    );
+
   return job as unknown as Job;
 }
 
-/**
- * Récupère un job par ID
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  getJobById
+// ─────────────────────────────────────────────────────────────────────────────
 export async function getJobById(jobId: string): Promise<Job | null> {
-  const job = await prisma.companyJob.findUnique({
-    where: { job_id: jobId },
-  });
+  const job = await prisma.companyJob.findUnique({ where: { job_id: jobId } });
   return job as unknown as Job | null;
 }
 
-/**
- * Met à jour un job existant
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  updateJob
+// ─────────────────────────────────────────────────────────────────────────────
 export async function updateJob(
   jobId: string,
   data: Partial<CreateJobRequest & { status?: JobStatus }>
@@ -268,76 +349,45 @@ export async function updateJob(
         : undefined,
   };
 
-  // remove undefined fields
   Object.keys(updateData).forEach((key) => {
     const k = key as keyof Prisma.CompanyJobUpdateInput;
     if (updateData[k] === undefined) delete updateData[k];
   });
 
   const job = await prisma.$transaction(async (tx) => {
-    // 1) BEFORE: lire les champs qui influencent la reco
     const before = await tx.companyJob.findUnique({
       where: { job_id: jobId },
       select: {
-        job_id: true,
-        status: true,
-        title: true,
-        description: true,
-        location: true,
-        required_skills: true,
-        job_type: true,
-        experience_level: true,
-        education_level: true,
-        remote_option: true,
-        urgency_level: true,
-        department: true,
-        visa_sponsored: true,
-        relocation_assistance: true,
-        salary_range: true,
-        screening_questions: true,
-        min_profile_score: true,
-        required_fields: true,
-        application_deadline: true,
+        job_id: true, status: true, title: true, description: true,
+        location: true, required_skills: true, job_type: true,
+        experience_level: true, education_level: true, remote_option: true,
+        urgency_level: true, department: true, visa_sponsored: true,
+        relocation_assistance: true, salary_range: true,
+        screening_questions: true, min_profile_score: true,
+        required_fields: true, application_deadline: true,
         max_applications: true,
       },
     });
 
-    if (!before) {
-      throw new Error(`Job ${jobId} not found`);
-    }
+    if (!before) throw new Error(`Job ${jobId} not found`);
 
-    // 2) UPDATE
     const updated = await tx.companyJob.update({
       where: { job_id: jobId },
       data: updateData,
       select: {
-        job_id: true,
-        status: true,
-        title: true,
-        description: true,
-        location: true,
-        required_skills: true,
-        job_type: true,
-        experience_level: true,
-        education_level: true,
-        remote_option: true,
-        urgency_level: true,
-        department: true,
-        visa_sponsored: true,
-        relocation_assistance: true,
-        salary_range: true,
-        screening_questions: true,
-        min_profile_score: true,
-        required_fields: true,
-        application_deadline: true,
+        job_id: true, status: true, title: true, description: true,
+        location: true, required_skills: true, job_type: true,
+        experience_level: true, education_level: true, remote_option: true,
+        urgency_level: true, department: true, visa_sponsored: true,
+        relocation_assistance: true, salary_range: true,
+        screening_questions: true, min_profile_score: true,
+        required_fields: true, application_deadline: true,
         max_applications: true,
       },
     });
 
-    // 3) Detecter si au moins un champ "reco" a changé
     const changed = JSON.stringify(before) !== JSON.stringify(updated);
 
-    // 4) Trigger SEULEMENT si: changement + job ACTIVE après update
     if (changed && updated.status === JobStatus.ACTIVE) {
       await outbox.enqueue(tx, {
         eventType: MatchingEventType.JOB_UPDATED,
@@ -354,23 +404,18 @@ export async function updateJob(
   return job as unknown as Job;
 }
 
-/**
- * ✅ FIXED: Supprime un job avec gestion correcte de TOUTES les FK
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  deleteJob
+// ─────────────────────────────────────────────────────────────────────────────
 export async function deleteJob(jobId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    // 0) Check if job exists and get status
     const job = await tx.companyJob.findUnique({
       where: { job_id: jobId },
       select: { job_id: true, status: true },
     });
 
-    if (!job) {
-      throw new Error(`Job ${jobId} not found`);
-    }
+    if (!job) throw new Error(`Job ${jobId} not found`);
 
-    // 1) Enqueue deletion event FIRST (before deleting the job)
-    //    Only if job was ACTIVE (so Qdrant knows to delete it)
     if (job.status === JobStatus.ACTIVE) {
       await outbox.enqueue(tx, {
         eventType: MatchingEventType.JOB_UPDATED,
@@ -381,7 +426,6 @@ export async function deleteJob(jobId: string): Promise<void> {
       });
     }
 
-    // 2) Delete ALL child records in correct order (most dependent → least dependent)
     await tx.interviewSchedule.deleteMany({ where: { job_id: jobId } });
 
     const applicationIds = await tx.jobApplication.findMany({
@@ -391,37 +435,25 @@ export async function deleteJob(jobId: string): Promise<void> {
 
     if (applicationIds.length > 0) {
       const appIds = applicationIds.map((a) => a.application_id);
-
-      await tx.aIInterviewResult.deleteMany({
-        where: { application_id: { in: appIds } },
-      });
-
-      await tx.jobApplicationScoreHistory.deleteMany({
-        where: { application_id: { in: appIds } },
-      });
-
-      await tx.jobApplicationEventOutbox.deleteMany({
-        where: { application_id: { in: appIds } },
-      });
+      await tx.aIInterviewResult.deleteMany({ where: { application_id: { in: appIds } } });
+      await tx.jobApplicationScoreHistory.deleteMany({ where: { application_id: { in: appIds } } });
+      await tx.jobApplicationEventOutbox.deleteMany({ where: { application_id: { in: appIds } } });
     }
 
     await tx.skillAssessment.deleteMany({ where: { job_id: jobId } });
     await tx.employerAssessment.deleteMany({ where: { job_id: jobId } });
     await tx.candidateProgressTracker.deleteMany({ where: { job_id: jobId } });
     await tx.relocationCase.deleteMany({ where: { job_id: jobId } });
-
     await tx.jobApplication.deleteMany({ where: { job_id: jobId } });
     await tx.jobRecommendation.deleteMany({ where: { job_id: jobId } });
     await tx.jobVector.deleteMany({ where: { job_id: jobId } });
-
-    // 3) Finally, delete the job itself
     await tx.companyJob.delete({ where: { job_id: jobId } });
   });
 }
 
-/**
- * Met à jour uniquement le status d'un job
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  patchJobStatus
+// ─────────────────────────────────────────────────────────────────────────────
 export async function patchJobStatus(
   jobId: string,
   status: JobStatus
@@ -432,9 +464,7 @@ export async function patchJobStatus(
       select: { job_id: true, status: true },
     });
 
-    if (!before) {
-      throw new Error(`Job ${jobId} not found`);
-    }
+    if (!before) throw new Error(`Job ${jobId} not found`);
 
     const updated = await tx.companyJob.update({
       where: { job_id: jobId },
@@ -443,7 +473,8 @@ export async function patchJobStatus(
     });
 
     const becameActive =
-      before.status !== JobStatus.ACTIVE && updated.status === JobStatus.ACTIVE;
+      before.status !== JobStatus.ACTIVE &&
+      updated.status === JobStatus.ACTIVE;
 
     if (becameActive) {
       await outbox.enqueue(tx, {
@@ -461,31 +492,25 @@ export async function patchJobStatus(
   return job as unknown as Job;
 }
 
-/**
- * Liste les jobs d'une company (dashboard interne)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  getCompanyJobs
+// ─────────────────────────────────────────────────────────────────────────────
 export async function getCompanyJobs(companyId: string): Promise<Job[]> {
   const rows = await prisma.companyJob.findMany({
     where: { company_id: companyId },
     orderBy: { created_at: "desc" },
-    include: {
-      _count: {
-        select: { applications: true },
-      },
-    },
+    include: { _count: { select: { applications: true } } },
   });
 
-  const jobs = rows.map((j) => ({
+  return rows.map((j) => ({
     ...j,
     applications_count: j._count.applications,
-  }));
-
-  return jobs as unknown as Job[];
+  })) as unknown as Job[];
 }
 
-/**
- * Listing public / company-specific par companyId
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  getCompanyJobsById
+// ─────────────────────────────────────────────────────────────────────────────
 export async function getCompanyJobsById(
   companyId: string,
   onlyActive = false
@@ -496,40 +521,26 @@ export async function getCompanyJobsById(
       ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
     },
     orderBy: { created_at: "desc" },
-    include: {
-      _count: {
-        select: { applications: true },
-      },
-    },
+    include: { _count: { select: { applications: true } } },
   });
 
-  const jobs = rows.map((j) => ({
+  return rows.map((j) => ({
     ...j,
     applications_count: j._count.applications,
-  }));
-
-  return jobs as unknown as Job[];
+  })) as unknown as Job[];
 }
 
-/**
- * Listing filtré + pagination
- */
-export async function listJobs(filters: JobListFilters): Promise<JobListResponse> {
+// ─────────────────────────────────────────────────────────────────────────────
+//  listJobs
+// ─────────────────────────────────────────────────────────────────────────────
+export async function listJobs(
+  filters: JobListFilters
+): Promise<JobListResponse> {
   const {
-    company_id,
-    status,
-    department,
-    job_type,
-    experience_level,
-    remote_option,
-    urgency_level,
-    created_from,
-    created_to,
-    search_term,
-    page = 1,
-    limit = 20,
-    sort_by = "created_at",
-    sort_order = "desc",
+    company_id, status, department, job_type, experience_level,
+    remote_option, urgency_level, created_from, created_to,
+    search_term, page = 1, limit = 20,
+    sort_by = "created_at", sort_order = "desc",
   } = filters;
 
   const where: Prisma.CompanyJobWhereInput = {
@@ -585,9 +596,9 @@ export async function listJobs(filters: JobListFilters): Promise<JobListResponse
   };
 }
 
-/**
- * Fetch applicants for a given job
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  getJobApplicantsForJob
+// ─────────────────────────────────────────────────────────────────────────────
 export async function getJobApplicantsForJob(jobId: string) {
   const applications = await prisma.jobApplication.findMany({
     where: { job_id: jobId },
@@ -599,10 +610,7 @@ export async function getJobApplicantsForJob(jobId: string) {
           full_name: true,
           email: true,
           candidateProfile: {
-            select: {
-              headline: true,
-              location: true,
-            },
+            select: { headline: true, location: true },
           },
         },
       },
@@ -611,7 +619,6 @@ export async function getJobApplicantsForJob(jobId: string) {
 
   return applications.map((a) => {
     const fullName = (a.candidate.full_name ?? "").trim();
-
     return {
       application_id: a.application_id,
       candidate_id: a.candidate_id,

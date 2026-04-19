@@ -27,7 +27,14 @@ router.post('/generate',
 );
 
 router.post('/generate-batch',
-  checkAuth,
+  (req, res, next) => {
+    const internalKey = process.env.INTERNAL_SERVICE_KEY;
+    if (internalKey && req.headers['x-internal-key'] === internalKey) {
+      (req as any).user = { user_id: 'internal-service', role: 'internal', session_id: 'internal' };
+      return next();
+    }
+    return checkAuth(req as any, res, next);
+  },
   validateBatchGeneration,
   checkAIServiceAvailable,
   controller.generateBatchQuestions.bind(controller)

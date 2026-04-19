@@ -421,3 +421,21 @@ export const listJobAssessments = async (req, res) => {
     return res.status(500).json({ success: false, message: "INTERNAL_ERROR" });
   }
 };
+
+export const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user as AuthUser;
+    const companyId = user.user_id;
+
+    const rows = await prisma.jobApplication.findMany({
+      where: { job: { company_id: companyId }, status: 'APPLIED' },
+      select: { candidate_id: true },
+    });
+    const toReview = new Set(rows.map((r) => r.candidate_id)).size;
+
+    return res.json({ success: true, data: { candidates_to_review: toReview } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, message: 'INTERNAL_ERROR' });
+  }
+};

@@ -68,6 +68,8 @@ export class JobApplicationService {
           required_skills: true,
           min_profile_score: true,
           required_fields: true,
+          application_deadline: true,
+          max_applications: true,
           company: {
     select: {
       full_name: true,
@@ -107,6 +109,23 @@ const companyName =
       const err: any = new Error("Job is not active");
       err.statusCode = 400;
       throw err;
+    }
+
+    if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+      const err: any = new Error("Application deadline has passed");
+      err.statusCode = 400;
+      err.reason_codes = ["DEADLINE_PASSED"];
+      throw err;
+    }
+
+    if (job.max_applications) {
+      const count = await this.prisma.jobApplication.count({ where: { job_id: jobId } });
+      if (count >= job.max_applications) {
+        const err: any = new Error("This job is no longer accepting applications");
+        err.statusCode = 400;
+        err.reason_codes = ["MAX_APPLICATIONS_REACHED"];
+        throw err;
+      }
     }
 
     // 2) Validate "profile ready"
