@@ -1,4 +1,0 @@
-
-> backend@1.0.0 worker:run
-> ts-node src/workers/run.worker.ts
-

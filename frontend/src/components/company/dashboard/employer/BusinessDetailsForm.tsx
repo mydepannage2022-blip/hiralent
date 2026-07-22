@@ -76,6 +76,8 @@ export default function BusinessDetailsForm({ profile }: BusinessDetailsFormProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Empty input => `null` so the backend actually clears the field
+    // (employer.service checks `!== undefined`; null clears, undefined skips).
     const payload: UpdateBusinessDetailsPayload = {
       industry: formData.industry || null,
       company_size: formData.company_size || null,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import AssessmentSetup from '@/src/components/candidate/dashboard/skills-assessment/AssessmentSetup';
@@ -30,12 +30,12 @@ interface SkillCategory {
   category: string;
 }
 
-const AssessmentStartPage = () => {
+const AssessmentStartInner = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profileData } = useProfile();
   
-  const skillId = searchParams.get('skill');
+  const skillId = searchParams?.get('skill');
   
   const startAssessmentMutation = useStartAssessment();
 
@@ -274,4 +274,10 @@ const AssessmentStartPage = () => {
   );
 };
 
-export default AssessmentStartPage;
+export default function AssessmentStartPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <AssessmentStartInner />
+    </Suspense>
+  );
+}

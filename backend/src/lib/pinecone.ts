@@ -16,32 +16,58 @@ const pc = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY || '',
 });
 
-const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'talenta-candidates';
+// The effective index is PINECONE_INDEX_NAME from env (backend/.env), with this
+// Hiralent-branded default when unset. The index is auto-created on first use by
+// ensureIndexExists() below, so a fresh environment (dev or a clean deploy) does not
+// need the index pre-created in the Pinecone dashboard.
+const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'hiralent-candidates';
 
 export { pc };
 
+// Ensure INDEX_NAME exists in Pinecone, creating it once if missing. The result is
+// cached so the listIndexes/createIndex round-trip runs at most once per process; on
+// failure the cache is cleared so a later call can retry instead of caching the error.
+let indexReady: Promise<void> | null = null;
+
+async function ensureIndexExists(): Promise<void> {
+  const indexList = await pc.listIndexes();
+  const exists = indexList.indexes?.some(index => index.name === INDEX_NAME);
+
+  if (!exists) {
+    await pc.createIndex({
+      name: INDEX_NAME,
+      // Must match the embedding size produced by createEmbedding() in lib/openai.ts,
+      // which uses Google 'text-embedding-004' (768 dims). A mismatch makes every
+      // upsert fail with a dimension error (silently, since callers treat Pinecone as
+      // best-effort). Update both together if the embedding model changes.
+      dimension: 768,
+      metric: 'cosine',
+      spec: {
+        serverless: {
+          cloud: 'aws',
+          region: process.env.PINECONE_ENVIRONMENT || 'us-east-1'
+        }
+      }
+    });
+
+    // Give the new serverless index a moment to become queryable.
+    await new Promise(resolve => setTimeout(resolve, 10000));
+  }
+}
+
+function ready(): Promise<void> {
+  if (!indexReady) {
+    indexReady = ensureIndexExists().catch(error => {
+      indexReady = null; // allow a retry on the next call instead of caching the failure
+      throw error;
+    });
+  }
+  return indexReady;
+}
+
 export async function initializePineconeIndex() {
   try {
-    const indexList = await pc.listIndexes();
-    
-    const indexExists = indexList.indexes?.some(index => index.name === INDEX_NAME);
-    
-    if (!indexExists) {
-      await pc.createIndex({
-        name: INDEX_NAME,
-        dimension: 1024,
-        metric: 'cosine',
-        spec: {
-          serverless: {
-            cloud: 'aws',
-            region: process.env.PINECONE_ENVIRONMENT || 'us-east-1'
-          }
-        }
-      });
-      
-      await new Promise(resolve => setTimeout(resolve, 10000));
-    }
-    
+    await ready();
     return pc.index(INDEX_NAME);
   } catch (error) {
     console.error('Error initializing Pinecone index:', error);
@@ -51,6 +77,7 @@ export async function initializePineconeIndex() {
 
 export async function getPineconeIndex() {
   try {
+    await ready();
     return pc.index(INDEX_NAME);
   } catch (error) {
     console.error('Error getting Pinecone index:', error);

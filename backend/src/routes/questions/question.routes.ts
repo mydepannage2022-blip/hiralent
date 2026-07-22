@@ -8,6 +8,8 @@ import { vettingService } from '../../services/question/vetting.service';
 import { PatternQuestionPipeline } from "../../services/question/pattern-question.pipeline";
 import { requireScrapingAccess } from "../../middlewares/scrapingAuth.middleware";
 import { PatternService } from "../../services/patterns/pattern.service"; //  ADD THIS LINE
+import { PrismaClient } from '@prisma/client';
+import { PatternExtractionResponse, PatternQuestionGenResponse } from "../../types/question.types";
 
 const router = express.Router();
 const controller = new QuestionController();
@@ -252,8 +254,8 @@ router.post(
         throw new Error(`Python service error (${pythonResponse.status}): ${errorText}`);
       }
       
-      const pythonData = await pythonResponse.json();
-      
+      const pythonData = await pythonResponse.json() as PatternExtractionResponse;
+
       console.log("📊 [STEP 1] Python response:", {
         success: pythonData.success,
         patterns: pythonData.patterns?.length || 0,
@@ -369,8 +371,8 @@ async function generateQuestionsForUser(params: {
             continue;
           }
           
-          const aiData = await response.json();
-          
+          const aiData = await response.json() as PatternQuestionGenResponse;
+
           if (!aiData.success || !aiData.question) {
             console.error(`❌ [AI SERVICE] Invalid response for pattern: ${pattern.source_id}`);
             failed++;

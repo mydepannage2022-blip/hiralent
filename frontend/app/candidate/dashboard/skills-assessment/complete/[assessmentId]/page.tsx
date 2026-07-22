@@ -8,7 +8,7 @@ import { CheckCircle, Clock, Sparkles } from 'lucide-react';
 export default function AssessmentCompletePage() {
   const params = useParams();
   const router = useRouter();
-  const assessmentId = params.assessmentId as string;
+  const assessmentId = params?.assessmentId as string;
   
   const [timeRemaining, setTimeRemaining] = useState(60); // 60 seconds
   const [progress, setProgress] = useState(0);

@@ -63,7 +63,7 @@ const LanguagesSection = dynamic(() => import('@/src/components/candidate/dashbo
 
 function AddSkillsModalWrapper() {
   const searchParams = useSearchParams();
-  const rawSkills = searchParams.get("addSkills");
+  const rawSkills = searchParams?.get("addSkills");
   if (!rawSkills) return null;
   const skills = rawSkills.split(",").map(s => s.trim()).filter(Boolean);
   if (skills.length === 0) return null;

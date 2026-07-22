@@ -79,7 +79,7 @@ const AutofillPreviewModal: React.FC<AutofillPreviewModalProps> = ({
   const confidenceScores = previewData?.data?.confidence_scores;
   
   // ✅ Check if it's a 409 error (still processing)
-  const isProcessing = error?.response?.status === 409;
+  const isProcessing = (error as any)?.response?.status === 409;
 
   return (
     <AnimatePresence>
@@ -165,7 +165,7 @@ const AutofillPreviewModal: React.FC<AutofillPreviewModalProps> = ({
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Processing Error</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  {error?.response?.data?.message || 'Failed to process your CV. Please try again.'}
+                  {(error as any)?.response?.data?.message || 'Failed to process your CV. Please try again.'}
                 </p>
                 <div className="flex gap-3 justify-center">
                   <button
@@ -225,7 +225,7 @@ const AutofillPreviewModal: React.FC<AutofillPreviewModalProps> = ({
               <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50">
                 
                 {/* Personal Info */}
-                {(selectedTab === 'all') && parsedData.personal_info && Object.keys(parsedData.personal_info).some(k => parsedData.personal_info[k]) && (
+                {(selectedTab === 'all') && parsedData.personal_info && Object.values(parsedData.personal_info).some(Boolean) && (
                   <Section title="Personal Information" icon={User} confidence={confidenceScores?.personal_info}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {parsedData.personal_info.email && (

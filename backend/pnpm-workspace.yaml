@@ -1,0 +1,12 @@
+# Single-project pnpm settings (pnpm v10.16+ moved these out of package.json).
+# Native / postinstall dependencies allowed to run build scripts on install.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  canvas: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  tesseract.js: true

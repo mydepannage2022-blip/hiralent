@@ -10,14 +10,14 @@ import {
   CandidateProfileSummary, 
   ProfileCompletenessScore,
   CareerPredictionResult,
-  JobRecommendation,
   HealthCheckResponse,
   UpdateLocationInput,
   UpdateSalaryInput,
   ProfilePictureUploadResponse,
   UpdateHeadlineInput,        // NEW - Add this import
-  HeadlineUpdateResult 
+  HeadlineUpdateResult
 } from '../types/candidate.types';
+import { JobListItemDTO } from '../types/candidate.jobs.types';
 import { triggerAutoBadgeEvaluation } from '../../src/services/candidate/profile/badge.trigger';
 
 
@@ -31,6 +31,28 @@ interface AuthenticatedRequest extends Request {
     limit?: string;
   };
 }
+
+/**
+ * Ownership guard for candidate-scoped endpoints.
+ *
+ * The `/:candidateId` route variants let the caller name a candidate id explicitly.
+ * Without this check any authenticated candidate could pass ANOTHER candidate's id
+ * (IDOR) and read — or, on the POST variants, mutate — that candidate's data.
+ *
+ * Returns `true` (after sending a 403) when the caller is NOT the owner, so handlers
+ * can guard with `if (denyIfNotOwnCandidate(req, res, candidateId)) return;`.
+ * `req.user` is guaranteed populated here by checkAuth + each handler's own 401 guard.
+ */
+const denyIfNotOwnCandidate = (req: Request, res: Response, candidateId: string): boolean => {
+  if (candidateId !== req.user.user_id) {
+    res.status(403).json({
+      success: false,
+      message: 'You can only access your own candidate data'
+    } as APIResponse);
+    return true;
+  }
+  return false;
+};
 
 // Upload CV/Resume - Week 1 API
 export const uploadCVController = async (req: Request, res: Response): Promise<void> => {
@@ -53,10 +75,8 @@ export const uploadCVController = async (req: Request, res: Response): Promise<v
 
     const result = await candidateService.uploadAndProcessCV(req.user.user_id, req.file);
 
-    // ✅ AUTO-TRIGGER BADGE EVALUATION
-    triggerAutoBadgeEvaluation(req.user.user_id).catch(error => 
-      console.error('Failed to trigger badges:', error)
-    );
+    // ✅ AUTO-TRIGGER BADGE EVALUATION (fire-and-forget; handles its own errors internally)
+    triggerAutoBadgeEvaluation(req.user.user_id);
 
     res.status(200).json({
       success: true,
@@ -85,6 +105,8 @@ export const getProfileSummaryController = async (req: Request, res: Response): 
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     const summary = await candidateService.getProfileSummary(candidateId);
 
     res.status(200).json({
@@ -111,6 +133,8 @@ export const getProfileCompletenessController = async (req: Request, res: Respon
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
 
     const completeness = await completenessService.calculateCompleteness(candidateId);
     triggerAutoBadgeEvaluation(candidateId);
@@ -143,6 +167,8 @@ export const generateCareerPredictionController = async (req: Request, res: Resp
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     const prediction = await generateCareerPrediction(candidateId);
 
     res.status(200).json({
@@ -172,6 +198,9 @@ export const getJobRecommendationsController = async (req: Request, res: Respons
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
+
     const limit = parseInt(req.query.limit as string) || 20;
     const recommendations = await candidateService.getJobRecommendations(candidateId, limit);
 
@@ -183,7 +212,7 @@ export const getJobRecommendationsController = async (req: Request, res: Respons
         total: recommendations.length,
         limit
       }
-    } as APIResponse<JobRecommendation[]>);
+    } as APIResponse<JobListItemDTO[]>);
   } catch (error) {
     console.error('Error getting job recommendations:', error);
     res.status(500).json({
@@ -206,6 +235,8 @@ export const updateCandidateVectorController = async (req: Request, res: Respons
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     const result = await updateCandidateVector(candidateId);
 
     res.status(200).json({
@@ -235,6 +266,8 @@ export const getExtractedSkillsController = async (req: Request, res: Response):
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     
     // Get skills from the profile summary
     const summary = await candidateService.getProfileSummary(candidateId);
@@ -395,10 +428,8 @@ export const updateHeadlineController = async (req: Request, res: Response): Pro
     
     const result = await candidateService.updateCandidateHeadline(userId, input);
 
-    // ✅ AUTO-TRIGGER BADGE EVALUATION
-    triggerAutoBadgeEvaluation(userId).catch(error => 
-      console.error('Failed to trigger badges:', error)
-    );
+    // ✅ AUTO-TRIGGER BADGE EVALUATION (fire-and-forget; handles its own errors internally)
+    triggerAutoBadgeEvaluation(userId);
 
     res.status(200).json({
       success: true,
@@ -428,6 +459,8 @@ export const getHeadlineController = async (req: Request, res: Response): Promis
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     
     // Use existing service to get profile summary which now includes headline
     const summary = await candidateService.getProfileSummary(candidateId);
@@ -461,6 +494,8 @@ export const getProfileController = async (req: Request, res: Response): Promise
     }
 
     const candidateId = req.params.candidateId || req.user.user_id;
+
+    if (denyIfNotOwnCandidate(req, res, candidateId)) return;
     const profile = await candidateService.getCandidateProfile(candidateId);
 
     res.status(200).json({

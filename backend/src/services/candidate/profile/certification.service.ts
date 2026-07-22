@@ -145,7 +145,7 @@ export async function syncProfileCertificationsJson(candidateId: string) {
 
   // optional: trigger completeness recalculation like your other sections
   try {
-    const { calculateProfileCompleteness } = await import("../candidate.service");
+    const { calculateProfileCompleteness } = await import("../../candidate.service");
     await calculateProfileCompleteness(candidateId);
   } catch {
     // ignore if not available here

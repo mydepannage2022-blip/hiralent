@@ -17,7 +17,10 @@ import {
    VariationGenerationRequest,
   VariationQuestionData,
   VariationGenerationResponse,
-  VariabilityAnalysisResponse
+  VariabilityAnalysisResponse,
+  DiagramGenerationResponse,
+  DiagramServiceHealthResponse,
+  PatternQuestionGenResponse
 
 } from '../../types/question.types';
 import { vettingService, VettingQuestionPayload } from '../../services/question/vetting.service';
@@ -519,17 +522,19 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
 
     if (!userId) {
       console.log('❌ [CONTROLLER] User not authenticated for diagram generation');
-      return res.status(401).json({  // ✅ ADD `return`
+      res.status(401).json({
         success: false,
         error: 'Authentication required for diagram question generation'
       });
+      return;
     }
 
     if (!topic) {
-      return res.status(400).json({  // ✅ ADD `return`
+      res.status(400).json({
         success: false,
         error: 'Topic is required'
       });
+      return;
     }
 
     console.log('🎨 [CONTROLLER] Calling Python diagram service...');
@@ -551,7 +556,7 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
       throw new Error(`Diagram service returned ${diagramResponse.status}`);
     }
 
-    const diagramData = await diagramResponse.json();
+    const diagramData = await diagramResponse.json() as DiagramGenerationResponse;
     console.log('✅ [CONTROLLER] Diagram generation response received');
 
     if (!diagramData.success || !diagramData.question) {
@@ -563,12 +568,13 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
     const similarityCheck = await vectorEngineService.checkSimilarity(diagramData.question);
     
     if (similarityCheck.duplication_risk === 'high' && similarityCheck.similar_questions_found > 0) {
-      return res.status(400).json({  //  ADD `return`
+      res.status(400).json({
         success: false,
         error: 'Duplicate question detected',
         details: 'Generated question is very similar to existing ones',
         similarityCheck: similarityCheck
       });
+      return;
     }
 
     // Prepare question data with diagram fields
@@ -637,11 +643,12 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
     console.error('❌ [CONTROLLER] generateQuestionWithDiagram ERROR:', error.message);
     
     if (error.message.includes('service returned')) {
-      return res.status(503).json({  // ✅ ADD `return`
+      res.status(503).json({
         success: false,
         error: 'Diagram Generation service is currently unavailable',
         details: 'Please ensure the Python service is running on port 8000'
       });
+      return;
     }
 
     res.status(500).json({
@@ -666,8 +673,8 @@ async checkDiagramServiceHealth(req: Request, res: Response): Promise<void> {  /
       throw new Error(`Service returned ${healthResponse.status}`);
     }
 
-    const healthData = await healthResponse.json();
-    
+    const healthData = await healthResponse.json() as DiagramServiceHealthResponse;
+
     // Check if diagram generation is available
     const diagramAvailable = healthData.services?.diagram_generation_available || false;
     
@@ -702,17 +709,19 @@ async getQuestionDiagram(req: Request, res: Response): Promise<void> {
     const question = await this.questionService.getQuestionById(req.params.id);
     
     if (!question) {
-      return res.status(404).json({ 
+      res.status(404).json({
         success: false,
         error: 'Question not found'
       });
+      return;
     }
 
     if (!question.hasDiagram) {
-      return res.status(404).json({ 
+      res.status(404).json({
         success: false,
         error: 'No diagram available for this question'
       });
+      return;
     }
 
     res.json({
@@ -2556,8 +2565,8 @@ async generateQuestionsFromPatternsForUser(params: {
             continue;
           }
           
-          const aiData = await response.json();
-          
+          const aiData = await response.json() as PatternQuestionGenResponse;
+
           if (!aiData.success || !aiData.question) {
             console.error(`❌ [AI SERVICE] Invalid response for pattern: ${pattern.source_id}`);
             failed++;

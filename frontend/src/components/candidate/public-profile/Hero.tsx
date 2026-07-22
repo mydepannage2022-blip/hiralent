@@ -241,7 +241,7 @@ export default function Hero({ profile }: HeroProps) {
         {/* RIGHT: Profile Card */}
         <div className="relative">
           <div className="sm:absolute sm:-top-100 sm:left-110 md:left-130 md:-top-100 lg:left-[-18px] lg:-top-10 relative flex justify-center sm:justify-start">
-            <ProfileCard profile={profile} />
+            {profile && <ProfileCard profile={profile} />}
           </div>
         </div>
       </div>

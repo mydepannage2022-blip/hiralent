@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useResetPassword } from "../../../src/lib/auth/auth.queries";
@@ -8,7 +8,7 @@ import AuthLayout from "../../../src/components/layout/AuthLayout";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 
-const ResetPasswordPage = () => {
+const ResetPasswordInner = () => {
   const searchParams = useSearchParams();
   const resetPasswordMutation = useResetPassword();
   const pageConfig = getAuthPageConfig('login');
@@ -116,4 +116,10 @@ const ResetPasswordPage = () => {
   );
 };
 
-export default ResetPasswordPage;
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <ResetPasswordInner />
+    </Suspense>
+  );
+}

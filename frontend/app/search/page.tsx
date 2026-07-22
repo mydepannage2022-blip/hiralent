@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Search, MapPin, Star, Briefcase, Lock, ArrowRight,
@@ -1149,6 +1149,14 @@ function FilterChip({
    MAIN PAGE
 ───────────────────────────── */
 export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <SearchResultsInner />
+    </Suspense>
+  );
+}
+
+function SearchResultsInner() {
   const searchParams = useSearchParams();
   const query    = searchParams?.get("q") ?? "";
   const locParam = searchParams?.get("location") ?? "";

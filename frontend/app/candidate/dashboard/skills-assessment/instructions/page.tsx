@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import InstructionsBrief from '@/src/components/candidate/dashboard/skills-assessment/InstructionsBrief';
 
-const AssessmentInstructionsPage = () => {
+const AssessmentInstructionsInner = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -184,4 +184,10 @@ const AssessmentInstructionsPage = () => {
   );
 };
 
-export default AssessmentInstructionsPage;
+export default function AssessmentInstructionsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <AssessmentInstructionsInner />
+    </Suspense>
+  );
+}

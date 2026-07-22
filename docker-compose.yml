@@ -1,4 +1,42 @@
 services:
+  # ---------------------------------------------------------------------------
+  # Local infra for the dev baseline (Phase 0.8). Postgres + Redis are provided
+  # here so `docker compose up -d postgres redis minio` stands up the whole local
+  # stack on a fresh machine. If you already run Postgres/Redis natively on 5432/
+  # 6379, skip these two services (the ports would clash) — see docs/DEV_ARCHITECTURE.md.
+  # Credentials are LOCAL-DEV ONLY and match backend/.env DATABASE_URL / REDIS_URL.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: hiralent-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: huzaifa
+      POSTGRES_DB: hiralent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hiralent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: hiralent-redis
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   minio:
     image: quay.io/minio/minio:latest     # <- use quay.io and latest
     container_name: minio
@@ -71,3 +109,4 @@ services:
 
 volumes:
   minio_data:
+  pg_data:

@@ -7,8 +7,8 @@ type UploadInput = {
   buffer: Buffer;
   originalName: string;
   uploadedBy: string;         // user_id
-  subjectType: "COMPANY" | "AGENCY" | "USER";
-  subjectId: string;          // companyId | agencyId | userId
+  subjectType: "COMPANY" | "AGENCY" | "USER" | "MESSAGE";
+  subjectId: string;          // companyId | agencyId | userId | messages: userId
   documentType: string;       // e.g., registration_cert
   mimeType?: string;          // optional override
 };

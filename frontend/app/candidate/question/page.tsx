@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, BookOpen, Code, CheckCircle } from 'lucide-react';
 
@@ -13,6 +13,14 @@ interface Question {
 }
 
 export default function QuestionPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <QuestionInner />
+    </Suspense>
+  );
+}
+
+function QuestionInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [question, setQuestion] = useState<Question | null>(null);

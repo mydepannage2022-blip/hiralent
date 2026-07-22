@@ -26,7 +26,6 @@ async function main() {
       company_id: companyId,
       company_name: 'DevCo',
       verified: true,
-      preferred_language: 'fr',
       website: 'https://example.com',
       linkedin_profile: 'https://linkedin.com/company/example',
       industry: 'Software',
@@ -34,7 +33,6 @@ async function main() {
     },
     update: {
       verified: true,
-      preferred_language: 'fr',
       website: 'https://example.com',
       linkedin_profile: 'https://linkedin.com/company/example',
     },

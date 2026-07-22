@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import JobSearch from '@/src/components/job/JobSearch';
 import JsSidebar from '@/src/components/job/jobsearch/JsSidebar';
 import JobList from '@/src/components/candidate/dashboard/jobs/JobList';
 import { useJobs } from '@/src/lib/jobs/jobs.queries';
 import { JobFilters as JobFiltersType } from '@/src/lib/jobs/jobs.api';
+import type { CandidateJobListItemDTO } from '@/src/types/candidate.jobs.types';
 import { Briefcase, Loader2 } from 'lucide-react';
 import { locationOptions } from '@/src/constants/groupedLocationOptions';
 
@@ -32,6 +33,24 @@ export default function FindJobPage() {
 
   // Fetch jobs with filters
   const { data: jobsData, isLoading, error } = useJobs(filters);
+
+  // Public browse: adapt the plain Job[] into the list item shape JobList expects.
+  // Eligibility is per-candidate and requires auth, so we pass a neutral placeholder
+  // and use eligibilityMode="useItem" below — no per-card eligibility requests fire
+  // for anonymous visitors.
+  const jobItems: CandidateJobListItemDTO[] = useMemo(
+    () =>
+      (jobsData?.jobs ?? []).map((job) => ({
+        job_id: job.job_id,
+        title: job.title,
+        location: job.location ?? null,
+        experience_level: job.experience_level ?? null,
+        required_skills: job.required_skills ?? [],
+        status: job.status,
+        eligibility: { eligible: true, reasons: [], missingSkills: [], missingFields: [] },
+      })),
+    [jobsData?.jobs]
+  );
 
   // Handle search from JobSearch component
   const handleSearch = (title: string, location: { value: string; label: string } | null) => {
@@ -140,9 +159,12 @@ export default function FindJobPage() {
             {/* Job Cards */}
             {!isLoading && (
               <JobList
-                jobs={jobsData?.jobs || []}
+                items={jobItems}
                 isLoading={false}
                 showMatchScore={false}
+                eligibilityMode="useItem"
+                showEligibility={false}
+                detailsHrefBase="/job/jobdetails"
               />
             )}
 

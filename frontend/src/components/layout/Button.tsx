@@ -7,18 +7,20 @@ interface ButtonProps {
   text: string;
   onClick?: () => void;
   className?: string;
-  variant?: 'dark' | 'light';
+  variant?: 'dark' | 'light' | 'outline';
   animation?: boolean;
+  disabled?: boolean;
 }
 
-const Button: React.FC<ButtonProps> = ({ 
-  text, 
-  onClick, 
-  className = "", 
+const Button: React.FC<ButtonProps> = ({
+  text,
+  onClick,
+  className = "",
   variant = 'dark',
-  animation = true
+  animation = true,
+  disabled = false
 }) => {
-  
+
   // Variant-based styles
   const getButtonStyles = () => {
     switch (variant) {
@@ -28,6 +30,14 @@ const Button: React.FC<ButtonProps> = ({
           text: 'text-[#005DDC] text-[10px] lg:text-sm',
           border: 'border-2 border-[#005DDC]',
           shadow: 'shadow-lg',
+          hoverShadow: '0 20px 25px -5px rgb(0 93 220 / 0.1), 0 8px 10px -6px rgb(0 93 220 / 0.1)'
+        };
+      case 'outline':
+        return {
+          background: 'bg-transparent',
+          text: 'text-[#005DDC] text-[10px] lg:text-sm',
+          border: 'border-2 border-[#005DDC]',
+          shadow: 'shadow-sm',
           hoverShadow: '0 20px 25px -5px rgb(0 93 220 / 0.1), 0 8px 10px -6px rgb(0 93 220 / 0.1)'
         };
       case 'dark':
@@ -50,9 +60,10 @@ const Button: React.FC<ButtonProps> = ({
       <div className={className}>
         <button
           onClick={onClick}
-          className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-1 px-1 lg:py-1.5 lg:px-3 rounded-sm lg:rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
+          disabled={disabled}
+          className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-1 px-1 lg:py-1.5 lg:px-3 rounded-sm lg:rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          <span className={variant === 'light' ? 'text-[#005DDC]' : 'text-white'}>
+          <span className={variant === 'dark' ? 'text-white' : 'text-[#005DDC]'}>
             {text}
           </span>
         </button>
@@ -71,7 +82,8 @@ const Button: React.FC<ButtonProps> = ({
     >
       <motion.button
         onClick={onClick}
-        className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-0.5 px-1 lg:py-1.5 lg:px-3 rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300`}
+        disabled={disabled}
+        className={`${styles.background} ${styles.text} ${styles.border} font-semibold py-0.5 px-1 lg:py-1.5 lg:px-3 rounded-sm ${styles.shadow} hover:shadow-xl transition-shadow duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
         whileHover={{
           scale: 1.05,
           boxShadow: styles.hoverShadow
@@ -79,7 +91,7 @@ const Button: React.FC<ButtonProps> = ({
         whileTap={{ scale: 0.95 }}
       >
         <motion.span
-          className={variant === 'light' ? 'text-[#005DDC]' : 'text-white'}
+          className={variant === 'dark' ? 'text-white' : 'text-[#005DDC]'}
           whileHover={{
             backgroundPosition: ["0% 50%", "100% 50%"]
           }}

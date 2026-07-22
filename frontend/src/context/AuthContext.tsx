@@ -23,6 +23,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (userData: User) => void; // ✅ ADD THIS LINE
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     // Load user and token from localStorage on mount
@@ -40,20 +42,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("Stored Token:", storedToken);
     console.log("Stored User:", storedUser);
 
-    if (storedToken && storedUser) {
-      try {
+    try {
+      if (storedToken && storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
         console.log("✅ Auth restored from localStorage");
-      } catch (error) {
-        console.error("❌ Failed to parse stored user:", error);
-        // Clear invalid data
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("authUser");
+      } else {
+        console.log("⚠️ No stored auth found");
       }
-    } else {
-      console.log("⚠️ No stored auth found");
+    } catch (error) {
+      console.error("❌ Failed to parse stored user:", error);
+      // Clear invalid data
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+    } finally {
+      // Auth-restore attempt finished — consumers can stop showing a loader.
+      setLoading(false);
     }
   }, []);
 
@@ -121,6 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         updateUser, //  ADD THIS LINE
         isAuthenticated: !!user && !!token,
+        loading,
       }}
     >
       {children}

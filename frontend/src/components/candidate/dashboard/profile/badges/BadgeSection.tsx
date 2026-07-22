@@ -27,7 +27,7 @@ type Badge = {
   description: string;
   category: string;
   is_earned: boolean;
-  awarded_at?: string;
+  awarded_at?: string | Date | null;
   progress?: { current: number; required: number; percentage: number };
 };
 

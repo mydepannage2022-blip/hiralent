@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { generateToken } from '../utils/jwt.util';
 import { PrismaClient } from '@prisma/client';
 import { emitSubmissionEvent } from '../lib/submissionEmitter';

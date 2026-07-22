@@ -329,6 +329,62 @@ export interface VariabilityAnalysisResponse {
   error?: string;
 }
 
+// ========== DIAGRAM GENERATION TYPES (Python AI service) ==========
+export interface DiagramGenerationResponse {
+  success: boolean;
+  error?: string;
+  question?: {
+    title: string;
+    explanation: string;
+    problemStatement: string;
+    difficulty: string;
+    skillTags: string[];
+    canonicalSolution: string;
+    testCases: any;
+  };
+  diagram?: {
+    needed?: boolean;
+    type?: string;
+    code?: string;
+    imageUrl?: string;
+    confidence?: number;
+    reason?: string;
+  };
+  metadata?: any;
+}
+
+export interface DiagramServiceHealthResponse {
+  services?: {
+    diagram_generation_available?: boolean;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+// ========== PATTERN EXTRACTION / GENERATION TYPES (Python AI service) ==========
+export interface PatternExtractionResponse {
+  success: boolean;
+  error?: string;
+  patterns?: any[];
+  total_urls?: number;
+  successful_extractions?: number;
+  failed_extractions?: number;
+  [key: string]: any;
+}
+
+export interface PatternQuestionGenResponse {
+  success: boolean;
+  error?: string;
+  question?: {
+    title?: string;
+    description?: string;
+    problem_statement?: string;
+    solution?: string;
+    test_cases?: any;
+    [key: string]: any;
+  };
+}
+
 export interface VariationQuestionData {
   id: string;
   base_question_id: string;

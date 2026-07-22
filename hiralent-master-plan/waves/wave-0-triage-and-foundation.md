@@ -36,21 +36,24 @@
 - [ ] Fix the phantom `next/*` "missing declaration" errors by ensuring a single clean install (they stem from the mixed npm/pnpm node_modules). Re-check `tsc --noEmit`.
 - [ ] `next build` completes successfully (no `ignoreBuildErrors` escape hatch used).
 
-## Phase 0.6 — Config hygiene
-- [ ] Fix the corrupt `[object Promise]` line in `backend/.env`. (R-43)
-- [ ] Separate `SHADOW_DATABASE_URL` from `DATABASE_URL` (point to a throwaway shadow DB or leave unset for deploy-only) so no command can wipe the primary DB. (R-07)
-- [ ] Guard `firebase.ts` init so a missing Firebase env doesn't crash boot (defer full fix to Wave 3/8 but stop the crash now). (supports R-33)
-- [ ] Author `.env.example` for **backend** and **frontend** (full var list from the matrix) — the start of P5 config docs.
+## Phase 0.6 — Config hygiene  ✅ (Session 5, 2026-07-21)
+- [x] Fix the corrupt `[object Promise]` line in `backend/.env`. (R-43) — line removed.
+- [x] Separate `SHADOW_DATABASE_URL` from `DATABASE_URL` (point to a throwaway shadow DB or leave unset for deploy-only) so no command can wipe the primary DB. (R-07) — commented out + documented; `schema.prisma` kept free of `shadowDatabaseUrl`.
+- [x] Guard `firebase.ts` init so a missing Firebase env doesn't crash boot (defer full fix to Wave 3/8 but stop the crash now). (supports R-33) — lazy `getFirebaseAuth()`; proven boot-safe at runtime.
+- [x] Author `.env.example` for **backend** and **frontend** (full var list from the matrix) — the start of P5 config docs. **Extended to ALL services** (ai-service, assessment-ai-service, 3× talent-ai sub-services, runner-python; doc-validator completed).
+- All guarded by `tools/verify-config-hygiene.mjs` (exit 0; red-cases proven).
 
-## Phase 0.7 — Dead code & artifact removal (safe deletions)
-- [ ] Delete confirmed-dead files: `backend/src/index.ts`, unmounted `routes/health.routes.ts` (re-added properly in Wave 3), duplicate `scheduler/scraping.scheduler.ts`, `ai-service/app/main_backup.py`, unmounted `ai-service/app/api/routes.py`, frontend orphaned `lib/admin-auth.ts` + `lib/api-client.ts`, second `providers/ReactQueryProvider.tsx`. (R-40)
-- [ ] Remove committed artifacts: `backups-files-folders/**`, `test-signup.json`, `runner-python/runner-stub.log`, `backend/temp_processing_*.pdf`, `backend/*.log`, `dev.db`, `src - Raccourci.lnk`. Add them to `.gitignore`. (R-40)
-- [ ] Fix the double `insightsRoutes` mount in `app.ts:138-139`. (R-40)
-- [ ] Record all deletions in `matrices/dead-code-and-cleanup.md`.
+## Phase 0.7 — Dead code & artifact removal (safe deletions) — ✅ done (Session 6)
+- [x] Delete confirmed-dead files: `backend/src/index.ts`, unmounted `routes/health.routes.ts` (re-added properly in Wave 3), duplicate `scheduler/scraping.scheduler.ts`, `ai-service/app/main_backup.py`, unmounted `ai-service/app/api/routes.py`, frontend orphaned `lib/admin-auth.ts` + `lib/api-client.ts`, second `providers/ReactQueryProvider.tsx`. (R-40) — **plus (user-approved) `mock_sandbox_Youssra.py`, ai-service test trio, both `MCQEditor.tsx`, dead `auth/OCRUpload.tsx`, `ResumeQuality.tsx`.** NB `components/OCRUpload.tsx` kept (live `/ocr-test` route uses it).
+- [x] Remove committed artifacts: `backups-files-folders/**`, `test-signup.json`, `runner-python/runner-stub.log`, `backend/temp_processing_*.pdf`, `backend/*.log`, `dev.db`, `src - Raccourci.lnk` (×2). Added to `.gitignore`. (R-40) — via `git rm --cached` (kept on disk).
+- [x] Fix the double `insightsRoutes` mount in `app.ts:138-139`. (R-40) — **plus gated the unconditional `mockAssessmentRoutes` prod exposure.**
+- [x] Record all deletions in `matrices/dead-code-and-cleanup.md`.
+- All guarded by `tools/verify-dead-code-cleanup.mjs` (exit 0; red-cases proven) + backend/frontend build green + Python compile-delta clean.
 
-## Phase 0.8 — Local run baseline
-- [ ] Stand up local infra (Postgres, Redis, MinIO) and get the backend, one worker, and the frontend running together in dev; confirm the app loads and a basic authenticated call works.
-- [ ] Document the exact local run steps (supersede/refresh `docs/DEV_ARCHITECTURE.md`).
+## Phase 0.8 — Local run baseline — ✅ done (Session 7)
+- [x] Stand up local infra (Postgres, Redis, MinIO) and get the backend, one worker, and the frontend running together in dev; confirm the app loads and a basic authenticated call works. — `docker-compose.yml` extended with `postgres`+`redis` (MinIO already present); backend boots against Postgres; **authenticated path proven**: signup (candidate) → 7-day JWT → `GET /api/v1/auth/me` **200** → anon **401**. Mongo skipped locally via `FORCE_SKIP_MONGO=1`. Re-added `routes/health.routes.ts` as a live DB-aware `/health` probe (the Session-6 note said "Wave 3"; done here since the baseline needs it). Fixed the `start`-script path (`dist/server.js` → `dist/src/server.js`).
+- [x] Document the exact local run steps (supersede/refresh `docs/DEV_ARCHITECTURE.md`). — full rewrite: pnpm, compose infra, migrate, run, smoke, verifiers.
+- All guarded by `tools/verify-local-run.mjs` (spawns backend, polls `/health`, signup→`/me`→anon; exit 0; red-cases proven) + one-command `tools/run-all-verifiers.mjs` gate (**12/12 PASS**).
 
 ---
 

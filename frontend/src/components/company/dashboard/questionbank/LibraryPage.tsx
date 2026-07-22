@@ -76,7 +76,7 @@ function FormattedProblemText({ text }: { text: string }) {
   const formatText = (rawText: string) => {
     // Split into lines
     const lines = rawText.split('\n');
-    const elements: JSX.Element[] = [];
+    const elements: React.JSX.Element[] = [];
     let inList = false;
     let listItems: string[] = [];
     

@@ -1,6 +1,6 @@
 // src/services/scraping/scraping-scheduler.ts
 
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import { ScrapingOrchestrator } from "./orchestrator";
 import { getSchedulerConfig } from "./config";
 import type { Source } from "../ai/ai-service.client";
@@ -15,7 +15,7 @@ import type { SchedulerStatus } from "./types";
 export class ScrapingScheduler {
   private orchestrator: ScrapingOrchestrator;
   private config: ReturnType<typeof getSchedulerConfig>;
-  private jobs: Map<Source, cron.ScheduledTask>;
+  private jobs: Map<Source, ScheduledTask>;
   private isRunning: Map<Source, boolean>;
   private lastRun: Map<Source, Date>;
 

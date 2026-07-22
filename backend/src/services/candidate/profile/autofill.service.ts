@@ -1,7 +1,7 @@
 // src/services/candidate/profile/autofill.service.ts
 // ENHANCED AUTOFILL SERVICE - Complete implementation with all fixes
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import {
   AutofillPreviewResult,
   AutofillFieldData,
@@ -352,8 +352,8 @@ export class AutofillService {
         
         await prisma.candidateProfile.update({
           where: { candidate_id: candidateId },
-          data: { 
-            personal_info: personal_info,
+          data: {
+            personal_info: personal_info as unknown as Prisma.InputJsonValue,
             location: personal_info.location || undefined
           },
         });

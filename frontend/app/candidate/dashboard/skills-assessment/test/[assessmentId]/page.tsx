@@ -18,7 +18,7 @@ import { SecurityViolation } from '@/src/types/assessment.types';
 const AssessmentTestPage = () => {
   const router = useRouter();
   const params = useParams();
-  const assessmentId = params.assessmentId as string;
+  const assessmentId = params?.assessmentId as string;
 
   const { assessmentState } = useProfile();
 

@@ -13,7 +13,7 @@
 | R-04 | Frontend `next build` fails; backend 153 TS errors | Cannot produce a production build at all | Wave 0 |
 | R-05 | Payments entirely fake (no Stripe/PayPal SDK) | No revenue possible; "paid" users unpaid | Wave 5 |
 | R-06 | 88 `new PrismaClient()` → DB connection exhaustion | Backend collapses in low-hundreds of concurrent users | Wave 2 |
-| R-07 | `SHADOW_DATABASE_URL=${DATABASE_URL}` | Any `prisma migrate dev` wipes the primary/production DB | Wave 0/2 |
+| R-07 | `SHADOW_DATABASE_URL=${DATABASE_URL}` (latent — `schema.prisma` never declared `shadowDatabaseUrl` & `dotenv@16` doesn't expand `${...}`, so the var was inert) | Any `prisma migrate dev` wipes the primary/production DB **if** shadow ever gets wired to primary | ✅ **Wave 0 / Session 5** — line commented + documented; schema kept free of `shadowDatabaseUrl`; guarded by `verify-config-hygiene.mjs` |
 
 ## 🟠 High
 
@@ -64,7 +64,7 @@
 | R-40 | Dead files/entry points, committed backups/logs/temp/`dev.db`, `.lnk` | Repo bloat, confusion, accidental use | Wave 0 |
 | R-41 | UTF-16 `requirements.txt`; unpinned Python deps; google-generativeai/pydantic version spread | Docker build breakage, drift | Wave 0/8 |
 | R-42 | `generateBuildId: Date.now()`; `cache:"no-store"` everywhere; no `staleTime` (frontend nav perf) | Slow UX, busted browser caching | Wave 6 |
-| R-43 | Corrupt `[object Promise]` line in `backend/.env` | Confusing config errors | Wave 0 |
+| R-43 | Corrupt `[object Promise]` line in `backend/.env` | Confusing config errors | ✅ **Wave 0 / Session 5** — line removed; guarded by `verify-config-hygiene.mjs` |
 
 ---
 

@@ -285,14 +285,15 @@ export const worker = new Worker(
 
     const company = await prisma.companyProfile.findUnique({
       where: { company_id: companyId },
-      select: { verified: true, preferred_language: true },
+      select: { verified: true },
     });
     if (!company?.verified) {
       console.warn(`[AI_SETUP] Skipped (not verified) company=${companyId}`);
       return;
     }
 
-    const lang = normalizeLang(company.preferred_language);
+    // CompanyProfile has no language column in the schema yet — default locale.
+    const lang = normalizeLang(null);
     const ctx = await collectCompanyContext(companyId);
     const prompt = buildPrompt(ctx, lang);
 

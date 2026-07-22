@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient, AgencyStatus } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { sendEmail } from "../../utils/email.util";
 
 const prisma = new PrismaClient();

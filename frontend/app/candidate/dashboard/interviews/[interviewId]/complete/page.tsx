@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getInterview } from '@/src/lib/interview/interview.api';
@@ -9,6 +9,14 @@ import InterviewDetails from '@/src/components/candidate/dashboard/interviews/In
 import type { CandidateInterviewListItem } from '@/src/types/interview.types';
 
 export default function InterviewCompletePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <InterviewCompleteInner />
+    </Suspense>
+  );
+}
+
+function InterviewCompleteInner() {
   const params = useParams();
   const searchParams = useSearchParams();
   const interviewId = params?.interviewId as string;

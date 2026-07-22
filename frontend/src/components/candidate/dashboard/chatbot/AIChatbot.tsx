@@ -8,7 +8,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Image from "next/image";
 import {
   MessageCircle,
@@ -94,7 +94,7 @@ const SMART_CHIPS = [
 type SmartChipKey = (typeof SMART_CHIPS)[number]["key"];
 
 /* ═══════════ Animation Variants ═══════════ */
-const messageVariants = {
+const messageVariants: Variants = {
   hidden: (isUser: boolean) => ({
     opacity: 0,
     x: isUser ? 14 : -14,
@@ -111,7 +111,7 @@ const messageVariants = {
   exit: { opacity: 0, scale: 0.9, transition: { duration: 0.15 } },
 };
 
-const chipContainerVariants = {
+const chipContainerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -119,7 +119,7 @@ const chipContainerVariants = {
   },
 };
 
-const chipVariants = {
+const chipVariants: Variants = {
   hidden: { opacity: 0, y: 6, scale: 0.85 },
   visible: {
     opacity: 1,
@@ -129,7 +129,7 @@ const chipVariants = {
   },
 };
 
-const tabContentVariants = {
+const tabContentVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
@@ -184,7 +184,7 @@ function TypingIndicator() {
 
 /* ═══════════ Main Component ═══════════ */
 export default function AIChatbot({ isOpen, onClose }: ChatbotProps) {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, token, isAuthenticated, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
   const [connectionStatus, setConnectionStatus] = useState<

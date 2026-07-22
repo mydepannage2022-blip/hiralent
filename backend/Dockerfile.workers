@@ -22,15 +22,15 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copy package files FIRST (Docker caches this layer — only re-installs when package.json changes)
-COPY package*.json ./
+# Copy manifest + lockfile + pnpm settings FIRST (Docker caches this layer — only re-installs when these change)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
 
-# Install dependencies (canvas will now compile successfully)
-RUN npm ci
+# Enable pnpm (bundled with Node via corepack) and install deps (canvas compiles via the build tools above)
+RUN corepack enable && pnpm install --frozen-lockfile
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN pnpm exec prisma generate
 
 # Copy source code
 COPY . .

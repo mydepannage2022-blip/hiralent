@@ -62,7 +62,7 @@ export interface ParsedLink {
 // ==================== COMPONENT PROPS TYPES ====================
 
 export interface HeroProps {
-  profile: PublicProfileData;
+  profile?: PublicProfileData;
 }
 
 export interface SkillsSectionProps {

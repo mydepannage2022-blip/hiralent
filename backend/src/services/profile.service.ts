@@ -751,8 +751,6 @@ export const updateProjects = async (
   data: UpdateProjectsInput
 ): Promise<ProjectsUpdateResult> => {
   try {
-    await validateProfileData({ projects: data.projects }); // optional; only if your validateProfileData supports it
-
     await prisma.candidateProfile.upsert({
       where: { candidate_id: candidateId },
       update: {

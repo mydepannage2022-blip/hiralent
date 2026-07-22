@@ -16,7 +16,7 @@ const isNoCodesError = (msg: string) =>
 
 function RecoveryCodeForm() {
   const searchParams = useSearchParams();
-  const tempToken = searchParams.get("token") ?? "";
+  const tempToken = searchParams?.get("token") ?? "";
   const verifyMutation = useVerifyRecoveryCode();
   const pageConfig = getAuthPageConfig("recoveryCode");
 

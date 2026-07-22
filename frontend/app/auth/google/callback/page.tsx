@@ -15,9 +15,9 @@ function GoogleCallbackInner() {
     if (handled.current) return;
     handled.current = true;
 
-    const token = searchParams.get("token");
-    const role = searchParams.get("role");
-    const error = searchParams.get("error");
+    const token = searchParams?.get("token");
+    const role = searchParams?.get("role");
+    const error = searchParams?.get("error");
 
     if (error || !token) {
       const msg =

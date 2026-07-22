@@ -164,8 +164,8 @@ Run it locally:
 
 ```powershell
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Open: http://localhost:3000/code-run

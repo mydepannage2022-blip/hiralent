@@ -1,75 +1,40 @@
-import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import Redis from 'ioredis';
-import { MongoClient } from 'mongodb';
+import express, { Request, Response } from "express";
+import prisma from "../lib/prisma";
 
-const prisma = new PrismaClient();
-const r = Router();
+const router = express.Router();
 
-// /api/health - lightweight health check for Postgres (Prisma), Redis and Mongo
-r.get('/health', async (_req: Request, res: Response) => {
-  const out: { ok: boolean; services: Record<string, any> } = { ok: true, services: {} };
+/**
+ * Health probe — GET /health (unauthenticated).
+ *
+ * Doubles as a liveness and a readiness signal:
+ *   - 200 { status: "ok" }        → process up AND Postgres reachable.
+ *   - 503 { status: "degraded" }  → process up but a dependency is down.
+ * It never throws: a failed dependency check is caught and reported in the body
+ * rather than propagated, so hitting /health cannot itself crash the request.
+ *
+ * Re-added in Session 7 (Wave 0 / Phase 0.8) — the earlier placeholder route was
+ * removed in the Session-6 dead-code sweep; the local-run baseline needs a
+ * DB-aware probe that a docker healthcheck or the verify-local-run test can poll.
+ */
+router.get("/health", async (_req: Request, res: Response) => {
+  const startedAt = Date.now();
 
-  // Postgres / Prisma
+  let db: "up" | "down" = "down";
   try {
     await prisma.$queryRaw`SELECT 1`;
-    out.services.postgres = { ok: true };
-  } catch (e: any) {
-    out.services.postgres = { ok: false, error: e && e.message ? e.message : String(e) };
-    out.ok = false;
+    db = "up";
+  } catch {
+    db = "down";
   }
 
-  // Redis
-  try {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      out.services.redis = { ok: false, error: 'REDIS_URL not configured' };
-      out.ok = false;
-    } else {
-      const rc = new Redis(redisUrl, { connectTimeout: 1000, maxRetriesPerRequest: 1, enableOfflineQueue: true, retryStrategy: () => null });
-      // avoid unhandled error events from Redis client during health check
-      rc.on('error', (err) => { try { console.warn('Redis health check client error', err && err.message ? err.message : err); } catch {} });
-      try {
-        const p = await rc.ping();
-        out.services.redis = { ok: p === 'PONG' };
-        if (p !== 'PONG') out.ok = false;
-      } catch (e: any) {
-        out.services.redis = { ok: false, error: e && e.message ? e.message : String(e) };
-        out.ok = false;
-      } finally {
-        try { rc.disconnect(); } catch {}
-      }
-    }
-  } catch (e: any) {
-    out.services.redis = { ok: false, error: e && e.message ? e.message : String(e) };
-    out.ok = false;
-  }
-
-  // Mongo
-  try {
-    const mongoUri = process.env.MONGO_URI;
-    if (!mongoUri) {
-      out.services.mongo = { ok: false, error: 'MONGO_URI not configured' };
-      out.ok = false;
-    } else {
-      const mc = new MongoClient(mongoUri, { connectTimeoutMS: 1000, serverSelectionTimeoutMS: 1000 });
-      try {
-        await mc.connect();
-        await mc.db().command({ ping: 1 });
-        out.services.mongo = { ok: true };
-      } catch (e: any) {
-        out.services.mongo = { ok: false, error: e && e.message ? e.message : String(e) };
-        out.ok = false;
-      } finally {
-        try { await mc.close(); } catch {}
-      }
-    }
-  } catch (e: any) {
-    out.services.mongo = { ok: false, error: e && e.message ? e.message : String(e) };
-    out.ok = false;
-  }
-
-  res.json(out);
+  const status = db === "up" ? "ok" : "degraded";
+  res.status(db === "up" ? 200 : 503).json({
+    status,
+    db,
+    uptime_s: Math.round(process.uptime()),
+    checked_in_ms: Date.now() - startedAt,
+    ts: new Date().toISOString(),
+  });
 });
 
-export default r;
+export default router;

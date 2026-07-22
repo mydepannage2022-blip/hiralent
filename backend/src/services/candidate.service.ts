@@ -27,6 +27,8 @@ import { v2 as cloudinary } from "cloudinary";
 
 import { processDocumentAsync } from "./candidate/documentProcessor.service";
 import { cleanupOldResume, cleanupTempFile, cleanupOldProfilePicture } from "./candidate/cleanup.service";
+import { CandidateJobsService } from "./candidate/jobs.service";
+import { JobListItemDTO } from "../types/candidate.jobs.types";
 
 import { triggerCandidateMatching } from "./matching/candidate-outbox.service";
 import { completenessService } from "../../src/services/candidate/profile/completeness.service";
@@ -638,12 +640,14 @@ export const getPublicProfile = async (candidateId: string) => {
           where: { is_verified: true },
         },
 
-        // ✅ ADD THIS
+        // ✅ ADD THIS (to-many relation; take the latest record)
         profileCompleteness: {
           select: {
             overall_score: true,
             last_calculated: true,
           },
+          orderBy: { last_calculated: "desc" },
+          take: 1,
         },
       },
     });
@@ -669,11 +673,28 @@ export const getPublicProfile = async (candidateId: string) => {
       skills: user.candidateSkills || [],
 
       // ✅ NEW: what the frontend will read
-      completion_score: user.profileCompleteness?.overall_score ?? null,
-      completeness_last_calculated: user.profileCompleteness?.last_calculated ?? null,
+      completion_score: user.profileCompleteness?.[0]?.overall_score ?? null,
+      completeness_last_calculated: user.profileCompleteness?.[0]?.last_calculated ?? null,
     };
   } catch (error) {
     console.error("Error fetching public profile:", error);
     throw error;
   }
+};
+
+/**
+ * Job recommendations for a candidate.
+ * Delegates to the matching engine (CandidateJobsService.getRecommendedJobs) and
+ * returns the recommended jobs. Backs the GET /candidate/match-jobs endpoint,
+ * which previously called an unimplemented method.
+ */
+export const getJobRecommendations = async (
+  candidateId: string,
+  limit: number = 20
+): Promise<JobListItemDTO[]> => {
+  // Clamp to a sane range: guards against negative `take` and huge-limit DoS.
+  const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit)) || 20), 100);
+  const jobsService = new CandidateJobsService(prisma);
+  const result = await jobsService.getRecommendedJobs(candidateId, { page: 1, limit: safeLimit });
+  return result.items;
 };

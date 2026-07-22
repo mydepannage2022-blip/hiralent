@@ -1,5 +1,6 @@
 // src/services/question/vetting.service.ts
-import fetch from 'node-fetch';
+// Uses the Node built-in global `fetch` (Node 18+; project runs Node 24) — no `node-fetch`
+// dependency needed. All usage here is standard Fetch API (res.ok/status/json/text).
 
 const VETTING_SERVICE_URL =
   process.env.AI_VETTING_URL || 'http://localhost:8000'; // adapte à ton FastAPI
@@ -23,7 +24,7 @@ export class VettingService {
   async healthCheck() {
     const res = await fetch(`${this.baseUrl}/vetting/health`);
     if (!res.ok) throw new Error(`Vetting health failed: ${res.status}`);
-    return res.json();
+    return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI
   }
 
   async vetSingleQuestion(question: VettingQuestionPayload) {
@@ -38,7 +39,7 @@ export class VettingService {
       throw new Error(`Vetting failed: ${res.status} - ${txt}`);
     }
 
-    return res.json(); // { success, result }
+    return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI // { success, result }
   }
 
   async vetBatch(questions: VettingQuestionPayload[]) {
@@ -53,13 +54,13 @@ export class VettingService {
       throw new Error(`Batch vetting failed: ${res.status} - ${txt}`);
     }
 
-    return res.json(); // { success, results, stats }
+    return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI // { success, results, stats }
   }
 
   async stats() {
     const res = await fetch(`${this.baseUrl}/vetting/stats`);
     if (!res.ok) throw new Error(`Vetting stats failed: ${res.status}`);
-    return res.json();
+    return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI
   }
 }
 

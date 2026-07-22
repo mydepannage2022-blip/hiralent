@@ -1,6 +1,6 @@
 // Subscription related types
 
-import { Decimal } from "../generated/prisma/runtime/index-browser";
+import type { Decimal } from "@prisma/client/runtime/library";
 
 export enum SubscriptionStatus {
   ACTIVE = 'active',

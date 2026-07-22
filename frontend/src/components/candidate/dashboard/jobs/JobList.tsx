@@ -60,12 +60,16 @@ export default function JobList({
   showMatchScore = false,
   eligibilityMode = "useItem",
   appliedJobIds,
+  showEligibility = true,
+  detailsHrefBase,
 }: {
   items: CandidateJobListItemDTO[];
   isLoading: boolean;
   showMatchScore?: boolean;
   eligibilityMode?: "useItem" | "fetch";
   appliedJobIds?: Set<string>;
+  showEligibility?: boolean;
+  detailsHrefBase?: string;
 }) {
   if (isLoading) {
     return (
@@ -102,6 +106,8 @@ export default function JobList({
             item={it}
             showMatchScore={showMatchScore}
             isApplied={isApplied}
+            showEligibility={showEligibility}
+            detailsHrefBase={detailsHrefBase}
           />
         );
       })}

@@ -11,10 +11,10 @@ export interface Question {
   id: string;
   title: string;
   description: string;
-  problemStatement: string;
+  problemStatement?: string;
   difficulty: 'easy' | 'medium' | 'hard' | string;
   skillTags: string[];
-  type: 'coding' | 'mcq' | string;
+  type?: 'coding' | 'mcq' | string;
   canonicalSolution?: string;
   testCases?: Array<{ input: string; output: string }> | any;
   options?: MCQOptions;

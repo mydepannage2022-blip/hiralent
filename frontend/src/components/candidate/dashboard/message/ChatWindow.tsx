@@ -819,10 +819,17 @@ export default function ChatWindow({
             {showCamera && (
                 <CameraCapture
                     onClose={() => setShowCamera(false)}
-                    onCapture={async (blob) => {
-                        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
-                        await createAndSend("image", URL.createObjectURL(blob), file.name, file);
-                        setShowCamera(false);
+                    onCapture={async (dataUrl) => {
+                        // CameraCapture emits a base64 data URL — convert to a real Blob before upload.
+                        try {
+                            const blob = await (await fetch(dataUrl)).blob();
+                            const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+                            await createAndSend("image", URL.createObjectURL(blob), file.name, file);
+                        } catch (err) {
+                            console.error("Camera capture upload failed:", err);
+                        } finally {
+                            setShowCamera(false);
+                        }
                     }}
                 />
             )}

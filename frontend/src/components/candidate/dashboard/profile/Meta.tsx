@@ -175,7 +175,7 @@ export default function MetaSection() {
 
   const floaty = reduceMotion
     ? {}
-    : { animate: { y: [0, -2, 0] }, transition: { duration: 6, repeat: Infinity, ease: "easeInOut" } };
+    : { animate: { y: [0, -2, 0] }, transition: { duration: 6, repeat: Infinity, ease: "easeInOut" as const } };
 
   return (
     <div className="w-full">

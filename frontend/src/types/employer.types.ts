@@ -111,8 +111,10 @@ export interface UpdateCompanyContactPayload {
 
 export interface UpdateCompanyBusinessPayload {
   business_type?: BusinessType;
-  registration_number?: string;
-  tax_id?: string;
+  // `null` explicitly clears the field on the backend (employer.service checks `!== undefined`);
+  // `undefined` leaves it unchanged.
+  registration_number?: string | null;
+  tax_id?: string | null;
   employee_count?: number;
   annual_revenue?: string;
 }
@@ -257,10 +259,11 @@ export const COMPANY_TYPE_OPTIONS = [
 
 // Alias for backward compatibility
 export type UpdateBusinessPayload = UpdateCompanyBusinessPayload & {
-  industry?: string;
-  company_size?: string;
-  company_type?: string;
-  founded_year?: number;
+  // `null` clears the field on the backend; `undefined` leaves it unchanged.
+  industry?: string | null;
+  company_size?: string | null;
+  company_type?: string | null;
+  founded_year?: number | null;
 };
 
 // Alias for CompanyInfoForm

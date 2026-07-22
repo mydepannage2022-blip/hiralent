@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -91,6 +91,14 @@ const CleanCard: React.FC<{
 /* ─────────────────────────── main ─────────────────────────── */
 
 export default function SimpleTestsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <SimpleTestsInner />
+    </Suspense>
+  );
+}
+
+function SimpleTestsInner() {
   const router = useRouter();
 
   const spRaw = useSearchParams();

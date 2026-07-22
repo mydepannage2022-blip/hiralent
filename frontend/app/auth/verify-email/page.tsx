@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useVerifyEmail, useResendVerificationEmail } from '../../../src/lib/auth/auth.queries';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -41,6 +41,14 @@ const Alert = ({ type, message, onClose }: {
 };
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+      <VerifyEmailInner />
+    </Suspense>
+  );
+}
+
+function VerifyEmailInner() {
   const searchParams = useSearchParams();
   const token = searchParams?.get('token') ?? null;
   const { user } = useAuth();

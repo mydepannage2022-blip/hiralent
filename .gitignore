@@ -1,6 +1,9 @@
 node_modules/
 .env
 
+# Wave 0 / Session 1 — secure snapshot of live .env files (never commit; holds creds)
+.env-snapshots/
+
 /src/generated/prisma
 /config/firebase-adminsdk.json
 
@@ -25,3 +28,14 @@ __pycache__/
 .Python
 
 # VSCode settings
+
+# Wave 0 / Session 6 — committed runtime & junk artifacts (never commit; keep local)
+*.log
+*.lnk
+# NOTE: intentionally NOT `*.db` (would collide with other tracked .db). Ignore specific ones.
+dev.db
+ai-service/app/crawler/scraped_data.db
+backups-files-folders/
+test-signup.json
+temp_processing_*.pdf
+ai-service/test_diagram_output.png

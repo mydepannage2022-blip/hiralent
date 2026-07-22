@@ -3,27 +3,28 @@
 > Reference for **Wave 0** (deletions) and **Wave 4** (subsystem consolidation). Tick as removed/consolidated; log each in PROGRESS-LOG.
 
 ## Safe deletions (dead, confirmed by import/mount analysis) — Wave 0
-- [ ] `backend/src/index.ts` — dead alt entry (real = `server.ts`).
-- [ ] `backend/src/routes/health.routes.ts` — unmounted (re-add properly in Wave 3).
-- [ ] `backend/src/scheduler/scraping.scheduler.ts` — duplicate (active = `services/scraping/scraping-scheduler.ts`).
-- [ ] `ai-service/app/main_backup.py` — backup copy.
-- [ ] `ai-service/app/api/routes.py` — router never `include_router`'d (endpoints re-defined in `main.py`).
-- [ ] `ai-service/app/mock_sandbox_Youssra.py` — dev mock (once real sandbox lands, Wave 4).
-- [ ] `frontend/src/lib/api-client.ts` + `frontend/src/lib/admin-auth.ts` — orphaned pair (unreferenced).
-- [ ] `frontend/src/providers/ReactQueryProvider.tsx` — second, unused provider (live one = `context/Providers.tsx`).
-- [ ] Duplicate components: one of `components/question/MCQEditor.tsx` vs `.../questionbank/MCQEditor.tsx`; one of `components/OCRUpload.tsx` vs `components/auth/OCRUpload.tsx`.
-- [ ] `frontend/.../resume-quality/ResumeQuality.tsx` — dead (mock, never imported).
+- [x] `backend/src/index.ts` — dead alt entry (real = `server.ts`). **[S6]** deleted; tsc green.
+- [x] `backend/src/routes/health.routes.ts` — unmounted. **[S6]** deleted (re-add properly in Wave 3).
+- [x] `backend/src/scheduler/scraping.scheduler.ts` — duplicate (active = `services/scraping/scraping-scheduler.ts`). **[S6]** deleted.
+- [x] `ai-service/app/main_backup.py` — backup copy. **[S6]** deleted.
+- [x] `ai-service/app/api/routes.py` — router never `include_router`'d (endpoints re-defined in `main.py`). **[S6]** deleted (`api/__init__.py` empty pkg left in place; harmless).
+- [x] `ai-service/app/mock_sandbox_Youssra.py` — dev mock. **[S6]** deleted (folded in early; no Wave-4 refs remained).
+- [x] `frontend/src/lib/api-client.ts` + `frontend/src/lib/admin-auth.ts` — orphaned pair (unreferenced). **[S6]** deleted. NB: live `lib/api/admin.api.ts` (`new AdminAPI()`) is a *different* file — kept.
+- [x] `frontend/src/providers/ReactQueryProvider.tsx` — second, unused provider (live one = `context/Providers.tsx`). **[S6]** deleted. `lib/queryClient.ts` left in place per dep-cleanup note below.
+- [~] Duplicate components — **[S6]**: **MCQEditor** both deleted (`question/` + `questionbank/`, both confirmed unreferenced across `src`+`app`). **OCRUpload**: only `components/auth/OCRUpload.tsx` deleted (dead identical dup); **`components/OCRUpload.tsx` KEPT** — imported by `frontend/app/ocr-test/page.tsx` (a live `/ocr-test` dev route). ⚠️ *Finding:* the doc's "delete one of each OCRUpload" was correct; an initial `src`-only scan wrongly flagged both — caught by the frontend build. `CompanyOCRUpload.tsx` untouched (separate live component).
+- [x] `frontend/.../resume-quality/ResumeQuality.tsx` — dead (mock, never imported). **[S6]** deleted (dir keeps live `CircularProgress.tsx`; `types/profile.ts` `ResumeQualityData` is a separate live type).
 
 ## Committed artifacts to remove + gitignore — Wave 0
-- [ ] `backups-files-folders/**` (wafaa/youssra schema backups).
-- [ ] `test-signup.json`, `src - Raccourci.lnk` (committed Windows shortcut).
-- [ ] `runner-python/runner-stub.log`, `backend/backend.log`, `backend/worker.log`.
-- [ ] `backend/temp_processing_*.pdf`, `backend/prisma/dev.db` (SQLite in a Postgres project).
-- [ ] `ai-service/test_diagram_output.png`, ad-hoc `ai-service/test_gemini.py` / `test_renderer_windows.py`.
+- [x] `backups-files-folders/**` (wafaa/youssra schema backups). **[S6]** `git rm --cached`.
+- [x] `test-signup.json`, `src - Raccourci.lnk` (+ `backend/src - Raccourci.lnk`). **[S6]** `git rm --cached`.
+- [x] `runner-python/runner-stub.log`, `backend/backend.log`, `backend/worker.log`. **[S6]** `git rm --cached`.
+- [x] `backend/temp_processing_*.pdf`, `backend/prisma/dev.db` (SQLite in a Postgres project). **[S6]** `git rm --cached`.
+- [x] `ai-service/test_diagram_output.png`, ad-hoc `ai-service/test_gemini.py` / `test_renderer_windows.py`. **[S6]** deleted from disk + untracked.
+- **[S6]** All above now covered by a root `.gitignore` block (`*.log`, `*.lnk`, `*.db`, `dev.db`, `backups-files-folders/`, `test-signup.json`, `temp_processing_*.pdf`, `ai-service/test_diagram_output.png`) so they can't be re-committed. Files kept on disk (except the ai-service test trio, fully deleted).
 
 ## Bugs/duplication in wiring — Wave 0
-- [ ] `app.ts:138-139` — `insightsRoutes` mounted twice (remove one).
-- [ ] `mockAssessment.routes` mounted unconditionally at `app.ts:152` — gate/remove (also Wave 1 security).
+- [x] `app.ts:138-139` — `insightsRoutes` mounted twice. **[S6]** removed the duplicate (now mounted exactly once).
+- [x] `mockAssessment.routes` mounted unconditionally at `app.ts:152`. **[S6]** **gated** — moved inside the `NODE_ENV !== 'production'` dev block (no longer exposed in prod). Full-delete of the route/controller/service/types chain deferred to Wave 4 consolidation.
 
 ## Dependency cleanup — Wave 0
 - [ ] Remove: `@fastify/helmet`, `@fastify/cors`, `redis` + `@types/redis`, `crypto` (deprecated pkg), one Pinecone client.

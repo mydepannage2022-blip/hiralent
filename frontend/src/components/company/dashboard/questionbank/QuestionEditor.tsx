@@ -452,7 +452,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setFormData((prev) => ({
       ...prev,
       testCases:
-        prev.testCases?.map((testCase, i) =>
+        prev.testCases?.map((testCase: { input: string; output: string }, i: number) =>
           i === index ? { ...testCase, [field]: value } : testCase
         ) || [],
     }));
@@ -461,7 +461,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleRemoveTestCase = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      testCases: prev.testCases?.filter((_, i) => i !== index) || [],
+      testCases: prev.testCases?.filter((_: { input: string; output: string }, i: number) => i !== index) || [],
     }));
   };
 

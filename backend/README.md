@@ -226,10 +226,10 @@ Express routers define all API endpoints and attach middlewares.
 ## 14. Getting Started
 
 ```bash
-npm install
-npx prisma generate
-npx prisma migrate dev
-npm run dev
+pnpm install
+pnpm exec prisma generate
+pnpm exec prisma migrate dev
+pnpm run dev
 ```
 The server will start on the port defined in `.env` (default: 4000).
 

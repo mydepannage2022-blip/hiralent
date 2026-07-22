@@ -33,6 +33,7 @@ app.use(cors({
 app.use(express.json()); // parse JSON body
 
 // Routes
+import healthRoutes from './routes/health.routes';
 import agencyRoutes from './routes/agency.routes';
 import adminAgencyRoutes from './routes/admin.agency.routes';
 import authRoutes from './routes/auth/auth.routes';
@@ -86,6 +87,8 @@ import companyHiringFlowRoutes from "./routes/companyHiringFlow.routes";
 import candidateAssessmentHistoryRoutes from "./routes/candidate/assessmentHistory.routes";
 
 // Mount routes
+// Health probe first — unauthenticated liveness/readiness (GET /health).
+app.use(healthRoutes);
 app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/auth', authRoutes);
@@ -125,6 +128,15 @@ if (process.env.NODE_ENV !== 'production') {
   } catch (e) {
     console.warn('Dev routes not available:', (e as Error).message);
   }
+
+  // Dev-only assessment-result simulation (POST /api/v1/dev/mock-assessment-result).
+  // This handler does an UNAUTHENTICATED prisma.skillAssessment.create() from req.body,
+  // so it is DOUBLE-gated: NODE_ENV !== 'production' (this block) AND an explicit opt-in
+  // flag — the same fail-safe pattern the ENABLE_DEV_MINT dev endpoints use. A mis-set
+  // NODE_ENV in prod therefore still cannot re-expose it unless the flag is also set.
+  if (process.env.ENABLE_DEV_MINT === '1') {
+    app.use('/api/v1', mockAssessmentRoutes);
+  }
 }
 //scraping route
 app.use("/api/v1/scraping/scheduler", schedulerRoutes);
@@ -135,7 +147,6 @@ app.use("/api/v1/scraping/scheduler", schedulerRoutes);
 app.use('/api/v1/admin', adminAuthRoutes);
 app.use('/api/v1/admin', adminVerificationRoutes);
 
-app.use('/api/v1', insightsRoutes);
 app.use('/api/v1', insightsRoutes);
 
 // Public candidate search — must be mounted BEFORE jobRoutes because
@@ -149,7 +160,6 @@ app.use('/api/v1/', jobRoutes);
 app.use('/api/v1/employer-assessments', employerAssessmentRoutes);
 app.use("/api/v1", assessmentTemplateRoutes);
 app.use("/api/v1", skillRadarRoutes);
-app.use("/api/v1", mockAssessmentRoutes);
 app.use("/api/v1/compete-challenges", competeRoutes);
 app.use('/api/v1/subscription', subscriptionRoutes);
 

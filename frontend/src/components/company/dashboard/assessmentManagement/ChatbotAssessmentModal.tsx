@@ -32,7 +32,7 @@ export type JobStatus =
   | "CANCELLED"
   | "ARCHIVED";
 
-export type JobType = "full_time" | "part_time" | "contract" | "internship";
+export type JobType = "full_time" | "part_time" | "contract" | "internship" | "freelance";
 
 export interface CompanyJob {
   job_id: string;

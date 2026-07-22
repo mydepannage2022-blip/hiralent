@@ -294,11 +294,8 @@ export default function PublicProfilePage() {
 
       <LogosStrip />
 
-      {/* Skills */}
-      <SkillsSection
-        // SkillsSection often expects string[] (chips). We pass normalized names.
-        skills={skillsNormalized.skillNames}
-      />
+      {/* Skills — reads from profile context, no props needed */}
+      <SkillsSection />
 
       {/* Optional: Certifications + Projects */}
       {(certifications.length > 0 || projects.length > 0) && (

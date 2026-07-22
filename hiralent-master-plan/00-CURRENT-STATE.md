@@ -6,7 +6,7 @@
 
 ## 1. What Hiralent is
 
-An AI-powered recruitment platform ("Talenta" in the README, "Hiralent" in newer docs) with four user roles — **candidate, company/recruiter, agency (relocation/visa), admin/superadmin** — plus a coding-assessment engine and an AI-interview engine.
+An AI-powered recruitment platform (**Hiralent** — brand strings renamed from the legacy "Talenta" in Wave 0 / Session 1; see PROGRESS-LOG) with four user roles — **candidate, company/recruiter, agency (relocation/visa), admin/superadmin** — plus a coding-assessment engine and an AI-interview engine.
 
 **Architecture (microservices):**
 

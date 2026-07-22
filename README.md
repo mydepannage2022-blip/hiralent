@@ -1,4 +1,4 @@
-# Talenta – Full Stack AI-Ready Project Documentation
+# Hiralent – Full Stack AI-Ready Project Documentation
 
 A comprehensive, modern full-stack web application using Next.js (frontend) and Express.js with TypeScript (backend). This README is designed for AI model training and deep project understanding, covering every detail of the codebase, especially the backend, including all modules, middlewares, utilities, types, services, and recent updates.
 
@@ -32,21 +32,21 @@ A comprehensive, modern full-stack web application using Next.js (frontend) and 
 
 ## Project Headline
 
-**Talenta:**  
+**Hiralent:**  
 A robust, scalable, and interactive full-stack platform built for modern web experiences, leveraging TypeScript on both backend and frontend, with a focus on modularity, maintainability, and AI-readiness.
 
 ---
 
 ## Project Summary
 
-Talenta is a full-stack web application that combines a TypeScript-powered Express.js backend with a Next.js frontend. The project delivers a visually rich, highly interactive, and scalable platform, with a clean separation of concerns and best practices for code quality, security, and extensibility. The codebase is structured for easy onboarding, rapid development, and future AI integrations.
+Hiralent is a full-stack web application that combines a TypeScript-powered Express.js backend with a Next.js frontend. The project delivers a visually rich, highly interactive, and scalable platform, with a clean separation of concerns and best practices for code quality, security, and extensibility. The codebase is structured for easy onboarding, rapid development, and future AI integrations.
 
 ---
 
 ## Project Structure
 
 ```
-talenta/
+hiralent/
 │
 ├── backend/
 │   ├── .env
@@ -104,19 +104,19 @@ talenta/
 1. **Install dependencies:**
    ```sh
    cd backend
-   npm install
+   pnpm install
    ```
 2. **Configure environment:**
    - Copy `.env.example` to `.env` and set your variables (see [Environment Variables](#environment-variables)).
 3. **Run the server in development:**
    ```sh
-   npm run dev
+   pnpm run dev
    ```
    (Uses `nodemon` and `ts-node` for hot-reloading TypeScript)
 4. **Build and run for production:**
    ```sh
-   npm run build
-   npm start
+   pnpm run build
+   pnpm start
    ```
    The backend runs on `http://localhost:3001` (or as set in `.env`).
 
@@ -312,7 +312,7 @@ Email: [your-email@example.com]
 
 ## Notes
 
-- Node.js (v18+) and npm must be installed.
+- Node.js (v18+) and pnpm must be installed (`corepack enable` provides pnpm).
 - Update dependencies regularly for security and new features.
 - For any issues, check logs in the terminal or browser console.
 - This README is designed for both developer onboarding and AI model training—every detail is included for maximum

@@ -24,12 +24,16 @@ export default function JobCard({
   eligibilityOverride,
   eligibilityLoading = false,
   isApplied = false, // ✅ NEW PROP
+  showEligibility = true, // false on public/anonymous browse — hide per-candidate eligibility + Apply
+  detailsHrefBase = "/candidate/dashboard/jobs", // public browse overrides to the public job-details route
 }: {
   item: CandidateJobListItemDTO;
   showMatchScore?: boolean;
   eligibilityOverride?: EligibilityResult;
   eligibilityLoading?: boolean;
   isApplied?: boolean; // ✅ NEW PROP
+  showEligibility?: boolean;
+  detailsHrefBase?: string;
 }) {
   const router = useRouter();
   const [openApply, setOpenApply] = useState(false);
@@ -62,7 +66,7 @@ export default function JobCard({
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="min-w-0">
           <h3
-            onClick={() => router.push(`/candidate/dashboard/jobs/${item.job_id}`)}
+            onClick={() => router.push(`${detailsHrefBase}/${item.job_id}`)}
             className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:underline"
           >
             {item.title}
@@ -71,13 +75,13 @@ export default function JobCard({
         </div>
 
         <div className="flex items-center gap-2">
-          {eligibility ? (
+          {showEligibility && (eligibility ? (
             <EligibilityBadge eligibility={eligibility} />
           ) : (
             <span className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold bg-gray-50 text-gray-600 border-gray-200">
               Checking…
             </span>
-          )}
+          ))}
 
           {hasMatchScore && (
             <span
@@ -116,7 +120,7 @@ export default function JobCard({
         )}
       </div>
 
-{!!eligibility && (
+{showEligibility && !!eligibility && (
   <>
     {!eligibility.eligible && (
       <EligibilityReasons reasons={eligibility.reasons ?? []} />
@@ -132,32 +136,36 @@ export default function JobCard({
 
       <div className="mt-4 flex items-center justify-between pt-4 border-t border-gray-100">
         <button
-          onClick={() => router.push(`/candidate/dashboard/jobs/${item.job_id}`)}
+          onClick={() => router.push(`${detailsHrefBase}/${item.job_id}`)}
           className="text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           View details →
         </button>
 
-        <button
-          onClick={() => setOpenApply(true)}
-          disabled={!canApply}
-          className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed
-            ${applied ? "bg-gray-100 text-gray-600 border border-gray-200" : "bg-blue-600 text-white hover:bg-blue-700"}
-          `}
-          title={!canApply ? (applied ? "Applied" : "Not eligible") : "Apply"}
-        >
-          {applied ? "Applied" : "Apply"}
-        </button>
+        {showEligibility && (
+          <button
+            onClick={() => setOpenApply(true)}
+            disabled={!canApply}
+            className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed
+              ${applied ? "bg-gray-100 text-gray-600 border border-gray-200" : "bg-blue-600 text-white hover:bg-blue-700"}
+            `}
+            title={!canApply ? (applied ? "Applied" : "Not eligible") : "Apply"}
+          >
+            {applied ? "Applied" : "Apply"}
+          </button>
+        )}
       </div>
 
-      <ApplyModal
-        open={openApply}
-        onClose={() => setOpenApply(false)}
-        jobId={item.job_id}
-        jobTitle={item.title}
-        eligibility={eligibility}
-        onApplied={() => setApplied(true)} // ✅ instantly set applied after apply success
-      />
+      {showEligibility && (
+        <ApplyModal
+          open={openApply}
+          onClose={() => setOpenApply(false)}
+          jobId={item.job_id}
+          jobTitle={item.title}
+          eligibility={eligibility}
+          onApplied={() => setApplied(true)} // ✅ instantly set applied after apply success
+        />
+      )}
     </div>
   );
 }

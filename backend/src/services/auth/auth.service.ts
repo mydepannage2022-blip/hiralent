@@ -3,7 +3,7 @@ import { createSession } from "./session.service";
 import { getClientIP } from "../../utils/locationDetector.util";
 import { v4 as uuidv4 } from 'uuid';
 import prisma from "../../lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../../utils/email.util";
 import { generateToken } from "../../utils/jwt.util";
@@ -186,7 +186,7 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
       html: `
       <div style="font-family: 'Segoe UI', sans-serif; background: #f9fafb; padding: 40px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 32px;">
-          <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to <span style="color:#111827;">Talenta</span></h2>
+          <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to <span style="color:#111827;">Hiralent</span></h2>
           <p style="font-size: 16px; color: #374151; line-height: 1.6;">
             Thanks for signing up! You're just one click away from activating your account.
           </p>
@@ -200,7 +200,7 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
           </p>
           <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
           <p style="font-size: 12px; color: #9ca3af; text-align: center;">
-            &copy; ${new Date().getFullYear()} Talenta. All rights reserved.
+            &copy; ${new Date().getFullYear()} Hiralent. All rights reserved.
           </p>
         </div>
       </div>
@@ -272,7 +272,7 @@ export const forgotPassword = async ({ email }: ForgotPasswordInput) => {
 
     await sendEmail({
       to: email,
-      subject: "Reset your Talenta password",
+      subject: "Reset your Hiralent password",
       html,
     });
 
@@ -518,7 +518,7 @@ export const getUserDeletionSummary = async (userId: string) => {
             notifications: true,
             relocationCases: true,
             agencyReviews: true,
-            invitationsSent: true
+            companyInvites: true
           }
         }
       }
@@ -563,7 +563,7 @@ export const changePassword = async (userId: string, currentPassword: string, ne
     throw new Error("User not found");
   }
 
-  const bcrypt = require("bcrypt");
+  const bcrypt = require("bcryptjs");
   const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
 
   if (!isPasswordValid) {

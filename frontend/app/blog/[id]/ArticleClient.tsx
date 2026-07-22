@@ -33,13 +33,13 @@ import {
   Hash,
   ChevronUp,
 } from "lucide-react";
-import type { Article } from "../page";
+import type { Article } from "./types";
 
 /* ═══════════════════════════════════════════
    MAIN CLIENT
 ═══════════════════════════════════════════ */
 export default function ArticleClient({ article }: { article: Article }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const [activeId, setActiveId] = useState(article.sections[0]?.id ?? "");
