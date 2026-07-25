@@ -14,7 +14,6 @@ async function main() {
     MATCHING_AI_BASE_URL: process.env.MATCHING_AI_BASE_URL,
     INTERNAL_SERVICE_KEY_LEN: (process.env.INTERNAL_SERVICE_KEY || "").length,
   });
-  console.log("KEY =", JSON.stringify(process.env.INTERNAL_SERVICE_KEY), "LEN =", (process.env.INTERNAL_SERVICE_KEY || "").length);
   setInterval(async () => {
     try {
       await worker.tick();

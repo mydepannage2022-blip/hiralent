@@ -16,10 +16,12 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:4000"]
 
-    # MinIO/S3 Storage
+    # MinIO/S3 Storage — credentials have NO default: a shared, publicly-known key pair
+    # would silently grant access on any misconfigured deployment.
+    # Must be supplied via env/.env; empty means "not configured".
     S3_ENDPOINT: str = "http://127.0.0.1:9000"
-    S3_ACCESS_KEY: str = "minioadmin"
-    S3_SECRET_KEY: str = "minioadmin"
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
     S3_BUCKET: str = "hiralent-uploads"
     S3_SECURE: bool = False
 

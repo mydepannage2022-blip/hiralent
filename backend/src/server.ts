@@ -6,8 +6,13 @@ import { loadDevStubs } from "./bootstrap/devStubs";
 import { setupSocketIO } from "./realtime/socket.messaging";
 import { getScheduler } from "./services/scraping/scraping-scheduler";
 import { getInterviewScheduler } from "./scheduler/interview.scheduler";
+import { assertCoreSecrets } from "./config/requireEnv";
 
 dotenv.config();
+
+// Fail fast if a core auth secret is missing — a forgeable/known secret is worse
+// than a crash. Runs after dotenv.config() so .env values are already loaded.
+assertCoreSecrets();
 
 if (process.env.NODE_ENV !== "production") {
   loadDevStubs();

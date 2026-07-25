@@ -1,0 +1,12 @@
+# .gitleaksignore — finding fingerprints gitleaks should ignore.
+#
+# Currently EMPTY by design.
+#
+# CI (.github/workflows/secret-scan.yml) scans the working tree with `--no-git`, so
+# historical commits are not scanned and need no fingerprints here. The Gemini API key
+# that was committed at ai-service/app/gemini_service.py:47 before Wave 1 Phase 1.1 is
+# still present in git history; it has been REVOKED and ROTATED, and the history rewrite
+# is deliberately deferred (rationale in hiralent-master-plan/runbooks/secret-rotation.md).
+#
+# If full-history scanning is enabled later (drop `--no-git`), add that finding's
+# fingerprint here — format: <commit-sha>:<file-path>:<rule-id>:<line-number>

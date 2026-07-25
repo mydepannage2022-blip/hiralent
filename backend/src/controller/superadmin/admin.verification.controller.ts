@@ -1,7 +1,7 @@
 // backend/src/controller/superadmin/admin.verification.controller.ts
 import { Request, Response } from 'express';
 import * as adminVerificationService from '../../services/admin.verification.service';
-import minioClient from '../../lib/minio';
+import { s3SignedUrl } from '../../lib/s3';
 import prisma from '../../lib/prisma';
 
 // GET /admin/verifications/pending
@@ -78,21 +78,20 @@ export const getPresignedDocumentUrlController = async (req: Request, res: Respo
       mime_type: document.mime_type,
     });
 
-    const bucketName = process.env.MINIO_BUCKET_NAME || 'hiralent-uploads';
-    
-    // Generate presigned URL (valid for 1 hour)
-    const presignedUrl = await minioClient.presignedGetObject(
-      bucketName,
-      document.storage_key,
-      60 * 60 // 1 hour in seconds
-    );
+    // Generate presigned URL (valid for 1 hour) via the shared S3/MinIO client, so this
+    // uses the same env-driven S3_* credentials as the rest of the app rather than a
+    // second client with its own MINIO_* credential set.
+    // Single source of truth: sign and advertise the SAME lifetime, so the client can
+    // never be told 1 hour while the link actually dies sooner.
+    const PRESIGN_TTL_SECONDS = 60 * 60;
+    const presignedUrl = await s3SignedUrl(document.storage_key, PRESIGN_TTL_SECONDS);
 
     console.log('🔗 Presigned URL generated successfully');
 
     res.json({
       ok: true,
       url: presignedUrl,
-      expires_in: 3600, // seconds
+      expires_in: PRESIGN_TTL_SECONDS, // seconds
       document: {
         file_name: document.file_name,
         mime_type: document.mime_type,

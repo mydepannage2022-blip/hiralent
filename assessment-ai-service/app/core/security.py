@@ -6,7 +6,15 @@ api_key_header = APIKeyHeader(name="X-API-Token", auto_error=False)
 
 async def validate_internal_token(api_key: str = Security(api_key_header)):
     """Validate internal service-to-service communication"""
-    if not api_key or api_key != settings.INTERNAL_API_TOKEN:
+    expected = settings.INTERNAL_API_TOKEN
+    if not expected:
+        # No token configured. Fail closed AND say why — without this the missing-default
+        # case would silently 403 every internal call and look like a bad caller token.
+        raise HTTPException(
+            status_code=500,
+            detail="INTERNAL_API_TOKEN is not configured on this service"
+        )
+    if not api_key or api_key != expected:
         raise HTTPException(
             status_code=403,
             detail="Invalid or missing internal API token"

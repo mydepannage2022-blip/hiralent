@@ -33,7 +33,10 @@ export async function s3GetObject(key: string): Promise<Buffer> {
 }
 
 export async function s3SignedUrl(key: string, seconds?: number) {
-  const ttl = Number(process.env.SIGNED_URL_TTL_SECONDS || seconds || 600);
+  // An explicit caller argument wins; SIGNED_URL_TTL_SECONDS is only the default for
+  // callers that don't pass one. (This precedence used to be reversed, so a caller that
+  // asked for a 1-hour URL silently got the global default and the link died early.)
+  const ttl = Number(seconds || process.env.SIGNED_URL_TTL_SECONDS || 600);
   const cmd = new GetObjectCommand({ Bucket: s3Bucket, Key: key });
   return awsGetSignedUrl(s3, cmd, { expiresIn: ttl });
 }

@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from "express";
+import { requireEnv } from "../config/requireEnv";
+import { secretsMatch } from "../config/secretCompare";
 
 export function internalAuth(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers.authorization || "";
@@ -8,12 +10,13 @@ export function internalAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ message: "Missing Authorization header" });
   }
 
-  if (token !== process.env.BACKEND_INTERNAL_TOKEN) {
+  if (!secretsMatch(token, requireEnv("BACKEND_INTERNAL_TOKEN"))) {
     return res.status(403).json({ message: "Invalid internal token" });
   }
-  console.log("internalAuth HIT", req.originalUrl);
-  console.log("auth header =", req.headers.authorization);
 
+  // NOTE: never log the Authorization header or the token itself — doing so writes the
+  // shared internal secret into plaintext logs on every successful call.
+  console.log("internalAuth HIT", req.originalUrl);
 
   return next();
 }

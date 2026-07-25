@@ -44,7 +44,9 @@ class GeminiAIService:
         # Try to import Google AI
         try:
             import google.generativeai as genai
-            api_key = os.getenv("GEMINI_API_KEY", "AIzaSyB6EuKO764m3RDWu7SG7ZrZYpZlbI6vN1k")
+            # Env only — never a hardcoded fallback key. If unset, the service drops to
+            # demo mode below rather than silently using a committed (now revoked) key.
+            api_key = os.getenv("GEMINI_API_KEY")
             
             if api_key:
                 genai.configure(api_key=api_key)

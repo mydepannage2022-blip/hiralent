@@ -10,6 +10,7 @@ import { requireScrapingAccess } from "../../middlewares/scrapingAuth.middleware
 import { PatternService } from "../../services/patterns/pattern.service"; //  ADD THIS LINE
 import { PrismaClient } from '@prisma/client';
 import { PatternExtractionResponse, PatternQuestionGenResponse } from "../../types/question.types";
+import { secretsMatch } from '../../config/secretCompare';
 
 const router = express.Router();
 const controller = new QuestionController();
@@ -31,7 +32,9 @@ router.post('/generate',
 router.post('/generate-batch',
   (req, res, next) => {
     const internalKey = process.env.INTERNAL_SERVICE_KEY;
-    if (internalKey && req.headers['x-internal-key'] === internalKey) {
+    // Constant-time compare: this branch skips checkAuth entirely, so a timing oracle
+    // here would let an attacker recover the key and self-grant the 'internal' role.
+    if (internalKey && secretsMatch(req.headers['x-internal-key'] as string | undefined, internalKey)) {
       (req as any).user = { user_id: 'internal-service', role: 'internal', session_id: 'internal' };
       return next();
     }

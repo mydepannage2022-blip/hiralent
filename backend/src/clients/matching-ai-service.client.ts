@@ -1,5 +1,6 @@
 // src/clients/matching-ai-service.client.ts
 import axios, { AxiosInstance } from "axios";
+import { requireEnv } from "../config/requireEnv";
 
 export class MatchingAIServiceClient {
   private client: AxiosInstance;
@@ -30,6 +31,8 @@ export class MatchingAIServiceClient {
 
 export function createMatchingAIServiceClient() {
   const baseURL = process.env.MATCHING_AI_BASE_URL || "http://localhost:8011";
-  const key = process.env.INTERNAL_SERVICE_KEY || "";
+  // No empty-string fallback: an unauthenticated client would fail at the AI service
+  // anyway, so surface the misconfiguration here instead of silently sending no key.
+  const key = requireEnv("INTERNAL_SERVICE_KEY");
   return new MatchingAIServiceClient(baseURL, key);
 }

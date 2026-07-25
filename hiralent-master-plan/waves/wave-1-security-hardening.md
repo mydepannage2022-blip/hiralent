@@ -9,10 +9,15 @@
 ---
 
 ## Phase 1.1 — Secrets rotation (do first, treat all as compromised)
-- [ ] Generate a high-entropy `JWT_SECRET` (and confirm `ADMIN_JWT_SECRET` is strong); invalidate all existing tokens. (R-01)
-- [ ] Revoke + rotate the committed Gemini key; **remove the hardcoded fallback** in `ai-service/app/gemini_service.py:47`; load only from env. (R-02)
-- [ ] Rotate every other live credential that has sat in a tracked/on-disk `.env` or image: Pinecone, Cloudinary, SMTP, Firebase private key, MinIO creds, `INTERNAL_API_TOKEN`, `BACKEND_INTERNAL_TOKEN`. (R-02, R-14)
-- [ ] Add secret scanning (gitleaks/trufflehog) to catch regressions.
+> **Session 9 (2026-07-23):** code half **DONE + verified**; provider half is **pending on the user** (see `runbooks/secret-rotation.md` Part B). Full detail in PROGRESS-LOG.
+- [x] Generate a high-entropy `JWT_SECRET` (and confirm `ADMIN_JWT_SECRET` is strong); invalidate all existing tokens. (R-01)
+  - _Both rotated to 288-bit values; the `'fallback-secret-change-this'` literal removed from **both** `admin.auth.service.ts` and `adminAuth.middleware.ts` (it made superadmin tokens forgeable when the env was unset). New `config/requireEnv.ts` + `assertCoreSecrets()` in `server.ts` makes a missing core secret crash at boot — green **and** red cases proven by `verify-secrets-hygiene.mjs`._
+- [x] **Remove the hardcoded fallback** in `ai-service/app/gemini_service.py:47`; load only from env. (R-02)
+  - [ ] **Revoke + rotate the key itself at Google AI Studio — USER ACTION, still outstanding.** The committed key stays live until this is done. Steps + the "old key → 403" check: `runbooks/secret-rotation.md` §B1. Three distinct Gemini keys are in play (the committed literal, `ai-service/.env`, and `assessment-ai-service/.env`'s `GOOGLE_API_KEY`).
+- [x] Self-issued credentials rotated: `INTERNAL_SERVICE_KEY`, `BACKEND_INTERNAL_TOKEN` (both were absent from `backend/.env`), `INTERNAL_API_TOKEN`. Weak defaults removed everywhere — `super-secret-internal-token` (assessment config **and** its compose file), `minioadmin` (document-validator config, three `.env.example`s, and a fully hardcoded `S3Client` found in `candidate.case.controller.ts`), Pinecone's `|| ''`. Duplicate `lib/minio.ts` client deleted in favour of the shared `lib/s3.ts`. Secret-value `console.log` removed from `matching-outbox.runner.ts`. (R-02, R-14)
+  - [ ] **Provider-held credentials — USER ACTION, still outstanding:** Pinecone, Cloudinary, SMTP, Firebase private key, and any shared/staging/prod MinIO. `runbooks/secret-rotation.md` §B2–B6. (Root `docker-compose.yml`'s MinIO creds are deliberately unchanged — local-only, per `docs/DEV_ARCHITECTURE.md`.)
+- [x] Add secret scanning (gitleaks/trufflehog) to catch regressions.
+  - _`.gitleaks.toml` (default rules + 3 project rules for the removed literals), `.github/workflows/secret-scan.yml` (`gitleaks detect --no-git` on push/PR), and `tools/verify-secrets-hygiene.mjs` in the local gate. CI scans the **working tree**, not history: the committed Gemini key is still in history and the rewrite is **deliberately deferred** (revocation is the real fix) — rationale and the later scrub procedure are in the runbook._
 
 ## Phase 1.2 — AuthN/session hardening
 - [ ] Short-lived access tokens + **refresh-token rotation**; make `refreshToken()` issue a genuinely new token, not re-sign. (R-29)

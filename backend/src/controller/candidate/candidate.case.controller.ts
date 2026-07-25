@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import {
-  S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
@@ -10,18 +9,12 @@ import {
   validateDocumentDeep,
   DocumentType,
 } from "../../clients/document-validator.client";
+// Reuse the shared, env-configured S3/MinIO client instead of a second client that
+// carried a hardcoded endpoint and hardcoded default credentials.
+import { s3, s3Bucket } from "../../lib/s3";
+import { requireEnv } from "../../config/requireEnv";
 
 const prisma = new PrismaClient();
-
-const s3Client = new S3Client({
-  endpoint: "http://127.0.0.1:9000",
-  region: "us-east-1",
-  credentials: {
-    accessKeyId: "minioadmin",
-    secretAccessKey: "minioadmin",
-  },
-  forcePathStyle: true,
-});
 
 const uploadToMinIO = async (
   file: Express.Multer.File,
@@ -32,16 +25,17 @@ const uploadToMinIO = async (
     file.originalname
   }`;
 
-  await s3Client.send(
+  await s3.send(
     new PutObjectCommand({
-      Bucket: "hiralent-uploads",
+      Bucket: s3Bucket,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
     })
   );
 
-  const url = `http://127.0.0.1:9000/hiralent-uploads/${key}`;
+  // Same `{endpoint}/{bucket}/{key}` shape the delete paths parse back out below.
+  const url = `${requireEnv("S3_ENDPOINT").replace(/\/+$/, "")}/${s3Bucket}/${key}`;
   return { url, key };
 };
 
@@ -453,9 +447,9 @@ export const deleteCaseDocument = async (req: Request, res: Response) => {
     const key = url.pathname.split("/").slice(2).join("/");
 
     try {
-      await s3Client.send(
+      await s3.send(
         new DeleteObjectCommand({
-          Bucket: "hiralent-uploads",
+          Bucket: s3Bucket,
           Key: key,
         })
       );
@@ -618,9 +612,9 @@ export const cancelDocumentReplacement = async (
     const key = url.pathname.split("/").slice(2).join("/");
 
     try {
-      await s3Client.send(
+      await s3.send(
         new DeleteObjectCommand({
-          Bucket: "hiralent-uploads",
+          Bucket: s3Bucket,
           Key: key,
         })
       );

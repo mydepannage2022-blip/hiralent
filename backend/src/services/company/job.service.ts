@@ -5,6 +5,7 @@ import {
   MatchingEventType,
   MatchingEntityType,
 } from "@prisma/client";
+import { requireEnv } from "../../config/requireEnv";
 import {
   Job,
   CreateJobRequest,
@@ -27,7 +28,6 @@ const SIMPLE_TEST_DESC =
   "A short test to confirm you can use the platform (1 coding + 1 MCQ, easy).";
 
 const API_BASE_URL = process.env.APP_URL || "http://localhost:5000";
-const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY || "";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Step 1 — DB lookup: easy + skill-matched ONLY
@@ -97,7 +97,9 @@ async function generateQuestionViaAI(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-internal-key": INTERNAL_SERVICE_KEY,
+          // Read at call time (not module-load): no empty-string fallback, and the
+          // value is resolved well after dotenv has populated process.env.
+          "x-internal-key": requireEnv("INTERNAL_SERVICE_KEY"),
         },
         body: JSON.stringify({
           topics: [topic],

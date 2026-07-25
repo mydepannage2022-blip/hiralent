@@ -4,7 +4,12 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'fallback-secret-change-this';
+import { requireEnv } from '../config/requireEnv';
+
+// Read lazily at call time (not module-load) so it never evaluates before dotenv
+// has populated process.env, and so a missing secret fails loudly instead of
+// silently signing/verifying admin tokens with a publicly-known fallback string.
+const getAdminJwtSecret = () => requireEnv('ADMIN_JWT_SECRET');
 const ADMIN_SESSION_DURATION = process.env.ADMIN_SESSION_DURATION || '8h';
 
 export async function adminLogin(email: string, password: string) {
@@ -30,7 +35,7 @@ export async function adminLogin(email: string, password: string) {
       step: 'mfa_required',
       email: admin.email
     },
-    ADMIN_JWT_SECRET,
+    getAdminJwtSecret(),
     { expiresIn: '5m' } as SignOptions
   );
   
@@ -46,7 +51,7 @@ export async function setupMFA(tempToken: string) {
   let decoded: any;
   
   try {
-    decoded = jwt.verify(tempToken, ADMIN_JWT_SECRET);
+    decoded = jwt.verify(tempToken, getAdminJwtSecret());
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
@@ -90,7 +95,7 @@ export async function verifyMFA(tempToken: string, mfaToken: string) {
   let decoded: any;
   
   try {
-    decoded = jwt.verify(tempToken, ADMIN_JWT_SECRET);
+    decoded = jwt.verify(tempToken, getAdminJwtSecret());
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
@@ -127,7 +132,7 @@ export async function verifyMFA(tempToken: string, mfaToken: string) {
       authenticated: true,
       full_name: admin.full_name
     },
-    ADMIN_JWT_SECRET,
+    getAdminJwtSecret(),
     { expiresIn: ADMIN_SESSION_DURATION } as SignOptions
   );
   

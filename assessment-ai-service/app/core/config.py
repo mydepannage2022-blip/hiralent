@@ -10,8 +10,9 @@ class Settings:
     HOST = "0.0.0.0"
     PORT = int(os.getenv("SERVICE_PORT", 8001))
 
-    # Security
-    INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "super-secret-internal-token")
+    # Security — no default: a shared, publicly-known token would accept any caller.
+    # Unset means "not configured", which validate_internal_token() rejects outright.
+    INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "")
 
     # Redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

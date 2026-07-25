@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { requireEnv } from '../config/requireEnv';
 
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'fallback-secret-change-this';
+// Read lazily at verify time — no publicly-known fallback string, and never
+// evaluates before dotenv has populated process.env.
+const getAdminJwtSecret = () => requireEnv('ADMIN_JWT_SECRET');
 
 // Extend Express Request type to include admin
 declare global {
@@ -32,7 +35,7 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
     const token = authHeader.replace('Bearer ', '');
     
     // Verify JWT
-    const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as any;
+    const decoded = jwt.verify(token, getAdminJwtSecret()) as any;
     
     // Check if user is superadmin and authenticated
     if (decoded.role !== 'superadmin' || !decoded.authenticated) {

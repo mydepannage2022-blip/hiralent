@@ -1,20 +1,21 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import dotenv from 'dotenv';
+import { requireEnv } from '../config/requireEnv';
 import { VectorMetadata, PineconeMatch } from '../types/candidate.types';
 
 dotenv.config();
 
-if (!process.env.PINECONE_API_KEY) {
-  console.warn('PINECONE_API_KEY is not set in environment variables');
+// Lazily construct the Pinecone client. Vector search is an optional integration, so a
+// service that never queries Pinecone can boot without a key — but the first actual use
+// fails loudly if PINECONE_API_KEY is missing, instead of silently building a client with
+// an empty key (which used to swallow the error at query time).
+let pcClient: Pinecone | null = null;
+function getPc(): Pinecone {
+  if (!pcClient) {
+    pcClient = new Pinecone({ apiKey: requireEnv('PINECONE_API_KEY') });
+  }
+  return pcClient;
 }
-
-if (!process.env.PINECONE_ENVIRONMENT) {
-  console.warn('PINECONE_ENVIRONMENT is not set in environment variables');
-}
-
-const pc = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY || '',
-});
 
 // The effective index is PINECONE_INDEX_NAME from env (backend/.env), with this
 // Hiralent-branded default when unset. The index is auto-created on first use by
@@ -22,19 +23,17 @@ const pc = new Pinecone({
 // need the index pre-created in the Pinecone dashboard.
 const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'hiralent-candidates';
 
-export { pc };
-
 // Ensure INDEX_NAME exists in Pinecone, creating it once if missing. The result is
 // cached so the listIndexes/createIndex round-trip runs at most once per process; on
 // failure the cache is cleared so a later call can retry instead of caching the error.
 let indexReady: Promise<void> | null = null;
 
 async function ensureIndexExists(): Promise<void> {
-  const indexList = await pc.listIndexes();
+  const indexList = await getPc().listIndexes();
   const exists = indexList.indexes?.some(index => index.name === INDEX_NAME);
 
   if (!exists) {
-    await pc.createIndex({
+    await getPc().createIndex({
       name: INDEX_NAME,
       // Must match the embedding size produced by createEmbedding() in lib/openai.ts,
       // which uses Google 'text-embedding-004' (768 dims). A mismatch makes every
@@ -68,7 +67,7 @@ function ready(): Promise<void> {
 export async function initializePineconeIndex() {
   try {
     await ready();
-    return pc.index(INDEX_NAME);
+    return getPc().index(INDEX_NAME);
   } catch (error) {
     console.error('Error initializing Pinecone index:', error);
     throw new Error('Failed to initialize Pinecone index');
@@ -78,7 +77,7 @@ export async function initializePineconeIndex() {
 export async function getPineconeIndex() {
   try {
     await ready();
-    return pc.index(INDEX_NAME);
+    return getPc().index(INDEX_NAME);
   } catch (error) {
     console.error('Error getting Pinecone index:', error);
     throw new Error('Failed to get Pinecone index');

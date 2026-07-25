@@ -1,0 +1,50 @@
+# .gitleaks.toml — Wave 1 / Phase 1.1 (Secrets rotation & leak prevention)
+#
+# Config for gitleaks (https://github.com/gitleaks/gitleaks), run in CI by
+# .github/workflows/secret-scan.yml. Extends the built-in rule set and adds the
+# project-specific weak literals this repo has previously shipped, so a regression
+# is caught even though the values themselves are now revoked/rotated.
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Project-specific rules — the exact weak defaults removed in Wave 1 Phase 1.1.
+# These must never reappear in source.
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "hiralent-admin-jwt-fallback"
+description = "Hardcoded ADMIN_JWT_SECRET fallback string (removed in Wave 1 Phase 1.1)"
+regex = '''fallback-secret-change-this'''
+tags = ["hiralent", "jwt", "weak-default"]
+
+[[rules]]
+id = "hiralent-internal-token-default"
+description = "Hardcoded internal API token default (removed in Wave 1 Phase 1.1)"
+regex = '''super-secret-internal-token'''
+tags = ["hiralent", "token", "weak-default"]
+
+[[rules]]
+id = "hiralent-minio-default-cred-in-code"
+description = "Well-known MinIO default credential used as a literal credential value"
+regex = '''(?i)(access_?key_?id|secret_?access_?key|accessKey|secretKey)\s*[:=]\s*["']minioadmin["']'''
+tags = ["hiralent", "storage", "weak-default"]
+
+# ---------------------------------------------------------------------------
+# Allowlist
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Paths that legitimately mention weak defaults without being live secrets"
+paths = [
+  # Audit/planning docs deliberately record the insecure values they are tracking.
+  '''hiralent-master-plan/.*''',
+  '''docs/.*''',
+  # Local-only dev stack. Documented in docs/DEV_ARCHITECTURE.md as never used in
+  # staging/prod; kept intentionally so `docker compose up` works out of the box.
+  '''^docker-compose\.yml$''',
+  # Templates ship placeholders, not secrets.
+  '''.*\.env\.example$''',
+  # This config necessarily contains the patterns it detects.
+  '''^\.gitleaks\.toml$''',
+]
