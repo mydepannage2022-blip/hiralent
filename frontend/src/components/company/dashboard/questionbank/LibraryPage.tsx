@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Search,
   Zap,
@@ -605,7 +606,7 @@ export default function LibraryPage() {
   const fetchLibraryQuestions = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/questions?limit=20000&page=1&isLibrary=true&status=approved", {
+      const res = await fetch(`${API_V1_BASE}/questions?limit=20000&page=1&isLibrary=true&status=approved`, {
         headers: authHeaders()
       });
       const data = await res.json();
@@ -684,7 +685,7 @@ export default function LibraryPage() {
   const handleAddToMyQuestions = async (questionId: string) => {
     setAdding(questionId);
     try {
-      const response = await fetch('http://localhost:5000/api/questions/clone-from-library', {
+      const response = await fetch(`${API_V1_BASE}/questions/clone-from-library`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ libraryQuestionId: questionId })

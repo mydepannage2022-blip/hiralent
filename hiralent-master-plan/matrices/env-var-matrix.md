@@ -24,13 +24,13 @@
 ## Critical — correctness / deploy
 | Var | Service | Note | Action |
 |---|---|---|---|
-| `DATABASE_URL` | backend | localhost dev; Railway prod commented | env per environment |
+| `DATABASE_URL` | backend | POOLED runtime path; localhost dev; Railway prod commented. Carries bounded `connection_limit`/`pool_timeout` (R-06, Wave 2); fronts PgBouncer `pgbouncer=true` in Wave 8 | env per environment + pool params |
+| `DIRECT_DATABASE_URL` | backend | DIRECT un-pooled path for `prisma migrate` (`directUrl`) — bypasses PgBouncer (transaction pooling breaks DDL); no pool/pgbouncer params. Required by migrate/validate, unused at runtime | set per env (Wave 2/8) |
 | `SHADOW_DATABASE_URL` | backend | `=${DATABASE_URL}` (dotenv won't expand; = primary) | separate/unset (R-07, Wave 0) |
-| `MONGO_URI` | backend | required at boot, stores no data | decide (R-33, Wave 2) |
 | `REDIS_URL` | backend/workers/python | fragmented across ports | one canonical Redis (Wave 8) |
 | `AI_SERVICE_URL` / `AI_SERVICE_BASE_URL` / `DOC_VALIDATOR_URL` / `TALENT_AI_BASE_URL` / `MATCHING_AI_BASE_URL` | backend | localhost defaults | env-drive, no hardcoded localhost (Wave 3) |
 | `RUNNER_MODE` + `RUNNER_*_IMAGE` / limits | backend | code-runner config | pin for prod (Wave 6/8) |
-| `NEXT_PUBLIC_BASE_URL` / `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_API_BASE_URL` / `NEXT_PUBLIC_SOCKET_URL` / `NEXT_PUBLIC_FRONTEND_URL` | frontend | localhost; conflicting convention; baked at build | unify (R-27) + set per env build (Wave 8) |
+| `NEXT_PUBLIC_API_URL` (canonical) / `NEXT_PUBLIC_SOCKET_URL` / `NEXT_PUBLIC_FRONTEND_URL` (+ deprecated `NEXT_PUBLIC_BASE_URL` / `NEXT_PUBLIC_API_BASE_URL`) | frontend | **R-27 RESOLVED (Session 6):** unified on `NEXT_PUBLIC_API_URL`=bare host; one resolver `src/lib/config/api.ts` derives all bases. Still baked at build → set per env before `next build` (Wave 8) |
 | `NODE_ENV` / `SERVICE_ENV` / `DEBUG` | all | `DEBUG=true` with `SERVICE_ENV=prod` seen | correct per env |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | backend | init at import → crash if missing | guard init (Wave 0/3) |
 
@@ -81,17 +81,18 @@
 | `CRON_STACKOVERFLOW` | Cron for StackOverflow scraping | — | no |
 | `DATABASE_URL` | Postgres connection (Prisma) | — | **YES (boot)** |
 | `DEBUG` | Debug flag | false | no |
-| `DEBUG_MONGO` | Mongo query debug logging | false | no |
 | `DEV_BYPASS_CREATE_SUBMISSION` | Dev: bypass submission create | false | no (dev-only) |
+| `DIRECT_DATABASE_URL` | Direct Postgres URL for `prisma migrate` (PgBouncer bypass); runtime unused | — | should-set (migrations; Wave 2/8) |
 | `DISABLE_AV` | Disable antivirus scan | false | no |
 | `DOC_VALIDATOR_URL` | document-validator-service URL | localhost:8002 | no |
 | `ENABLE_DEV_MINT` | Dev: enable token mint | false | no (dev-only) |
 | `EXTERNALS_MOCK` | Mock external services | false | no |
+| `FILE_URL_SECRET` | HMAC secret for signed CV/resume file URLs (falls back to `JWT_SECRET` if unset) | — (secret; `JWT_SECRET`) | should-set (Wave 1) |
+| `FILE_URL_TTL_SECONDS` | Signed file-URL lifetime | 600 | no |
 | `FIREBASE_CLIENT_EMAIL` | Firebase service-account email | — (secret) | YES* (crash at import) |
 | `FIREBASE_PRIVATE_KEY` | Firebase service-account key | — (secret) | YES* |
 | `FIREBASE_PROJECT_ID` | Firebase project id | — | YES* |
 | `FORCE_INMEMORY` | Force in-memory queue | false | no |
-| `FORCE_SKIP_MONGO` | Skip Mongo connection | false | no |
 | `FRONTEND_UPLOAD_PATH` | Path for frontend uploads | — | no |
 | `FRONTEND_URL` | Frontend URL | localhost:3000 | no |
 | `GEMINI_API_KEY` | Google Gemini API key | — (secret) | no (AI features) |
@@ -112,7 +113,8 @@
 | `HACKERRANK_STOP_AFTER_EMPTY` | Stop after N empty | — | no |
 | `IHSSANE_API_KEY` | Ihssane microservice key | — (secret) | no |
 | `IHSSANE_BASE_URL` | Ihssane service base URL | — | no |
-| `INTERNAL_SERVICE_KEY` | Internal service auth key | — (secret) | no |
+| `INTERNAL_API_TOKEN` | Shared token backend sends to Python services as the X-API-Token header (assessment-ai, ai-service, doc-validator, job-creation-ai) | — (secret) | should-set (Wave 1, Phase 1.7) |
+| `INTERNAL_SERVICE_KEY` | Internal service auth key. Backend sends its **value** to the matching service as the `X-Service-Key` header. The matching service accepts this value under **either** `SERVICE_API_KEY` **or** `INTERNAL_SERVICE_KEY` (fallback added Session 5), so setting the same secret works regardless of name. | — (secret) | no |
 | `JWT_EXPIRES_IN` | JWT token TTL | 7d | no |
 | `JWT_SECRET` | JWT signing secret | `yourSuperSecretKey` (INSECURE) | **YES (auth; rotate R-01)** |
 | `LEETCODE_AUTO` | Auto-scrape LeetCode | false | no |
@@ -133,10 +135,10 @@
 | `MINIO_PORT` | MinIO port | 9000 | no |
 | `MINIO_SECRET_KEY` | MinIO secret key | `minioadmin` (INSECURE) | no |
 | `MINIO_USE_SSL` | MinIO SSL toggle | false | no |
-| `MONGO_URI` | MongoDB connection URI | — | **YES (boot, R-33)** |
 | `NODE_ENV` | Node environment | development | no |
 | `OCR_HANDWRITING` | OCR handwriting toggle | false | no |
 | `OCR_LANGS` | OCR languages | eng+fra | no |
+| `OCR_MAX_UPLOAD_BYTES` | Max OCR upload size (`POST /api/ocr`) | 10485760 (10MB) | no |
 | `OCR_TARGET_MIN_W` | OCR min width (backend) | — | no ⚠️ see drift note |
 | `OPENAI_API_KEY` | OpenAI API key | — (secret) | no |
 | `PINECONE_API_KEY` | Pinecone API key | — (secret) | no (vector search) |
@@ -159,6 +161,10 @@
 | `RUNNER_TIMEOUT_MS` | Runner exec timeout | — | no |
 | `RUNNER_RETRIES` | Runner retry count | — | no |
 | `RUNNER_USE_RUNSC` | Use gVisor runsc runtime | false | no |
+| `RUNNER_ALLOW_HOST_EXEC` | Dev-only: allow running candidate code on the host when no container runner is available. **Hard-refused in production** (see `assertSafeRunner`). Off unless `=1`. | — (off) | no (dev-only) |
+| `RUNNER_DOCKER_USER` | Non-root uid:gid the runner container runs as (`--user`) | 1000:1000 | no |
+| `RUNNER_PIDS_LIMIT` | Runner container PID cap (`--pids-limit`) | 128 | no |
+| `RUNNER_STUB_TOKEN` | Shared secret for the HTTP runner stub (`X-Runner-Token`, constant-time). Required if `RUNNER_HTTP_URL` is set in prod. | — (secret) | if HTTP runner used |
 | `RUNNER_STRICT_COMPARE` | Strict output compare | false | no |
 | `RUNNER_COMPARE_IGNORE_CASE` | Compare ignoring case | false | no |
 | `RUNNER_COMPARE_COLLAPSE_WHITESPACE` | Compare collapsing whitespace | false | no |
@@ -183,6 +189,9 @@
 | `STACKOVERFLOW_MAX_PROBLEMS` | Max SO problems | — | no |
 | `STACKOVERFLOW_STOP_AFTER_EMPTY` | Stop after N empty | — | no |
 | `STORAGE_PROVIDER` | Storage backend selector | minio (assumed — no in-code default found) | no |
+| `STREAM_TICKET_TTL_SECONDS` | Submission SSE stream-ticket lifetime (falls back to `FILE_URL_SECRET`/`JWT_SECRET` for signing) | 300 | no |
+| `SUPERADMIN_EMAIL` | Superadmin seed email (`prisma/seeds/superadmin.seed.ts`); dev fallback `admin@hiralent.com` | admin@hiralent.com (dev) | no |
+| `SUPERADMIN_PASSWORD` | Superadmin seed password (bcryptjs-hashed). In production the seed SKIPS admin creation if unset (never ships a known default); dev fallback used otherwise | — (required in prod to seed admin) | should-set (prod bootstrap) |
 | `SYSTEM_CREATOR_ID` | System user id for records | — | no |
 | `TAILSCALE_ENABLED` | Tailscale networking toggle | false | no |
 | `TALENT_AI_BASE_URL` | talent-ai-service base URL | localhost | no |
@@ -200,11 +209,11 @@
 ## frontend (15 vars)
 | Var | Purpose | Default (safe) | Required? |
 |---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | API base URL (build-time) | localhost | no ⚠️ URL convention conflict R-27 |
-| `NEXT_PUBLIC_API_BASE_URL` | API base URL (alt) | localhost | no ⚠️ R-27 |
-| `NEXT_PUBLIC_BASE_URL` | App base URL | localhost | no ⚠️ R-27 |
+| `NEXT_PUBLIC_API_URL` | **CANONICAL (R-27, Session 6): BARE backend host** (scheme+host+port, no path). The central resolver `frontend/src/lib/config/api.ts` derives `/api/v1`, `/api` (OCR only) and the socket host from it. | `http://localhost:5000` | no |
+| `NEXT_PUBLIC_API_BASE_URL` | Deprecated (R-27): backward-compat fallback only — prefer `NEXT_PUBLIC_API_URL`. | localhost | no |
+| `NEXT_PUBLIC_BASE_URL` | Deprecated (R-27): legacy base with `/api/v1` suffix; resolver strips it as a fallback. Prefer `NEXT_PUBLIC_API_URL`. | localhost | no |
 | `NEXT_PUBLIC_FRONTEND_URL` | Frontend self URL | localhost:3000 | no |
-| `NEXT_PUBLIC_SOCKET_URL` | Socket.io URL | localhost | no |
+| `NEXT_PUBLIC_SOCKET_URL` | Socket.io host (optional; falls back to `NEXT_PUBLIC_API_URL` host via the resolver) | localhost | no |
 | `NEXT_PUBLIC_SOCKET_RECONNECT_ATTEMPTS` | Socket reconnect tries | — | no |
 | `NEXT_PUBLIC_MAX_FILE_SIZE` | Client max file size | — | no |
 | `NEXT_PUBLIC_DEBUG_MESSAGES` | Debug messages toggle | false | no |
@@ -302,7 +311,7 @@
 | Var | Purpose | Default (safe) | Required? |
 |---|---|---|---|
 | `SERVICE_NAME` | Service name | — | no |
-| `SERVICE_API_KEY` | Service auth key | — (secret) | no |
+| `SERVICE_API_KEY` | Service auth key (matching); compared against the `X-Service-Key` header the backend sends. The service now **accepts either `SERVICE_API_KEY` or `INTERNAL_SERVICE_KEY`** (`effective_service_key`, prefers `SERVICE_API_KEY`) — set **one** of them to the backend's `INTERNAL_SERVICE_KEY` value. Footgun (two names, same secret) resolved Session 5. | — (secret) | no |
 | `PORT` | Service port | — | no |
 | `ENV` | Environment name | — | no |
 | `BACKEND_BASE_URL` | Node backend URL | — | no |
@@ -343,6 +352,36 @@ These work off in-code defaults today. They must be surfaced in each `.env.examp
 ## Naming drift & anomalies to reconcile (later waves)
 - `OCR_TARGET_MIN_W` (backend `.env`) vs `OCR_TARGET_MIN_WIDTH` (document-validator pydantic field) — same concept, two names; doc-validator's `extra="ignore"` means the backend-style name is silently dropped.
 - `YOUSSRRA_WEBHOOK_KEY` (backend, **triple R**) vs `YOUSSRA_EXEC_ADDR` (assessment) — inconsistent spelling of the same vendor.
-- Frontend URL convention conflict: `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_API_BASE_URL` / `NEXT_PUBLIC_BASE_URL` overlap (R-27).
+- ~~Frontend URL convention conflict: `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_API_BASE_URL` / `NEXT_PUBLIC_BASE_URL` overlap (R-27).~~ **RESOLVED Session 6** — canonical = `NEXT_PUBLIC_API_URL` (bare host); central resolver `frontend/src/lib/config/api.ts` derives `/api/v1`+`/api`+socket; old vars kept as back-compat fallback. Backend AI-service URLs also env-driven (R-13): `question.controller.ts` no longer hardcodes `localhost:8000`; `backend/src/config/appUrls.ts` centralises the `FRONTEND_URL`/`BACKEND_URL` defaults. Guarded by `tools/verify-api-config.mjs`.
 - Two vector stores: backend → **Pinecone** (`PINECONE_*`), talent-ai-service → **Qdrant** (`QDRANT_*`). Decide canonical engine (Wave 2/6).
 - `PATH` appears as a code ref in ai-service — OS-provided, not app config (documented for completeness).
+
+---
+
+# Phase 1.5 — Edge hardening (added Session 5)
+Transport/headers/CORS/rate-limit/body-limit vars introduced in Wave 1 Phase 1.5. All are code-referenced (backend `app.ts` / `middlewares/rateLimit.ts`, ai-service `core/config.py`) with in-code defaults, and documented in the matching `.env.example`.
+
+| Var | Service | Purpose | Safe default |
+|---|---|---|---|
+| `CORS_ALLOWED_ORIGINS` | backend | Comma-separated browser origins allowed with credentials (no wildcard). | `http://localhost:3000` |
+| `TRUST_PROXY` | backend | Reverse-proxy hops to trust for the real client IP (rate-limit key). | `1` |
+| `JSON_BODY_LIMIT` | backend | Max JSON request body; oversized → 413. | `1mb` |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS` / `RATE_LIMIT_GLOBAL_MAX` | backend | Global limiter window (ms) + max requests/IP. | `900000` / `600` |
+| `RATE_LIMIT_AUTH_WINDOW_MS` / `RATE_LIMIT_AUTH_MAX` | backend | Auth surface (login/refresh/forgot) limiter. | `900000` / `20` |
+| `RATE_LIMIT_OCR_WINDOW_MS` / `RATE_LIMIT_OCR_MAX` | backend | OCR upload limiter (heavy CPU). | `900000` / `30` |
+| `RATE_LIMIT_SUBMISSION_WINDOW_MS` / `RATE_LIMIT_SUBMISSION_MAX` | backend | Code-submission/enqueue limiter. | `900000` / `60` |
+| `RATE_LIMIT_AI_WINDOW_MS` / `RATE_LIMIT_AI_MAX` | backend | AI-service fan-out limiter (cost control). | `900000` / `60` |
+| `RATE_LIMIT_PREFIX` | backend | Optional namespace prepended to Redis rate-limit keys (isolate deployments/tests sharing one Redis). | (empty) |
+| `RATE_LIMIT_FORCE_MEMORY` | backend | Kill-switch (set to 1) forcing the in-memory limiter store even when REDIS_URL is set. | (off) |
+| `CORS_ALLOW_ORIGINS` | ai-service | Comma-separated CORS allowlist (replaces `allow_origins=["*"]`). | `http://localhost:3000,http://localhost:5000` |
+
+> Rate limits are enforced **across instances** when `REDIS_URL` is set (shared `RedisStore`); otherwise per-process (in-memory) with a boot warning.
+
+### Firehose retention (Wave 2 / Phase 2.4, R-30)
+
+Opt-in reaper for append-only/firehose tables. Code-referenced in `server.ts` + `scheduler/retention.scheduler.ts`; off by default so a deploy never deletes data unless it consciously enables it. Per-table retention windows are code constants in `services/retention.service.ts`.
+
+| Var | Service | Purpose | Safe default |
+|---|---|---|---|
+| `RETENTION_ENABLED` | backend | Opt-in switch for the firehose retention reaper (batched deleteMany of aged rows). Reaper runs only when set to `true`. | `false` |
+| `RETENTION_CRON` | backend | Cron expression for the retention reaper (low-traffic window). | `15 3 * * *` |

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { nextRunJob } from '../queues/runs.queue';
 import { run_submission_and_grade } from '../services/execution.service';
 import { emitSubmissionEvent } from '../lib/submissionEmitter';
@@ -9,8 +9,8 @@ import { runProcessed, runFailed, runDuration } from '../lib/metrics';
 import { setTimeout as wait } from 'node:timers/promises';
 import Redis from 'ioredis';
 import { Worker as BullWorker, QueueEvents } from 'bullmq';
+import { assertSafeRunner } from '../services/runner.security';
 
-const prisma = new PrismaClient();
 
 let processed = 0;
 let failed = 0;
@@ -162,6 +162,9 @@ async function bullWorkerMain() {
 }
 
 if (require.main === module) {
+  // The worker is the process that actually runs candidate code, so fail-fast here too if
+  // the runner config is unsafe for production (host exec on / unauthenticated HTTP stub).
+  assertSafeRunner();
   const forceInMemory = (process.env.FORCE_INMEMORY || process.env.USE_IN_MEMORY_QUEUE) === '1' || (process.env.FORCE_INMEMORY || '').toLowerCase() === 'true';
   if (!forceInMemory && process.env.REDIS_URL) {
     bullWorkerMain().catch((e) => { console.error(e); process.exit(1); });

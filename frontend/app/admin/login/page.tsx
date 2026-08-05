@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthLayout from '@/src/components/layout/AuthLayout';
 import { getAuthPageConfig } from '@/config/authPagesConfig';
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -26,26 +27,30 @@ export default function AdminLogin() {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/admin/auth/login', {
+      const response = await fetch(`${API_V1_BASE}/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const data = await response.json();
+      // Response envelope (R-36): the MFA fields live under `data`, and there is no
+      // top-level `ok`. Read `data.data` (falling back to `data` for any un-migrated
+      // shape) and gate on the top-level `success` flag — not the removed `ok`.
+      const d = data?.data ?? data;
 
-      if (data.ok && data.success && data.tempToken) {
+      if (data.success && d?.tempToken) {
         // Only store tempToken here – full session is created after MFA
-        sessionStorage.setItem('tempToken', data.tempToken);
+        sessionStorage.setItem('tempToken', d.tempToken);
 
         // Branching based on MFA status
-        if (data.mfaSetup) {
+        if (d.mfaSetup) {
           router.push('/admin/setup-mfa');
         } else {
           router.push('/admin/verify-mfa');
         }
       } else {
-        setError(data.error || 'Invalid credentials. Please check your email and password.');
+        setError(data.error?.message || data.error || 'Invalid credentials. Please check your email and password.');
       }
     } catch {
       setError('Connection error. Please try again.');

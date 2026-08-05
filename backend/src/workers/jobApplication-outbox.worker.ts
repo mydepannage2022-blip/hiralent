@@ -1,13 +1,6 @@
-import {
-  PrismaClient,
-  JobApplicationEventStatus,
-  JobApplicationEventType,
-  JobApplicationStatus,
-  NotificationAudience,
-  NotificationType,
-} from "@prisma/client";
+import { JobApplicationEventStatus, JobApplicationEventType, JobApplicationStatus, NotificationAudience, NotificationType } from "@prisma/client";
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 type TriggerValue = "INTERVIEW_REQUIRED" | "ASSESSMENT_REQUIRED" | "NO_TRIGGER";
 

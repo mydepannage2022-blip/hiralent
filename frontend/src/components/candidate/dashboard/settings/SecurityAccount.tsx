@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/src/context/AuthContext";
 import { useDisable2FA } from "@/src/lib/auth/auth.queries";
 import TwoFactorSetupModal from "@/src/components/settings/TwoFactorSetupModal";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 function SecurityAccount() {
   const { user } = useAuth();
@@ -53,7 +54,7 @@ function SecurityAccount() {
     try {
       const token = localStorage.getItem("authToken");
       await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/auth/change-password`,
+        `${API_V1_BASE}/auth/change-password`,
         { currentPassword, newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

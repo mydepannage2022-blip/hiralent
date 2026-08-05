@@ -1,3 +1,5 @@
+import hmac
+
 from fastapi import HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from app.core.config import settings
@@ -14,7 +16,10 @@ async def validate_internal_token(api_key: str = Security(api_key_header)):
             status_code=500,
             detail="INTERNAL_API_TOKEN is not configured on this service"
         )
-    if not api_key or api_key != expected:
+    # Constant-time compare so a caller can't infer the token byte-by-byte via timing.
+    # Encode first: hmac.compare_digest on str raises TypeError for non-ASCII input, which
+    # would surface as a 500 instead of a clean 403 for a junk token.
+    if not api_key or not hmac.compare_digest(api_key.encode("utf-8"), expected.encode("utf-8")):
         raise HTTPException(
             status_code=403,
             detail="Invalid or missing internal API token"

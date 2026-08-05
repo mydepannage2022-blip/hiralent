@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { sendEmail } from "../../utils/email.util";
 import {
   formatEmailNote,
@@ -6,8 +6,8 @@ import {
   renderEmailKeyValueTable,
   renderTransactionalEmail,
 } from "../emailTemplates.service";
+import { getFrontendUrl } from "../../config/appUrls";
 
-const prisma = new PrismaClient();
 
 export const getAgencyIdForUser = async (userId: string) => {
   const user = await prisma.user.findUnique({
@@ -189,7 +189,7 @@ export const sendSubmissionConfirmationEmail = async (params: {
     expected_response,
   } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
   const submittedOn = new Date(submission_date).toLocaleDateString("en-US", {
@@ -260,7 +260,7 @@ export const sendVisaApprovedEmail = async (params: {
     decisionNotes,
   } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
 
@@ -317,7 +317,7 @@ export const sendEmbassyStatusUpdateEmail = async (params: {
 }) => {
   const { candidateEmail, candidateName, caseNumber, caseId, embassyName, status, decisionNotes } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const statusMessages: Record<string, { title: string; message: string; color: string }> = {
     under_review: {
@@ -388,7 +388,7 @@ export const sendInterviewScheduledEmail = async (params: {
 }) => {
   const { candidateEmail, candidateName, caseNumber, caseId, embassyName, interview_date, interview_location, interview_notes } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
   const interviewDateTime = new Date(interview_date).toLocaleString("en-US", {

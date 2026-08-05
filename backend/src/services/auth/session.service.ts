@@ -1,31 +1,39 @@
 import  prisma  from '../../lib/prisma';
-import { hashPassword as hash } from '../../utils/hash.util';
+import { sha256Hex } from '../../utils/tokenHash';
+import { optionalEnv } from '../../config/requireEnv';
 import { detectDevice } from '../../utils/deviceDetector.util';
 import { getLocationFromIP } from '../../utils/locationDetector.util';
-import { 
-  CreateSessionData, 
-  SessionInfo, 
+import {
+  CreateSessionData,
+  SessionInfo,
 } from '../../types/session.types';
 
 import * as blacklistService from './blacklist.service';
 
+/** Refresh-token / session lifetime in days (default 7). */
+const getRefreshTtlDays = (): number => {
+  const n = parseInt(optionalEnv('REFRESH_TOKEN_TTL_DAYS', '7')!, 10);
+  return Number.isFinite(n) && n > 0 ? n : 7;
+};
+
 export const createSession = async (data: CreateSessionData): Promise<string> => {
   try {
     console.log('🔄 Creating session for user:', data.userId);
-    
-    // Hash the JWT token for security
-    const tokenHash = await hash(data.jwtToken);
-    console.log('🔐 Token hashed successfully');
-    
+
+    // Deterministic sha256 so the session, blacklist, and /auth/refresh lookups
+    // all agree on the same hash (see utils/tokenHash.ts).
+    const tokenHash = sha256Hex(data.jwtToken);
+    const refreshTokenHash = data.refreshToken ? sha256Hex(data.refreshToken) : null;
+
     // Detect device information
     const deviceInfo = detectDevice(data.userAgent);
-    
+
     // Get location from IP
     const locationInfo = await getLocationFromIP(data.ipAddress);
-    
-    // Set session expiry (7 days from now)
+
+    // Session expiry (== refresh-token lifetime)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + getRefreshTtlDays());
     
     // Create device name
     const deviceName = `${deviceInfo.browser.name} on ${deviceInfo.os.name}`;
@@ -63,9 +71,12 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
       }
     }
     
-    // Create new session
+    // Create new session. session_id is set explicitly (when provided) so it
+    // matches the session_id claim inside the JWT — the middleware's active-session
+    // check and /auth/refresh both look the row up by that id.
     const session = await prisma.userSession.create({
       data: {
+        ...(data.sessionId ? { session_id: data.sessionId } : {}),
         user_id: data.userId,
         device_name: deviceName,
         device_type: deviceInfo.device.type,
@@ -78,6 +89,7 @@ export const createSession = async (data: CreateSessionData): Promise<string> =>
         location_city: locationInfo.city,
         location_region: locationInfo.region,
         jwt_token_hash: tokenHash,
+        refresh_token_hash: refreshTokenHash,
         is_current: true,
         expires_at: expiresAt,
         user_agent: data.userAgent,

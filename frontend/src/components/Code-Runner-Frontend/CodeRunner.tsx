@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Play, Settings, Copy, Download, X, Sun, Moon, Command, Zap, BookOpen, ChevronDown, CheckCircle, AlertCircle, Send, Code2, Lock } from 'lucide-react';
 import { api } from '../../lib/auth/auth.api';
+import { fetchStreamTicket } from '../../lib/streamTicket';
+import { API_V1_BASE } from '../../lib/config/api';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -468,9 +470,10 @@ export default function CodeRunner() {
     setSubmitting(true); setStatus('creating'); setResult(null); setToast('Submission created');
     runStartRef.current = Date.now();
     try {
-      const body = { assessmentId: 'local-test', questionId: active.name, language: active.language, code: active.code, userId: (process.env.NEXT_PUBLIC_DEV_USER || 'dev-user') };
+      // The submission owner is derived server-side from the access token (api attaches it) — no userId is sent.
+      const body = { assessmentId: 'local-test', questionId: active.name, language: active.language, code: active.code };
       // Compute absolute submit URL so requests always go to the correct backend mount
-      const configuredBase = (api.defaults && (api.defaults.baseURL as string)) || process.env.NEXT_PUBLIC_BASE_URL || '';
+      const configuredBase = (api.defaults && (api.defaults.baseURL as string)) || API_V1_BASE || '';
       let baseNoSlash = configuredBase.replace(/\/$/, '');
       if (!baseNoSlash) {
         const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
@@ -487,8 +490,13 @@ export default function CodeRunner() {
         return;
       }
       setStatus('pending');
-      // Open SSE (use absolute stream URL)
-      const streamUrl = `${baseNoSlash}/submissions/stream/${id}`;
+      // Open SSE (absolute stream URL). EventSource can't send an Authorization header, so
+      // instead of the real access token we mint a short-lived, submission-bound ticket
+      // (behind checkAuth + ownership) and pass it as ?ticket=.
+      const streamToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const ticket = await fetchStreamTicket(baseNoSlash, id, streamToken);
+      const streamQs = ticket ? `?ticket=${encodeURIComponent(ticket)}` : '';
+      const streamUrl = `${baseNoSlash}/submissions/stream/${id}${streamQs}`;
       if (evRef.current) { evRef.current.close(); }
       const ev = new EventSource(streamUrl); evRef.current = ev;
       ev.onmessage = (e) => {

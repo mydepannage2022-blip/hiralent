@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   RefreshCw,
   Building2,
@@ -37,7 +38,7 @@ export default function VerificationsPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/admin/verifications/pending', {
+      const response = await fetch(`${API_V1_BASE}/admin/verifications/pending`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

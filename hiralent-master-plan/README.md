@@ -3,7 +3,7 @@
 > **Owner:** Huzaifa Iqbal (sole developer)
 > **Goal:** Take Hiralent from "merged but untested, ~40% launch-ready" to a **secure, scalable, fully working, production-deployed** AI recruitment platform.
 > **Baseline audit date:** 2026-07-20 (13 read-only audit agents, 2 passes)
-> **Status:** Planning complete → execution not yet started (nothing in the codebase changed yet).
+> **Status:** In execution — **Waves 0, 1, 2 complete and gate-verified**; **Wave 3 in progress** (Phase 3.4 error/health/envelope backbone — done 2026-08-01; Phase 3.1 R-25 session sign-out + Phase 3.5 realtime read-receipts — done Session 4, 2026-08-03). Full verifier gate **35/35 green** (added `verify-error-envelope.mjs`, `verify-session-realtime.mjs`). Wave 2 closed end-to-end via the composed data-layer proof (`matrices/wave-2-data-gate.md`). **Next in Wave 3:** remaining wiring bugs (3.1: R-22/R-24/R-26), frontend API-config unification (3.2), env-driven URLs (3.3), per-slice response normalisation (3.6).
 
 ---
 
@@ -71,17 +71,17 @@ hiralent-master-plan/
 
 ## Wave overview (execution order)
 
-| Wave | Name | Outcome | Primary pillars |
-|---|---|---|---|
-| **0** | Triage & Foundation | Both apps build & run clean; dead code/tooling fixed; safe baseline | P4, P5 |
-| **1** | Security Hardening | No critical vulns; secrets rotated; every endpoint guarded | P1 |
-| **2** | Data Layer & DB | Single Prisma client + pooling; indexes; safe migrations; seeds | P2, P3 |
-| **3** | Core Correctness & Wiring | Every silent-fail wiring bug fixed; error handling; health | P3, P6 |
-| **4** | Feature Completion | Every hollow/mock feature made real per role; subsystems reconciled | P3 |
-| **5** | Real Payments | Genuine Stripe/PayPal + webhooks + server-side verification | P1, P3 |
-| **6** | Scalability & Performance | Survives 2k RPS / 10k users; path to 100k; stateless & cached | P2 |
-| **7** | Observability, Reliability & Testing | Metrics/logs/alerts; DLQ; graceful shutdown; test suite + load tests | P6, P7 |
-| **8** | Deployment: Staging → Production | Dockerized, orchestrated, CI/CD, TLS, migrations; live | P5 |
+| Wave | Name | Outcome | Primary pillars | Status |
+|---|---|---|---|---|
+| **0** | Triage & Foundation | Both apps build & run clean; dead code/tooling fixed; safe baseline | P4, P5 | ✅ done (gate-verified) |
+| **1** | Security Hardening | No critical vulns; secrets rotated; every endpoint guarded | P1 | ✅ done (gate-verified) |
+| **2** | Data Layer & DB | Single Prisma client + pooling; indexes; safe migrations; seeds | P2, P3 | ✅ done (gate-verified, S7) |
+| **3** | Core Correctness & Wiring | Every silent-fail wiring bug fixed; error handling; health | P3, P6 | 🔶 in progress (Phase 3.4 error/health/envelope backbone done) |
+| **4** | Feature Completion | Every hollow/mock feature made real per role; subsystems reconciled | P3 | — |
+| **5** | Real Payments | Genuine Stripe/PayPal + webhooks + server-side verification | P1, P3 | — |
+| **6** | Scalability & Performance | Survives 2k RPS / 10k users; path to 100k; stateless & cached | P2 | — |
+| **7** | Observability, Reliability & Testing | Metrics/logs/alerts; DLQ; graceful shutdown; test suite + load tests | P6, P7 | — |
+| **8** | Deployment: Staging → Production | Dockerized, orchestrated, CI/CD, TLS, migrations; live | P5 | — |
 
 > Mapping to the client's 2-month framing: **Month 1 ≈ Waves 0–3 (+start of 4) and a staging deploy**; **Month 2 ≈ Waves 4–8 (payments, scale, testing, production)**. We have generous time, so quality comes first — the wave order is the source of truth, not the calendar.
 

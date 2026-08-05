@@ -6,10 +6,10 @@
  */
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
+import { internalAuth } from "../middlewares/internalAuth.middleware";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 interface ValidationWebhookPayload {
   validation_job_id: string;
@@ -38,7 +38,10 @@ interface ValidationWebhookPayload {
  *
  * Receives validation results from the document-validator-service.
  */
-router.post("/document-validation", async (req: Request, res: Response) => {
+// Authenticated with the shared BACKEND_INTERNAL_TOKEN (constant-time compare via
+// internalAuth). Only the document-validator-service, which holds the token, may
+// post validation results — otherwise anyone could spoof KYC document statuses.
+router.post("/document-validation", internalAuth, async (req: Request, res: Response) => {
   try {
     const payload: ValidationWebhookPayload = req.body;
 

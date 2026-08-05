@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 // ---- Inline icons (no dependencies) ----
 const IconClock = (props: React.SVGProps<SVGSVGElement>) => (
@@ -134,7 +135,7 @@ export default function AdminDashboard() {
 
     setRefreshing(true);
     try {
-      const response = await fetch('http://localhost:5000/api/v1/admin/verifications/stats', {
+      const response = await fetch(`${API_V1_BASE}/admin/verifications/stats`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -18,4 +18,13 @@ class Settings:
     # External Services
     NODE_BACKEND_URL: str = os.getenv("NODE_BACKEND_URL", "http://localhost:5000")
 
+    # CORS — env-driven allowlist (comma-separated). A wildcard "*" with
+    # allow_credentials is rejected by browsers and is unsafe, so we default to an
+    # explicit localhost list and let deployment override CORS_ALLOW_ORIGINS.
+    CORS_ALLOW_ORIGINS: list = [
+        o.strip()
+        for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://localhost:5000").split(",")
+        if o.strip()
+    ]
+
 settings = Settings()

@@ -4,8 +4,9 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useProfile } from '@/src/context/ProfileContext';
 import { useAuth } from '@/src/context/AuthContext';
+import { API_HOST } from '@/src/lib/config/api';
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_ORIGIN = API_HOST;
 
 const api = axios.create({
   baseURL: `${API_ORIGIN}/api/v1`,

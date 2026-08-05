@@ -5,6 +5,7 @@ import { AI_INTERVIEW_PROMPTS } from './aiInterview.prompts';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 import { sendEmail } from '../../utils/email.util';
+import { getFrontendUrl } from '../../config/appUrls';
 
 /**
  * Helper function for interview analysis with higher token limits
@@ -184,7 +185,7 @@ export const assignInterview = async (params: AssignInterviewParams): Promise<{ 
   const companyName = application.job?.company?.full_name || 'Unknown Company';
   const candidateName = candidate?.full_name || 'Candidate';
   const candidateEmail = candidate?.email;
-  const interviewLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/candidate/dashboard/interviews/${interview.interview_id}`;
+  const interviewLink = `${getFrontendUrl()}/candidate/dashboard/interviews/${interview.interview_id}`;
 
   // Send email notification in background (don't await to avoid blocking)
   sendInterviewEmailNotification({

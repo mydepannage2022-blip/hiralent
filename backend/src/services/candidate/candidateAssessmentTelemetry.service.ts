@@ -1,7 +1,7 @@
 // services/candidate/candidateAssessmentTelemetry.service.ts
-import { PrismaClient, TelemetryEventType } from "@prisma/client";
+import { TelemetryEventType } from "@prisma/client";
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 const isTelemetryEventType = (val: unknown): val is TelemetryEventType => {
   return (

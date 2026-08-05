@@ -9,6 +9,7 @@ import type {
   InternalCandidateListItemDTO,
   InternalCandidateFullProfileDTO,
 } from "@/src/types/company.candidates.internal.types";
+import { API_HOST } from "@/src/lib/config/api";
 
 export type Paginated<T> = {
   items: T[];
@@ -60,7 +61,7 @@ function getCompanyToken() {
 
 async function apiGet<T>(path: string): Promise<T> {
   const token = getCompanyToken();
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const base = API_HOST;
 
   const res = await fetch(`${base}${path}`, {
     method: "GET",

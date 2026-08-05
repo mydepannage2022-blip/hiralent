@@ -1,5 +1,5 @@
 // backend/src/workers/assessmentOutbox.worker.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import { setTimeout as wait } from "node:timers/promises";
 import Redis from "ioredis";
 import { Worker as BullWorker, QueueEvents } from "bullmq";
@@ -12,7 +12,6 @@ import { NotificationAudience, NotificationType } from "@prisma/client";
 // ✅ NEW
 import { AssessmentScoringService } from "../services/company/internal/assessmentScoring.service";
 
-const prisma = new PrismaClient();
 
 async function processOutbox(sessionId: string) {
   const s = await prisma.candidateAssessmentSession.findUnique({

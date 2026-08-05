@@ -16,7 +16,5 @@ export function internalAuth(req: Request, res: Response, next: NextFunction) {
 
   // NOTE: never log the Authorization header or the token itself — doing so writes the
   // shared internal secret into plaintext logs on every successful call.
-  console.log("internalAuth HIT", req.originalUrl);
-
   return next();
 }

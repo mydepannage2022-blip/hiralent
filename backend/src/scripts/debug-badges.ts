@@ -1,9 +1,8 @@
 // scripts/debug-badges-simple.ts
 // Simplified version that works with any Prisma schema
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 async function debugBadges() {
   console.log('🔍 DEBUG: Badge System Status\n');

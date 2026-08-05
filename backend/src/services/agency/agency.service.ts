@@ -1,6 +1,6 @@
-import { PrismaClient, AgencyType, AgencyStatus } from "@prisma/client";
+import { AgencyType, AgencyStatus } from "@prisma/client";
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 interface ApplyAgencyData {
   name: string;

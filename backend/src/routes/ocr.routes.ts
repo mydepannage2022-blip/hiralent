@@ -2,17 +2,66 @@
 import { Router } from "express";
 import multer from "multer";
 import prisma from "../lib/prisma";
+import { checkAuth, AuthenticatedRequest } from "../middlewares/checkAuth.middleware";
 import { ocrAndParse } from "../services/ocr/ocrAndParse"; // ✅ new wrapper (OCR + classify + parse)
 import { saveDocOCRSignal } from "../services/verification/signals";
 import { loadExpectedFromRun } from "../services/verification/loadExpected";
 
-const upload = multer({ dest: "uploads/" });
+// OCR does heavy CPU work (Tesseract) and writes VerificationSignal rows, so it must
+// be authenticated and bounded: cap the upload size and restrict to document types.
+const OCR_MAX_BYTES = Number(process.env.OCR_MAX_UPLOAD_BYTES) || 10 * 1024 * 1024; // 10MB default
+const OCR_ALLOWED_MIME = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+]);
+
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: OCR_MAX_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (OCR_ALLOWED_MIME.has(file.mimetype)) return cb(null, true);
+    cb(new Error("Unsupported file type. Allowed: PDF, PNG, JPEG."));
+  },
+});
+
+// Run multer and turn its rejections into clean 4xx JSON (oversize -> 413, bad type
+// / other -> 400) instead of an opaque 500 from the default error handler.
+const uploadDocument = (req: any, res: any, next: any) => {
+  upload.single("document")(req, res, (err: any) => {
+    if (err) {
+      const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+      return res.status(status).json({ ok: false, error: err.message || "Upload rejected" });
+    }
+    next();
+  });
+};
+
 const router = Router();
 
-router.post("/", upload.single("document"), async (req, res) => {
+router.post("/", checkAuth, uploadDocument, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ ok: false, error: "No file" });
+    }
+
+    // If this OCR result will be attached to a verification run (runId), the caller
+    // must own that run's subject — otherwise any authenticated user could poison
+    // another company's verification signals by passing its run_id. Checked BEFORE
+    // the (expensive) OCR so a cross-tenant request is rejected cheaply.
+    const runIdForAuth =
+      (req.body.runId as string | undefined) ?? (req.query.runId as string | undefined);
+    if (runIdForAuth) {
+      const run = await prisma.verificationRun.findUnique({
+        where: { run_id: runIdForAuth },
+        select: { subject_type: true, subject_id: true },
+      });
+      if (run && run.subject_type === "COMPANY") {
+        if (!req.user?.company_id || req.user.company_id !== run.subject_id) {
+          return res.status(403).json({ ok: false, error: "Forbidden: not your verification run" });
+        }
+      }
     }
 
     // Optional override of classifier: ?forceType=cv | company_doc

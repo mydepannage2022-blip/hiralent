@@ -8,10 +8,11 @@ import type {
   InterviewDetailedResult,
   SubmitResponseRequest,
 } from '../../types/interview.types';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 // Create axios instance with base URL
 export const interviewApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -153,7 +154,7 @@ export async function* submitResponseStream(
 > {
   const token = localStorage.getItem('authToken');
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/respond-stream`,
+    `${API_V1_BASE}/interviews/${interviewId}/respond-stream`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -234,7 +235,7 @@ export const uploadInterviewVideo = async (
 
   // Use native fetch instead of axios for more reliable FormData handling
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/upload-video`,
+    `${API_V1_BASE}/interviews/${interviewId}/upload-video`,
     {
       method: 'POST',
       headers: {
@@ -294,5 +295,5 @@ export const getInterviewVideoUrl = async (
 export const getInterviewVideoStreamUrl = (interviewId: string): string => {
   const token = localStorage.getItem('authToken');
   // Append token as query param for streaming endpoint
-  return `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/video-stream?token=${token}`;
+  return `${API_V1_BASE}/interviews/${interviewId}/video-stream?token=${token}`;
 };

@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Clock,
   CheckCircle2,
@@ -367,7 +368,7 @@ const ReviewQueuePage: React.FC = () => {
   const loadMyPending = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/questions?limit=9999", {
+      const res = await fetch(`${API_V1_BASE}/questions?limit=9999`, {
         headers: authHeaders(),
       });
       const data = await res.json();
@@ -431,7 +432,7 @@ const ReviewQueuePage: React.FC = () => {
   const approve = async (id: string) => {
     if (!requireAuth()) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/questions/${id}/approve`, {
+      const res = await fetch(`${API_V1_BASE}/questions/${id}/approve`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -450,7 +451,7 @@ const ReviewQueuePage: React.FC = () => {
   const reject = async (id: string) => {
     if (!requireAuth()) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/questions/${id}/reject`, {
+      const res = await fetch(`${API_V1_BASE}/questions/${id}/reject`, {
         method: "PATCH",
         headers: authHeaders(),
       });

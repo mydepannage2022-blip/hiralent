@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   X,
   Bot,
@@ -133,8 +134,7 @@ interface ChatbotAssessmentModalProps {
   onAssessmentCreated?: () => void;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = API_V1_BASE;
 
 /* =============================
    Small helpers

@@ -4,11 +4,9 @@
  * Organizes questions by category and difficulty for easy browsing
  */
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../lib/prisma";
 import * as fs from "fs";
 import * as path from "path";
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log("📦 Exporting Library Questions to Git Format\n");

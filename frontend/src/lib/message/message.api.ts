@@ -1,9 +1,10 @@
 // src/lib/message/message.api.ts
 import axios from 'axios';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 // Reuse the same pattern as auth.api.ts
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 

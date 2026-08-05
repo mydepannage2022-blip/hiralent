@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SimilaritySearch from "./SimilaritySearch";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import type { Question as QuestionType } from "@/src/types/question.types";
 
 import {
@@ -923,7 +924,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       onSimilarityCheck={async (query) => {
                         try {
                           const response = await fetch(
-                            "http://localhost:5000/api/questions/check-similarity",
+                            `${API_V1_BASE}/questions/check-similarity`,
                             {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },

@@ -5,8 +5,17 @@ class Settings(BaseSettings):
     SERVICE_NAME: str = "matching-candidate-job"
     PORT: int = 8011
 
-    # auth interne
+    # auth interne — accept EITHER env name for the same shared secret. The Node backend
+    # reads its `INTERNAL_SERVICE_KEY` and sends that value as the `X-Service-Key` header;
+    # this service historically read `SERVICE_API_KEY`. Supporting both removes the deploy
+    # footgun where the same secret had to be set under two different names. Prefer
+    # SERVICE_API_KEY when both are set. Use `effective_service_key` everywhere.
     SERVICE_API_KEY: str = ""
+    INTERNAL_SERVICE_KEY: str = ""
+
+    @property
+    def effective_service_key(self) -> str:
+        return self.SERVICE_API_KEY or self.INTERNAL_SERVICE_KEY
 
     # redis
     REDIS_URL: str = "redis://localhost:6379/0"

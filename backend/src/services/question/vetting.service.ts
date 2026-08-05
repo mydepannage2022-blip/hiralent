@@ -2,6 +2,8 @@
 // Uses the Node built-in global `fetch` (Node 18+; project runs Node 24) — no `node-fetch`
 // dependency needed. All usage here is standard Fetch API (res.ok/status/json/text).
 
+import { internalTokenHeader } from '../../config/internalServiceAuth';
+
 const VETTING_SERVICE_URL =
   process.env.AI_VETTING_URL || 'http://localhost:8000'; // adapte à ton FastAPI
 
@@ -22,7 +24,7 @@ export class VettingService {
   }
 
   async healthCheck() {
-    const res = await fetch(`${this.baseUrl}/vetting/health`);
+    const res = await fetch(`${this.baseUrl}/vetting/health`, { headers: { ...internalTokenHeader() } });
     if (!res.ok) throw new Error(`Vetting health failed: ${res.status}`);
     return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI
   }
@@ -30,7 +32,7 @@ export class VettingService {
   async vetSingleQuestion(question: VettingQuestionPayload) {
     const res = await fetch(`${this.baseUrl}/vetting/process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...internalTokenHeader() },
       body: JSON.stringify({ question }),
     });
 
@@ -45,7 +47,7 @@ export class VettingService {
   async vetBatch(questions: VettingQuestionPayload[]) {
     const res = await fetch(`${this.baseUrl}/vetting/batch-process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...internalTokenHeader() },
       body: JSON.stringify({ questions }),
     });
 
@@ -58,7 +60,7 @@ export class VettingService {
   }
 
   async stats() {
-    const res = await fetch(`${this.baseUrl}/vetting/stats`);
+    const res = await fetch(`${this.baseUrl}/vetting/stats`, { headers: { ...internalTokenHeader() } });
     if (!res.ok) throw new Error(`Vetting stats failed: ${res.status}`);
     return res.json() as Promise<any>; // dynamic JSON from the Python vetting FastAPI
   }

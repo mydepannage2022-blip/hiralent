@@ -5,6 +5,7 @@
 import React, { useRef, useState } from "react";
 import { Camera, X, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   useUploadCompanyLogo,
   useUploadCompanyCover,
@@ -72,7 +73,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
     if (url.startsWith("http://") || url.startsWith("https://")) {
       return url;
     }
-    const backendUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/v1", "") || "http://localhost:5000";
+    const backendUrl = API_HOST;
     return `${backendUrl}${url}`;
   };
 

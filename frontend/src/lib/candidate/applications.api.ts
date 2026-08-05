@@ -6,8 +6,9 @@ import type {
   CandidateApplicationsListResponse,
   ApplicationTimelineResponse,
 } from "../../types/candidate.applications.types";
+import { API_HOST } from "@/src/lib/config/api";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BASE_URL = API_HOST;
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

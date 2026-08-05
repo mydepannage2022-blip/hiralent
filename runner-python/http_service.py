@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel, root_validator
 from typing import List, Dict, Any, Optional
 import time
@@ -7,8 +7,23 @@ import subprocess
 import os
 import sys
 import shutil
+import hmac
 
 app = FastAPI(title='Runner Stub')
+
+# This service executes arbitrary submitted code on the host. It MUST NOT be callable
+# unauthenticated. Require a shared token (constant-time compare); if no token is
+# configured, fail closed (503) rather than run code for anyone. The backend dispatcher
+# sends this as the `X-Runner-Token` header (RUNNER_STUB_TOKEN on both sides).
+RUNNER_STUB_TOKEN = os.environ.get('RUNNER_STUB_TOKEN', '')
+
+
+def require_runner_token(x_runner_token: Optional[str] = Header(default=None)):
+    if not RUNNER_STUB_TOKEN:
+        raise HTTPException(status_code=503, detail='Runner stub disabled: RUNNER_STUB_TOKEN not configured')
+    if not hmac.compare_digest(x_runner_token or '', RUNNER_STUB_TOKEN):
+        raise HTTPException(status_code=401, detail='Invalid or missing runner token')
+    return True
 
 
 class TestCase(BaseModel):
@@ -153,7 +168,7 @@ def execute_code(language: str, code: str, stdin: str, timeout: float = 2.0):
 
 
 @app.post('/run')
-def run(req: RunRequest):
+def run(req: RunRequest, _auth: bool = Depends(require_runner_token)):
     # Execute submitted Python code for each provided test case and compare stdout
     tests_summary = []
     total_ok = 0
@@ -198,6 +213,6 @@ def run(req: RunRequest):
 
 
 @app.post('/plagiarism')
-def plagiarism(payload: Dict[str, Any]):
+def plagiarism(payload: Dict[str, Any], _auth: bool = Depends(require_runner_token)):
     # Very small stub: always return zero risk
     return {'risk': 0.0, 'evidence': []}

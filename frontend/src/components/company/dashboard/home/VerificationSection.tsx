@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shield, Upload, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/src/context/AuthContext";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 export default function VerificationSection() {
   const { user, token } = useAuth();
@@ -22,7 +23,7 @@ export default function VerificationSection() {
       }
 
       try {
-        const response = await fetch("http://localhost:5000/api/v1/company/profile", {
+        const response = await fetch(`${API_V1_BASE}/company/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -132,7 +133,7 @@ export default function VerificationSection() {
 
     try {
       setUploadProgress(10);
-      const runRes = await fetch("http://localhost:5000/api/v1/verification/run/create", {
+      const runRes = await fetch(`${API_V1_BASE}/verification/run/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +163,7 @@ export default function VerificationSection() {
       form.append("run_id", run_id);
       setUploadProgress(30);
 
-      const uploadRes = await fetch(`http://localhost:5000/api/v1/uploads/company/${companyId}`, {
+      const uploadRes = await fetch(`${API_V1_BASE}/uploads/company/${companyId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
@@ -178,7 +179,7 @@ export default function VerificationSection() {
       console.log("Uploaded:", uploadData);
       setUploadProgress(70);
 
-      const finalizeRes = await fetch("http://localhost:5000/api/v1/verification/run/finalize", {
+      const finalizeRes = await fetch(`${API_V1_BASE}/verification/run/finalize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

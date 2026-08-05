@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+// ⚠️ DEPRECATED — do NOT mount this on any route.
+// This is a bare-jwt guard: it verifies the signature only. It does NOT check the
+// token blacklist or the active session, so logout/terminate cannot revoke tokens
+// on routes using it, and it accepts session-less tokens. Use `checkAuth`
+// (middlewares/checkAuth.middleware.ts) instead. Kept only to avoid breaking imports.
+
 type AuthUser = {
   user_id: string;
   role?: string;

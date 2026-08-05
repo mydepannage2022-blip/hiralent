@@ -12,6 +12,7 @@ import {
   verifyCaseBelongsToAgency,
   updateCaseInDb,
 } from "../../services/agency/agency.case.service";
+import { parsePagination, setPaginationHeaders } from "../../utils/pagination.util";
 
 // POST /api/v1/agency/cases
 export const createCase = async (req: Request, res: Response) => {
@@ -113,15 +114,19 @@ export const listCases = async (req: Request, res: Response) => {
     }
 
     const { status, search } = req.query;
+    // Show-all case list: default page size == cap so no-param callers still get all up to the cap.
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 200, max: 200 });
 
-    const cases = await listCasesForAgency({
+    const { items, total } = await listCasesForAgency({
       agencyId: user.agency_id,
       agencyType: user.agency?.type || "",
       status: status as string | undefined,
       search: search as string | undefined,
+      pagination: { skip, take: limit },
     });
 
-    return res.status(200).json({ success: true, data: cases });
+    setPaginationHeaders(res, { total, page, limit });
+    return res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error("List cases error:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch cases" });
@@ -187,12 +192,17 @@ export const getClients = async (req: Request, res: Response) => {
       });
     }
 
-    const clients = await getClientsForAgency({
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 50, max: 100 });
+    const { items, total } = await getClientsForAgency({
       agencyId: user.agency_id,
       agencyType: user.agency.type,
+      pagination: { skip, take: limit },
     });
 
-    return res.status(200).json({ success: true, data: clients });
+    // Body shape unchanged (data = array) for existing consumers; page metadata is additive
+    // via headers (X-Total-Count etc.), matching the rest of the paginated endpoints.
+    setPaginationHeaders(res, { total, page, limit });
+    return res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error("Get clients error:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch clients" });

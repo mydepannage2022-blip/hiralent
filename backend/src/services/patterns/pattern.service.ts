@@ -1,7 +1,7 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import type { PatternDTO } from "../ai/ai-service.client";
 
-const prisma = new PrismaClient();
 
 export class PatternService {
   /**

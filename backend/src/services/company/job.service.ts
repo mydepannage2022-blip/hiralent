@@ -1,10 +1,5 @@
-import {
-  PrismaClient,
-  JobStatus,
-  Prisma,
-  MatchingEventType,
-  MatchingEntityType,
-} from "@prisma/client";
+import { JobStatus, Prisma, MatchingEventType, MatchingEntityType } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { requireEnv } from "../../config/requireEnv";
 import {
   Job,
@@ -15,7 +10,6 @@ import {
 
 import { MatchingOutboxService } from "../matching/outbox.service";
 
-const prisma = new PrismaClient();
 const outbox = new MatchingOutboxService(prisma);
 
 const makeJobDedupeKey = (jobId: string) => `JOB_UPDATED:${jobId}`;
@@ -497,17 +491,29 @@ export async function patchJobStatus(
 // ─────────────────────────────────────────────────────────────────────────────
 //  getCompanyJobs
 // ─────────────────────────────────────────────────────────────────────────────
-export async function getCompanyJobs(companyId: string): Promise<Job[]> {
-  const rows = await prisma.companyJob.findMany({
-    where: { company_id: companyId },
-    orderBy: { created_at: "desc" },
-    include: { _count: { select: { applications: true } } },
-  });
+export async function getCompanyJobs(
+  companyId: string,
+  pagination: { skip: number; take: number },
+): Promise<{ items: Job[]; total: number }> {
+  const where = { company_id: companyId };
+  const [rows, total] = await Promise.all([
+    prisma.companyJob.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      include: { _count: { select: { applications: true } } },
+    }),
+    prisma.companyJob.count({ where }),
+  ]);
 
-  return rows.map((j) => ({
-    ...j,
-    applications_count: j._count.applications,
-  })) as unknown as Job[];
+  return {
+    items: rows.map((j) => ({
+      ...j,
+      applications_count: j._count.applications,
+    })) as unknown as Job[],
+    total,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -515,21 +521,31 @@ export async function getCompanyJobs(companyId: string): Promise<Job[]> {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getCompanyJobsById(
   companyId: string,
-  onlyActive = false
-): Promise<Job[]> {
-  const rows = await prisma.companyJob.findMany({
-    where: {
-      company_id: companyId,
-      ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
-    },
-    orderBy: { created_at: "desc" },
-    include: { _count: { select: { applications: true } } },
-  });
+  onlyActive = false,
+  pagination: { skip: number; take: number }
+): Promise<{ items: Job[]; total: number }> {
+  const where = {
+    company_id: companyId,
+    ...(onlyActive ? { status: JobStatus.ACTIVE } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.companyJob.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      include: { _count: { select: { applications: true } } },
+    }),
+    prisma.companyJob.count({ where }),
+  ]);
 
-  return rows.map((j) => ({
-    ...j,
-    applications_count: j._count.applications,
-  })) as unknown as Job[];
+  return {
+    items: rows.map((j) => ({
+      ...j,
+      applications_count: j._count.applications,
+    })) as unknown as Job[],
+    total,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -601,25 +617,40 @@ export async function listJobs(
 // ─────────────────────────────────────────────────────────────────────────────
 //  getJobApplicantsForJob
 // ─────────────────────────────────────────────────────────────────────────────
-export async function getJobApplicantsForJob(jobId: string) {
-  const applications = await prisma.jobApplication.findMany({
-    where: { job_id: jobId },
-    orderBy: { applied_at: "desc" },
-    include: {
-      candidate: {
-        select: {
-          user_id: true,
-          full_name: true,
-          email: true,
-          candidateProfile: {
-            select: { headline: true, location: true },
+export async function getJobApplicantsForJob(
+  jobId: string,
+  pagination: { skip: number; take: number }
+) {
+  const where = { job_id: jobId };
+  // Projected to exactly the fields the mapped DTO below exposes (payload trim, R-30).
+  const [applications, total] = await Promise.all([
+    prisma.jobApplication.findMany({
+      where,
+      orderBy: { applied_at: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      select: {
+        application_id: true,
+        candidate_id: true,
+        job_id: true,
+        status: true,
+        assessment_score: true,
+        applied_at: true,
+        candidate: {
+          select: {
+            full_name: true,
+            email: true,
+            candidateProfile: {
+              select: { headline: true, location: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.jobApplication.count({ where }),
+  ]);
 
-  return applications.map((a) => {
+  const items = applications.map((a) => {
     const fullName = (a.candidate.full_name ?? "").trim();
     return {
       application_id: a.application_id,
@@ -637,6 +668,8 @@ export async function getJobApplicantsForJob(jobId: string) {
       location: a.candidate.candidateProfile?.location ?? null,
     };
   });
+
+  return { items, total };
 }
 
 export const jobService = {

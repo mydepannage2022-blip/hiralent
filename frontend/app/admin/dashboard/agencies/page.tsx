@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Building2,
   Clock,
@@ -80,9 +81,9 @@ export default function AgenciesPage() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("sessionToken");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/agencies/stats`,
+        `${API_V1_BASE}/admin/agencies/stats`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -105,11 +106,11 @@ export default function AgenciesPage() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("sessionToken");
       const url =
         status === "ALL"
-          ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/agencies/all`
-          : `${process.env.NEXT_PUBLIC_BASE_URL}/admin/agencies/all?status=${status}`;
+          ? `${API_V1_BASE}/admin/agencies/all`
+          : `${API_V1_BASE}/admin/agencies/all?status=${status}`;
 
       const response = await fetch(url, {
         headers: {
@@ -121,7 +122,7 @@ export default function AgenciesPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch agencies");
+        throw new Error(data.error?.message || data.message || "Failed to fetch agencies");
       }
 
       setAgencies(data.data || []);
@@ -151,9 +152,9 @@ export default function AgenciesPage() {
     try {
       setActionLoading(agencyId);
 
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("sessionToken");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/agencies/${agencyId}/approve`,
+        `${API_V1_BASE}/admin/agencies/${agencyId}/approve`,
         {
           method: "POST",
           headers: {
@@ -166,7 +167,7 @@ export default function AgenciesPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to approve agency");
+        throw new Error(data.error?.message || data.message || "Failed to approve agency");
       }
 
       await fetchAll();
@@ -199,9 +200,9 @@ export default function AgenciesPage() {
     try {
       setActionLoading(agencyId);
 
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("sessionToken");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/admin/agencies/${agencyId}/reject`,
+        `${API_V1_BASE}/admin/agencies/${agencyId}/reject`,
         {
           method: "POST",
           headers: {
@@ -215,7 +216,7 @@ export default function AgenciesPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to reject agency");
+        throw new Error(data.error?.message || data.message || "Failed to reject agency");
       }
 
       await fetchAll();
@@ -226,7 +227,7 @@ export default function AgenciesPage() {
 
       setToast({
         show: true,
-        message: data.message, // "Agency rejected. Notification sent via email."
+        message: data.message || "Agency rejected. Notification sent via email.",
         type: "success",
       });
     } catch (err) {

@@ -1,7 +1,6 @@
 // src/scripts/reset-generation-status.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 async function main() {
   const args = process.argv.slice(2);

@@ -1,8 +1,8 @@
-import { PrismaClient, VerificationDecision } from "@prisma/client";
+import { VerificationDecision } from "@prisma/client";
+import prisma from '../lib/prisma';
 import { nextJob } from "../queues/verification.queue";
 import { setTimeout as wait } from "node:timers/promises";
 
-const prisma = new PrismaClient();
 
 async function processOne(job: { runId: string; subject: "COMPANY"|"AGENCY"; subjectId: string }) {
   // Simulate external checks, write a couple signals, then finalize

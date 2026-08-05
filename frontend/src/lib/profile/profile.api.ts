@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -39,11 +40,11 @@ export const getCandidateProfile = async (): Promise<APIResponse> => {
 // ✅ Get public profile (no auth required)
 export const getPublicProfile = async (candidateId: string): Promise<APIResponse> => {
   console.log('🚀 API Call - candidateId:', candidateId);
-  console.log('🌐 Base URL:', process.env.NEXT_PUBLIC_BASE_URL);
+  console.log('🌐 Base URL:', API_V1_BASE);
   
   // Create separate axios instance without auth interceptor for public calls
   const publicApi = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000',
+    baseURL: API_V1_BASE,
     headers: { 'Content-Type': 'application/json' },
   });
   

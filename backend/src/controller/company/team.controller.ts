@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as teamService from '../../services/company/team.service';
 import type { AuthenticatedRequest } from '../../types/session.types';
 import { sendEmail } from '../../utils/email.util';
+import { getFrontendUrl } from '../../config/appUrls';
 
 // ==================== INVITATION CONTROLLERS ====================
 
@@ -17,7 +18,7 @@ export const inviteTeamMemberController = async (req: Request, res: Response) =>
 
     const invitation = await teamService.inviteTeamMember(companyId, userId, req.body);
 
-    const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/invitation/${invitation.invitation_token}`;
+    const inviteLink = `${getFrontendUrl()}/auth/invitation/${invitation.invitation_token}`;
 
     await sendEmail({
       to: req.body.email,
@@ -71,7 +72,7 @@ export const resendInvitationController = async (req: Request, res: Response) =>
 
     const invitation = await teamService.resendInvitation(companyId, invitationId);
 
-    const resendLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/invitation/${invitation.invitation_token}`;
+    const resendLink = `${getFrontendUrl()}/auth/invitation/${invitation.invitation_token}`;
 
     await sendEmail({
       to: invitation.email,

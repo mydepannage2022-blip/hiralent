@@ -1,11 +1,10 @@
 // src/services/question/pattern-question.pipeline.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { AIServiceClient } from "../ai/ai-service.client";
 import { QuestionService } from "./Question.service";
 import { vectorEngineService } from "./vectorEngine.service";
 import { categorizeQuestion } from "../../utils/categoryMapping";
 
-const prisma = new PrismaClient();
 
 const SYSTEM_CREATOR_ID = process.env.SYSTEM_CREATOR_ID || "system";
 

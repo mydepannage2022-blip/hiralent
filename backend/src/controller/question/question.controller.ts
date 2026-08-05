@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { QuestionService } from '../../services/question/Question.service';
 import { QuestionGeneratorService } from '../../services/question/QuestionGenerator.service';
-import { aiQuestionGenerationService } from '../../services/ai/ai-question-generation.service'; 
+import { aiQuestionGenerationService } from '../../services/ai/ai-question-generation.service';
+import { internalTokenHeader } from '../../config/internalServiceAuth';
 import { 
   ScrapingServiceResponse, 
   ScrapingServiceHealth,
@@ -25,6 +26,11 @@ import {
 } from '../../types/question.types';
 import { vettingService, VettingQuestionPayload } from '../../services/question/vetting.service';
 import { vectorEngineService } from '../../services/question/vectorEngine.service';
+
+// Python AI-service base URL. Env-driven so the AI/question surface is portable across
+// environments (R-13); the localhost default is the only sanctioned hardcoded host here.
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+
 export class QuestionController {
   public questionService: QuestionService;
   private generatorService: QuestionGeneratorService;
@@ -541,10 +547,11 @@ async generateQuestionWithDiagram(req: Request, res: Response): Promise<void> { 
     console.log('📋 [CONTROLLER] Topic:', topic, 'Difficulty:', difficulty || 'medium');
 
     // Call Python AI service with diagram support
-    const diagramResponse = await fetch('http://localhost:8000/generate-with-diagram', {
+    const diagramResponse = await fetch(`${AI_SERVICE_URL}/generate-with-diagram`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         topic,
@@ -667,7 +674,7 @@ async checkDiagramServiceHealth(req: Request, res: Response): Promise<void> {  /
   console.log('🎨 [CONTROLLER] checkDiagramServiceHealth called');
   
   try {
-    const healthResponse = await fetch('http://localhost:8000/health');
+    const healthResponse = await fetch(`${AI_SERVICE_URL}/health`, { headers: { ...internalTokenHeader() } });
     
     if (!healthResponse.ok) {
       throw new Error(`Service returned ${healthResponse.status}`);
@@ -887,7 +894,7 @@ async checkScrapeServiceHealth(req: Request, res: Response) {
   console.log('🌐 [CONTROLLER] checkScrapeServiceHealth called');
   
   try {
-    const response = await fetch('http://localhost:8000/api/scrape-service/health');
+    const response = await fetch(`${AI_SERVICE_URL}/api/scrape-service/health`, { headers: { ...internalTokenHeader() } });
     const health = await response.json() as ScrapingServiceHealth;
     
     res.json({
@@ -933,10 +940,11 @@ async scrapeQuestions(req: Request, res: Response) {
     console.log('📋 [CONTROLLER] URLs to scrape:', urls);
 
     // Call Python scraping service
-    const scrapeResponse = await fetch('http://localhost:8000/api/scrape-questions', {
+    const scrapeResponse = await fetch(`${AI_SERVICE_URL}/api/scrape-questions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({ 
         urls, 
@@ -1131,10 +1139,11 @@ async importScrapedQuestions(req: Request, res: Response) {
 
     // 1️⃣ Déclencher le scraping sur le service Python
     console.log('📡 [CONTROLLER] Step 1: Trigger scraping job...');
-    const scrapeJobResponse = await fetch('http://localhost:8000/scraping/start', {
+    const scrapeJobResponse = await fetch(`${AI_SERVICE_URL}/scraping/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         sources: [sourceToUse],
@@ -1156,7 +1165,7 @@ async importScrapedQuestions(req: Request, res: Response) {
 
     // 2️⃣ Récupérer les questions scrapées
     console.log('📡 [CONTROLLER] Step 2: Fetching scraped problems...');
-    const problemsResponse = await fetch('http://localhost:8000/scraping/problems?limit=100');
+    const problemsResponse = await fetch(`${AI_SERVICE_URL}/scraping/problems?limit=100`, { headers: { ...internalTokenHeader() } });
     
     if (!problemsResponse.ok) {
       throw new Error(`Failed to fetch scraped problems: ${problemsResponse.status}`);
@@ -1344,10 +1353,11 @@ async generateMCQQuestion(req: Request, res: Response) {
     console.log('📋 [CONTROLLER] Topic:', topic, 'Difficulty:', difficulty || 'medium');
 
     // Call Python AI service for MCQ generation
-    const mcqResponse = await fetch('http://localhost:8000/generate/mcq-only', {
+    const mcqResponse = await fetch(`${AI_SERVICE_URL}/generate/mcq-only`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         topic,
@@ -1481,10 +1491,11 @@ async generateMCQBatch(req: Request, res: Response) {
     console.log('🎯 [CONTROLLER] Generating MCQ batch for topics:', topics);
 
     // Call Python AI service for batch MCQ generation
-    const batchResponse = await fetch('http://localhost:8000/generate/mcq-batch', {
+    const batchResponse = await fetch(`${AI_SERVICE_URL}/generate/mcq-batch`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         topics,
@@ -1614,10 +1625,11 @@ async checkLeetCodeScrapingHealth(req: Request, res: Response) {
   console.log('🔍 [CONTROLLER] checkLeetCodeScrapingHealth called');
   
   try {
-    const response = await fetch('http://localhost:8000/scraping/leetcode/test', {
+    const response = await fetch(`${AI_SERVICE_URL}/scraping/leetcode/test`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         url: 'https://leetcode.com/problems/two-sum/'
@@ -1680,10 +1692,11 @@ async testLeetCodeScraping(req: Request, res: Response) {
 
     console.log('📡 [CONTROLLER] Testing LeetCode URL:', url);
 
-    const response = await fetch('http://localhost:8000/scraping/leetcode/test', {
+    const response = await fetch(`${AI_SERVICE_URL}/scraping/leetcode/test`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({ url })
     });
@@ -1749,10 +1762,11 @@ async scrapeLeetCodeByUrl(req: Request, res: Response) {
     console.log('📡 [CONTROLLER] Scraping LeetCode URL:', url);
 
     // Call Python scraping service
-    const response = await fetch('http://localhost:8000/scraping/leetcode/url', {
+    const response = await fetch(`${AI_SERVICE_URL}/scraping/leetcode/url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({ url })
     });
@@ -1923,10 +1937,11 @@ async scrapeLeetCodeBatch(req: Request, res: Response) {
         console.log(`📄 [CONTROLLER] Processing ${index + 1}/${urls.length}: ${url}`);
 
         // Call Python service for this URL
-        const response = await fetch('http://localhost:8000/scraping/leetcode/url', {
+        const response = await fetch(`${AI_SERVICE_URL}/scraping/leetcode/url`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...internalTokenHeader(),
           },
           body: JSON.stringify({ url })
         });
@@ -2111,10 +2126,11 @@ async generateVariations(req: Request, res: Response) {
     console.log('🔄 [CONTROLLER] Generating variations for:', baseQuestion.title);
 
     // Call Python Variation Engine
-    const variationResponse = await fetch('http://localhost:8000/variations/generate', {
+    const variationResponse = await fetch(`${AI_SERVICE_URL}/variations/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         base_question: {
@@ -2229,10 +2245,11 @@ async analyzeVariability(req: Request, res: Response) {
     console.log('📊 [CONTROLLER] Analyzing variability for:', baseQuestion.title);
 
     // Call Python Variation Engine for analysis
-    const analysisResponse = await fetch('http://localhost:8000/variations/analyze-variability', {
+    const analysisResponse = await fetch(`${AI_SERVICE_URL}/variations/analyze-variability`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...internalTokenHeader(),
       },
       body: JSON.stringify({
         base_question: {
@@ -2311,7 +2328,7 @@ async checkVariationEngineHealth(req: Request, res: Response) {
   console.log('🔧 [CONTROLLER] checkVariationEngineHealth called');
 
   try {
-    const healthResponse = await fetch('http://localhost:8000/variations/health');
+    const healthResponse = await fetch(`${AI_SERVICE_URL}/variations/health`, { headers: { ...internalTokenHeader() } });
     
     if (!healthResponse.ok) {
       throw new Error(`Variation engine returned ${healthResponse.status}`);
@@ -2544,13 +2561,12 @@ async generateQuestionsFromPatternsForUser(params: {
       // Generate question variations for each difficulty
       for (const difficulty of difficulties) {
         try {
-          // Call AI service to generate a question from this pattern
-          const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
-          
+          // Call AI service to generate a question from this pattern (module-level AI_SERVICE_URL)
           const response = await fetch(`${AI_SERVICE_URL}/generate-question-from-pattern`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...internalTokenHeader(),
             },
             body: JSON.stringify({
               pattern,

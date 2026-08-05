@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   ArrowLeft,
   Building2,
@@ -114,7 +115,7 @@ export default function CompanyVerificationDetail() {
     try {
       setError(null);
       const response = await fetch(
-        `http://localhost:5000/api/v1/admin/verifications/${companyId}`,
+        `${API_V1_BASE}/admin/verifications/${companyId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -158,7 +159,7 @@ export default function CompanyVerificationDetail() {
       console.log('🔗 Fetching presigned URL for document:', documentId);
       
       const response = await fetch(
-        `http://localhost:5000/api/v1/admin/verifications/${companyId}/documents/${documentId}/url`,
+        `${API_V1_BASE}/admin/verifications/${companyId}/documents/${documentId}/url`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -214,7 +215,7 @@ export default function CompanyVerificationDetail() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/v1/admin/verifications/approve/${companyId}`,
+        `${API_V1_BASE}/admin/verifications/approve/${companyId}`,
         {
           method: 'POST',
           headers: {
@@ -254,7 +255,7 @@ export default function CompanyVerificationDetail() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/v1/admin/verifications/reject/${companyId}`,
+        `${API_V1_BASE}/admin/verifications/reject/${companyId}`,
         {
           method: 'POST',
           headers: {

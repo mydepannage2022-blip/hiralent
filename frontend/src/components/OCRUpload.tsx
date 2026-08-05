@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { API_ROOT } from "@/src/lib/config/api";
 
 type Status = "idle" | "hover" | "uploading" | "done" | "error";
 
@@ -41,8 +42,10 @@ export default function OCRPlayground() {
     if (expectedAddress.trim()) fd.append("expected_address", expectedAddress.trim());
 
     try {
-      const res = await fetch("http://localhost:5000/api/ocr", {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      const res = await fetch(`${API_ROOT}/ocr`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
       });
 

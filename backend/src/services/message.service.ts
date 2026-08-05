@@ -13,21 +13,27 @@ import {
 /**
  * Get all conversations for a user
  */
-export const getConversations = async (userId: string, archived: boolean = false): Promise<ConversationResponse[]> => {
+export const getConversations = async (
+  userId: string,
+  archived: boolean = false,
+  pagination: { skip: number; take: number }
+): Promise<{ items: ConversationResponse[]; total: number }> => {
   try {
-    const conversations = await prisma.conversation.findMany({
-      where: {
-        OR: [
-          { 
-            participant_1_id: userId,
-            is_archived_p1: archived
-          },
-          { 
-            participant_2_id: userId,
-            is_archived_p2: archived
-          }
-        ]
-      },
+    const where = {
+      OR: [
+        {
+          participant_1_id: userId,
+          is_archived_p1: archived
+        },
+        {
+          participant_2_id: userId,
+          is_archived_p2: archived
+        }
+      ]
+    };
+    const [conversations, total] = await Promise.all([
+      prisma.conversation.findMany({
+      where,
       include: {
         participant_1: {
           select: {
@@ -66,10 +72,14 @@ export const getConversations = async (userId: string, archived: boolean = false
           }
         }
       },
-      orderBy: { last_message_at: 'desc' }
-    });
+      orderBy: { last_message_at: 'desc' },
+      skip: pagination.skip,
+      take: pagination.take,
+      }),
+      prisma.conversation.count({ where }),
+    ]);
 
-    return conversations.map(conv => {
+    const items = conversations.map(conv => {
       const otherParticipant = conv.participant_1_id === userId 
         ? conv.participant_2 
         : conv.participant_1;
@@ -110,6 +120,8 @@ export const getConversations = async (userId: string, archived: boolean = false
         } : null
       };
     });
+
+    return { items, total };
 
   } catch (error) {
     throw new Error(`Failed to get conversations: ${error instanceof Error ? error.message : 'Unknown error'}`);

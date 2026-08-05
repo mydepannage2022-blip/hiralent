@@ -37,6 +37,10 @@ export interface CreateSessionData {
   screenResolution?: string;
   timezone?: string;
   language?: string;
+  /** Session PK — MUST equal the session_id baked into jwtToken so the token maps to this row. */
+  sessionId?: string;
+  /** Opaque refresh token; stored hashed (sha256) for the rotating /auth/refresh flow. */
+  refreshToken?: string;
 }
 
 export interface SessionInfo {

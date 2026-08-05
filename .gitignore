@@ -39,3 +39,6 @@ backups-files-folders/
 test-signup.json
 temp_processing_*.pdf
 ai-service/test_diagram_output.png
+
+# Wave 1 / Session 6 — throwaway venv the internal-service-auth verifier bootstraps
+hiralent-master-plan/tools/.venv-authtest/

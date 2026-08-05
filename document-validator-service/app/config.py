@@ -35,8 +35,10 @@ class Settings(BaseSettings):
     # Redis/Queue
     REDIS_URL: str = "redis://127.0.0.1:6379"
 
-    # Webhook
-    BACKEND_WEBHOOK_URL: str = "http://localhost:4000/api/v1/webhooks/document-validation"
+    # Webhook — the backend listens on :5000 (see backend/src/config/appUrls.ts
+    # DEFAULT_BACKEND_URL). The old :4000 default silently POSTed validation results
+    # into the void whenever the backend did NOT pass an explicit callback_url (R-26).
+    BACKEND_WEBHOOK_URL: str = "http://localhost:5000/api/v1/webhooks/document-validation"
     BACKEND_INTERNAL_TOKEN: str = ""  # Token for backend webhook authentication
 
     # Timeouts

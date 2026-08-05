@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { enqueueRun } from "../../workers/queue";
 import { getEffectiveDeadline, autoSubmitIfExpired } from "./sessionDeadline.util";
 
-const prisma = new PrismaClient();
 
 type CreateRunSubmissionInput = {
   sessionId: string;

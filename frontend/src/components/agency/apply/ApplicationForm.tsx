@@ -2,6 +2,7 @@
 
 import React, { useState, FormEvent } from "react";
 import { motion } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 type AgencyType = "VISA" | "RELOCATION" | "INTEGRATION";
 
@@ -89,7 +90,7 @@ const ApplicationForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agency/apply`, {
+      const response = await fetch(`${API_V1_BASE}/agency/apply`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

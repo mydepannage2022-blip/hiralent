@@ -4,6 +4,7 @@
 
 import React from "react";
 import Image from "next/image";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   MapPin,
   Users,
@@ -30,8 +31,7 @@ export default function PublicCompanyHeader({ profile }: PublicCompanyHeaderProp
     if (url.startsWith("http://") || url.startsWith("https://")) {
       return url;
     }
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/v1", "") || "http://localhost:5000";
+    const backendUrl = API_HOST;
     return `${backendUrl}${url}`;
   };
 

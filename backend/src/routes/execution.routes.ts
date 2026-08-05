@@ -1,12 +1,37 @@
-import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Router, Request, Response, NextFunction } from 'express';
+import prisma from '../lib/prisma';
 import { onSubmissionEvent } from '../lib/submissionEmitter';
+import { checkAuth, AuthenticatedRequest } from '../middlewares/checkAuth.middleware';
+import { denyIfNotOwnSubmission } from '../middlewares/submissionOwnership.middleware';
+import { signStreamTicket, verifyStreamTicket } from '../utils/streamTicket';
 
-const prisma = new PrismaClient();
 const r = Router();
 
-// SSE stream for a single submission updates
-r.get('/submissions/stream/:id', async (req: Request, res: Response) => {
+// Mint a short-lived, single-submission stream ticket. Gated by the full auth + ownership
+// stack, so only the owner can obtain a ticket for their own submission. The browser then
+// opens the EventSource with ?ticket=<this> instead of putting its real access token in the URL.
+r.post('/submissions/stream-ticket/:id', checkAuth, denyIfNotOwnSubmission, (req: AuthenticatedRequest, res: Response) => {
+  const ticket = signStreamTicket(req.params.id, req.user!.user_id);
+  return res.json({ ticket });
+});
+
+// Verify a stream ticket from ?ticket=. The ticket is bound to (submissionId, userId) and
+// signed, so a valid ticket whose submissionId matches the path IS proof of ownership —
+// no DB re-check needed. No/expired/tampered/wrong-submission ticket => 401.
+const requireStreamTicket = (req: Request, res: Response, next: NextFunction) => {
+  const raw = req.query.ticket;
+  const token = typeof raw === 'string' ? raw : '';
+  const parsed = token ? verifyStreamTicket(token) : null;
+  if (!parsed || parsed.submissionId !== req.params.id) {
+    return res.status(401).json({ error: true, message: 'Invalid or expired stream ticket' });
+  }
+  return next();
+};
+
+// SSE stream for a single submission's updates.
+// EventSource can't send an Authorization header, so authorization rides on a signed,
+// short-lived, submission-bound ticket (minted above behind checkAuth + ownership).
+r.get('/submissions/stream/:id', requireStreamTicket, async (req: Request, res: Response) => {
   const id = req.params.id;
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -52,7 +77,7 @@ r.get('/submissions/stream/:id', async (req: Request, res: Response) => {
 });
 
 // convenience: GET submission current
-r.get('/submissions/:id', async (req: Request, res: Response) => {
+r.get('/submissions/:id', checkAuth, denyIfNotOwnSubmission, async (req: Request, res: Response) => {
   try {
     const s = await (prisma as any).codeSubmission.findUnique({ where: { submission_id: req.params.id } });
     if (!s) return res.status(404).end();

@@ -7,11 +7,15 @@ import { RunnerResultSchema } from '../validation/execution.validation';
 import { ZodError } from 'zod';
 import axios from 'axios';
 import { compareOutputs } from '../utils/outputNormalization';
+import { buildDockerBaseArgs, isHostExecAllowed, SecureRunnerUnavailableError } from './runner.security';
 
 const RETRIES = parseInt(process.env.RUNNER_RETRIES || '2', 10);
 const TIMEOUT_MS = parseInt(process.env.RUNNER_TIMEOUT_MS || '20000', 10);
 const DOCKER_MEMORY = process.env.RUNNER_DOCKER_MEMORY || '256m';
 const DOCKER_CPUS = process.env.RUNNER_DOCKER_CPUS || '0.5';
+const DOCKER_PIDS_LIMIT = process.env.RUNNER_PIDS_LIMIT || '128';
+const DOCKER_USER = process.env.RUNNER_DOCKER_USER || '1000:1000';
+const RUNNER_STUB_TOKEN = process.env.RUNNER_STUB_TOKEN || '';
 
 const RUNNER_DOCKER_IMAGE = process.env.RUNNER_DOCKER_IMAGE || '';
 const USE_RUNSC = process.env.RUNNER_USE_RUNSC === '1';
@@ -131,7 +135,13 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
     if (!runnerHttp) return null;
     try {
       logger.info({ runnerHttp }, 'dispatching to HTTP runner');
-      const resp = await axios.post(`${runnerHttp.replace(/\/$/, '')}/run`, { code, tests: testCases, language }, { timeout: timeoutMs });
+      // The HTTP runner executes arbitrary code — authenticate with the shared token so it
+      // is never callable unauthenticated. The stub refuses (503) if it has no token set.
+      const resp = await axios.post(
+        `${runnerHttp.replace(/\/$/, '')}/run`,
+        { code, tests: testCases, language },
+        { timeout: timeoutMs, headers: RUNNER_STUB_TOKEN ? { 'X-Runner-Token': RUNNER_STUB_TOKEN } : {} }
+      );
       if (resp && resp.data) {
         try {
           RunnerResultSchema.parse(resp.data);
@@ -170,9 +180,21 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
     }
 
     if (dockerAvailable) {
-      // Use a writable mount because compiled languages write build artifacts into /work
-      const dockerCmdBase = ['docker', 'run', '--rm', '-v', `${workdir}:/work`, '--network', 'none', '-e', `TEST_TIMEOUT_S=${TEST_TIMEOUT_S}`, '--memory', DOCKER_MEMORY, '--cpus', DOCKER_CPUS];
-      if (USE_RUNSC) dockerCmdBase.push('--runtime', 'runsc');
+      // Hardened container args (non-root user, read-only rootfs, cap-drop ALL,
+      // no-new-privileges, pids/ulimits, no network). /work stays a writable bind mount so
+      // compiled languages can build+run; /tmp + HOME=/work are writable for toolchains.
+      const dockerCmdBase = buildDockerBaseArgs({
+        workdir,
+        memory: DOCKER_MEMORY,
+        cpus: DOCKER_CPUS,
+        pidsLimit: DOCKER_PIDS_LIMIT,
+        user: DOCKER_USER,
+        useRunsc: USE_RUNSC,
+        testTimeoutS: TEST_TIMEOUT_S,
+      });
+      // The container runs as a non-root user whose uid differs from the host; make the
+      // bind-mounted workdir writable to it so build artifacts + the stdin file can be written.
+      try { await fs.chmod(workdir, 0o777); } catch { /* best effort */ }
 
       const testsSummary: any[] = [];
       let anyPassed = true;
@@ -183,26 +205,31 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
         const expected = (t as any).expected || (t as any).expected_output || '';
         let cmd: string[] = [];
 
+        // Write this test's stdin to a file inside the (writable) workdir and feed it to the
+        // program via a shell redirect. This removes the previous heredoc that interpolated
+        // author-controlled `testInput` straight into the `sh -c` string (shell injection).
+        const inputFile = '/work/__input.txt';
+        await fs.writeFile(path.join(workdir, '__input.txt'), testInput, 'utf-8');
+
         if (languageKey === 'python' || languageKey === 'py') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `cat <<'EOF' | python /work/main.py\n${testInput}\nEOF`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `python /work/main.py < ${inputFile}`];
         } else if (['js','javascript','node'].includes(languageKey)) {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `cat <<'EOF' | node /work/main.js\n${testInput}\nEOF`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `node /work/main.js < ${inputFile}`];
         } else if (['ts','typescript'].includes(languageKey)) {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `cat <<'EOF' | npx ts-node /work/main.ts\n${testInput}\nEOF`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `npx ts-node /work/main.ts < ${inputFile}`];
         } else if (languageKey === 'java') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `javac /work/Main.java && java -cp /work Main`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `javac /work/Main.java && java -cp /work Main < ${inputFile}`];
         } else if (languageKey === 'cpp' || languageKey === 'c++') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `g++ /work/main.cpp -O2 -std=c++17 -o /work/main && /work/main`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `g++ /work/main.cpp -O2 -std=c++17 -o /work/main && /work/main < ${inputFile}`];
         } else if (languageKey === 'c') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `gcc /work/main.c -O2 -std=c11 -o /work/main && /work/main`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `gcc /work/main.c -O2 -std=c11 -o /work/main && /work/main < ${inputFile}`];
         } else if (languageKey === 'go') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `go run /work/main.go`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `go run /work/main.go < ${inputFile}`];
         } else if (languageKey === 'csharp' || languageKey === 'cs' || languageKey === 'c#') {
-          // Create a temporary csproj and run the single-file Program.cs
-          // The workdir contains Program.cs (written by writeWorkDir)
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `cat > /work/app.csproj <<'CS'\n<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net7.0</TargetFramework>\n  </PropertyGroup>\n</Project>\nCS\nprintf '%s' "${testInput}" | dotnet run --project /work/app.csproj`];
+          // Static csproj (no user input interpolated); stdin comes from the input file.
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `cat > /work/app.csproj <<'CS'\n<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net7.0</TargetFramework>\n  </PropertyGroup>\n</Project>\nCS\ndotnet run --project /work/app.csproj < ${inputFile}`];
         } else if (languageKey === 'ruby') {
-          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `ruby /work/main.rb`];
+          cmd = [...dockerCmdBase, selectedImage, 'sh', '-c', `ruby /work/main.rb < ${inputFile}`];
         } else {
           await fs.rm(workdir, { recursive: true, force: true });
           throw new Error(`No docker image/command for language ${language}`);
@@ -247,11 +274,27 @@ export async function dispatch_to_runner(code: string, testCases: { input: strin
     }
   }
 
-  // Fallback: run local python entrypoint
+  // No containerized runner produced a result (Docker unavailable AND no HTTP runner).
+  // Running the local python entrypoint here executes candidate code DIRECTLY ON THE HOST
+  // (no container, no network isolation, no cap-drop) — that is the R-03 RCE. Fail closed:
+  // never fall through to host execution unless an operator has explicitly opted in for dev
+  // (RUNNER_ALLOW_HOST_EXEC=1, and never in production — enforced by isHostExecAllowed()).
+  if (!isHostExecAllowed()) {
+    await fs.rm(workdir, { recursive: true, force: true });
+    throw new SecureRunnerUnavailableError(
+      'No secure containerized runner is available (Docker and HTTP runner both unreachable), ' +
+      'and host execution is disabled. Configure RUNNER_MODE=docker with a Docker daemon, or a ' +
+      'RUNNER_HTTP_URL sandbox with RUNNER_STUB_TOKEN. (Dev only: set RUNNER_ALLOW_HOST_EXEC=1.)'
+    );
+  }
+
+  // Dev-only escape hatch (gated above): run the local python entrypoint on the host.
+  logger.warn('RUNNER_ALLOW_HOST_EXEC=1 — running candidate code on the HOST (dev-only, UNSANDBOXED).');
   const entrypoint = path.join(process.cwd(), '..', 'runner-python', 'entrypoint.py');
   try {
     await fs.access(entrypoint);
   } catch (e) {
+    await fs.rm(workdir, { recursive: true, force: true });
     throw new Error('Runner entrypoint not found and RUNNER_DOCKER_IMAGE not set');
   }
 

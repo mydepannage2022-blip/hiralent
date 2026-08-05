@@ -3,18 +3,36 @@ import { checkAuth } from '../../middlewares/checkAuth.middleware';
 import { checkAIServiceAvailable } from '../../middlewares/ai-service-check.middleware';
 import { validateBatchGeneration } from '../../middlewares/question.validation.middleware';
 import { vectorEngineService } from '../../../src/services/question/vectorEngine.service';
+import { internalTokenHeader } from '../../config/internalServiceAuth';
 import express, { Request, Response } from 'express'; 
 import { vettingService } from '../../services/question/vetting.service';
 import { PatternQuestionPipeline } from "../../services/question/pattern-question.pipeline";
 import { requireScrapingAccess } from "../../middlewares/scrapingAuth.middleware";
 import { PatternService } from "../../services/patterns/pattern.service"; //  ADD THIS LINE
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../lib/prisma';
 import { PatternExtractionResponse, PatternQuestionGenResponse } from "../../types/question.types";
 import { secretsMatch } from '../../config/secretCompare';
 
 const router = express.Router();
 const controller = new QuestionController();
 const pipeline = new PatternQuestionPipeline();
+
+// Python AI-service base URL — declared ONCE for this router (env-driven, R-13). Two route
+// handlers below previously re-declared this exact literal inline, re-introducing the
+// hardcoded host the controller had already consolidated. Keep it here, reference it below.
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+
+// The question bank stores canonicalSolution + testCases (the ANSWERS). Reading it is a
+// company/admin tool (all frontend callers live in the company dashboard); a candidate
+// must never be able to list/read raw bank questions or they could dump every solution.
+// Deny candidates (and agencies) on the read endpoints — must run AFTER checkAuth.
+const denyNonBankReaders = (req: any, res: express.Response, next: express.NextFunction) => {
+  const role = req.user?.role;
+  if (role === 'candidate' || role === 'agency_admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+};
 
 console.log('📋 Loading question routes...');
 
@@ -54,7 +72,9 @@ router.post('/',
 );
 
 // GET /api/questions
-router.get('/', 
+router.get('/',
+  checkAuth,
+  denyNonBankReaders,
   controller.getAllQuestions.bind(controller)
 );
 
@@ -91,7 +111,9 @@ router.get(
 );
 
 // GET /api/questions/:id
-router.get('/:id', 
+router.get('/:id',
+  checkAuth,
+  denyNonBankReaders,
   controller.getQuestionById.bind(controller)
 );
 
@@ -147,6 +169,8 @@ router.get('/diagram-service/health',
 
 // Get diagram for a specific question
 router.get('/:id/diagram',
+  checkAuth,
+  denyNonBankReaders,
   controller.getQuestionDiagram.bind(controller)
 );
 // ========== WEB SCRAPING ROUTES ==========
@@ -238,13 +262,12 @@ router.post(
       
       // ✅ Step 1: Call Python service to extract patterns
       console.log("📥 [STEP 1] Calling Python pattern extraction service...");
-      
-      const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
-      
+
       const pythonResponse = await fetch(`${AI_SERVICE_URL}/extract-patterns-from-urls`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...internalTokenHeader(),
         },
         body: JSON.stringify({
           urls,
@@ -336,8 +359,7 @@ async function generateQuestionsForUser(params: {
   limit: number;
 }) {
   const { patterns, userId, difficulties, limit } = params;
-  const prisma = new PrismaClient();
-  
+
   let created = 0;
   let skipped = 0;
   let failed = 0;
@@ -353,13 +375,13 @@ async function generateQuestionsForUser(params: {
       // Generate question variations for each difficulty
       for (const difficulty of difficulties) {
         try {
-          // Call AI service to generate a question from this pattern
-          const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
-          
+          // Call AI service to generate a question from this pattern (uses the
+          // router-level AI_SERVICE_URL declared at the top of this file).
           const response = await fetch(`${AI_SERVICE_URL}/generate-question-from-pattern`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...internalTokenHeader(),
             },
             body: JSON.stringify({
               pattern,
@@ -446,8 +468,11 @@ async function generateQuestionsForUser(params: {
     }
   }
   
-  await prisma.$disconnect();
-  
+  // NOTE: do NOT $disconnect() here — `prisma` is the shared process-wide
+  // singleton (lib/prisma). Disconnecting it inside a request handler would
+  // tear down the connection pool for every other request. Lifecycle/shutdown
+  // is handled at the process level (graceful shutdown, Wave 7).
+
   return {
     created,
     skipped,

@@ -1,8 +1,10 @@
 // backend/src/routes/companyAssessmentInsights.routes.ts
 import { Router } from "express";
 import { CompanyAssessmentInsightsController } from "../controller/company/companyAssessmentInsights.controller";
+import { checkAuth } from "../middlewares/checkAuth.middleware";
 
 const r = Router();
+r.use(checkAuth);
 const wrap = (fn: any) => (req: any, res: any, next: any) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 

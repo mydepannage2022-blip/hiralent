@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthLayout from '@/src/components/layout/AuthLayout';
 import { getAuthPageConfig } from '@/config/authPagesConfig';
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 export default function VerifyMFA() {
   const router = useRouter();
@@ -61,20 +62,24 @@ export default function VerifyMFA() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/admin/auth/verify-mfa', {
+      const response = await fetch(`${API_V1_BASE}/admin/auth/verify-mfa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tempToken, mfaToken: code }),
       });
       const data = await response.json();
+      // Envelope (R-36): sessionToken/admin live under `data`; no top-level `ok`.
+      // Storing `undefined` as the sessionToken here previously caused a
+      // login→verify→logout loop (useAdminAuth finds no valid token and bounces).
+      const d = data?.data ?? data;
 
-      if (data.ok && data.success) {
-        localStorage.setItem('sessionToken', data.sessionToken);
-        localStorage.setItem('adminUser', JSON.stringify(data.admin));
+      if (data.success && d?.sessionToken) {
+        localStorage.setItem('sessionToken', d.sessionToken);
+        localStorage.setItem('adminUser', JSON.stringify(d.admin));
         sessionStorage.removeItem('tempToken');
         router.push('/admin/dashboard');
       } else {
-        setError(data.error || 'Invalid verification code');
+        setError(data.error?.message || data.error || 'Invalid verification code');
         setMfaCode(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
       }

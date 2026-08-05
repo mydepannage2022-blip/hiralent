@@ -1,27 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 function toDateOrNull(v?: string | null): Date | null {
   if (!v) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
-}
-
-/**
- * Convert DB row -> JSON stored in CandidateProfile.certifications
- */
-function toProfileJson(c: any) {
-  return {
-    id: c.certification_id,
-    name: c.name,
-    issuer: c.issuer,
-    issue_date: c.issue_date ? c.issue_date.toISOString().slice(0, 10) : null,
-    expiry_date: c.expiry_date ? c.expiry_date.toISOString().slice(0, 10) : null,
-    credential_id: c.credential_id ?? null,
-    credential_url: c.credential_url ?? null,
-    is_verified: c.is_verified ?? false,
-  };
 }
 
 export async function listCandidateCertifications(candidateId: string) {
@@ -48,7 +31,7 @@ export async function addCandidateCertification(candidateId: string, data: any) 
     },
   });
 
-  await syncProfileCertificationsJson(candidateId);
+  await recalcCompletenessAfterCertificationsChange(candidateId);
   return created;
 }
 
@@ -59,7 +42,7 @@ export async function deleteCandidateCertification(candidateId: string, certific
   if (!row) throw new Error("Certification not found");
 
   await prisma.certification.delete({ where: { certification_id: certificationId } });
-  await syncProfileCertificationsJson(candidateId);
+  await recalcCompletenessAfterCertificationsChange(candidateId);
 
   return { success: true };
 }
@@ -121,7 +104,7 @@ export async function upsertCandidateCertificationsBulk(candidateId: string, ite
     }
   });
 
-  await syncProfileCertificationsJson(candidateId);
+  await recalcCompletenessAfterCertificationsChange(candidateId);
 
   return prisma.certification.findMany({
     where: { candidate_id: candidateId },
@@ -129,27 +112,17 @@ export async function upsertCandidateCertificationsBulk(candidateId: string, ite
   });
 }
 
-export async function syncProfileCertificationsJson(candidateId: string) {
-  const rows = await prisma.certification.findMany({
-    where: { candidate_id: candidateId },
-    orderBy: { created_at: "desc" },
-  });
-
-  const json = rows.map(toProfileJson);
-
-  await prisma.candidateProfile.upsert({
-    where: { candidate_id: candidateId },
-    update: { certifications: json, updated_at: new Date() },
-    create: { candidate_id: candidateId, certifications: json },
-  });
-
-  // optional: trigger completeness recalculation like your other sections
+/**
+ * The Certification table is the single source of truth (Session 6, R-37 — the
+ * denormalized CandidateProfile.certifications JSON mirror was dropped). This just
+ * recalculates profile completeness after a certification add/delete/bulk change,
+ * matching how the other profile sections trigger a recalc.
+ */
+export async function recalcCompletenessAfterCertificationsChange(candidateId: string) {
   try {
     const { calculateProfileCompleteness } = await import("../../candidate.service");
     await calculateProfileCompleteness(candidateId);
   } catch {
     // ignore if not available here
   }
-
-  return json;
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import {
   UpdateBasicInfoInput,
   BasicInfoUpdateResult,
@@ -26,7 +26,6 @@ import {
 } from "../types/candidate.types";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
-import axios from "axios";
 import { processDocumentAsync } from "./candidate/documentProcessor.service";
 
 import {
@@ -38,7 +37,6 @@ import {
 import { cleanupTempFile, cleanupOldApplicationResume } from "./candidate/cleanup.service";
 import path from 'path';
 import { triggerCandidateMatching } from "./matching/candidate-outbox.service"; // I added This line (Ihssane)
-const prisma = new PrismaClient();
 
 export const updateBasicInfo = async (
   candidateId: string,
@@ -602,41 +600,11 @@ export const bulkUpdateProfile = async (
     throw new Error(`Failed to update profile: ${error.message || "Unknown error"}`);
   }
 };
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || process.env.MATCHING_AI_BASE_URL;
-const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
-
-async function triggerResumeExtraction(params: {
-  candidateId: string;
-  documentId: string;
-  filePath: string;
-  fileType: string;
-}) {
-  const { candidateId, documentId, filePath, fileType } = params;
-
-  if (!AI_SERVICE_URL) {
-    throw new Error("AI_SERVICE_URL (or MATCHING_AI_BASE_URL) is not set");
-  }
-
-  // ✅ CHANGE THIS PATH to match your ai-service endpoint
-  // Example: /resume/extract or /api/v1/resume/extract etc.
-  const url = `${AI_SERVICE_URL}/resume/extract`;
-
-  const headers: Record<string, string> = {};
-  if (INTERNAL_SERVICE_KEY) headers["x-internal-key"] = INTERNAL_SERVICE_KEY;
-
-  const res = await axios.post(
-    url,
-    {
-      candidate_id: candidateId,
-      document_id: documentId,
-      file_path: filePath,
-      file_type: fileType,
-    },
-    { headers, timeout: 120000 }
-  );
-
-  return res.data;
-}
+// R-24 (Wave 3 / Session 6): resume → autofill extraction runs in-process via
+// `extractSkillsFromText` (src/lib/openai.ts) → documentProcessor.service → autofill.service.
+// A former helper that POSTed to a non-existent ai-service extraction route (a stale
+// "CHANGE THIS PATH" placeholder) had ZERO call-sites and was removed as dead code, so no
+// dangling outbound resume-parse call remains in this service.
 
 export const uploadApplicationResume = async (
   candidateId: string,

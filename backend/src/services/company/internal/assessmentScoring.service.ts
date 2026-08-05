@@ -1,7 +1,6 @@
 // backend/src/services/company/internal/assessmentScoring.service.ts
-import { Prisma, PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import prisma from "../../../lib/prisma";
 
 const CODING_SUBMISSION_MODE: "BEST" | "LAST" = "LAST";
 

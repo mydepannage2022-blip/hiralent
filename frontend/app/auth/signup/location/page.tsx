@@ -18,7 +18,7 @@ interface LocationOption {
 const LocationPage = () => {
   const { mutate } = useUpdateLocation();
   const pageConfig = getAuthPageConfig('location');
-  const [postalCodeInput, setPostalCodeInput] = useState<number>();
+  const [postalCodeInput, setPostalCodeInput] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null); 
 
   const customStyles = {
@@ -50,7 +50,7 @@ const LocationPage = () => {
     
     const payload = {
       location: selectedLocation.value,
-      postalCode: Number(postalCodeInput),
+      postalCode: postalCodeInput.trim(),
     };
     
     console.log("📤 Sending Payload:", payload);
@@ -102,12 +102,12 @@ const LocationPage = () => {
             Postal Code<span className="text-red-500">*</span>
           </label>
           <motion.input
-            type="number"
+            type="text"
             name="postalCode"
             id="postalCode"
             placeholder="Enter your Postal or Zip Code"
             className="w-full outline-none px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#063B82] focus:border-transparent text-[12px] text-[#757575] mb-1"
-            onChange={(e) => setPostalCodeInput(Number(e.target.value))}
+            onChange={(e) => setPostalCodeInput(e.target.value)}
             whileFocus={{ scale: 1.02 }}
             transition={{ duration: 0.3 }}
           />

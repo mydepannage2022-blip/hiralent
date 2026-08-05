@@ -3,9 +3,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
-import { v4 as uuidv4 } from "uuid";
-import { generateTokenWithSession } from "../../utils/jwt.util";
-import { createSession } from "./session.service";
+import { issueAuthTokens } from "./tokenIssue.service";
 import { getClientIP } from "../../utils/locationDetector.util";
 import {
   UserWithProfiles,
@@ -201,8 +199,6 @@ export async function verifyLogin2FA(tempToken: string, mfaToken: string, req?: 
     data: { mfa_enabled: true },
   });
 
-  const sessionId = uuidv4();
-
   let companyId: string | undefined;
   if (user.role === "company" || user.role === "company_admin") {
     companyId = user.companyProfile?.company_id ?? user.user_id;
@@ -214,18 +210,11 @@ export async function verifyLogin2FA(tempToken: string, mfaToken: string, req?: 
     companyId = membership?.company_id;
   }
 
-  const token = generateTokenWithSession(
-    user.user_id,
-    user.role,
-    sessionId,
-    user.agency_id || undefined,
-    undefined,
-    companyId
-  );
-
-  await createSession({
+  const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId: user.user_id,
-    jwtToken: token,
+    role: user.role,
+    agencyId: user.agency_id || undefined,
+    companyId,
     userAgent: req?.headers["user-agent"] || "Unknown",
     ipAddress: req ? getClientIP(req) : "127.0.0.1",
     screenResolution: req?.body?.screenResolution,
@@ -285,7 +274,7 @@ export async function verifyLogin2FA(tempToken: string, mfaToken: string, req?: 
       : null;
   }
 
-  return { user: { ...cleanUser, mfa_enabled: true }, profile: profileData, token, recoveryCodes };
+  return { user: { ...cleanUser, mfa_enabled: true }, profile: profileData, token, refreshToken, recoveryCodes };
 }
 
 export async function verifyLoginWithRecoveryCode(tempToken: string, recoveryCode: string, req?: any) {
@@ -330,8 +319,6 @@ export async function verifyLoginWithRecoveryCode(tempToken: string, recoveryCod
     data: { mfa_recovery_codes: JSON.stringify(remaining) },
   });
 
-  const sessionId = uuidv4();
-
   let companyId: string | undefined;
   if (user.role === "company" || user.role === "company_admin") {
     companyId = user.companyProfile?.company_id ?? user.user_id;
@@ -343,18 +330,11 @@ export async function verifyLoginWithRecoveryCode(tempToken: string, recoveryCod
     companyId = membership?.company_id;
   }
 
-  const token = generateTokenWithSession(
-    user.user_id,
-    user.role,
-    sessionId,
-    user.agency_id || undefined,
-    undefined,
-    companyId
-  );
-
-  await createSession({
+  const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId: user.user_id,
-    jwtToken: token,
+    role: user.role,
+    agencyId: user.agency_id || undefined,
+    companyId,
     userAgent: req?.headers["user-agent"] || "Unknown",
     ipAddress: req ? getClientIP(req) : "127.0.0.1",
     screenResolution: req?.body?.screenResolution,
@@ -414,5 +394,5 @@ export async function verifyLoginWithRecoveryCode(tempToken: string, recoveryCod
       : null;
   }
 
-  return { user: { ...cleanUser, mfa_enabled: true }, profile: profileData, token, remainingRecoveryCodes: remaining.length };
+  return { user: { ...cleanUser, mfa_enabled: true }, profile: profileData, token, refreshToken, remainingRecoveryCodes: remaining.length };
 }

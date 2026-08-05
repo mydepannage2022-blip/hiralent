@@ -4,6 +4,7 @@ import {
   handleGoogleCallback,
   completeGoogleOnboarding,
 } from "../../services/auth/googleAuth.service";
+import { getFrontendUrl } from "../../config/appUrls";
 
 /** GET /api/v1/auth/google?role=candidate  →  redirect to Google consent */
 export const googleAuthController = (req: Request, res: Response): void => {
@@ -17,7 +18,7 @@ export const googleCallbackController = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   try {
     const code = req.query.code as string;
@@ -28,11 +29,12 @@ export const googleCallbackController = async (
       return;
     }
 
-    const { token, role, isNew } = await handleGoogleCallback(code, state, req);
+    const { token, refreshToken, role, isNew } = await handleGoogleCallback(code, state, req);
 
+    const rt = encodeURIComponent(refreshToken);
     const dest = isNew
-      ? `${frontendUrl}/auth/onboarding?token=${encodeURIComponent(token)}`
-      : `${frontendUrl}/auth/google/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(role)}`;
+      ? `${frontendUrl}/auth/onboarding?token=${encodeURIComponent(token)}&refreshToken=${rt}`
+      : `${frontendUrl}/auth/google/callback?token=${encodeURIComponent(token)}&refreshToken=${rt}&role=${encodeURIComponent(role)}`;
 
     res.redirect(dest);
   } catch (error: any) {
@@ -68,7 +70,7 @@ export const googleCompleteController = async (
       fullName
     );
 
-    res.json({ success: true, token: result.token, role: result.role });
+    res.json({ success: true, token: result.token, refreshToken: result.refreshToken, role: result.role });
   } catch (error: any) {
     console.error("[Google OAuth] complete error:", error?.message ?? error);
     res.status(500).json({ success: false, message: "Failed to complete setup" });

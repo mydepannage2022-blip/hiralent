@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { JobApplicationService } from "../../services/candidate/jobApplication.service";
 import { parseApplicationIdParam } from "../../validation/candidate.applications.validation";
 
-const prisma = new PrismaClient();
 const service = new JobApplicationService(prisma);
 
 /**

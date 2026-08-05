@@ -1,7 +1,7 @@
 // src/components/candidate/dashboard/message/MediaMessage.tsx
 "use client";
 import React, { useState, useRef, useEffect , useMemo } from "react";
-import { Play, Download, Maximize } from "lucide-react";
+import { Play, Download, Maximize, Check, CheckCheck } from "lucide-react";
 import MessageActions from "./MessageActions";
 import EmojiPicker from "emoji-picker-react";
 
@@ -13,6 +13,7 @@ interface LegacyMessage {
   type: "text" | "voice" | "image" | "video" | "file" | "location";
   fileName?: string;
   timestamp: string;
+  read?: boolean;
   replyTo?: {
     sender: "me" | "them";
     text: string;
@@ -246,8 +247,14 @@ function MediaMessage({
             </div>
           )}
 
-          <div className="px-3 pb-2 flex justify-end">
+          <div className="px-3 pb-2 flex justify-end items-center gap-1">
             <span className="text-xs text-gray-500">{msg.timestamp}</span>
+            {isMine &&
+              (msg.read ? (
+                <CheckCheck size={14} className="text-blue-500" aria-label="Read" />
+              ) : (
+                <Check size={14} className="text-gray-400" aria-label="Sent" />
+              ))}
           </div>
         </div>
 
@@ -265,6 +272,8 @@ export default React.memo(MediaMessage, (prevProps, nextProps) => {
   return (
     prevProps.msg.id === nextProps.msg.id &&
     prevProps.reaction === nextProps.reaction &&
-    prevProps.msg.text === nextProps.msg.text
+    prevProps.msg.text === nextProps.msg.text &&
+    // Read-receipt updates must re-render the bubble so the ✓ can flip to ✓✓.
+    prevProps.msg.read === nextProps.msg.read
   );
 });

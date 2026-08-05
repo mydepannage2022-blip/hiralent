@@ -1,8 +1,8 @@
 // src/services/matching/candidate-outbox.service.ts
-import { PrismaClient, MatchingEventType, MatchingEntityType } from "@prisma/client";
+import { MatchingEventType, MatchingEntityType } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { MatchingOutboxService } from "./outbox.service";
 
-const prisma = new PrismaClient();
 const outbox = new MatchingOutboxService(prisma);
 
 const makeCandidateDedupeKey = (candidateId: string) => `CANDIDATE_UPDATED:${candidateId}`;

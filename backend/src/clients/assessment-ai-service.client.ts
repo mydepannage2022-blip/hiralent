@@ -2,6 +2,7 @@ import type {
   SkillsAnalysis,
   ChatbotSession,
 } from "../types/employerAssessment.types";
+import { internalTokenHeader } from "../config/internalServiceAuth";
 
 // ---------------- BASE URL ----------------
 const AI_BASE_URL =
@@ -37,7 +38,11 @@ export interface ChatbotApiResponse {
 
 // -------------- Helper: typed fetch wrapper ----------------
 async function safeFetch<T>(url: string, options: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
+  // Every call carries the internal service token (X-API-Token) required by the AI service.
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...(options.headers as Record<string, string>), ...internalTokenHeader() },
+  });
 
   if (!res.ok) {
     const text = await res.text();

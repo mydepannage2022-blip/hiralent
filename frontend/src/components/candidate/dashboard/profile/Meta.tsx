@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   MapPin,
   BadgeCheck,
@@ -45,7 +46,7 @@ function toAbsoluteUrl(raw?: string | null) {
   if (!v) return "";
   if (v.startsWith("http://") || v.startsWith("https://")) return v;
 
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").trim();
+  const apiUrl = API_HOST.trim();
   const base = apiUrl.replace(/\/+$/, "");
   const path = v.startsWith("/") ? v : `/${v}`;
   return `${base}${path}`;

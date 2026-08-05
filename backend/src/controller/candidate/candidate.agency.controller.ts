@@ -1,13 +1,14 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { sendEmail } from "../../utils/email.util";
+import { parsePagination, setPaginationHeaders } from "../../utils/pagination.util";
 import {
   renderEmailCallout,
   renderEmailKeyValueTable,
   renderTransactionalEmail,
 } from "../../services/emailTemplates.service";
+import { getFrontendUrl } from "../../config/appUrls";
 
-const prisma = new PrismaClient();
 
 const coerceSingleString = (value: unknown): string | null => {
   if (typeof value === "string") return value;
@@ -47,30 +48,37 @@ export const browseAgenciesController = async (req: Request, res: Response) => {
       };
     }
 
-    // Fetch agencies from database
-    const agencies = await prisma.agency.findMany({
-      where: whereClause,
-      select: {
-        agency_id: true,
-        name: true,
-        type: true,
-        email: true,
-        phone: true,
-        website: true,
-        operating_countries: true,
-        created_at: true,
-        // Optional fields (add if they exist in your schema)
-        // rating: true,
-        // total_cases: true,
-        // success_rate: true,
-        // logo_url: true,
-        // services: true,
-      },
-      orderBy: {
-        created_at: "desc", // Most recent first (change to rating when available)
-      },
-    });
+    // Fetch agencies from database (bounded: default page size == cap for this browse list)
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 100, max: 100 });
+    const [agencies, total] = await Promise.all([
+      prisma.agency.findMany({
+        where: whereClause,
+        select: {
+          agency_id: true,
+          name: true,
+          type: true,
+          email: true,
+          phone: true,
+          website: true,
+          operating_countries: true,
+          created_at: true,
+          // Optional fields (add if they exist in your schema)
+          // rating: true,
+          // total_cases: true,
+          // success_rate: true,
+          // logo_url: true,
+          // services: true,
+        },
+        orderBy: {
+          created_at: "desc", // Most recent first (change to rating when available)
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.agency.count({ where: whereClause }),
+    ]);
 
+    setPaginationHeaders(res, { total, page, limit });
     // Return agencies
     return res.status(200).json({
       success: true,
@@ -235,7 +243,7 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
 
     // 8. Send notification to agency
     try {
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const frontendUrl = getFrontendUrl();
       const agencyCaseUrl = `${frontendUrl}/agency/dashboard/cases/${caseId}`;
 
       const caseDetailsHtml = renderEmailKeyValueTable([
@@ -283,7 +291,7 @@ export const assignAgencyToCase = async (req: Request, res: Response) => {
 
     // 9. Send confirmation email to candidate
     try {
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const frontendUrl = getFrontendUrl();
       const candidateCaseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
 
       const selectedAgencyHtml = renderEmailKeyValueTable([

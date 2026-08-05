@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/src/context/AuthContext";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import { Country, City } from "country-state-city";
 import toast from "react-hot-toast";
 import {
@@ -126,7 +127,7 @@ export default function AgencyDashboard() {
       const token = localStorage.getItem("authToken");
 
       const statsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/dashboard/stats`,
+        `${API_V1_BASE}/agency/dashboard/stats`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -143,7 +144,7 @@ export default function AgencyDashboard() {
       setStats(statsData.data);
 
       const activitiesResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/dashboard/activities`,
+        `${API_V1_BASE}/agency/dashboard/activities`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -169,7 +170,7 @@ export default function AgencyDashboard() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/clients`,
+        `${API_V1_BASE}/agency/clients`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -212,9 +213,7 @@ export default function AgencyDashboard() {
         const token = localStorage.getItem("authToken");
 
         const response = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_BASE_URL
-          }/agency/candidates/search?query=${encodeURIComponent(
+          `${API_V1_BASE}/agency/candidates/search?query=${encodeURIComponent(
             candidateSearch
           )}`,
           {
@@ -295,7 +294,7 @@ export default function AgencyDashboard() {
       });
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases`,
+        `${API_V1_BASE}/agency/cases`,
         {
           method: "POST",
           headers: {
@@ -569,7 +568,7 @@ export default function AgencyDashboard() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/dashboard/analytics`,
+        `${API_V1_BASE}/agency/dashboard/analytics`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

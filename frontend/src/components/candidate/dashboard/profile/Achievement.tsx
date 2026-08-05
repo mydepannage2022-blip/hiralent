@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Award, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 interface Badge {
   badge_id: string;
@@ -50,7 +51,7 @@ const Achievement: React.FC<AchievementProps> = ({ candidateId }) => {
 
       console.log('🎯 Fetching badges from API...');
 
-      const response = await fetch('http://localhost:5000/api/candidates/profile/badges', {
+      const response = await fetch(`${API_V1_BASE}/candidates/profile/badges`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

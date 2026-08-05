@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { sendEmail } from "../../utils/email.util";
 import { renderEmailKeyValueTable, renderTransactionalEmail } from "../emailTemplates.service";
+import { getFrontendUrl } from "../../config/appUrls";
 
-const prisma = new PrismaClient();
 
 export const getUserAgencyInfo = async (userId: string) => {
   return prisma.user.findUnique({
@@ -232,7 +232,7 @@ export const sendReadyForArrivalEmail = async (params: {
     housing,
   } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
   const moveInDate = housing.lease_start_date

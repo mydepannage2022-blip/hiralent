@@ -1,4 +1,5 @@
-import { PrismaClient, AgencyType } from "@prisma/client";
+import { AgencyType } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import {
   isActiveVisaCase,
   isActiveRelocationCase,
@@ -6,14 +7,10 @@ import {
   isCompletedVisaCase,
   isCompletedRelocationCase,
   isCompletedIntegrationCase,
-  getPendingIntegrationServicesCount,
-  getCompletedIntegrationServicesCount,
-  getInProgressIntegrationServicesCount,
   CASE_STATUSES,
   INTEGRATION_SERVICE_STATUSES,
 } from "../../constants/caseStatuses";
 
-const prisma = new PrismaClient();
 
 // ── Shared helpers ──
 
@@ -39,106 +36,158 @@ export const getUserAgencyBasic = async (userId: string) => {
 
 // ── getDashboardStats ──
 
+// ── Bounded DB-side dashboard stats (R-30) ──
+//
+// These previously pulled EVERY case for an agency (with relations + candidate PII) into
+// memory and aggregated in JS — a per-hit unbounded read that could OOM a large agency's
+// dashboard. Each metric is now a discrete count / _sum / groupBy that Postgres computes,
+// so total work is bounded regardless of case volume. The predicate translations below are
+// FAITHFUL to the JS helpers in constants/caseStatuses.ts and are proven equal to the old
+// in-memory computation by verify-agency-dashboard-stats.mjs (golden fixture, new === old).
+// If a helper's logic changes, that golden verifier fails until these are re-derived.
+
+// Visa case is "done" (no longer active) once it reaches any housing/integration/completed
+// status — mirrors the tail of isActiveVisaCase / body of isCompletedVisaCase.
+const VISA_DONE_STATUSES = [
+  CASE_STATUSES.HOUSING_ASSIGNED,
+  CASE_STATUSES.HOUSING_IN_PROGRESS,
+  CASE_STATUSES.READY_FOR_ARRIVAL,
+  CASE_STATUSES.INTEGRATION_ASSIGNED,
+  CASE_STATUSES.INTEGRATION_IN_PROGRESS,
+  CASE_STATUSES.COMPLETED,
+];
+const PENDING_EMBASSY_STATUSES = ["submitted", "under_review", "interview_scheduled"];
+
 export const getVisaDashboardStats = async (agencyId: string, agencyName: string) => {
-  const allCases = await prisma.relocationCase.findMany({
-    where: { agency_id: agencyId },
-    select: {
-      case_id: true, candidate_id: true, status: true, service_type: true,
-      estimated_cost: true, actual_cost: true, created_at: true, updated_at: true,
-      housing_agency_id: true,
-      embassy_submission: { select: { status: true } },
-    },
-  });
+  const where = { agency_id: agencyId };
 
-  const completedCases = allCases.filter((c) =>
-    isCompletedVisaCase(c.status, c.embassy_submission?.status, c.housing_agency_id !== null)
-  ).length;
+  const [
+    totalVisaApplications, clientGroups, revenueAgg, pendingActions,
+    approvedVisas, pendingVisas, completedCases, activeCases,
+  ] = await Promise.all([
+    prisma.relocationCase.count({ where }),
+    prisma.relocationCase.groupBy({ by: ["candidate_id"], where }),
+    prisma.relocationCase.aggregate({ where, _sum: { actual_cost: true } }),
+    prisma.relocationCase.count({ where: { ...where, status: CASE_STATUSES.PENDING_DOCUMENTS } }),
+    // approved = embassy_submission.status === "approved"
+    prisma.relocationCase.count({ where: { ...where, embassy_submission: { status: "approved" } } }),
+    // pending = embassy_submission.status ∈ {submitted, under_review, interview_scheduled}
+    prisma.relocationCase.count({ where: { ...where, embassy_submission: { status: { in: PENDING_EMBASSY_STATUSES } } } }),
+    // isCompletedVisaCase: embassy approved OR status ∈ done-statuses
+    prisma.relocationCase.count({
+      where: { ...where, OR: [{ embassy_submission: { status: "approved" } }, { status: { in: VISA_DONE_STATUSES } }] },
+    }),
+    // isActiveVisaCase: NOT cancelled/completed/done-status AND embassy NOT approved/rejected
+    // (a null embassy_submission is not approved/rejected → still eligible, matching the JS).
+    prisma.relocationCase.count({
+      where: {
+        ...where,
+        status: { notIn: [CASE_STATUSES.CANCELLED, ...VISA_DONE_STATUSES] },
+        NOT: { embassy_submission: { status: { in: ["approved", "rejected"] } } },
+      },
+    }),
+  ]);
 
-  const activeCases = allCases.filter((c) =>
-    isActiveVisaCase(c.status, c.embassy_submission?.status, c.housing_agency_id !== null)
-  ).length;
-
-  const totalClients = new Set(allCases.map((c) => c.candidate_id)).size;
-  const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
-  const pendingActions = allCases.filter((c) => c.status === CASE_STATUSES.PENDING_DOCUMENTS).length;
-  const approvedVisas = allCases.filter((c) => c.embassy_submission?.status === "approved").length;
-  const pendingVisas = allCases.filter((c) =>
-    c.embassy_submission && ["submitted", "under_review", "interview_scheduled"].includes(c.embassy_submission.status)
-  ).length;
-  const successRate = allCases.length > 0 ? Math.round((approvedVisas / allCases.length) * 100) : 0;
+  const totalClients = clientGroups.length;
+  const revenue = revenueAgg._sum.actual_cost || 0;
+  const successRate = totalVisaApplications > 0 ? Math.round((approvedVisas / totalVisaApplications) * 100) : 0;
 
   return {
     agencyType: AgencyType.VISA, agencyName, activeCases, completedCases, totalClients, revenue,
-    pendingActions, totalVisaApplications: allCases.length, approvedVisas, pendingVisas, successRate,
+    pendingActions, totalVisaApplications, approvedVisas, pendingVisas, successRate,
     embassySubmissions: pendingVisas,
   };
 };
 
 export const getRelocationDashboardStats = async (agencyId: string, agencyName: string) => {
-  const allCases = await prisma.relocationCase.findMany({
-    where: { housing_agency_id: agencyId },
-    select: {
-      case_id: true, candidate_id: true, status: true, service_type: true,
-      estimated_cost: true, actual_cost: true, created_at: true, updated_at: true,
-      candidate: { select: { user_id: true, full_name: true, email: true } },
-      housing_details: {
-        select: {
-          housing_type: true, housing_address: true, utility_water: true,
-          utility_electricity: true, utility_internet: true, arrival_date: true,
-        },
+  const where = { housing_agency_id: agencyId };
+
+  const [
+    totalRelocationCases, clientGroups, revenueAgg,
+    completedCases, activeCases, housingCompleted, housingInProgress, pendingActions,
+  ] = await Promise.all([
+    prisma.relocationCase.count({ where }),
+    prisma.relocationCase.groupBy({ by: ["candidate_id"], where }),
+    prisma.relocationCase.aggregate({ where, _sum: { actual_cost: true } }),
+    // isCompletedRelocationCase: status ∈ {ready_for_arrival, completed}
+    prisma.relocationCase.count({ where: { ...where, status: { in: [CASE_STATUSES.READY_FOR_ARRIVAL, CASE_STATUSES.COMPLETED] } } }),
+    // isActiveRelocationCase: status ∈ {housing_assigned, housing_in_progress}
+    prisma.relocationCase.count({ where: { ...where, status: { in: [CASE_STATUSES.HOUSING_ASSIGNED, CASE_STATUSES.HOUSING_IN_PROGRESS] } } }),
+    prisma.relocationCase.count({ where: { ...where, status: CASE_STATUSES.READY_FOR_ARRIVAL } }),
+    prisma.relocationCase.count({ where: { ...where, status: { in: [CASE_STATUSES.HOUSING_IN_PROGRESS, CASE_STATUSES.HOUSING_ASSIGNED] } } }),
+    // pendingActions: not ready/completed AND (no housing_details, OR any required housing field
+    // missing/blank, OR any utility not "completed"). null utilities count as incomplete, so each
+    // utility contributes an explicit `null` OR branch alongside `not: "completed"` (SQL `<>` alone
+    // would drop nulls) — faithfully matching the JS `!== "completed"`.
+    prisma.relocationCase.count({
+      where: {
+        ...where,
+        status: { notIn: [CASE_STATUSES.READY_FOR_ARRIVAL, CASE_STATUSES.COMPLETED] },
+        OR: [
+          { housing_details: { is: null } },
+          { housing_details: { housing_address: null } },
+          { housing_details: { housing_address: "" } },
+          { housing_details: { housing_type: null } },
+          { housing_details: { housing_type: "" } },
+          { housing_details: { arrival_date: null } },
+          { housing_details: { utility_water: null } },
+          { housing_details: { utility_water: { not: "completed" } } },
+          { housing_details: { utility_electricity: null } },
+          { housing_details: { utility_electricity: { not: "completed" } } },
+          { housing_details: { utility_internet: null } },
+          { housing_details: { utility_internet: { not: "completed" } } },
+        ],
       },
-    },
-  });
+    }),
+  ]);
 
-  const completedCases = allCases.filter((c) => isCompletedRelocationCase(c.status)).length;
-  const activeCases = allCases.filter((c) => isActiveRelocationCase(c.status)).length;
-  const totalClients = new Set(allCases.map((c) => c.candidate_id)).size;
-  const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
-
-  const pendingActions = allCases.filter((c) => {
-    if (c.status === CASE_STATUSES.READY_FOR_ARRIVAL || c.status === CASE_STATUSES.COMPLETED) return false;
-    const h = c.housing_details;
-    if (!h) return true;
-    const housingIncomplete = !h.housing_address || !h.housing_type || !h.arrival_date;
-    const utilitiesIncomplete = h.utility_water !== "completed" || h.utility_electricity !== "completed" || h.utility_internet !== "completed";
-    return housingIncomplete || utilitiesIncomplete;
-  }).length;
-
-  const housingCompleted = allCases.filter((c) => c.status === CASE_STATUSES.READY_FOR_ARRIVAL).length;
-  const housingInProgress = allCases.filter((c) =>
-    c.status === CASE_STATUSES.HOUSING_IN_PROGRESS || c.status === CASE_STATUSES.HOUSING_ASSIGNED
-  ).length;
+  const totalClients = clientGroups.length;
+  const revenue = revenueAgg._sum.actual_cost || 0;
 
   return {
     agencyType: AgencyType.RELOCATION, agencyName, activeCases, completedCases, totalClients, revenue,
-    pendingActions, totalRelocationCases: allCases.length, housingCompleted, housingInProgress,
+    pendingActions, totalRelocationCases, housingCompleted, housingInProgress,
     leasesActive: housingCompleted, propertiesFound: housingCompleted,
   };
 };
 
 export const getIntegrationDashboardStats = async (agencyId: string, agencyName: string) => {
-  const allCases = await prisma.relocationCase.findMany({
-    where: { integration_agency_id: agencyId },
-    select: {
-      case_id: true, candidate_id: true, status: true, service_type: true,
-      estimated_cost: true, actual_cost: true, created_at: true, updated_at: true,
-      integrationServices: { select: { service_id: true, service_type: true, status: true, service_date: true } },
-    },
-  });
+  const caseWhere = { integration_agency_id: agencyId };
+  const svcWhere = { case: { integration_agency_id: agencyId } };
 
-  const activeCases = allCases.filter((c) => isActiveIntegrationCase(c.integrationServices)).length;
-  const completedCases = allCases.filter((c) => isCompletedIntegrationCase(c.integrationServices)).length;
-  const totalClients = new Set(allCases.map((c) => c.candidate_id)).size;
-  const revenue = allCases.reduce((sum, c) => sum + (c.actual_cost || 0), 0);
-  const pendingActions = allCases.reduce((sum, c) => sum + getPendingIntegrationServicesCount(c.integrationServices), 0);
-  const servicesCompleted = allCases.reduce((sum, c) => sum + getCompletedIntegrationServicesCount(c.integrationServices), 0);
-  const servicesInProgress = allCases.reduce((sum, c) => sum + getInProgressIntegrationServicesCount(c.integrationServices), 0);
-  const bankAccountsOpened = allCases.reduce((sum, c) => sum + c.integrationServices.filter((s) => s.service_type === "banking" && s.status === INTEGRATION_SERVICE_STATUSES.COMPLETED).length, 0);
-  const healthcareRegistrations = allCases.reduce((sum, c) => sum + c.integrationServices.filter((s) => s.service_type === "healthcare" && s.status === INTEGRATION_SERVICE_STATUSES.COMPLETED).length, 0);
+  const [
+    totalIntegrationCases, clientGroups, revenueAgg, activeCases,
+    pendingActions, servicesCompleted, servicesInProgress, bankAccountsOpened, healthcareRegistrations,
+    svcTotals, svcCompleted,
+  ] = await Promise.all([
+    prisma.relocationCase.count({ where: caseWhere }),
+    prisma.relocationCase.groupBy({ by: ["candidate_id"], where: caseWhere }),
+    prisma.relocationCase.aggregate({ where: caseWhere, _sum: { actual_cost: true } }),
+    // isActiveIntegrationCase: at least one service not completed/cancelled (empty → not active)
+    prisma.relocationCase.count({ where: { ...caseWhere, integrationServices: { some: { status: { notIn: [INTEGRATION_SERVICE_STATUSES.COMPLETED, INTEGRATION_SERVICE_STATUSES.CANCELLED] } } } } }),
+    // service-level tallies across all the agency's cases (sum of per-case counts in the JS)
+    prisma.integrationService.count({ where: { ...svcWhere, status: INTEGRATION_SERVICE_STATUSES.PENDING } }),
+    prisma.integrationService.count({ where: { ...svcWhere, status: INTEGRATION_SERVICE_STATUSES.COMPLETED } }),
+    prisma.integrationService.count({ where: { ...svcWhere, status: INTEGRATION_SERVICE_STATUSES.IN_PROGRESS } }),
+    prisma.integrationService.count({ where: { ...svcWhere, service_type: "banking", status: INTEGRATION_SERVICE_STATUSES.COMPLETED } }),
+    prisma.integrationService.count({ where: { ...svcWhere, service_type: "healthcare", status: INTEGRATION_SERVICE_STATUSES.COMPLETED } }),
+    // isCompletedIntegrationCase: a case has >= 6 services AND every one is completed. Reconstruct
+    // per-case from two bounded groupBys (case_id + counts only — no full includes/PII).
+    prisma.integrationService.groupBy({ by: ["case_id"], where: svcWhere, _count: { _all: true } }),
+    prisma.integrationService.groupBy({ by: ["case_id"], where: { ...svcWhere, status: INTEGRATION_SERVICE_STATUSES.COMPLETED }, _count: { _all: true } }),
+  ]);
+
+  const completedByCase = new Map(svcCompleted.map((g) => [g.case_id, g._count._all]));
+  const completedCases = svcTotals.filter(
+    (g) => g._count._all >= 6 && completedByCase.get(g.case_id) === g._count._all
+  ).length;
+
+  const totalClients = clientGroups.length;
+  const revenue = revenueAgg._sum.actual_cost || 0;
 
   return {
     agencyType: AgencyType.INTEGRATION, agencyName, activeCases, completedCases, totalClients, revenue,
-    pendingActions, totalIntegrationCases: allCases.length, servicesCompleted, servicesInProgress,
+    pendingActions, totalIntegrationCases, servicesCompleted, servicesInProgress,
     bankAccountsOpened, healthcareRegistrations,
   };
 };

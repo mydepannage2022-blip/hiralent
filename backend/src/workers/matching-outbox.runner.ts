@@ -1,9 +1,8 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import { MatchingOutboxWorker } from "./matching-outbox.worker";
 import { createMatchingAIServiceClient } from "../clients/matching-ai-service.client";
 
-const prisma = new PrismaClient();
 const matchingClient = createMatchingAIServiceClient();
 const worker = new MatchingOutboxWorker(prisma, matchingClient);
 

@@ -667,7 +667,6 @@ export async function seedCandidates() {
       experience: JSON.stringify(c.experience),
       // Json? fields: pass objects directly
       projects: c.projects,
-      certifications: c.certifications,
       personal_info: c.personal_info,
     };
 

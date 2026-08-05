@@ -35,10 +35,16 @@ let files = fs
   .filter((f) => /^verify-.*\.mjs$/.test(f) && f !== SELF)
   .sort();
 
-// Push the slow, infra-dependent local-run check to the very end.
-const LOCAL = 'verify-local-run.mjs';
-files = files.filter((f) => f !== LOCAL);
-if (!skipLocal && fs.existsSync(path.join(__dirname, LOCAL))) files.push(LOCAL);
+// Push the slow, infra-dependent checks (need a running Postgres) to the very
+// end, and exclude them under --skip-local. verify-auth-session boots the backend
+// like verify-local-run, so it belongs in the same bucket.
+const INFRA = ['verify-error-envelope.mjs', 'verify-authz-matrix.mjs', 'verify-auth-session.mjs', 'verify-session-realtime.mjs', 'verify-default-deny-authz.mjs', 'verify-api-config.mjs', 'verify-transport-security.mjs', 'verify-connection-pool.mjs', 'verify-migration-safety.mjs', 'verify-index-coverage.mjs', 'verify-pagination.mjs', 'verify-agency-dashboard-stats.mjs', 'verify-data-model.mjs', 'verify-seed-safety.mjs', 'verify-e2e-fullpath.mjs', 'verify-wave3-e2e.mjs', 'verify-local-run.mjs'];
+files = files.filter((f) => !INFRA.includes(f));
+if (!skipLocal) {
+  for (const f of INFRA) {
+    if (fs.existsSync(path.join(__dirname, f))) files.push(f);
+  }
+}
 
 if (files.length === 0) {
   console.error('No verify-*.mjs files found next to the aggregator.');

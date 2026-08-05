@@ -2,8 +2,9 @@
 
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { Badge } from '@/src/types/badge.types';
+import { API_HOST } from '@/src/lib/config/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = API_HOST;
 
 interface BadgesResponse {
   success: boolean;

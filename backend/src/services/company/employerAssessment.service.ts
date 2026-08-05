@@ -1,11 +1,5 @@
-import {
-  PrismaClient,
-  AssessmentType as PrismaAssessmentType,
-  DifficultyLevel as PrismaDifficultyLevel,
-  EmployerAssessmentStatus as PrismaEmployerAssessmentStatus,
-  AssessmentCreationMethod as PrismaCreationMethod,
-  Question,
-} from '@prisma/client';
+import { AssessmentType as PrismaAssessmentType, DifficultyLevel as PrismaDifficultyLevel, EmployerAssessmentStatus as PrismaEmployerAssessmentStatus, AssessmentCreationMethod as PrismaCreationMethod, Question } from '@prisma/client';
+import prisma from '../../lib/prisma';
 
 import {
   AssessmentCreationMethod as TsCreationMethod,
@@ -37,7 +31,6 @@ import {
 
 import { randomUUID } from 'crypto';
 
-const prisma = new PrismaClient();
 
 /* ================== TYPES FOR INTERNAL USE ================== */
 

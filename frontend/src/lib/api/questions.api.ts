@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { API_V1_BASE } from "@/src/lib/config/api";
+
+const API_BASE = API_V1_BASE;
 
 export interface Question {
   id: string;

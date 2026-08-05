@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as messageService from '../services/message.service';
+import { parsePagination, setPaginationHeaders } from '../utils/pagination.util';
 import { 
   CreateConversationSchema, 
   SendMessageSchema, 
@@ -33,11 +34,17 @@ export const getConversationsController = async (req: Request, res: Response): P
     }
 
     const archived = req.query.archived === 'true';
-    const conversations = await messageService.getConversations(req.user.user_id, archived);
+    // Show-all sidebar: default page size == cap so no-param callers still get all up to the cap.
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 200, max: 200 });
+    const { items, total } = await messageService.getConversations(req.user.user_id, archived, {
+      skip,
+      take: limit,
+    });
+    setPaginationHeaders(res, { total, page, limit });
 
     res.status(200).json({
       success: true,
-      data: conversations,
+      data: items,
       message: 'Conversations retrieved successfully'
     } as APIResponse);
 

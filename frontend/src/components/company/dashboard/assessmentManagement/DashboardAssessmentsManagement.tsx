@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Plus,
   Search,
@@ -305,7 +306,7 @@ const Pagination: React.FC<{
 
 const assessmentService = {
   async list(token: string) {
-    const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+    const API_BASE = API_V1_BASE;
     const response = await fetch(`${API_BASE}/employer-assessments`, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     });
@@ -314,7 +315,7 @@ const assessmentService = {
   },
 
   async create(token: string, payload: any) {
-    const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+    const API_BASE = API_V1_BASE;
     const response = await fetch(`${API_BASE}/employer-assessments`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -327,7 +328,7 @@ const assessmentService = {
 
 const jobService = {
   async getMyCompanyJobs(token: string): Promise<CompanyJob[]> {
-    const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+    const API_BASE = API_V1_BASE;
     const response = await fetch(`${API_BASE}/jobs/company/my-jobs`, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     });

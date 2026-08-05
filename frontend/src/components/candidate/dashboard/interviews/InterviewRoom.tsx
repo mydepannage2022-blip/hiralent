@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_V1_BASE } from '@/src/lib/config/api';
 import { AlertCircle, Loader2, VideoOff, AlertTriangle } from 'lucide-react';
 import { useMediaDevices, useTextToSpeech, useSpeechToText, useInterviewSession, useCameraBlockDetection, useFaceDetection, usePhoneDetection } from '@/src/hooks/interview';
 import { useVideoRecorder } from '@/src/hooks/interview/useVideoRecorder';
@@ -266,7 +267,7 @@ const InterviewRoom: React.FC<InterviewRoomProps> = ({
       const currentPhase = phaseRef.current;
       if (currentPhase === 'complete' || currentPhase === 'idle' || currentPhase === 'error') return;
       const token = localStorage.getItem('authToken');
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const baseUrl = API_V1_BASE;
 
       // Upload accumulated video chunks (client-side nav keeps the page alive, no keepalive needed)
       const blob = getCurrentBlob();

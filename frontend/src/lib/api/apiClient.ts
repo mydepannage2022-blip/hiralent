@@ -1,5 +1,8 @@
 // src/lib/api/apiClient.ts
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { refreshAccessToken } from "../auth/refresh";
+import { API_HOST } from "@/src/lib/config/api";
+
+const BASE = API_HOST;
 const API_PREFIX = "/api/v1";
 
 export type Audience = "CANDIDATE" | "COMPANY";
@@ -25,14 +28,23 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = getAuthToken(audience);
 
-  const res = await fetch(`${BASE}${API_PREFIX}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      "Content-Type": "application/json",
-    },
-  });
+  const doFetch = (bearer: string) =>
+    fetch(`${BASE}${API_PREFIX}${path}`, {
+      ...init,
+      headers: {
+        ...(init?.headers || {}),
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        "Content-Type": "application/json",
+      },
+    });
+
+  let res = await doFetch(token);
+
+  // Reactive safety-net: on 401, refresh the access token once and retry.
+  if (res.status === 401 && token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) res = await doFetch(newToken);
+  }
 
   if (!res.ok) {
     const txt = await res.text().catch(() => "");

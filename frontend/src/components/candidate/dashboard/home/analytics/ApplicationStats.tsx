@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 interface DashboardStatusProps {
   showOn?: "mobile" | "desktop" | "all";
@@ -31,7 +32,7 @@ export default function ApplicationStats({ showOn = "all" }: DashboardStatusProp
       try {
         const token = localStorage.getItem("authToken");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/candidate/applications`,
+          `${API_V1_BASE}/candidate/applications`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

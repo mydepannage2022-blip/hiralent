@@ -13,6 +13,7 @@ import type {
   ProfileCompletenessResponse,
   PublicCompanyProfileResponse,
 } from "@/src/types/employer.types";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 // ==================== HELPERS ====================
 
@@ -21,7 +22,7 @@ function getToken(): string {
   return localStorage.getItem("authToken") || "";
 }
 
-const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+const BASE = API_V1_BASE;
 
 async function apiRequest<T>(
   path: string,

@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 export type AgencyType = "VISA" | "RELOCATION" | "INTEGRATION";
 
@@ -33,7 +34,7 @@ export function AgencyProfileProvider({ children }: { children: React.ReactNode 
       setLoading(true);
       const authToken = token ?? localStorage.getItem("authToken");
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agency/profile`, {
+      const res = await fetch(`${API_V1_BASE}/agency/profile`, {
         headers: {
           Authorization: authToken ? `Bearer ${authToken}` : "",
           "Content-Type": "application/json",

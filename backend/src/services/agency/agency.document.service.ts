@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { sendEmail } from "../../utils/email.util";
 import {
   formatEmailNote,
@@ -6,8 +6,8 @@ import {
   renderEmailKeyValueTable,
   renderTransactionalEmail,
 } from "../emailTemplates.service";
+import { getFrontendUrl } from "../../config/appUrls";
 
-const prisma = new PrismaClient();
 
 export const getAgencyInfoForUser = async (userId: string) => {
   return prisma.user.findUnique({
@@ -110,7 +110,7 @@ export const sendDocumentReviewEmail = async (params: {
     notes,
   } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
   const formattedType = documentType.replace("_", " ");
   const reviewDate = new Date().toLocaleDateString();
 

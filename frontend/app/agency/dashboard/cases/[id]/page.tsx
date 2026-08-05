@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 import { useAuth } from "@/src/context/AuthContext";
 import { useAgencyProfile } from "@/src/context/AgencyProfileContext";
@@ -28,7 +29,7 @@ export default function AgencyCaseDetailPage() {
       setLoading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}`,
+        `${API_V1_BASE}/agency/cases/${caseId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -1,6 +1,6 @@
 // src/routes/company.candidateRanking.routes.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import { checkAuth } from "../middlewares/checkAuth.middleware";
 import { CandidateRankingService } from "../services/company/candidateRanking.service";
 import { CandidateRankingController } from "../controller/company/candidateRanking.controller";
@@ -8,7 +8,6 @@ import { CandidateRankingController } from "../controller/company/candidateRanki
 const router = Router();
 router.use(checkAuth);
 
-const prisma = new PrismaClient();
 const service = new CandidateRankingService(prisma);
 const controller = new CandidateRankingController(service);
 

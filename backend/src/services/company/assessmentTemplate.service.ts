@@ -12,7 +12,8 @@ sets template_id in EmployerAssessment
 returns created assessment (with questions)
  * **/
 
-import { PrismaClient, AssessmentTemplateStatus } from "@prisma/client";
+import { AssessmentTemplateStatus } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { randomUUID } from "crypto";
 
 import type {
@@ -23,7 +24,6 @@ import type {
   CreateEmployerAssessmentFromTemplateResponse,
 } from "../../types/assessmentTemplate.types";
 
-const prisma = new PrismaClient();
 
 /**
  * Simple pagination helper

@@ -3,8 +3,9 @@
 import { useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { API_HOST } from "@/src/lib/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE = API_HOST;
 
 function GoogleCallbackInner() {
   const router = useRouter();
@@ -16,6 +17,7 @@ function GoogleCallbackInner() {
     handled.current = true;
 
     const token = searchParams?.get("token");
+    const refreshToken = searchParams?.get("refreshToken");
     const role = searchParams?.get("role");
     const error = searchParams?.get("error");
 
@@ -28,16 +30,19 @@ function GoogleCallbackInner() {
       return;
     }
 
-    // Store token first, then fetch user profile to populate authUser
+    // Store tokens first, then fetch user profile to populate authUser
     localStorage.setItem("authToken", token);
+    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
 
     fetch(`${API_BASE}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
-      .then((data) => {
-        if (data.user) {
-          localStorage.setItem("authUser", JSON.stringify(data.user));
+      .then((body) => {
+        // /auth/me is enveloped ({ data:{ user } }); tolerate legacy top-level too.
+        const meUser = (body?.data ?? body)?.user;
+        if (meUser) {
+          localStorage.setItem("authUser", JSON.stringify(meUser));
         }
       })
       .catch(() => {

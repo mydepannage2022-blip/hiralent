@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Plus,
   Search,
@@ -838,7 +839,7 @@ const Pagination: React.FC<{
 const jobService = {
   async getMyCompanyJobs(token: string) {
     const API_BASE =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+      API_V1_BASE;
 
     const response = await fetch(`${API_BASE}/jobs/company/my-jobs`, {
       headers: {
@@ -857,7 +858,7 @@ const jobService = {
 
   async createJob(token: string, jobData: any) {
     const API_BASE =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+      API_V1_BASE;
 
     const response = await fetch(`${API_BASE}/jobs`, {
       method: "POST",
@@ -878,7 +879,7 @@ const jobService = {
 
   async updateJob(token: string, jobId: string, jobData: any) {
     const API_BASE =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+      API_V1_BASE;
 
     const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
       method: "PUT",
@@ -899,7 +900,7 @@ const jobService = {
 
   async deleteJob(token: string, jobId: string) {
     const API_BASE =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+      API_V1_BASE;
 
     const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
       method: "DELETE",

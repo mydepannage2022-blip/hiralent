@@ -24,6 +24,39 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # PgBouncer — transaction-pooling front for Postgres (R-06, Wave 2 / Phase 2.1).
+  # DEFINED here; NOT wired yet. Dormant by default (profile "pooler") so it does
+  # not affect the local dev baseline or the verifier boot tests.
+  #   Start it explicitly:   docker compose --profile pooler up -d pgbouncer
+  # WAVE 8 will actually route the backend through it by pointing DATABASE_URL at
+  # `pgbouncer:6432` with `?pgbouncer=true` (prepared statements off in tx mode).
+  # Migrations keep using DIRECT_DATABASE_URL (5432, direct) — see backend/.env.example.
+  # ---------------------------------------------------------------------------
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hiralent-pgbouncer
+    profiles: ["pooler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: huzaifa        # LOCAL-DEV ONLY — matches the postgres service above
+      DB_NAME: hiralent
+      # Transaction pooling: a server connection is returned to the pool after each
+      # transaction — this is what lets many clients share few Postgres connections.
+      POOL_MODE: transaction
+      LISTEN_PORT: "6432"
+      MAX_CLIENT_CONN: "200"      # how many app-side connections PgBouncer will accept
+      DEFAULT_POOL_SIZE: "20"     # actual Postgres server connections per (user,db)
+      AUTH_TYPE: scram-sha-256
+    ports:
+      - "6432:6432"
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: hiralent-redis

@@ -1,6 +1,17 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from "react";
+import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from "react";
+import { refreshAccessToken, storeAuthTokens, clearAuthTokens, logoutBackend } from "../lib/auth/refresh";
+
+/** Decode a JWT's `exp` (seconds since epoch) without verifying — client-side scheduling only. */
+function getTokenExpMs(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+    return typeof payload?.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
 
 interface User {
   user_id: string;
@@ -19,7 +30,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (userData: User, authToken: string) => void;
+  login: (userData: User, authToken: string, refreshToken?: string) => void;
   logout: () => void;
   updateUser: (userData: User) => void; // ✅ ADD THIS LINE
   isAuthenticated: boolean;
@@ -62,11 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = (userData: User, authToken: string) => {
-    console.log("🔐 Login called with:");
-    console.log("User:", userData);
-    console.log("Token:", authToken);
-
+  const login = (userData: User, authToken: string, refreshToken?: string) => {
     if (!authToken) {
       console.error("❌ ERROR: Token is missing in login!");
       return;
@@ -76,16 +83,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(userData);
     setToken(authToken);
 
-    // Save to localStorage
-    localStorage.setItem("authToken", authToken);
+    // Save to localStorage (access + refresh token so the app can silently rotate)
+    storeAuthTokens(authToken, refreshToken);
     localStorage.setItem("authUser", JSON.stringify(userData));
-
-    console.log("✅ Token saved to localStorage:", authToken.substring(0, 20) + "...");
-    console.log("✅ User saved to localStorage:", userData.email);
-    
-    // Verify it was saved
-    const verify = localStorage.getItem("authToken");
-    console.log("✅ Verification - Token in localStorage:", verify ? "YES" : "NO");
   };
 
   //  ADD THIS NEW FUNCTION
@@ -102,20 +102,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    console.log("🚪 Logout called");
-    
+    // Revoke the session server-side FIRST (best-effort, non-blocking) — reads the
+    // token before we wipe it — so logout actually invalidates the token, not just
+    // the local copy.
+    logoutBackend();
+
     localStorage.removeItem('profileData');
     localStorage.removeItem('profileCompleteness');
-    
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
+
+    // Clears authToken + refreshToken + authUser
+    clearAuthTokens();
 
     // Clear in-memory state too
     setUser(null);
     setToken(null);
-
-    console.log("✅ Auth cleared from localStorage and state");
   };
+
+  // Proactively rotate the short-lived access token shortly before it expires, so
+  // the ~29 scattered API clients (which just read authToken from localStorage)
+  // always send a valid token and rarely see a 401. Re-schedules after each refresh.
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+      refreshTimer.current = null;
+    }
+    if (!token) return;
+
+    const expMs = getTokenExpMs(token);
+    const lead = 60 * 1000; // refresh 60s before expiry
+    const delay = expMs ? Math.max(5000, expMs - Date.now() - lead) : 5 * 60 * 1000;
+
+    refreshTimer.current = setTimeout(async () => {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        setToken(newToken); // re-runs this effect → schedules the next rotation
+      } else {
+        logout(); // refresh token missing/rejected → session is over
+      }
+    }, delay);
+
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   return (
     <AuthContext.Provider

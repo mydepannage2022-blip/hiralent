@@ -1,11 +1,10 @@
 // scripts/evaluate-all-badges.ts
 // Run this ONCE to evaluate badges for all existing users
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { badgeService } from '../services/candidate/profile/badge.service';
 import { completenessService } from '../services/candidate/profile/completeness.service';
 
-const prisma = new PrismaClient();
 
 async function evaluateAllUserBadges() {
   console.log('🚀 Starting badge evaluation for all users...\n');

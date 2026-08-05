@@ -58,3 +58,56 @@ export function assertCoreSecrets(): void {
     );
   }
 }
+
+/**
+ * Guard the ACTUAL runtime DATABASE_URL — not just the .env.example template — against
+ * an unbounded connection pool (R-06).
+ *
+ * Why: the whole point of the Prisma-singleton + pooling work is to keep the process from
+ * opening an unbounded number of Postgres connections. But Prisma's pool size is read from
+ * the `connection_limit` param ON the URL; if a deploy pastes a bare provider connection
+ * string (no `?connection_limit=`), Prisma silently defaults to `num_cpus * 2 + 1` PER
+ * process. On a many-core host across web + worker processes that blows past Postgres'
+ * `max_connections` and reproduces the exact outage this Wave exists to prevent — while a
+ * gate that only inspects `.env.example` stays green.
+ *
+ * In production a missing `connection_limit` is fatal (fail fast at boot). Outside
+ * production it is a loud warning so local dev still runs.
+ */
+export function assertDbPoolConfig(): void {
+  const url = process.env.DATABASE_URL;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (url === undefined || url.trim() === '') {
+    if (isProd) {
+      throw new Error(
+        'Refusing to start: DATABASE_URL is not set. Set it (with a ?connection_limit= param) before boot.'
+      );
+    }
+    console.warn('⚠️  [db-pool] DATABASE_URL is not set — skipping pool-config check (non-production).');
+    return;
+  }
+
+  // Query string lives after the first '?'. Accept connection_limit anywhere in it.
+  const query = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
+  const m = /(?:^|&)connection_limit=(\d+)/.exec(query);
+  const limit = m ? Number(m[1]) : null;
+
+  if (limit === null || !Number.isFinite(limit) || limit < 1) {
+    const msg =
+      `DATABASE_URL is missing a valid \`connection_limit=\` param. Without it Prisma defaults the ` +
+      `pool to (num_cpus * 2 + 1) PER process, which can exhaust Postgres max_connections under load ` +
+      `(R-06). Add e.g. \`?connection_limit=10&pool_timeout=20\` — see backend/.env.example.`;
+    if (isProd) {
+      throw new Error(`Refusing to start: ${msg}`);
+    }
+    console.warn(`⚠️  [db-pool] ${msg}`);
+    return;
+  }
+
+  if (!/(?:^|&)pool_timeout=\d+/.test(query)) {
+    console.warn(
+      '⚠️  [db-pool] DATABASE_URL has connection_limit but no pool_timeout= — add one to bound queue waits (see .env.example).'
+    );
+  }
+}

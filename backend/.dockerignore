@@ -15,7 +15,12 @@ node_modules
 *.log
 npm-debug.log*
 
-# Local env files — secrets should come from docker-compose env_file
+# Local env files — secrets should come from docker-compose env_file, never baked into the
+# image. Dockerfile.workers does `COPY . .`, so plain `.env` (real credentials) must be excluded
+# too, not only the *.local variants (R-14).
+.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 

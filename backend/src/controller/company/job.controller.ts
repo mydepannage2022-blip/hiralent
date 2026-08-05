@@ -24,6 +24,7 @@ import {
 import type { AuthUser } from '../../types/express';
 import { talentAIServiceClient } from "../../clients/talent-ai-service.client";
 import prisma from '../../lib/prisma';
+import { parsePagination, setPaginationHeaders } from '../../utils/pagination.util';
 
 // ====================================================
 // ========== AUTH HELPERS ============================
@@ -305,8 +306,12 @@ export async function getMyCompanyJobs(
         });
     }
 
-    const jobs = await getCompanyJobsService(companyId);
-    return res.json({ success: true, data: jobs });
+    // Show-all screen: default page size == cap, so callers that send no ?limit still
+    // get "all up to the cap" (realistic tenants < 200 see no change; R-20 bounds the rest).
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 200, max: 200 });
+    const { items, total } = await getCompanyJobsService(companyId, { skip, take: limit });
+    setPaginationHeaders(res, { total, page, limit });
+    return res.json({ success: true, data: items });
   } catch (err: any) {
     return res.status(500).json({
       success: false,
@@ -323,14 +328,22 @@ export async function getCompanyJobsById(
 ) {
   try {
     const user = getAuthUser(req);
-    const onlyActive = !isCompanyUser(user) && !isSuperadmin(user);
+    // Ownership: only a superadmin, or the company viewing ITS OWN id, may see all jobs
+    // (incl. drafts/non-active). Any other viewer — a candidate, or a company probing a
+    // DIFFERENT company's id — is restricted to active jobs only. Without this, a company
+    // user could enumerate another tenant's drafts via /jobs/company/:otherId/jobs (IDOR).
+    const ownsCompany = isCompanyUser(user) && getCompanyId(req) === req.params.companyId;
+    const onlyActive = !(isSuperadmin(user) || ownsCompany);
 
-    const jobs = await getCompanyJobsByIdService(
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 200, max: 200 });
+    const { items, total } = await getCompanyJobsByIdService(
       req.params.companyId,
       onlyActive,
+      { skip, take: limit },
     );
 
-    return res.json({ success: true, data: jobs });
+    setPaginationHeaders(res, { total, page, limit });
+    return res.json({ success: true, data: items });
   } catch (err: any) {
     return res.status(500).json({
       success: false,
@@ -365,11 +378,13 @@ export async function getJobApplicantsForJob(
       }
     }
 
-    const applicants = await getJobApplicantsForJobService(jobId);
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 100, max: 100 });
+    const { items, total } = await getJobApplicantsForJobService(jobId, { skip, take: limit });
 
+    setPaginationHeaders(res, { total, page, limit });
     return res.json({
       success: true,
-      data: applicants,
+      data: items,
     });
   } catch (err: any) {
     return res.status(500).json({
@@ -427,11 +442,13 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const companyId = user.user_id;
 
-    const rows = await prisma.jobApplication.findMany({
+    // Count distinct candidates DB-side via groupBy instead of pulling every APPLIED
+    // application row into memory to Set-count (R-20 — this table is a firehose).
+    const groups = await prisma.jobApplication.groupBy({
+      by: ['candidate_id'],
       where: { job: { company_id: companyId }, status: 'APPLIED' },
-      select: { candidate_id: true },
     });
-    const toReview = new Set(rows.map((r) => r.candidate_id)).size;
+    const toReview = groups.length;
 
     return res.json({ success: true, data: { candidates_to_review: toReview } });
   } catch (e) {

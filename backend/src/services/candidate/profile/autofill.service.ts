@@ -1,7 +1,8 @@
 // src/services/candidate/profile/autofill.service.ts
 // ENHANCED AUTOFILL SERVICE - Complete implementation with all fixes
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 import {
   AutofillPreviewResult,
   AutofillFieldData,
@@ -13,7 +14,6 @@ import {
   PersonalInfo,
 } from "../../../types/profile.types";
 
-const prisma = new PrismaClient();
 
 type AIExtractionResult = {
   headline?: string;
@@ -431,15 +431,10 @@ export class AutofillService {
       // ==================== 8) CERTIFICATIONS ====================
       const certifications = getVal("certifications") as AutofillCertification[] | null;
       
-      // A) Store in JSON column (quick access)
+      // Create rows in the Certification table (single source of truth; the denormalized
+      // CandidateProfile.certifications JSON mirror was dropped — Session 6, R-37).
       if (Array.isArray(certifications) && certifications.length > 0) {
         console.log('🏆 Applying certifications:', certifications.length);
-        await prisma.candidateProfile.update({
-          where: { candidate_id: candidateId },
-          data: { certifications: JSON.stringify(certifications) },
-        });
-
-        // B) Also create rows in Certification table (normalized)
         for (const cert of certifications) {
           try {
             await prisma.certification.create({

@@ -1,6 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { sendEmail } from "../../utils/email.util";
 import { renderEmailKeyValueTable, renderTransactionalEmail } from "../emailTemplates.service";
+import { getFrontendUrl } from "../../config/appUrls";
 import {
   isActiveVisaCase,
   isActiveRelocationCase,
@@ -11,7 +12,6 @@ import {
   CASE_STATUSES,
 } from "../../constants/caseStatuses";
 
-const prisma = new PrismaClient();
 
 const getServiceTypeForAgency = (agencyType: string, caseServiceType: string) => {
   const t = (agencyType ?? "").toUpperCase();
@@ -105,7 +105,7 @@ export const sendCaseCreationEmail = async (params: {
     serviceType, destinationCountry, destinationCity, priorityLevel,
   } = params;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendUrl();
 
   const caseUrl = `${frontendUrl}/candidate/dashboard/cases/${caseId}`;
 
@@ -166,8 +166,9 @@ export const listCasesForAgency = async (params: {
   agencyType: string;
   status?: string;
   search?: string;
+  pagination: { skip: number; take: number };
 }) => {
-  const { agencyId, agencyType, status, search } = params;
+  const { agencyId, agencyType, status, search, pagination } = params;
 
   let where: any = {};
 
@@ -178,7 +179,7 @@ export const listCasesForAgency = async (params: {
   } else if (agencyType === "INTEGRATION") {
     where.integration_agency_id = agencyId;
   } else {
-    return [];
+    return { items: [], total: 0 };
   }
 
   if (status && status !== "all") {
@@ -193,21 +194,26 @@ export const listCasesForAgency = async (params: {
     ];
   }
 
-  const cases = await prisma.relocationCase.findMany({
-    where,
-    include: {
-      candidate: {
-        select: { user_id: true, email: true, full_name: true, phone_number: true },
+  const [cases, total] = await Promise.all([
+    prisma.relocationCase.findMany({
+      where,
+      include: {
+        candidate: {
+          select: { user_id: true, email: true, full_name: true, phone_number: true },
+        },
+        embassy_submission: agencyType === "VISA" ? { select: { status: true } } : false,
       },
-      embassy_submission: agencyType === "VISA" ? { select: { status: true } } : false,
-    },
-    orderBy: { created_at: "desc" },
-  });
+      orderBy: { created_at: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+    prisma.relocationCase.count({ where }),
+  ]);
 
   // VISA dashboards treat visa approval as a completed visa case.
   // Keep DB/workflow status intact; return explicit agency-view fields instead of rewriting `status`.
   if (agencyType === "VISA") {
-    return cases.map((c: any) => {
+    const items = cases.map((c: any) => {
       const embassyStatus = c.embassy_submission?.status;
       const housingAssigned = c.housing_agency_id !== null;
       const completedForAgency = isCompletedVisaCase(c.status, embassyStatus, housingAssigned);
@@ -223,13 +229,15 @@ export const listCasesForAgency = async (params: {
         activeForAgency,
       };
     });
+    return { items, total };
   }
 
-  return cases.map((c: any) => ({
+  const items = cases.map((c: any) => ({
     ...c,
     viewing_agency_type: agencyType,
     serviceTypeForAgency: getServiceTypeForAgency(agencyType, c.service_type),
   }));
+  return { items, total };
 };
 
 // ── Get single case ──
@@ -333,35 +341,59 @@ export const flattenCaseData = (caseData: any, viewingAgencyType: string | null)
 export const getClientsForAgency = async (params: {
   agencyId: string;
   agencyType: string;
+  pagination: { skip: number; take: number };
 }) => {
-  const { agencyId, agencyType } = params;
+  const { agencyId, agencyType, pagination } = params;
 
-  let cases: any[] = [];
-
-  if (agencyType === "VISA") {
-    cases = await prisma.relocationCase.findMany({
-      where: { agency_id: agencyId },
-      include: {
-        candidate: { select: { user_id: true, email: true, full_name: true, phone_number: true, created_at: true } },
-        embassy_submission: { select: { status: true } },
-      },
-    });
-  } else if (agencyType === "RELOCATION") {
-    cases = await prisma.relocationCase.findMany({
-      where: { housing_agency_id: agencyId },
-      include: {
-        candidate: { select: { user_id: true, email: true, full_name: true, phone_number: true, created_at: true } },
-      },
-    });
-  } else if (agencyType === "INTEGRATION") {
-    cases = await prisma.relocationCase.findMany({
-      where: { integration_agency_id: agencyId },
-      include: {
-        candidate: { select: { user_id: true, email: true, full_name: true, phone_number: true, created_at: true } },
-        integrationServices: true,
-      },
-    });
+  // Map the agency type to the case column it owns. Anything else has no clients.
+  const caseWhere: Record<string, string> =
+    agencyType === "VISA"
+      ? { agency_id: agencyId }
+      : agencyType === "RELOCATION"
+        ? { housing_agency_id: agencyId }
+        : agencyType === "INTEGRATION"
+          ? { integration_agency_id: agencyId }
+          : {};
+  if (Object.keys(caseWhere).length === 0) {
+    return { items: [], total: 0 };
   }
+
+  // BOUNDED read (R-30): previously this pulled EVERY case for the agency (+ candidate PII
+  // and relations) into memory and aggregated in JS, so a large agency could OOM the process
+  // on a single dashboard hit. We now page the *clients* (distinct candidates) DB-side, then
+  // load only the cases belonging to that page of clients. The per-client aggregation logic
+  // below is unchanged — only the working set is bounded.
+  //
+  // `groupBy` on candidate_id with the max case date gives us both the page order (most
+  // recent case first) and, via a second keys-only groupBy, the distinct-client total.
+  const [pageGroups, allGroups] = await Promise.all([
+    prisma.relocationCase.groupBy({
+      by: ["candidate_id"],
+      where: caseWhere,
+      _max: { created_at: true },
+      orderBy: { _max: { created_at: "desc" } },
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+    prisma.relocationCase.groupBy({ by: ["candidate_id"], where: caseWhere }),
+  ]);
+
+  const total = allGroups.length;
+  const pageClientIds = pageGroups.map((g) => g.candidate_id);
+  if (pageClientIds.length === 0) {
+    return { items: [], total };
+  }
+
+  const include: any = {
+    candidate: { select: { user_id: true, email: true, full_name: true, phone_number: true, created_at: true } },
+  };
+  if (agencyType === "VISA") include.embassy_submission = { select: { status: true } };
+  if (agencyType === "INTEGRATION") include.integrationServices = true;
+
+  const cases: any[] = await prisma.relocationCase.findMany({
+    where: { ...caseWhere, candidate_id: { in: pageClientIds } },
+    include,
+  });
 
   const clientsMap = new Map();
 
@@ -427,7 +459,7 @@ export const getClientsForAgency = async (params: {
     return bLastCase - aLastCase;
   });
 
-  return clients;
+  return { items: clients, total };
 };
 
 // ── Get user agency_id only ──

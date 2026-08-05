@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -41,7 +42,7 @@ function formatEnumNice(v?: string) {
 }
 
 async function getMyCompanyJobs(token: string): Promise<CompanyJob[]> {
-  const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+  const API_BASE = API_V1_BASE;
   const res = await fetch(`${API_BASE}/jobs/company/my-jobs`, {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     cache: "no-store",
@@ -69,8 +70,7 @@ async function fetchAllTemplates(token: string) {
   // Try with server-side pagination
   // We call the API multiple times by temporarily extending list() behavior via querystring
   // because your current AssessmentTemplatesAPI.list(token) has no params.
-  const API_BASE_RAW =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+  const API_BASE_RAW = API_V1_BASE;
   const API_BASE = API_BASE_RAW.endsWith("/api/v1") ? API_BASE_RAW : `${API_BASE_RAW}/api/v1`;
 
   const LIMIT = 50; // good tradeoff

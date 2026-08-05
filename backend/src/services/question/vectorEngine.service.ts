@@ -1,5 +1,6 @@
 // services/vectorEngine.service.ts
 import { Question } from '@prisma/client';
+import { internalTokenHeader } from '../../config/internalServiceAuth';
 
 export interface SimilarityCheckResult {
   success: boolean;
@@ -186,9 +187,10 @@ export class VectorEngineService {
       
       const response = await fetch(`${this.baseURL}/vector-search/analyze-similarity`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...internalTokenHeader()
         },
         body: JSON.stringify(normalizedData)
       });
@@ -245,9 +247,10 @@ export class VectorEngineService {
       
       const response = await fetch(`${this.baseURL}/vector-search/store-question`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...internalTokenHeader()
         },
         body: JSON.stringify(normalizedData)
       });
@@ -301,9 +304,10 @@ export class VectorEngineService {
       
       const response = await fetch(`${this.baseURL}/vector-search/check-code-similarity`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...internalTokenHeader()
         },
         body: JSON.stringify(payload)
       });
@@ -354,7 +358,9 @@ export class VectorEngineService {
     }
 
     try {
-      const response = await fetch(`${this.baseURL}/vector-search/database-stats`);
+      const response = await fetch(`${this.baseURL}/vector-search/database-stats`, {
+        headers: { ...internalTokenHeader() }
+      });
       
       if (!response.ok) {
         throw new Error(`Vector service returned ${response.status}: ${response.statusText}`);
@@ -381,7 +387,9 @@ export class VectorEngineService {
     }
 
     try {
-      const response = await fetch(`${this.baseURL}/vector-search/database-stats`);
+      const response = await fetch(`${this.baseURL}/vector-search/database-stats`, {
+        headers: { ...internalTokenHeader() }
+      });
       const healthy = response.ok;
       
       return {
@@ -409,7 +417,8 @@ export class VectorEngineService {
 
     try {
       const response = await fetch(`${this.baseURL}/vector-search/question/${questionId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...internalTokenHeader() }
       });
 
       if (!response.ok) {
@@ -454,9 +463,10 @@ export class VectorEngineService {
       
       const response = await fetch(`${this.baseURL}/vector-search/analyze-similarity`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...internalTokenHeader()
         },
         body: JSON.stringify(normalizedData)
       });

@@ -9,7 +9,6 @@ import {
 import {
   initializeSocket,
   disconnectSocket,
-  getSocket,
   joinConversation,
   leaveConversation,
   sendSocketMessage,
@@ -22,6 +21,7 @@ import {
   convertToLegacyConversation,
   convertToLegacyMessage,
 } from "../../../../types/message.types";
+import { useChatSocketEvents } from "../../../../hooks/useChatSocketEvents";
 import ChatSidebar from "../../../candidate/dashboard/message/ChatSidebar";
 import ChatWindow from "../../../candidate/dashboard/message/ChatWindow";
 
@@ -63,80 +63,15 @@ const ChatShell: React.FC = () => {
     }
   }, [messagesResponse, selectedChatId]);
 
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-
-    socket.on("new_message", (newMessage: Message) => {
-      if (newMessage.conversation_id === selectedChatId) {
-        setMessages((prev) => [...prev, newMessage]);
-      }
-      refetchConversations();
-    });
-
-    socket.on("message_sent", (message: Message) => {
-      if (message.conversation_id === selectedChatId) {
-        setMessages((prev) => {
-          const exists = prev.some((m) => m.message_id === message.message_id);
-          return exists ? prev : [...prev, message];
-        });
-      }
-      refetchConversations();
-    });
-
-    socket.on("user_typing", (data: { user_id: string; full_name: string; conversation_id: string; typing: boolean }) => {
-      if (data.conversation_id === selectedChatId) {
-        setTypingUsers((prev) => {
-          const newSet = new Set(prev);
-          data.typing ? newSet.add(data.user_id) : newSet.delete(data.user_id);
-          return newSet;
-        });
-      }
-    });
-
-    socket.on("error", (error: { message: string }) => {
-      console.error("Socket error:", error);
-    });
-
-    socket.on("reaction_added", (data: { message_id: string; reaction: any }) => {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
-            return { ...msg, reactions: [...(msg.reactions || []), data.reaction] };
-          }
-          return msg;
-        })
-      );
-      refetchConversations();
-    });
-
-    socket.on("reaction_removed", (data: { message_id: string; user_id: string }) => {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.message_id === data.message_id && msg.conversation_id === selectedChatId) {
-            return { ...msg, reactions: (msg.reactions || []).filter((r) => r.user_id !== data.user_id) };
-          }
-          return msg;
-        })
-      );
-      refetchConversations();
-    });
-
-    socket.on("message_deleted", (data: { message_id: string }) => {
-      setMessages((prev) => prev.filter((msg) => msg.message_id !== data.message_id));
-      refetchConversations();
-    });
-
-    return () => {
-      socket.off("new_message");
-      socket.off("message_sent");
-      socket.off("user_typing");
-      socket.off("error");
-      socket.off("reaction_added");
-      socket.off("reaction_removed");
-      socket.off("message_deleted");
-    };
-  }, [selectedChatId, refetchConversations]);
+  // All per-conversation socket listeners + read-receipt emit live in one shared hook.
+  useChatSocketEvents({
+    selectedChatId,
+    currentUserId: user?.user_id || "",
+    messages,
+    setMessages,
+    setTypingUsers,
+    refetchConversations,
+  });
 
   const handleSelectChat = (id: string | number) => {
     const conversationId = String(id);

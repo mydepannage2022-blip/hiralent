@@ -1,4 +1,5 @@
 import axios from "axios";
+import { internalTokenHeader } from "../../config/internalServiceAuth";
 
 export type Source = "leetcode" | "stackoverflow" | "github" | "hackerrank";
 
@@ -81,7 +82,7 @@ export class AIServiceClient {
 
     const res = await axios.post(url, payload, {
       timeout: this.timeoutMs,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalTokenHeader() },
       validateStatus: () => true,
     });
 

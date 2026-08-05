@@ -1,19 +1,40 @@
 import { Router } from "express";
 import prisma from "../lib/prisma";
+import { checkAuth, AuthenticatedRequest } from "../middlewares/checkAuth.middleware";
 
 const router = Router();
 
+// Both routes mutate verification state — /finalize can auto-set a company's
+// verified=true — so they must never be callable unauthenticated.
+router.use(checkAuth);
+
+// Authorization for a COMPANY-subject verification run: the caller must be the
+// company itself (their token's company_id === the subject company). Without this,
+// any authenticated user (e.g. a candidate) could create/finalize verification for
+// ANOTHER company — auto-approving or tampering its KYC state. Returns 403 if not.
+function ensureSubjectOwnership(req: AuthenticatedRequest, res: any, subjectType: string, subjectId: string): boolean {
+  if (subjectType === "COMPANY") {
+    if (!req.user?.company_id || req.user.company_id !== subjectId) {
+      res.status(403).json({ ok: false, error: "Forbidden: not your company" });
+      return false;
+    }
+  }
+  return true;
+}
+
 // Create a verification run
-router.post("/create", async (req, res) => {
+router.post("/create", async (req: AuthenticatedRequest, res) => {
   try {
     const { subject_type, subject_id } = req.body;
 
     if (!subject_type || !subject_id) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: "subject_type and subject_id are required" 
+      return res.status(400).json({
+        ok: false,
+        error: "subject_type and subject_id are required"
       });
     }
+
+    if (!ensureSubjectOwnership(req, res, subject_type, subject_id)) return;
 
     // Create new verification run
     const run = await prisma.verificationRun.create({
@@ -39,9 +60,9 @@ router.post("/create", async (req, res) => {
 });
 
 // Finalize verification run with automatic decision
-router.post("/finalize", async (req, res) => {
+router.post("/finalize", async (req: AuthenticatedRequest, res) => {
   try {
-    const { run_id, subject_type, subject_id } = req.body;
+    const { run_id } = req.body;
 
     if (!run_id) {
       return res.status(400).json({ ok: false, error: "run_id is required" });
@@ -55,6 +76,12 @@ router.post("/finalize", async (req, res) => {
     if (!run) {
       return res.status(400).json({ ok: false, error: "Verification run not found" });
     }
+
+    // Authorization from the run's OWN stored subject (source of truth — never trust
+    // the client-supplied subject_id/type). A COMPANY run may only be finalized by
+    // that company's own user; otherwise any authenticated user could approve/tamper
+    // another company's KYC by passing its run_id.
+    if (!ensureSubjectOwnership(req, res, run.subject_type, run.subject_id)) return;
 
     // Evaluate signals
     const allSignalsPassed = run.signals.every(signal => signal.passed === true);
@@ -111,8 +138,8 @@ router.post("/finalize", async (req, res) => {
       include: { signals: true },
     });
 
-    // Update company profile
-    if (subject_type === "COMPANY") {
+    // Update company profile (use the run's own subject, not the client-supplied one).
+    if (run.subject_type === "COMPANY") {
       const updateData: any = {
         verification_status,
         verification_submitted_at: new Date(),
@@ -125,7 +152,7 @@ router.post("/finalize", async (req, res) => {
       }
 
       await prisma.companyProfile.update({
-        where: { company_id: subject_id },
+        where: { company_id: run.subject_id },
         data: updateData,
       });
     }

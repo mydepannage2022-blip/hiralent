@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
@@ -809,7 +810,7 @@ export default function QuestionDetailsPage() {
 
       try {
         const res = await fetch(
-          `http://localhost:5000/api/v1/questions/${questionId}`,
+          `${API_V1_BASE}/questions/${questionId}`,
           { headers: authHeaders }
         );
 

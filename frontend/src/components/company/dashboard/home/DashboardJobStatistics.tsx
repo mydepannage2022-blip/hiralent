@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   AreaChart,
   Area,
@@ -51,7 +52,7 @@ const DashboardJobStatistics = () => {
     const fetchJobs = async () => {
       setLoading(true);
       try {
-        const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+        const BASE = API_V1_BASE;
         const res = await fetch(`${BASE}/jobs/company/my-jobs`, {
           headers: { Authorization: `Bearer ${token}` },
         });

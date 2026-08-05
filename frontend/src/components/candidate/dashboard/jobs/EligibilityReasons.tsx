@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   AlertCircle,
   ChevronDown,
@@ -33,7 +34,7 @@ function useMySkills() {
     queryFn: async () => {
       const token =
         typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const BASE_URL = API_HOST;
       const { data } = await axios.get(`${BASE_URL}/api/v1/candidates/profile`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

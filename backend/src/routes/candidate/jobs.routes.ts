@@ -1,6 +1,6 @@
 // src/routes/candidate/jobs.routes.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { CandidateJobsService } from "../../services/candidate/jobs.service";
 import { CandidateJobsController } from "../../controller/candidate/jobs.controller";
 import { checkAuth } from "../../middlewares/checkAuth.middleware";
@@ -9,7 +9,6 @@ const router = Router();
 router.use(checkAuth);
 
 // init
-const prisma = new PrismaClient();
 const service = new CandidateJobsService(prisma);
 const controller = new CandidateJobsController(service);
 

@@ -2,9 +2,8 @@
 
 import { badgeService } from './badge.service';
 import { completenessService } from './completeness.service';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 /**
  * Auto-trigger badge evaluation after profile updates

@@ -5,6 +5,9 @@
  * document validation (OCR, NLP, completeness checks).
  */
 
+import { internalTokenHeader } from "../config/internalServiceAuth";
+import { getBackendUrl } from "../config/appUrls";
+
 const DOC_VALIDATOR_URL = process.env.DOC_VALIDATOR_URL || "http://localhost:8002";
 
 // ============ Types ============
@@ -101,6 +104,8 @@ async function safeFetch<T>(
       ...options,
       headers: {
         "Content-Type": "application/json",
+        // Internal service token (X-API-Token) required by the document-validator service.
+        ...internalTokenHeader(),
         ...options.headers,
       },
     });
@@ -169,7 +174,7 @@ export async function validateDocumentDeep(
   const payload: DeepValidationRequest = {
     ...request,
     callback_url: request.callback_url ||
-      `${process.env.BACKEND_URL || "http://localhost:4000"}/api/v1/webhooks/document-validation`,
+      `${getBackendUrl()}/api/v1/webhooks/document-validation`,
   };
 
   return safeFetch<DeepValidationQueueResponse>(

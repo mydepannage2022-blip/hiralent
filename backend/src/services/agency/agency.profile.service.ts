@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 const AGENCY_PROFILE_SELECT = {
   agency_id: true,

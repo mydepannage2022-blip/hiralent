@@ -5,11 +5,11 @@ import type {
   CreateEmployerAssessmentFromTemplateInput,
   CreateEmployerAssessmentFromTemplateResponse,
 } from "@/src/types/assessmentManagement.types";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 function apiBase() {
-  // ✅ adapte selon ton projet (tu utilises déjà NEXT_PUBLIC_BASE_URL)
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
-  return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
+  const base = API_V1_BASE;
+  return base;
 }
 
 async function apiGet<T>(path: string, token: string): Promise<T> {

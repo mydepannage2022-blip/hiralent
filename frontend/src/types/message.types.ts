@@ -178,6 +178,7 @@ export interface LegacyMessage {
   type: MessageType;
   fileName?: string;
   timestamp: string;
+  read?: boolean;
   replyTo?: {
     sender: "me" | "them";
     text: string;
@@ -217,6 +218,7 @@ export const convertToLegacyMessage = (
     hour: "2-digit",
     minute: "2-digit"
   }),
+  read: message.is_read,
   replyTo: message.reply_to ? {
     sender: message.reply_to.sender_name === "You" ? "me" : "them",
     text: message.reply_to.content || '',

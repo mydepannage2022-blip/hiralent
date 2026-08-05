@@ -5,6 +5,7 @@ import { X, RefreshCw, AlertCircle, Building2 } from "lucide-react";
 import { useAuth } from "@/src/context/AuthContext";
 import toast from "react-hot-toast";
 import AgencyCard from "./AgencyCard";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 interface Agency {
   agency_id: string;
@@ -50,7 +51,7 @@ export default function AgencyBrowserModal({
       setLoading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/agencies/browse?type=${agencyType}&country=${destinationCountry}`,
+        `${API_V1_BASE}/candidates/agencies/browse?type=${agencyType}&country=${destinationCountry}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -86,7 +87,7 @@ export default function AgencyBrowserModal({
           : `/candidates/cases/${caseId}/assign-integration-agency`;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}${endpoint}`,
+        `${API_V1_BASE}${endpoint}`,
         {
           method: "POST",
           headers: {

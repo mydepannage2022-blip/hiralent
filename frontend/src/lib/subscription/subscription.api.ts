@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 export const subscriptionApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 

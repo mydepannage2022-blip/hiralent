@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 import { ProfileCompletenessResult } from "../../../types/profile.types";
 
-const prisma = new PrismaClient();
 
 export class CompletenessService {
   /**

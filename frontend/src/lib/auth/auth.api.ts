@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { APIResponse } from '../profile/profile.api';
+import { refreshAccessToken } from './refresh';
+import { API_V1_BASE, API_ROOT } from '@/src/lib/config/api';
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -10,12 +12,30 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log("📤 Sending request with token:", token.substring(0, 20) + "...");
-  } else {
-    console.log("📤 Sending request without token");
   }
   return config;
 });
+
+// Reactive safety-net: if a call 401s (e.g. the proactive timer missed after a
+// laptop sleep), transparently refresh the access token once and retry.
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const url: string = original?.url || '';
+    const isAuthFlow = url.includes('/auth/login') || url.includes('/auth/refresh');
+    if (error.response?.status === 401 && original && !original._retry && !isAuthFlow) {
+      original._retry = true;
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const signup = async (data: {
   email: string;
@@ -54,7 +74,7 @@ export const login = async (data: {
 
 export const updateLocation = async (data: {
   location: string;
-  postalCode: number;
+  postalCode: string;
 }) => {
   const res = await api.patch('/candidates/update-location', data);
   return res.data;
@@ -75,7 +95,7 @@ export const uploadResume = async (resume: File) => {
   const token = localStorage.getItem('authToken');
 
   const response = await axios.post(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/profile-upload`,
+    `${API_V1_BASE}/candidates/profile-upload`,
     formData,
     {
       headers: {
@@ -158,7 +178,7 @@ export const uploadCompanyDocument = async (document: File) => {
   formData.append('document', document);
   formData.append('forceType', 'company_doc');
   
-  const response = await api.post('/ocr', formData, {
+  const response = await axios.post(`${API_ROOT}/ocr`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 

@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export interface CandidateSearchResult {
   candidate_id: string;
@@ -54,14 +53,14 @@ interface RawCountRow {
  * Builds the shared WHERE clause conditions for keyword matching.
  * Returns a SQL fragment using $1 as the keyword parameter.
  *
- * Searched fields (from CandidateProfile only):
- *   - headline
- *   - about_me
- *   - skills (text array)
- *   - projects (JSON — searched as text)
- *   - experience (JSON — searched as text)
- *   - education (JSON — searched as text)
- *   - certifications (JSON — searched as text)
+ * Searched fields:
+ *   - headline (CandidateProfile)
+ *   - about_me (CandidateProfile)
+ *   - skills (CandidateProfile, text array)
+ *   - projects (CandidateProfile JSON — searched as text)
+ *   - experience (CandidateProfile JSON — searched as text)
+ *   - education (CandidateProfile JSON — searched as text)
+ *   - certifications (Certification table — joined via EXISTS on name/issuer; single source of truth)
  */
 const KEYWORD_WHERE = `
   (
@@ -75,7 +74,11 @@ const KEYWORD_WHERE = `
     OR lower(coalesce(cp.projects::TEXT, ''))      LIKE lower('%' || $1 || '%')
     OR lower(coalesce(cp.experience::TEXT, ''))    LIKE lower('%' || $1 || '%')
     OR lower(coalesce(cp.education::TEXT, ''))     LIKE lower('%' || $1 || '%')
-    OR lower(coalesce(cp.certifications::TEXT, '')) LIKE lower('%' || $1 || '%')
+    OR EXISTS (
+      SELECT 1 FROM "Certification" c
+      WHERE c.candidate_id = cp.candidate_id
+        AND (lower(c.name) LIKE lower('%' || $1 || '%') OR lower(c.issuer) LIKE lower('%' || $1 || '%'))
+    )
   )
 `;
 
@@ -110,7 +113,11 @@ const SCORE_EXPR = `
       lower(coalesce(cp.projects::TEXT, ''))       LIKE lower('%' || $1 || '%')
       OR lower(coalesce(cp.experience::TEXT, ''))  LIKE lower('%' || $1 || '%')
       OR lower(coalesce(cp.education::TEXT, ''))   LIKE lower('%' || $1 || '%')
-      OR lower(coalesce(cp.certifications::TEXT, '')) LIKE lower('%' || $1 || '%')
+      OR EXISTS (
+        SELECT 1 FROM "Certification" c
+        WHERE c.candidate_id = cp.candidate_id
+          AND (lower(c.name) LIKE lower('%' || $1 || '%') OR lower(c.issuer) LIKE lower('%' || $1 || '%'))
+      )
     ) THEN 15 ELSE 0 END
 
     +

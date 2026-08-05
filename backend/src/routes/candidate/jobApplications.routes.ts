@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authMiddleware } from "../../middlewares/auth.middleware";
+import { checkAuth } from "../../middlewares/checkAuth.middleware";
 
 import {
   applyToJob,
@@ -9,7 +9,10 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware);
+// Use the hardened session-aware guard (blacklist + active-session enforced), not
+// the legacy bare-jwt guard — otherwise logout/terminate would not revoke these
+// routes and session-less tokens would slip through. (Wave 1 / Phase 1.2)
+router.use(checkAuth);
 
 /**
  * APPLY to a job

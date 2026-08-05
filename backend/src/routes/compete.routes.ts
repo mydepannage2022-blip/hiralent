@@ -31,6 +31,7 @@ import {
 } from "../controller/company/compete.controller";
 
 import { checkAuth } from "../middlewares/checkAuth.middleware"; // adjust path to your auth middleware
+import { devOnly } from "../middlewares/devOnly";
 
 const router = Router();
 
@@ -44,8 +45,10 @@ router.post("/:challenge_id/end", checkAuth, endChallengeHandler);
 // IMPORTANT: protect this endpoint with a service key (see controller).
 router.post("/:challenge_id/results", youssraResultsWebhookHandler);
 
-// Dev-only simulate endpoint (useful while Youssra is not integrated)
-router.post("/:challenge_id/simulate", checkAuth, simulateResultsHandler);
+// Dev-only simulate endpoint (writes leaderboard results, so it must NOT be reachable
+// in prod — checkAuth alone would let any logged-in user forge results). devOnly runs
+// first: outside dev+ENABLE_DEV_MINT it 404s before auth even runs.
+router.post("/:challenge_id/simulate", devOnly, checkAuth, simulateResultsHandler);
 
 // Leaderboard view (employer or candidate may call - we keep auth)
 router.get("/:challenge_id/leaderboard", checkAuth, getLeaderboardHandler);

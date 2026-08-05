@@ -6,6 +6,15 @@ __pycache__/
 venv/
 tests/
 
+# Secrets & VCS — never bake into the image. The Dockerfile does `COPY . .`, so without
+# these the service's .env (real credentials) would ship inside the image (R-14). Provide
+# env at runtime via docker-compose env_file / orchestrator secrets instead.
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+
 .vscode/
 .idea/
 .DS_Store

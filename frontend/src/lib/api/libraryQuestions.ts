@@ -1,4 +1,6 @@
 // lib/api/libraryQuestions.ts
+import { API_V1_BASE } from "@/src/lib/config/api";
+
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type QuestionType = 'coding' | 'mcq';
 
@@ -43,7 +45,7 @@ export async function fetchLibraryQuestions(params: {
   if (params.search) searchParams.set('search', params.search);
 
   const res = await fetch(
-    `http://localhost:5000/api/questions?${searchParams.toString()}`,
+    `${API_V1_BASE}/questions?${searchParams.toString()}`,
     {
       headers: {
         'Content-Type': 'application/json',

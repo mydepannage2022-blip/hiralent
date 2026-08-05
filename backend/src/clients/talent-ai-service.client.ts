@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { internalTokenHeader } from "../config/internalServiceAuth";
 
 /**
  * Client HTTP vers le Talent AI Service (job-creation-ai)
@@ -14,6 +15,13 @@ class TalentAIServiceClient {
       baseURL,
       timeout: 20_000,
       headers: { "Content-Type": "application/json" },
+    });
+
+    // Attach the internal service token (X-API-Token) per request — read at call time so
+    // it works regardless of import/dotenv ordering.
+    this.client.interceptors.request.use((cfg) => {
+      Object.assign(cfg.headers, internalTokenHeader());
+      return cfg;
     });
   }
 

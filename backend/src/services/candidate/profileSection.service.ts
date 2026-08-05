@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import {
   CandidateSkillInput,
   ExperienceInput,
@@ -7,7 +7,6 @@ import {
   JobBenefit
 } from "../../types/candidate.types";
 
-const prisma = new PrismaClient();
 
 export const processSkillsUpdate = async (
   candidateId: string,

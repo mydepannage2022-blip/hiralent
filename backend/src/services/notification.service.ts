@@ -3,6 +3,7 @@ import {
   NotificationAudience,
   NotificationType,
 } from "@prisma/client";
+import { parsePagination } from "../utils/pagination.util";
 
 export type CreateNotificationArgs = {
   audience: NotificationAudience;
@@ -39,7 +40,11 @@ export class NotificationService {
     limit?: number;
     cursor?: string;
   }) {
-    const limit = Math.min(Math.max(params.limit ?? 30, 1), 100);
+    // Shared clamp (utils/pagination.util) — default 30, cap 100 for notifications.
+    const { limit } = parsePagination(
+      { limit: params.limit },
+      { defaultLimit: 30, max: 100 }
+    );
 
     const items = await this.prisma.notification.findMany({
       where: {

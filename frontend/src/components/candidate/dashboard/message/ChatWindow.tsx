@@ -40,6 +40,7 @@ export interface LegacyMessage {
     type: MessageType;
     fileName?: string;
     timestamp: string;
+    read?: boolean;
     replyTo?: {
         sender: "me" | "them";
         text: string;

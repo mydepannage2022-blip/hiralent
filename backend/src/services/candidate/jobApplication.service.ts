@@ -316,9 +316,6 @@ const companyName =
         });
       }
 
-      // update global score
-      await this.recomputeCandidateGlobalScoreTx(tx, candidateId, "apply");
-
       return { ok: true, ...app, trigger: computedTrigger };
     });
   }
@@ -413,55 +410,4 @@ const companyName =
     };
   }
 
-  /**
-   * A5: recompute candidate global score (simple version)
-   */
-  async recomputeCandidateGlobalScore(args: { candidateId: string; reason?: string }) {
-    const { candidateId, reason } = args;
-    return this.prisma.$transaction((tx) =>
-      this.recomputeCandidateGlobalScoreTx(tx, candidateId, reason ?? "recompute"),
-    );
-  }
-
-  private async recomputeCandidateGlobalScoreTx(
-    tx: Prisma.TransactionClient,
-    candidateId: string,
-    reason: string,
-  ) {
-    const apps = await tx.jobApplication.findMany({
-      where: { candidate_id: candidateId },
-      select: { relevance_score: true, status: true },
-    });
-
-    const scores = apps
-      .map((a) => a.relevance_score)
-      .filter((v): v is number => typeof v === "number");
-
-    const avg = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
-
-    const components = {
-      version: "v1",
-      applications_count: apps.length,
-      avg_relevance_score: avg,
-    };
-
-    const row = await tx.candidateGlobalScore.upsert({
-      where: { candidate_id: candidateId },
-      update: { total_score: avg, components },
-      create: { candidate_id: candidateId, total_score: avg, components },
-      select: { candidate_id: true, total_score: true, updated_at: true },
-    });
-
-    await tx.candidateGlobalScoreHistory.create({
-      data: {
-        candidate_id: candidateId,
-        total_score: avg,
-        components,
-        reason,
-      },
-    });
-
-    return row;
-  }
-  
 }

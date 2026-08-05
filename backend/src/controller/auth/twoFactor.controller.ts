@@ -7,88 +7,95 @@ import {
   verifyLogin2FA,
   verifyLoginWithRecoveryCode,
 } from "../../services/auth/twoFactor.service";
+import { sendSuccess } from "../../utils/apiResponse";
+import { BadRequestError, UnauthorizedError } from "../../errors/httpErrors";
+
+// Session 1: success → standard envelope (sendSuccess); the 2FA services throw
+// on failure, so we map "expired" → 401 and everything else → 400 and re-throw
+// as a typed AppError for the central errorHandler to format.
+const mapTwoFactorError = (error: any) => {
+  const message = error?.message || "Two-factor request failed";
+  return /expired/i.test(message) ? new UnauthorizedError(message) : new BadRequestError(message);
+};
 
 export const setup2FAController = async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.user_id;
-    if (!userId) return res.status(401).json({ error: true, message: "Unauthorized" });
+  const userId = (req as any).user?.user_id;
+  if (!userId) throw new UnauthorizedError("Unauthorized");
 
+  try {
     const result = await setup2FA(userId);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    return res.status(400).json({ error: true, message: error.message });
+    throw new BadRequestError(error?.message || "Failed to set up 2FA");
   }
 };
 
 export const enable2FAController = async (req: Request, res: Response) => {
+  const userId = (req as any).user?.user_id;
+  if (!userId) throw new UnauthorizedError("Unauthorized");
+
+  const { token } = req.body;
+  if (!token) throw new BadRequestError("token is required");
+
   try {
-    const userId = (req as any).user?.user_id;
-    if (!userId) return res.status(401).json({ error: true, message: "Unauthorized" });
-
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: true, message: "token is required" });
-
     const result = await enable2FA(userId, token);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    return res.status(400).json({ error: true, message: error.message });
+    throw new BadRequestError(error?.message || "Failed to enable 2FA");
   }
 };
 
 export const disable2FAController = async (req: Request, res: Response) => {
+  const userId = (req as any).user?.user_id;
+  if (!userId) throw new UnauthorizedError("Unauthorized");
+
+  const { token } = req.body;
+  if (!token) throw new BadRequestError("token is required");
+
   try {
-    const userId = (req as any).user?.user_id;
-    if (!userId) return res.status(401).json({ error: true, message: "Unauthorized" });
-
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: true, message: "token is required" });
-
     const result = await disable2FA(userId, token);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    return res.status(400).json({ error: true, message: error.message });
+    throw new BadRequestError(error?.message || "Failed to disable 2FA");
   }
 };
 
 export const setupWithTokenController = async (req: Request, res: Response) => {
-  try {
-    const { tempToken } = req.body;
-    if (!tempToken) return res.status(400).json({ error: true, message: "tempToken is required" });
+  const { tempToken } = req.body;
+  if (!tempToken) throw new BadRequestError("tempToken is required");
 
+  try {
     const result = await setupWithTempToken(tempToken);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    const status = error.message.includes("expired") ? 401 : 400;
-    return res.status(status).json({ error: true, message: error.message });
+    throw mapTwoFactorError(error);
   }
 };
 
 export const verifyLogin2FAController = async (req: Request, res: Response) => {
-  try {
-    const { tempToken, mfaToken } = req.body;
-    if (!tempToken || !mfaToken) {
-      return res.status(400).json({ error: true, message: "tempToken and mfaToken are required" });
-    }
+  const { tempToken, mfaToken } = req.body;
+  if (!tempToken || !mfaToken) {
+    throw new BadRequestError("tempToken and mfaToken are required");
+  }
 
+  try {
     const result = await verifyLogin2FA(tempToken, mfaToken, req);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    const status = error.message.includes("expired") ? 401 : 400;
-    return res.status(status).json({ error: true, message: error.message });
+    throw mapTwoFactorError(error);
   }
 };
 
 export const verifyRecoveryCodeController = async (req: Request, res: Response) => {
-  try {
-    const { tempToken, recoveryCode } = req.body;
-    if (!tempToken || !recoveryCode) {
-      return res.status(400).json({ error: true, message: "tempToken and recoveryCode are required" });
-    }
+  const { tempToken, recoveryCode } = req.body;
+  if (!tempToken || !recoveryCode) {
+    throw new BadRequestError("tempToken and recoveryCode are required");
+  }
 
+  try {
     const result = await verifyLoginWithRecoveryCode(tempToken, recoveryCode, req);
-    return res.json(result);
+    sendSuccess(res, result);
   } catch (error: any) {
-    const status = error.message.includes("expired") ? 401 : 400;
-    return res.status(status).json({ error: true, message: error.message });
+    throw mapTwoFactorError(error);
   }
 };

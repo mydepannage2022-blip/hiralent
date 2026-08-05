@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, WifiOff, Sparkles, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import AIChatbot from "./AIChatbot";
+import { API_HOST } from "@/src/lib/config/api";
 import axios from "axios";
 
 const HIRALENT_BLUE = "#0B5CFF";
@@ -42,7 +43,7 @@ export default function ChatbotButton() {
         return;
       }
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/v1/candidates/health`,
+        `${API_HOST}/api/v1/candidates/health`,
         { timeout: 3000, headers: { Authorization: `Bearer ${token}` } }
       );
       setConnectionStatus(

@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { getEffectiveDeadline, autoSubmitIfExpired } from "./sessionDeadline.util";
 
-const prisma = new PrismaClient();
 
 function isMCQPayload(p: any): p is { selectedOptionIds: string[] } {
   return p && Array.isArray(p.selectedOptionIds);

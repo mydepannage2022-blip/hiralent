@@ -1,7 +1,8 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { API_HOST } from "@/src/lib/config/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = API_HOST;
 const CANDIDATE_BASE = `${API_URL}/api/v1/candidates`;
 
 interface ProfileContextType {

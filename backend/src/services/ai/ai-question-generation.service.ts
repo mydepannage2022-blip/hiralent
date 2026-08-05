@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { internalTokenHeader } from '../../config/internalServiceAuth';
 
 // Configuration
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -91,7 +92,8 @@ export class AIQuestionGenerationService {
         {
           timeout: AI_TIMEOUT,
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...internalTokenHeader()
           }
         }
       );
@@ -146,7 +148,8 @@ export class AIQuestionGenerationService {
         { 
           timeout: AI_TIMEOUT * 5, // 300s — Gemini needs more time for complex topics (C#/.NET/Mobile)
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...internalTokenHeader()
           }
         }
       );
@@ -180,7 +183,7 @@ export class AIQuestionGenerationService {
       const response = await axios.post(
         `${this.baseURL}/generate-from-job`, // Note: Vous devrez créer cette route plus tard
         { job_description: jobDescription },
-        { timeout: AI_TIMEOUT }
+        { timeout: AI_TIMEOUT, headers: { ...internalTokenHeader() } }
       );
 
       return response.data;

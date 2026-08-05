@@ -2,8 +2,9 @@
 import { Users2, MessagesSquare, CalendarCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE = API_V1_BASE;
 
 const DashboardStatsCards = () => {
   const { token } = useAuth();

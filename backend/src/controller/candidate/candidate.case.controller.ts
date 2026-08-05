@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
+import { parsePagination, setPaginationHeaders } from '../../utils/pagination.util';
 import {
   PutObjectCommand,
   DeleteObjectCommand,
@@ -14,7 +15,6 @@ import {
 import { s3, s3Bucket } from "../../lib/s3";
 import { requireEnv } from "../../config/requireEnv";
 
-const prisma = new PrismaClient();
 
 const uploadToMinIO = async (
   file: Express.Multer.File,
@@ -62,31 +62,40 @@ export const getCandidateCases = async (req: Request, res: Response) => {
       });
     }
 
-    const cases = await prisma.relocationCase.findMany({
-      where: { candidate_id: userId },
-      include: {
-        agency: {
-          select: {
-            agency_id: true,
-            name: true,
-            email: true,
-            phone: true,
+    // Show-all: a candidate's own cases (usually few); default page size == cap bounds the tail.
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 100, max: 100 });
+    const where = { candidate_id: userId };
+    const [cases, total] = await Promise.all([
+      prisma.relocationCase.findMany({
+        where,
+        include: {
+          agency: {
+            select: {
+              agency_id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          documents: {
+            select: {
+              document_id: true,
+              document_type: true,
+              file_name: true,
+              status: true,
+              created_at: true,
+            },
+            orderBy: { created_at: "desc" },
           },
         },
-        documents: {
-          select: {
-            document_id: true,
-            document_type: true,
-            file_name: true,
-            status: true,
-            created_at: true,
-          },
-          orderBy: { created_at: "desc" },
-        },
-      },
-      orderBy: { created_at: "desc" },
-    });
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.relocationCase.count({ where }),
+    ]);
 
+    setPaginationHeaders(res, { total, page, limit });
     return res.status(200).json({
       success: true,
       data: cases,

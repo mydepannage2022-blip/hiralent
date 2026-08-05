@@ -5,17 +5,25 @@ Script to clean up orphaned vectors in Qdrant
 - Removes candidates that exist in Qdrant but not in PostgreSQL
 """
 
+import os
 import requests
 from qdrant_client import QdrantClient
 from typing import Set, List
 import sys
 
 # ===========================
-# CONFIGURATION
+# CONFIGURATION (env-driven, R-13)
 # ===========================
-QDRANT_URL = "http://localhost:6333"
-BACKEND_URL = "http://localhost:5000"
-BACKEND_TOKEN = "changeme"  # Your BACKEND_INTERNAL_TOKEN
+# These were previously hardcoded literals (incl. a "changeme" token baked into the file),
+# so the script could not be pointed at staging/prod and shipped a placeholder secret.
+# Resolve from env; the token has NO default — the script must be given a real one.
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
+BACKEND_TOKEN = os.getenv("BACKEND_INTERNAL_TOKEN", "")
+
+if not BACKEND_TOKEN:
+    print("ERROR: BACKEND_INTERNAL_TOKEN is not set — refusing to call the backend without it.")
+    sys.exit(1)
 
 JOBS_COLLECTION = "jobs"
 CANDIDATES_COLLECTION = "candidates"

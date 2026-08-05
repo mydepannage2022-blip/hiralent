@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Wand2, Sparkles, AlertTriangle } from "lucide-react";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 import { useAuth } from "../../../../context/AuthContext";
 
@@ -53,8 +54,7 @@ interface JDParsingModalProps {
   onAssessmentCreated?: () => void;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = API_V1_BASE;
 
 const JDParsingModal: React.FC<JDParsingModalProps> = ({
   open,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -137,7 +138,7 @@ export default function RelocationCaseDetail({
       setSavingHousing(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/housing`,
+        `${API_V1_BASE}/agency/cases/${caseId}/housing`,
         {
           method: "PUT",
           headers: {
@@ -187,7 +188,7 @@ export default function RelocationCaseDetail({
       };
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/utilities`,
+        `${API_V1_BASE}/agency/cases/${caseId}/utilities`,
         {
           method: "PUT",
           headers: {
@@ -221,7 +222,7 @@ export default function RelocationCaseDetail({
       setSavingArrival(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/arrival`,
+        `${API_V1_BASE}/agency/cases/${caseId}/arrival`,
         {
           method: "PUT",
           headers: {
@@ -883,7 +884,7 @@ export default function RelocationCaseDetail({
                     try {
                       setMarkingReadyForArrival(true);
                       const response = await fetch(
-                        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/ready-for-arrival`,
+                        `${API_V1_BASE}/agency/cases/${caseId}/ready-for-arrival`,
                         {
                           method: "PUT",
                           headers: {

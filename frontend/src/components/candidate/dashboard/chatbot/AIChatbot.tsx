@@ -38,9 +38,10 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "@/src/context/AuthContext";
+import { API_HOST } from "@/src/lib/config/api";
 
 /* ═══════════ Constants ═══════════ */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = API_HOST;
 const HIRALENT_BLUE = "#0B5CFF";
 const HIRA_AVATAR = "/images/hira-avatar.png";
 

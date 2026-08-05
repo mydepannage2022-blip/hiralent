@@ -16,6 +16,7 @@ import type {
   TeamListParams,
   ActivityLogParams,
 } from "@/src/types/team.types";
+import { API_HOST } from "@/src/lib/config/api";
 
 // ==================== HELPERS ====================
 
@@ -24,7 +25,7 @@ function getToken(): string {
   return localStorage.getItem("authToken") || "";
 }
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BASE = API_HOST;
 
 async function apiRequest<T>(
   path: string,

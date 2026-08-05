@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -66,7 +67,7 @@ export default function VisaCaseDetail({
       setReviewing(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/documents/${selectedDocument.document_id}/review`,
+        `${API_V1_BASE}/agency/cases/${caseId}/documents/${selectedDocument.document_id}/review`,
         {
           method: "PUT",
           headers: {
@@ -736,7 +737,7 @@ export default function VisaCaseDetail({
                     setReviewing(true);
 
                     const response = await fetch(
-                      `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/embassy/submit`,
+                      `${API_V1_BASE}/agency/cases/${caseId}/embassy/submit`,
                       {
                         method: "POST",
                         headers: {
@@ -898,7 +899,7 @@ export default function VisaCaseDetail({
                     setReviewing(true);
 
                     const response = await fetch(
-                      `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/embassy/status`,
+                      `${API_V1_BASE}/agency/cases/${caseId}/embassy/status`,
                       {
                         method: "PUT",
                         headers: {
@@ -1060,7 +1061,7 @@ export default function VisaCaseDetail({
                     setReviewing(true);
 
                     const response = await fetch(
-                      `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}/embassy/interview`,
+                      `${API_V1_BASE}/agency/cases/${caseId}/embassy/interview`,
                       {
                         method: "POST",
                         headers: {

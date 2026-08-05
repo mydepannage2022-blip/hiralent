@@ -1,9 +1,8 @@
 // backend/src/workers/assessmentInviteSweeper.worker.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import { setTimeout as wait } from "node:timers/promises";
 import { autoSubmitIfExpired } from "../services/candidate/sessionDeadline.util";
 
-const prisma = new PrismaClient();
 
 /**
  * Every 30s:

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, RefObject } from 'react';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 interface UseTextToSpeechReturn {
   isSpeaking: boolean;
@@ -50,7 +51,7 @@ export function useTextToSpeech(
     } else {
       const token = localStorage.getItem('authToken');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts`,
+        `${API_V1_BASE}/interviews/tts`,
         {
           method: 'POST',
           headers: {
@@ -134,7 +135,7 @@ export function useTextToSpeech(
   const speakWithGoogleTranslate = useCallback(async (text: string): Promise<void> => {
     const token = localStorage.getItem('authToken');
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts/fallback`,
+      `${API_V1_BASE}/interviews/tts/fallback`,
       {
         method: 'POST',
         headers: {
@@ -176,7 +177,7 @@ export function useTextToSpeech(
   const prewarmAudio = useCallback((text: string): void => {
     if (audioCacheRef.current.has(text)) return; // already cached
     const token = localStorage.getItem('authToken');
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/interviews/tts`, {
+    fetch(`${API_V1_BASE}/interviews/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ text }),

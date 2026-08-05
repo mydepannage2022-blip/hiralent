@@ -5,6 +5,7 @@ import type {
   CreateEmployerAssessmentFromTemplateResponse,
   PaginatedTemplatesDTO,
 } from "@/src/types/assessmentManagement.types";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 /** ✅ Standard backend wrapper: { status: "ok", result: ... } */
 type ApiOk<T> = {
@@ -13,8 +14,8 @@ type ApiOk<T> = {
 };
 
 function apiBase() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-  return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
+  const base = API_V1_BASE;
+  return base;
 }
 
 async function apiGet<T>(path: string, token: string): Promise<T> {

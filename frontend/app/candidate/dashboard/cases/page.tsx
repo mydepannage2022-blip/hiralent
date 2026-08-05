@@ -4,6 +4,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/src/components/agency/ui/button";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Briefcase,
   RefreshCw,
@@ -66,7 +67,7 @@ export default function CasesPage() {
       setError(null);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases`,
+        `${API_V1_BASE}/candidates/cases`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

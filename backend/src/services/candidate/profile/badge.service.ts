@@ -1,6 +1,6 @@
 // services/candidate/profile/badge.service.ts
 
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 import {
   BadgeEvaluation,
   BadgeWithProgress,
@@ -8,7 +8,6 @@ import {
 } from "../../../types/profile.types";
 import { completenessService } from "./completeness.service";
 
-const prisma = new PrismaClient();
 
 function num(v: any, fallback = 0): number {
   const n = Number(v);

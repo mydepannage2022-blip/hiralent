@@ -10,8 +10,11 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import mainDb from "../lib/prisma";
 
-const mainDb = new PrismaClient();
+// NOTE: libraryDb points at a SEPARATE database (LIBRARY_DATABASE_URL), so it
+// legitimately keeps its own PrismaClient. This is the ONE allowlisted client
+// outside lib/prisma.ts (see verify-prisma-singleton.mjs). mainDb uses the shared singleton.
 const libraryDb = new PrismaClient({
   datasources: {
     db: {

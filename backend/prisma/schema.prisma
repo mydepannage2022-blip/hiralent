@@ -4,8 +4,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime (Prisma Client) uses `url` — this is the POOLED path. In prod it carries
+  // connection_limit/pool_timeout params and (Wave 8) fronts PgBouncer (?pgbouncer=true).
+  url       = env("DATABASE_URL")
+  // Migrations (`prisma migrate`) use `directUrl` — the DIRECT, un-pooled path that
+  // bypasses PgBouncer (transaction pooling breaks migrations). Runtime never uses it.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum EmployerAssessmentStatus {
@@ -105,7 +110,7 @@ model User {
   mfa_recovery_codes String? // JSON array of SHA-256 hashed recovery codes
 
   // Relations
-  agency             Agency?             @relation(fields: [agency_id], references: [agency_id])
+  agency             Agency?             @relation(fields: [agency_id], references: [agency_id], onDelete: SetNull)
   candidateProfile   CandidateProfile?
   companyProfile     CompanyProfile? // Changed from recruiterProfile
   agencyAdminProfile AgencyAdminProfile?
@@ -158,15 +163,12 @@ model User {
   candidateScore        CandidateScore?         @relation("CandidateScore")
   badges                BadgeAward[]            @relation("CandidateBadges")
   certifications        Certification[]         @relation("CandidateCertifications")
-  chatHistory   ChatHistory[]  @relation("CandidateChatHistory")
   chatConversations ChatConversation[] @relation("CandidateChatConversations")
 
   profileEvents         ProfileEvent[]          @relation("ProfileEvents")
   // Relations to Scraping Candidates models (Do not Touch !!!)
   sourcedCandidateLead SourcedCandidate? @relation("SourcedCandidateToUser")
   sourcingRunsTriggered SourcingRun[] @relation("SourcingRunTriggeredByUser")
-  candidateGlobalScore CandidateGlobalScore?
-  candidateGlobalScoreHistory CandidateGlobalScoreHistory[]
 
     // Company Team Relations
   ownedCompanyTeam           CompanyTeamMember[]     @relation("CompanyTeamMembers")
@@ -251,7 +253,7 @@ model CompanyProfile {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user User @relation(fields: [company_id], references: [user_id])
+  user User @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
 }
 
 model Question {
@@ -397,7 +399,7 @@ model CompanyJob {
   updated_at DateTime @updatedAt
 
   company            User                       @relation(fields: [company_id], references: [user_id], onDelete: Cascade)
-  agency             Agency?                    @relation(fields: [agency_id], references: [agency_id])
+  agency             Agency?                    @relation(fields: [agency_id], references: [agency_id], onDelete: SetNull)
   applications       JobApplication[]
   progressTrackers   CandidateProgressTracker[]
   assessments        SkillAssessment[]
@@ -473,7 +475,7 @@ model JobApplication {
   rejection_reason   String? // Reason for rejection
 
   candidate          User                @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job                CompanyJob          @relation(fields: [job_id], references: [job_id]) // Changed relation
+  job                CompanyJob          @relation(fields: [job_id], references: [job_id], onDelete: Cascade) // Changed relation
   interview          AIInterviewResult?
   interviewSchedules InterviewSchedule[] // Removed incorrect @relation syntax
 
@@ -548,33 +550,8 @@ model JobApplicationEventOutbox {
   @@index([status])
   @@index([application_id])
   @@index([type])
-}
-
-model CandidateGlobalScore {
-  candidate_id String @id
-  total_score  Float  // 0..1 or 0..100
-  components   Json?  // store breakdown: applications avg, assessment, etc.
-
-  updated_at   DateTime @updatedAt
-  created_at   DateTime @default(now())
-
-  candidate User @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
-}
-
-model CandidateGlobalScoreHistory {
-  history_id   String   @id @default(uuid())
-  candidate_id String
-  total_score  Float
-  components   Json?
-  reason       String?
-  created_at   DateTime @default(now())
-
-  candidate User @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
-
-  @@index([candidate_id])
   @@index([created_at])
 }
-
 
 model CandidateProgressTracker {
   progress_id  String     @id @default(uuid())
@@ -585,7 +562,7 @@ model CandidateProgressTracker {
   notes        String?
   updated_at   DateTime   @default(now())
   candidate    User       @relation("CandidateProgressTrackers", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job          CompanyJob @relation(fields: [job_id], references: [job_id])
+  job          CompanyJob @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
   updatedBy    User       @relation("ProgressUpdatedBy", fields: [updated_by], references: [user_id], onDelete: Cascade)
 }
 
@@ -599,7 +576,7 @@ model AIInterviewResult {
   created_at     DateTime       @default(now())
   updated_at     DateTime       @updatedAt
   candidate_id   String
-  application    JobApplication @relation(fields: [application_id], references: [application_id])
+  application    JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
   candidate      User           @relation("CandidateAIResults", fields: [candidate_id], references: [user_id], onDelete: Cascade)
 
   // AI Video Interview Fields
@@ -621,13 +598,16 @@ model AIInterviewResult {
   scheduled_date      DateTime?         // When the interview is scheduled for
   assigned_by         String?           // Recruiter user_id who assigned the interview
   assigned_at         DateTime?         // When the interview was assigned
-  assignedByUser      User?             @relation("AssignedInterviews", fields: [assigned_by], references: [user_id])
+  assignedByUser      User?             @relation("AssignedInterviews", fields: [assigned_by], references: [user_id], onDelete: SetNull)
 
   // Proctoring
   cheating_events     Json?             // [{type: 'NO_FACE'|'MULTIPLE_FACES', timestamp, faceCount}]
 
   // Question distribution
   soft_skill_weight   Int?              @default(70) // % of soft skill questions (0-100), rest is technical
+
+  @@index([candidate_id, created_at])
+  @@index([status])
 }
 
 enum AIInterviewStatus {
@@ -674,13 +654,15 @@ model SkillAssessment {
   ai_analysis        Json?
   confidence_score   Float?
   employer_assessment_id String?
-  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id])
+  employer_assessment    EmployerAssessment? @relation("EmployerToCandidateAssessments", fields: [employer_assessment_id], references: [assessment_id], onDelete: SetNull)
 
   summary            AssessmentSummary?
   assessmentResults  AssessmentResult[] @relation("AssessmentResults")
   candidate          User               @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job                CompanyJob?        @relation(fields: [job_id], references: [job_id])
+  job                CompanyJob?        @relation(fields: [job_id], references: [job_id], onDelete: SetNull)
 
+  @@index([candidate_id, created_at])
+  @@index([status])
   @@map("skill_assessments")
 }
 
@@ -719,9 +701,9 @@ model RelocationCase {
   updated_at DateTime @updatedAt
 
   candidate   User                 @relation("CandidateRelocationCases", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id])
-  agency      Agency               @relation(fields: [agency_id], references: [agency_id])
-  housingAgency     Agency?        @relation("HousingAgency", fields: [housing_agency_id], references: [agency_id])
+  job         CompanyJob?          @relation("JobRelocationCases", fields: [job_id], references: [job_id], onDelete: SetNull)
+  agency      Agency               @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
+  housingAgency     Agency?        @relation("HousingAgency", fields: [housing_agency_id], references: [agency_id], onDelete: SetNull)
   housing_details   HousingArrangement?
   assignments CaseAssignment[]
   updates     CaseProgressUpdate[]
@@ -732,10 +714,12 @@ model RelocationCase {
   integration_agency_id String?
 
   // Relations
-  integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id])
+  integrationAgency     Agency? @relation("IntegrationAgency", fields: [integration_agency_id], references: [agency_id], onDelete: SetNull)
 
   integrationServices   IntegrationService[] @relation("IntegrationServices")
 
+  @@index([candidate_id])
+  @@index([agency_id, status])
   @@map("relocation_cases")
 }
 
@@ -799,10 +783,11 @@ model CaseAssignment {
   status        String
   notes         String?
   agency_id     String
-  agency        Agency         @relation(fields: [agency_id], references: [agency_id])
+  agency        Agency         @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
   agent         User           @relation("AgentCaseAssignments", fields: [agent_id], references: [user_id], onDelete: Cascade)
-  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
+  case_details  RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
 
+  @@index([agency_id, status])
   @@map("case_assignments")
 }
 
@@ -814,7 +799,7 @@ model CaseProgressUpdate {
   description  String
   is_milestone Boolean        @default(false)
   created_at   DateTime       @default(now())
-  case_details RelocationCase @relation(fields: [case_id], references: [case_id])
+  case_details RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
 
   @@map("case_progress_updates")
 }
@@ -846,7 +831,7 @@ model CaseDocument {
   ai_validation_issues  Json?     // Array of issues found
   ai_validated_at       DateTime? // When AI validation completed
 
-  case_details  RelocationCase @relation(fields: [case_id], references: [case_id])
+  case_details  RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
 
   @@map("case_documents")
 }
@@ -860,7 +845,7 @@ model AgencyReview {
   review_text  String?
   service_type String?
   created_at   DateTime @default(now())
-  agency       Agency   @relation(fields: [agency_id], references: [agency_id])
+  agency       Agency   @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
   reviewer     User     @relation("ClientReviews", fields: [reviewer_id], references: [user_id], onDelete: Cascade)
 
   @@map("agency_reviews")
@@ -878,9 +863,10 @@ model CompanyAgencyInvitation {
   expires_at      DateTime
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-  agency          Agency   @relation(fields: [agency_id], references: [agency_id])
+  agency          Agency   @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
   inviter         User     @relation("CompanyInvites", fields: [inviter_id], references: [user_id], onDelete: Cascade)
 
+  @@index([agency_id, status])
   @@map("company_agency_invitations")
 }
 
@@ -909,7 +895,7 @@ model JobRecommendation {
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt
   candidate         User       @relation("JobRecommendations", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  job               CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id])
+  job               CompanyJob @relation("JobRecommendations", fields: [job_id], references: [job_id], onDelete: Cascade)
   applications JobApplication[] @relation("ApplicationToRecommendation")
 
 
@@ -977,6 +963,7 @@ model MatchingOutboxEvent {
 
   @@index([status])
   @@index([entity_id])
+  @@index([created_at])
 }
 
 
@@ -992,7 +979,7 @@ model CandidateProfile {
   updated_at             DateTime @updatedAt
   location               String?
   minimum_salary_amount  Float?
-  postal_code            Int?
+  postal_code            String?
   payment_period         String?
   profile_picture_url    String?
   headline               String?  @db.VarChar(120)
@@ -1004,7 +991,6 @@ model CandidateProfile {
   //  ADD THESE NEW FIELDS
   personal_info          Json?     // Store extracted personal info
   projects               Json?     // Store projects array
-  certifications         Json?     // Store certifications (duplicate with Certification table but useful)
   resume_application_url String?
   user                   User     @relation(fields: [candidate_id], references: [user_id], onDelete: Cascade)
  
@@ -1019,6 +1005,10 @@ model AdminAuditLog {
   description  String?
   created_at   DateTime @default(now())
   admin        User     @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+
+  @@index([admin_id, created_at])
+  @@index([target_table, target_id])
+  @@index([created_at])
 }
 
 model RolePermission {
@@ -1109,8 +1099,8 @@ model AgencySubscription {
   trial_ends_at          DateTime?
   created_at             DateTime         @default(now())
   updated_at             DateTime         @updatedAt
-  agency                 Agency           @relation(fields: [agency_id], references: [agency_id])
-  plan                   SubscriptionPlan @relation(fields: [plan_id], references: [plan_id])
+  agency                 Agency           @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
+  plan                   SubscriptionPlan @relation(fields: [plan_id], references: [plan_id], onDelete: Restrict)
 }
 
 model WebhookEndpoint {
@@ -1124,7 +1114,7 @@ model WebhookEndpoint {
   last_failed_delivery_at     DateTime?
   created_at                  DateTime  @default(now())
   updated_at                  DateTime  @updatedAt
-  agency                      Agency    @relation(fields: [agency_id], references: [agency_id])
+  agency                      Agency    @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
 }
 
 model CandidateDocument {
@@ -1146,6 +1136,7 @@ model CandidateDocument {
   
   autofillSessions ResumeAutofillSession[]
 
+  @@index([candidate_id, created_at])
 }
 
 model CandidateSkill {
@@ -1165,7 +1156,9 @@ model CandidateSkill {
   updated_at         DateTime           @updatedAt
   candidate          User               @relation("CandidateSkills", fields: [candidate_id], references: [user_id], onDelete: Cascade)
   source_document_id String?
-  sourceDocument     CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id])
+  sourceDocument     CandidateDocument? @relation("SkillsFromDocument", fields: [source_document_id], references: [document_id], onDelete: SetNull)
+
+  @@index([candidate_id])
 }
 
 model SkillExtraction {
@@ -1182,7 +1175,9 @@ model SkillExtraction {
   created_at       DateTime          @default(now())
   updated_at       DateTime          @updatedAt
   candidate        User              @relation("SkillExtractions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  document         CandidateDocument @relation(fields: [document_id], references: [document_id])
+  document         CandidateDocument @relation(fields: [document_id], references: [document_id], onDelete: Cascade)
+
+  @@index([candidate_id, status])
 }
 
 model CareerPrediction {
@@ -1199,6 +1194,8 @@ model CareerPrediction {
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
   candidate          User     @relation("CareerPredictions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
+
+  @@index([candidate_id])
 }
 
 // Model for matching-candidate-job  (Pleaze Do not touch)
@@ -1304,26 +1301,6 @@ model AssessmentSummary {
   @@map("assessment_summaries")
 }
 
-model QuestionBank {
-  question_id      String          @id @default(uuid())
-  question_text    String
-  question_type    QuestionType
-  skill_category   String
-  difficulty       DifficultyLevel
-  options          Json?
-  correct_answer   String?
-  explanation      String?
-  ai_generated     Boolean         @default(false)
-  generated_by     String?
-  times_used       Int             @default(0)
-  avg_score        Float?
-  difficulty_index Float?
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
-
-  @@map("question_bank")
-}
-
 model InterviewSchedule {
   schedule_id          String         @id @default(uuid())
   application_id       String
@@ -1349,9 +1326,10 @@ model InterviewSchedule {
   next_round_scheduled Boolean        @default(false)
   created_at           DateTime       @default(now())
   updated_at           DateTime       @updatedAt
-  application          JobApplication @relation(fields: [application_id], references: [application_id])
-  job                  CompanyJob?    @relation(fields: [job_id], references: [job_id])
+  application          JobApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+  job                  CompanyJob?    @relation(fields: [job_id], references: [job_id], onDelete: SetNull)
 
+  @@index([status, created_at])
   @@map("interview_schedules")
 }
 
@@ -1382,6 +1360,10 @@ model CommunicationLog {
   recipient           User      @relation("ReceivedMessages", fields: [recipient_id], references: [user_id], onDelete: Cascade)
   sender              User      @relation("SentMessages", fields: [sender_id], references: [user_id], onDelete: Cascade)
 
+  @@index([recipient_id, created_at])
+  @@index([sender_id, created_at])
+  @@index([status])
+  @@index([campaign_id])
   @@map("communication_logs")
 }
 
@@ -1407,6 +1389,7 @@ model HiringAnalytics {
   created_at            DateTime @default(now())
   company               User     @relation("CompanyAnalytics", fields: [company_id], references: [user_id], onDelete: Cascade)
 
+  @@index([company_id, created_at])
   @@map("hiring_analytics")
 }
 
@@ -1431,8 +1414,9 @@ model RelocationAnalytics {
   market_trends       Json?
   calculated_at       DateTime @default(now())
   created_at          DateTime @default(now())
-  agency              Agency   @relation(fields: [agency_id], references: [agency_id])
+  agency              Agency   @relation(fields: [agency_id], references: [agency_id], onDelete: Cascade)
 
+  @@index([agency_id, created_at])
   @@map("relocation_analytics")
 }
 
@@ -1578,8 +1562,11 @@ model UsageAnalytics {
   metadata        Json?
   ab_test_variant String?
   timestamp       DateTime @default(now())
-  user            User?    @relation("UserAnalytics", fields: [user_id], references: [user_id])
+  user            User?    @relation("UserAnalytics", fields: [user_id], references: [user_id], onDelete: SetNull)
 
+  @@index([user_id, timestamp])
+  @@index([action_type, timestamp])
+  @@index([timestamp])
   @@map("usage_analytics")
 }
 
@@ -1739,7 +1726,7 @@ model CompanyVerification {
   reason_codes      String[]               @default([])
   risk_score        Float?
   status            VerificationCaseStatus @default(DRAFT)
-  latest_run        VerificationRun?       @relation("CompanyLatestRun", fields: [latest_run_id], references: [run_id])
+  latest_run        VerificationRun?       @relation("CompanyLatestRun", fields: [latest_run_id], references: [run_id], onDelete: SetNull)
 
   @@index([company_id])
   @@index([status])
@@ -1756,7 +1743,7 @@ model AgencyVerification {
   reason_codes           String[]               @default([])
   risk_score             Float?
   status                 VerificationCaseStatus @default(DRAFT)
-  latest_run             VerificationRun?       @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id])
+  latest_run             VerificationRun?       @relation("AgencyLatestRun", fields: [latest_run_id], references: [run_id], onDelete: SetNull)
 
   @@index([agency_id])
   @@index([status])
@@ -1809,6 +1796,7 @@ model UserSession {
   location_city     String?
   location_region   String?
   jwt_token_hash    String
+  refresh_token_hash String?
   is_current        Boolean   @default(false)
   last_activity     DateTime  @default(now())
   login_time        DateTime  @default(now())
@@ -1826,6 +1814,7 @@ model UserSession {
 
   @@index([user_id])
   @@index([jwt_token_hash])
+  @@index([refresh_token_hash])
   @@index([is_active])
   @@index([expires_at])
   @@map("user_sessions")
@@ -1919,7 +1908,7 @@ enum VerificationCaseStatus {
 model CompeteChallenge {
   challenge_id       String             @id @default(uuid())
   assessment_id      String
-  employerAssessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id])
+  employerAssessment EmployerAssessment @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
 
   @@map("compete_challenges")
 }
@@ -2014,8 +2003,8 @@ model Conversation {
   updated_at       DateTime  @updatedAt
 
   // Relations add karne hain
-  participant_1 User      @relation("ConversationP1", fields: [participant_1_id], references: [user_id])
-  participant_2 User      @relation("ConversationP2", fields: [participant_2_id], references: [user_id])
+  participant_1 User      @relation("ConversationP1", fields: [participant_1_id], references: [user_id], onDelete: Cascade)
+  participant_2 User      @relation("ConversationP2", fields: [participant_2_id], references: [user_id], onDelete: Cascade)
   messages      Message[]
 
   @@unique([participant_1_id, participant_2_id])
@@ -2040,11 +2029,13 @@ model Message {
 
   // Relations
   conversation Conversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
-  sender       User         @relation("UserMessages", fields: [sender_id], references: [user_id])
-  reply_to     Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
+  sender       User         @relation("UserMessages", fields: [sender_id], references: [user_id], onDelete: Cascade)
+  reply_to     Message?     @relation("MessageReplies", fields: [reply_to_id], references: [message_id], onDelete: SetNull)
   replies      Message[]    @relation("MessageReplies")
   reactions    MessageReaction[]
 
+  @@index([conversation_id, sent_at])
+  @@index([sender_id])
   @@map("messages")
 }
 
@@ -2088,6 +2079,10 @@ model MessageReaction {
     created_at      DateTime @default(now())
     updated_at      DateTime @updatedAt
 
+    @@index([assessment_id, candidate_id, created_at])
+    @@index([candidate_id])
+    @@index([question_id])
+    @@index([status])
     @@map("code_submissions")
   }
   // (Duplicate Conversation/Message fragments removed — original models retained above.)
@@ -2118,7 +2113,7 @@ model UserSubscription {
 
   // Relations
   user         User                  @relation("UserSubscriptions", fields: [user_id], references: [user_id], onDelete: Cascade)
-  plan         SubscriptionPlan      @relation("SubscriptionPlanToUser", fields: [plan_id], references: [plan_id])
+  plan         SubscriptionPlan      @relation("SubscriptionPlanToUser", fields: [plan_id], references: [plan_id], onDelete: Restrict)
   transactions PaymentTransaction[]  @relation("SubscriptionTransactions")
 
   @@index([user_id])
@@ -2144,7 +2139,7 @@ model PaymentTransaction {
 
   // Relations
   user         User              @relation("UserPayments", fields: [user_id], references: [user_id], onDelete: Cascade)
-  subscription UserSubscription? @relation("SubscriptionTransactions", fields: [subscription_id], references: [subscription_id])
+  subscription UserSubscription? @relation("SubscriptionTransactions", fields: [subscription_id], references: [subscription_id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([subscription_id])
@@ -2170,8 +2165,9 @@ model EmbassySubmission {
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
   
-  case                RelocationCase @relation(fields: [case_id], references: [case_id])
+  case                RelocationCase @relation(fields: [case_id], references: [case_id], onDelete: Cascade)
 
+  @@index([status, created_at])
   @@map("embassy_submissions")
 }
 
@@ -2225,6 +2221,7 @@ model SourcedCandidate {
   @@index([source])
   @@index([email])
   @@index([linkedin_url])
+  @@index([status, created_at])
 }
 
 enum SourcingRunStatus {
@@ -2291,7 +2288,7 @@ model ResumeAutofillSession {
   updated_at       DateTime @updatedAt
   
   candidate        User              @relation("AutofillSessions", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  document         CandidateDocument @relation(fields: [document_id], references: [document_id])
+  document         CandidateDocument @relation(fields: [document_id], references: [document_id], onDelete: Cascade)
   mappings         AutofillFieldMapping[]
   
   @@index([candidate_id])
@@ -2368,7 +2365,7 @@ model BadgeAward {
   is_active    Boolean  @default(true)
   
   candidate    User     @relation("CandidateBadges", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-  badge        Badge    @relation(fields: [badge_id], references: [badge_id])
+  badge        Badge    @relation(fields: [badge_id], references: [badge_id], onDelete: Restrict)
   
   @@unique([candidate_id, badge_id])
   @@index([candidate_id])
@@ -2487,19 +2484,6 @@ model AssessmentTemplateQuestion {
   @@map("assessment_template_questions")
 }
 
-model ChatHistory {
-  chat_id       String   @id @default(uuid())
-  candidate_id  String
-  user_message  String   @db.Text
-  bot_response  String   @db.Text
-  created_at    DateTime @default(now())
-
-  candidate     User     @relation("CandidateChatHistory", fields: [candidate_id], references: [user_id], onDelete: Cascade)
-
-  @@index([candidate_id])
-  @@index([created_at])
-  @@map("chat_history")
-}
 model ChatConversation {
   conversation_id String   @id @default(uuid())
   candidate_id    String
@@ -2577,7 +2561,7 @@ model CompanyTeamMember {
   // Relations
   company       User            @relation("CompanyTeamMembers", fields: [company_id], references: [user_id], onDelete: Cascade)
   user          User            @relation("UserTeamMemberships", fields: [user_id], references: [user_id], onDelete: Cascade)
-  inviter       User?           @relation("TeamMemberInviter", fields: [invited_by], references: [user_id])
+  inviter       User?           @relation("TeamMemberInviter", fields: [invited_by], references: [user_id], onDelete: SetNull)
   permissions   CompanyMemberPermission[]
   activityLogs  CompanyActivityLog[]
 
@@ -2597,7 +2581,7 @@ model CompanyTeamInvitation {
   token              String           @unique
   token_hash         String
   status             InvitationStatus @default(pending)
-  invited_by         String
+  invited_by         String?
   expires_at         DateTime
   accepted_at        DateTime?
   cancelled_at       DateTime?
@@ -2607,7 +2591,7 @@ model CompanyTeamInvitation {
 
   // Relations
   company    User @relation("CompanyInvitations", fields: [company_id], references: [user_id], onDelete: Cascade)
-  inviter    User @relation("SentInvitations", fields: [invited_by], references: [user_id])
+  inviter    User? @relation("SentInvitations", fields: [invited_by], references: [user_id], onDelete: SetNull)
 
   @@index([company_id])
   @@index([email])
@@ -2639,7 +2623,7 @@ model CompanyActivityLog {
   log_id          String    @id @default(uuid())
   company_id      String
   member_id       String?
-  user_id         String
+  user_id         String?
   action          String
   action_category String
   resource_type   String?
@@ -2653,7 +2637,7 @@ model CompanyActivityLog {
   // Relations
   company User               @relation("CompanyActivityLogs", fields: [company_id], references: [user_id], onDelete: Cascade)
   member  CompanyTeamMember? @relation(fields: [member_id], references: [member_id], onDelete: SetNull)
-  actor   User               @relation("ActivityActor", fields: [user_id], references: [user_id])
+  actor   User?              @relation("ActivityActor", fields: [user_id], references: [user_id], onDelete: SetNull)
 
   @@index([company_id])
   @@index([member_id])

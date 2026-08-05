@@ -289,7 +289,7 @@ export interface CareerPredictionInput {
 // New types for candidate update APIs
 export interface UpdateLocationInput {
   location?: string;
-  postalCode?: number;
+  postalCode?: string;
 }
 
 export interface UpdateSalaryInput {
@@ -588,7 +588,7 @@ export interface CandidateProfile {
   location: string | null;
   minimum_salary_amount: number | null;
   payment_period: string | null;
-  postal_code: number | null;
+  postal_code: string | null;
   preferred_locations: string | null;
   profile_picture_url: string | null;
   resume_url: string | null;

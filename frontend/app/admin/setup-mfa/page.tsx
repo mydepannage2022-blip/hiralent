@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthLayout from '@/src/components/layout/AuthLayout';
 import { getAuthPageConfig } from '@/config/authPagesConfig';
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 export default function SetupMFA() {
   const router = useRouter();
@@ -29,18 +30,20 @@ export default function SetupMFA() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/admin/auth/setup-mfa', {
+      const response = await fetch(`${API_V1_BASE}/admin/auth/setup-mfa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tempToken }),
       });
       const data = await response.json();
+      // Envelope (R-36): qrCode/secret live under `data`; no top-level `ok`.
+      const d = data?.data ?? data;
 
-      if (data.ok && data.success) {
-        setQrCode(data.qrCode);
-        setSecret(data.secret);
+      if (data.success && d?.qrCode) {
+        setQrCode(d.qrCode);
+        setSecret(d.secret);
       } else {
-        setError(data.error || 'Failed to setup MFA');
+        setError(data.error?.message || data.error || 'Failed to setup MFA');
       }
     } catch {
       setError('Connection error');

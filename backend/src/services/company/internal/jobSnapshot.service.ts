@@ -1,7 +1,6 @@
 // src/services/company/internal/jobSnapshot.service.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 /**
  * Snapshot minimal et stable d'un Job pour le matching AI microservice.

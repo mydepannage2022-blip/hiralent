@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Plus,
   Edit,
@@ -973,8 +974,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
    API
 ============================= */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE = API_V1_BASE;
 
 const jobService = {
   async getOne(token: string, jobId: string) {

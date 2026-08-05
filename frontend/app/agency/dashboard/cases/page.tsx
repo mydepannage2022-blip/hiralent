@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Country, City } from "country-state-city";
 import { useRouter } from "next/navigation";
 import { Button } from "@/src/components/agency/ui/button";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import { useAgencyProfile } from "@/src/context/AgencyProfileContext";
 import {
   Search,
@@ -81,7 +82,7 @@ export default function CasesPage() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases`,
+        `${API_V1_BASE}/agency/cases`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -137,7 +138,7 @@ export default function CasesPage() {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseItem.case_id}`,
+        `${API_V1_BASE}/agency/cases/${caseItem.case_id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -204,7 +205,7 @@ export default function CasesPage() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${editedCase.case_id}`,
+        `${API_V1_BASE}/agency/cases/${editedCase.case_id}`,
         {
           method: "PUT",
           headers: {

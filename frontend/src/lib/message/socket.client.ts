@@ -2,11 +2,7 @@
 // Socket.io v4+ import syntax
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
-
-// ✅ UPDATED: Use dedicated Socket URL or derive from base URL
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 
-                   process.env.NEXT_PUBLIC_BASE_URL?.replace('/api/v1', '') || 
-                   'http://localhost:5000';
+import { SOCKET_URL } from '@/src/lib/config/api';
 
 let socket: Socket | null = null;
 
@@ -122,9 +118,11 @@ export const stopTyping = (conversationId: string): void => {
   }
 };
 
-export const markSocketRead = (messageIds: string[]): void => {
+export const markSocketRead = (messageIds: string[], conversationId?: string): void => {
   if (socket && socket.connected) {
-    socket.emit('mark_messages_read', { message_ids: messageIds });
+    // conversation_id lets the server scope the read-receipt to the conversation
+    // room instead of broadcasting it to every connected client.
+    socket.emit('mark_messages_read', { message_ids: messageIds, conversation_id: conversationId });
   }
 };
 
@@ -208,6 +206,9 @@ export const offAllListeners = (): void => {
     socket.off('message_sent');
     socket.off('user_typing');
     socket.off('message_read');
+    socket.off('reaction_added');
+    socket.off('reaction_removed');
+    socket.off('message_deleted');
     socket.off('user_joined');
     socket.off('user_left');
     socket.off('user_offline');

@@ -7,10 +7,9 @@ compute timeTaken, attempts, compile errors, etc.
 write final answers snapshot
 
 emit outbox event: "assessment.completed" */
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { enqueueAssessmentOutbox } from "../../workers/assessmentQueue";
 
-const prisma = new PrismaClient();
 
 export class CandidateAssessmentSubmissionService {
   static async submitSession(

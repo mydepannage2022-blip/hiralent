@@ -1,7 +1,6 @@
 // backend/src/services/company/internal/skillRadarFromAssessment.service.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 function clampScore(x: unknown) {
   const n = typeof x === "number" ? x : Number(x);

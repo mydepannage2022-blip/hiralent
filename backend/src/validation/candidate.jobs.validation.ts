@@ -1,17 +1,13 @@
 // src/validation/candidate.jobs.validation.ts
 import { Request } from "express";
 import { JobListQuery } from "../types/candidate.jobs.types";
+import { parsePagination } from "../utils/pagination.util";
 
 const toBool = (v: unknown): boolean | undefined => {
   if (v === undefined) return undefined;
   if (v === "true" || v === true) return true;
   if (v === "false" || v === false) return false;
   return undefined;
-};
-
-const toInt = (v: unknown, fallback: number): number => {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 };
 
 const toStringArray = (v: unknown): string[] | undefined => {
@@ -29,8 +25,8 @@ export const parseJobListQuery = (req: Request): JobListQuery => {
   const eligible = toBool(req.query.eligible);
   const search = typeof req.query.search === "string" ? req.query.search : undefined;
 
-  const page = toInt(req.query.page, 1);
-  const limit = Math.min(toInt(req.query.limit, 20), 50);
+  // Shared clamp (utils/pagination.util) — cap preserved at 50 for this endpoint.
+  const { page, limit } = parsePagination(req.query, { defaultLimit: 20, max: 50 });
 
   return { skills, level, eligible, search, page, limit };
 };

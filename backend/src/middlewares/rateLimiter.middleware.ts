@@ -1,7 +1,7 @@
-import rateLimit from "express-rate-limit";
-
-export const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 100,
-  message: { error: "Too many requests, please try again later." },
-});
+/**
+ * Deprecated. Rate limiting now lives in ./rateLimit.ts, which provides a
+ * Redis-backed (cross-instance) store and per-area limiters. This file is kept
+ * only as a backward-compatible alias — new code should import the named limiters
+ * (authLimiter/ocrLimiter/submissionLimiter/aiLimiter/globalLimiter) directly.
+ */
+export { authLimiter as limiter } from "./rateLimit";

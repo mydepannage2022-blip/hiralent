@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import Image from "next/image";
 import ProfileCard from "./ProfileCard";
 import { Download, MapPin, Globe } from "lucide-react";
+import { API_HOST } from "@/src/lib/config/api";
 import type { HeroProps, ParsedLanguage } from "@/src/types/profile";
 
 /* -----------------------------
@@ -115,7 +116,7 @@ export default function Hero({ profile }: HeroProps) {
 
     if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").trim();
+    const apiUrl = API_HOST.trim();
     const base = apiUrl.replace(/\/+$/, "");
     const path = raw.startsWith("/") ? raw : `/${raw}`;
     return `${base}${path}`;

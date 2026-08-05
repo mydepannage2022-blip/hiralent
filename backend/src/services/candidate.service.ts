@@ -1,7 +1,8 @@
 // UPDATED: CV Upload now uses LOCAL STORAGE instead of Cloudinary
 
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 import path from 'path';
+import { toSignedFileUrl } from "../utils/signedFile";
 import {
   generateJobMatchReasoning,
 } from "../lib/openai";
@@ -34,7 +35,6 @@ import { triggerCandidateMatching } from "./matching/candidate-outbox.service";
 import { completenessService } from "../../src/services/candidate/profile/completeness.service";
 import { badgeService } from "../../src/services/candidate/profile/badge.service";
 
-const prisma = new PrismaClient();
 cloudinary.config({
   cloudinary_url: process.env.CLOUDINARY_URL,
 });
@@ -147,7 +147,7 @@ export const getResumeDownloadUrl = async (
     return {
       success: true,
       data: {
-        download_url: document.file_path,
+        download_url: toSignedFileUrl(document.file_path) || document.file_path,
         file_name: document.file_name,
       },
       message: "Resume download URL retrieved successfully",
@@ -585,6 +585,14 @@ export const getCandidateProfile = async (candidateId: string) => {
       };
     }
 
+    // Resume/CV paths are stored as raw `/uploads/...` values but are no longer served
+    // publicly — hand the client short-lived signed URLs instead. External URLs (e.g.
+    // Cloudinary) and nulls pass through unchanged.
+    if (profileData) {
+      (profileData as any).resume_url = toSignedFileUrl((profileData as any).resume_url);
+      (profileData as any).resume_application_url = toSignedFileUrl((profileData as any).resume_application_url);
+    }
+
     return {
       user: cleanUser,
       profile: profileData,
@@ -622,7 +630,10 @@ export const getPublicProfile = async (candidateId: string) => {
             languages: true,
             video_intro_url: true,
             links: true,
-            resume_application_url: true,
+            // resume_application_url is intentionally NOT selected here: this endpoint is
+            // public (no auth), and a resume carries PII (phone/email/address). Anonymous
+            // visitors get the profile without a CV link; the signed link is served only
+            // through the authenticated getCandidateProfile / resume-download paths.
             experience: true,
             education: true,
           },
@@ -667,7 +678,9 @@ export const getPublicProfile = async (candidateId: string) => {
       languages: user.candidateProfile?.languages || null,
       video_intro_url: user.candidateProfile?.video_intro_url || null,
       links: user.candidateProfile?.links || null,
-      resume_application_url: user.candidateProfile?.resume_application_url || null,
+      // Not exposed on the public profile (see select above). Kept as null so the
+      // response shape the frontend reads stays stable.
+      resume_application_url: null,
       experience: user.candidateProfile?.experience || null,
       education: user.candidateProfile?.education || null,
       skills: user.candidateSkills || [],

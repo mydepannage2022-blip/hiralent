@@ -1160,14 +1160,20 @@ app = FastAPI(
     description="AI-powered question generation service for Hiralent platform"
 )
 
-# CORS middleware
+# CORS middleware — env-driven allowlist (no wildcard with credentials).
+from app.core.config import settings as _cors_settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_settings.CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Internal service auth — every non-public path requires the X-API-Token header
+# (INTERNAL_API_TOKEN). Reaching the port is not enough; probes/docs stay open.
+from app.core.security import add_internal_token_guard
+add_internal_token_guard(app)
 
 # =============================================================================
 # VARIATION ENGINE ROUTES

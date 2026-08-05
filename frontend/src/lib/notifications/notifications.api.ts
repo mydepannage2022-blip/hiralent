@@ -4,7 +4,9 @@ import type {
   NotificationUpdateResponseDTO,
 } from "@/src/types/notifications.types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_HOST } from "@/src/lib/config/api";
+
+const BASE = API_HOST;
 const API_PREFIX = "/api/v1";
 
 function readTokenFromStorage(keys: string[]) {

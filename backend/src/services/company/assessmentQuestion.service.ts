@@ -1,7 +1,7 @@
 // src/services/company/assessmentQuestion.service.ts
-import { PrismaClient, DifficultyLevel } from "@prisma/client";
+import { DifficultyLevel } from "@prisma/client";
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 // ── AI fallback config (mirrors seed-assessment-templates.ts) ─────────────────
 const AI_FALLBACK_BASE_URL = process.env.APP_URL || "http://localhost:5000";

@@ -1,9 +1,8 @@
 
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { z } from "zod";
 import { SimpleTestService } from "../../services/candidate/simpleTest.service";
 
-const prisma = new PrismaClient();
 const service = new SimpleTestService(prisma);
 
 const getCandidateId = (req: any) => req.user?.user_id || req.user?.id || req.userId;

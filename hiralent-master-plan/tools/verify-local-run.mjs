@@ -156,8 +156,9 @@ async function main() {
           signal: AbortSignal.timeout(20000),
         });
         const body = await res.json().catch(() => ({}));
-        token = body?.token || null;
-        if (res.status !== 201) errors.push(`signup expected 201, got ${res.status} (${body?.message || body?.error || 'no message'}).`);
+        // Session 1: auth responses use the standard envelope → token under `data`.
+        token = body?.data?.token || null;
+        if (res.status !== 201) errors.push(`signup expected 201, got ${res.status} (${body?.error?.message || body?.message || 'no message'}).`);
         if (!token) errors.push('signup did not return a token.');
       } catch (e) {
         errors.push(`signup request failed: ${e.message}`);
@@ -172,7 +173,7 @@ async function main() {
           });
           const body = await res.json().catch(() => ({}));
           if (res.status !== 200) errors.push(`GET /me (authed) expected 200, got ${res.status}.`);
-          if (body?.user?.email !== email) errors.push(`GET /me returned email "${body?.user?.email}", expected "${email}".`);
+          if (body?.data?.user?.email !== email) errors.push(`GET /me returned email "${body?.data?.user?.email}", expected "${email}".`);
         } catch (e) {
           errors.push(`authed /me request failed: ${e.message}`);
         }

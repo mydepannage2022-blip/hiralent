@@ -10,9 +10,10 @@
  *      safety-net for the Python deletions — `tsc` protects the TS side, but Python has no
  *      compile step, so a missed dynamic/path import would otherwise go unnoticed.
  *   3. `insightsRoutes` is mounted EXACTLY once in app.ts (was duplicated at 138-139).
- *   4. `mockAssessmentRoutes` is GATED — still mounted, but never at top level (column 0);
- *      the gated mount lives inside the `NODE_ENV !== 'production'` dev block so the
- *      dev-only /api/v1/dev/mock-assessment-result endpoint can't be exposed in production.
+ *   4. `mockAssessmentRoutes` is REMOVED — the unauthenticated /api/v1/dev/mock-assessment-result
+ *      surface (and the dummy-admin middlewares/auth.ts) were deleted in Wave 1 / Session 6
+ *      (Phase 1.6), so app.ts no longer imports or mounts it at all. (Superseded the earlier
+ *      "gated, not removed" rule — deletion is the stricter close-out.)
  *   5. Every committed runtime/junk artifact is UNTRACKED by git (logs, dev.db, temp PDFs,
  *      .lnk shortcuts, backups-files-folders/, test-signup.json, ai-service test files).
  *   6. Those artifact paths are gitignored, so they can never be re-committed.
@@ -61,6 +62,12 @@ const DELETED = [
   'frontend/src/components/company/dashboard/questionbank/MCQEditor.tsx',
   'frontend/src/components/auth/OCRUpload.tsx',
   'frontend/src/components/candidate/dashboard/profile/resume-quality/ResumeQuality.tsx',
+  // Wave 1 / Session 6 (Phase 1.6) — kill the prod-reachable dev/mock surface:
+  'backend/src/middlewares/auth.ts',                                  // dummy-admin authHook
+  'backend/src/routes/mockAssessment.routes.ts',                      // unauthenticated skillAssessment write
+  'backend/src/controller/company/mockAssessmentResult.controller.ts',
+  'backend/src/services/company/mockAssessmentResult.service.ts',
+  'backend/src/types/mockAssessmentResult.types.ts',
 ];
 for (const rel of DELETED) {
   if (exists(abs(rel))) errors.push(`Dead file still on disk (should be deleted): ${rel}`);
@@ -80,9 +87,12 @@ const MUST_KEEP = [
   'backend/src/services/scraping/scraping-scheduler.ts',
   'backend/src/scheduler/interview.scheduler.ts',
   'backend/src/server.ts',
-  'backend/src/routes/mockAssessment.routes.ts',
   // Re-added in Session 7 (Phase 0.8) as a live /health probe — mounted in app.ts.
   'backend/src/routes/health.routes.ts',
+  // Live auth middlewares that share the 'auth' prefix with the deleted dummy auth.ts —
+  // over-deletion guard (auth.middleware / authz.middleware must survive).
+  'backend/src/middlewares/auth.middleware.ts',
+  'backend/src/middlewares/authz.middleware.ts',
 ];
 for (const rel of MUST_KEEP) {
   if (!exists(abs(rel))) errors.push(`Live file wrongly removed (must be kept): ${rel}`);
@@ -121,6 +131,11 @@ const TS_REF_PATTERNS = [
   // survives — imported by app/ocr-test/page.tsx — so we must NOT flag those.
   { re: /auth\/OCRUpload/, what: 'auth/OCRUpload' },
   { re: /resume-quality\/ResumeQuality/, what: 'resume-quality/ResumeQuality' },
+  // Wave 1 / Session 6 deletions. `mockAssessment` covers the route + the
+  // mockAssessmentResult controller/service/types. `middlewares/auth'` (quote right after
+  // `auth`) matches the dead dummy import but NOT live `auth.middleware`/`authz.middleware`.
+  { re: /mockAssessment/, what: 'mockAssessment (route + result controller/service/types)' },
+  { re: /middlewares\/auth['"]/, what: 'middlewares/auth (dummy-admin authHook)' },
 ];
 // IMPORTANT: scan the WHOLE frontend tree — Next.js routes live in frontend/app (a SIBLING of
 // frontend/src, how a live app/ocr-test consumer was first overlooked) AND root-level files like
@@ -156,7 +171,7 @@ for (const f of walk(abs('ai-service'), ['.py'])) {
 }
 
 // ---------------------------------------------------------------------------
-// 3 & 4. app.ts wiring: insightsRoutes once, mockAssessment gated.
+// 3 & 4. app.ts wiring: insightsRoutes once, mockAssessment fully removed.
 // ---------------------------------------------------------------------------
 const appTs = abs('backend/src/app.ts');
 if (!exists(appTs)) {
@@ -167,23 +182,11 @@ if (!exists(appTs)) {
   const insightsMounts = lines.filter((l) => /app\.use\([^)]*insightsRoutes/.test(l)).length;
   if (insightsMounts !== 1) errors.push(`insightsRoutes mounted ${insightsMounts}× in app.ts (expected exactly 1 — was duplicated at 138-139).`);
 
-  const mockMounts = lines.filter((l) => /app\.use\([^)]*mockAssessmentRoutes/.test(l)).length;
-  if (mockMounts === 0) {
-    errors.push('mockAssessmentRoutes is no longer mounted in app.ts — it should be GATED, not removed.');
-  }
-  const topLevelMock = lines.some((l) => /^app\.use\([^)]*mockAssessmentRoutes/.test(l));
-  if (topLevelMock) {
-    errors.push('mockAssessmentRoutes is mounted at top level (column 0) in app.ts — must be gated inside the `NODE_ENV !== "production"` dev block.');
-  }
-  // The endpoint is an UNAUTHENTICATED prisma write, so NODE_ENV alone is not fail-safe (a
-  // mis-set NODE_ENV in prod would re-expose it). Require an explicit ENABLE_DEV_MINT opt-in
-  // guard immediately above the mount — the codebase's own dev-endpoint hardening pattern.
-  const mockIdx = lines.findIndex((l) => /app\.use\([^)]*mockAssessmentRoutes/.test(l));
-  if (mockIdx >= 0) {
-    const guardWindow = lines.slice(Math.max(0, mockIdx - 6), mockIdx).join('\n');
-    if (!/ENABLE_DEV_MINT/.test(guardWindow)) {
-      errors.push('mockAssessmentRoutes mount is not guarded by an explicit ENABLE_DEV_MINT opt-in — NODE_ENV alone is not fail-safe for this unauthenticated DB-write endpoint.');
-    }
+  // Phase 1.6: the mock-assessment surface is DELETED, so app.ts must neither import nor
+  // mount it (the dangling-ref scan above also catches any lingering `mockAssessment` import
+  // anywhere in backend/src).
+  if (/mockAssessmentRoutes/.test(read(appTs))) {
+    errors.push('app.ts still references mockAssessmentRoutes — it was deleted in Phase 1.6 and must be fully removed.');
   }
 }
 
@@ -235,5 +238,5 @@ if (errors.length) {
   for (const e of errors) console.error('  - ' + e);
   process.exit(1);
 }
-console.log('\n✓ PASS: dead-code cleanup clean (dead files gone · live look-alikes intact · no dangling refs · insightsRoutes×1 · mockAssessment gated · artifacts untracked & gitignored).');
+console.log('\n✓ PASS: dead-code cleanup clean (dead files gone · live look-alikes intact · no dangling refs · insightsRoutes×1 · mock/dummy-admin surface removed · artifacts untracked & gitignored).');
 process.exit(0);

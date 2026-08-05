@@ -1,7 +1,7 @@
 import { Router } from 'express';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { PrismaClient } = require('@prisma/client');
-import { verifyToken } from '../utils/jwt.util';
+import prisma from '../lib/prisma';
+import { checkAuth, AuthenticatedRequest } from '../middlewares/checkAuth.middleware';
+import { denyIfNotOwnSubmission } from '../middlewares/submissionOwnership.middleware';
 
 // dynamically load worker queue if available, otherwise use a noop fallback
 let enqueueRun: (opts: { submissionId: string; assessmentId: string; questionId: string; language: string }) => Promise<void> = async () => {};
@@ -16,8 +16,6 @@ try {
   // module not found — continue with noop
 }
 
-const prisma = new PrismaClient();
-
 const r = Router();
 const devDebug = process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_MINT === '1';
 // When set to '1' in .env, skip existence checks for candidate/assessment to ease local dev debugging.
@@ -25,29 +23,19 @@ const DEV_BYPASS_CREATE_SUBMISSION = process.env.DEV_BYPASS_CREATE_SUBMISSION ==
 
 /**
  * POST /api/submissions
- * Body: { assessmentId, questionId, language, code, userId }
+ * Body: { assessmentId, questionId, language, code }
+ *
+ * The owner is ALWAYS the authenticated user (req.user.user_id). A `userId` in the
+ * body is ignored — a caller can never create a submission on behalf of someone else.
  */
-r.post('/', async (req, res) => {
+r.post('/', checkAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (devDebug) console.log('Dev submission body:', JSON.stringify(req.body));
     const { assessmentId, questionId, language, code } = req.body;
-    let userId = req.body.userId as string | undefined;
+    const userId = req.user!.user_id;
 
-    // If Authorization header is present, prefer deriving userId from the JWT.
-    const authHeader = (req.headers.authorization as string) || (req.headers.Authorization as string) || '';
-    if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const payload = verifyToken(token);
-        userId = payload.user_id;
-      } catch (err) {
-        console.error('Auth token error:', err);
-        return res.status(401).json({ error: 'Invalid or expired token' });
-      }
-    }
-
-    if (!assessmentId || !questionId || !language || !code || !userId) {
-      return res.status(400).json({ error: 'assessmentId, questionId, language, code, userId are required' });
+    if (!assessmentId || !questionId || !language || !code) {
+      return res.status(400).json({ error: 'assessmentId, questionId, language, code are required' });
     }
 
     // Defensive checks: ensure referenced rows exist to avoid FK errors.
@@ -159,9 +147,9 @@ r.post('/', async (req, res) => {
 });
 
 /**
- * GET /api/submissions/:id
+ * GET /api/submissions/:id — owner-only (checkAuth + ownership).
  */
-r.get('/:id', async (req, res) => {
+r.get('/:id', checkAuth, denyIfNotOwnSubmission, async (req, res) => {
   try {
     let s: any;
     if ((prisma as any).codeSubmission && typeof (prisma as any).codeSubmission.findUnique === 'function') {

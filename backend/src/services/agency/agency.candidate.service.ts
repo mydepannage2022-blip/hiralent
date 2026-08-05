@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export const searchCandidates = async (searchTerm: string) => {
   return prisma.user.findMany({

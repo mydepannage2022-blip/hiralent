@@ -30,7 +30,7 @@ router.get('/companies/:companyId/insights', requireAuth, requireCompanyMember, 
 });
 
 // (optional) POST /companies/:companyId/insights/recompute
-router.post('/companies/:companyId/insights/recompute', requireAuth, /* requireAdmin, */ async (req, res) => {
+router.post('/companies/:companyId/insights/recompute', requireAuth, requireCompanyMember, async (req, res) => {
   const { companyId } = req.params;
   await enqueueAiCompanySetupRecompute(companyId);
   res.status(202).json({ ok: true, enqueued: true });

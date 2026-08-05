@@ -1,10 +1,8 @@
 // services/candidate/profile/scoring.service.ts
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 import { ScoreBreakdown, ScoreHistoryItem, ServiceResponse } from '../../../types/profile.types';
 import { computeCandidateScore } from '../../../utils/scoring-algorithms';
-
-const prisma = new PrismaClient();
 
 function safeParseArray(value: unknown): any[] {
   if (!value) return [];

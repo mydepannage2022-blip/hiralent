@@ -1,10 +1,18 @@
 // backend/src/utils/jwt.util.ts (SUPER SIMPLE VERSION)
 
 import jwt from 'jsonwebtoken';
+import { optionalEnv } from '../config/requireEnv';
 
 export interface JWTPayload {
   [key: string]: any;  // Accept any properties
 }
+
+/**
+ * Access-token lifetime. Short-lived by default (Wave 1 / Phase 1.2) so a leaked
+ * token is only usable for minutes; the frontend silently rotates it via
+ * /auth/refresh. Overridable with ACCESS_TOKEN_TTL (e.g. '15m', '1h').
+ */
+export const getAccessTokenTtl = (): string => optionalEnv('ACCESS_TOKEN_TTL', '15m')!;
 
 export const generateToken = (payload: any, expiresIn: string = '7d'): string => {
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn } as any);
@@ -42,7 +50,7 @@ export const generateTokenWithSession = (
     ...(agencyId && { agency_id: agencyId }),
     ...(deviceHash && { device_hash: deviceHash }),
     ...(companyId && { company_id: companyId }) // ✅
-  }, process.env.JWT_SECRET!, { expiresIn: '7d' } as any);
+  }, process.env.JWT_SECRET!, { expiresIn: getAccessTokenTtl() } as any);
 };
 
 
@@ -107,16 +115,9 @@ export const isTokenExpired = (token: string): boolean => {
   return expiration < new Date();
 };
 
-// Refresh token
-export const refreshToken = (token: string): string | null => {
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    return jwt.sign(decoded, process.env.JWT_SECRET!, { expiresIn: '7d' } as any);
-  } catch (error: any) {
-    console.error('Refresh Token Error:', error.message);
-    return null;
-  }
-};
+// NOTE: The old refreshToken() that merely re-signed the same payload for another
+// 7 days has been removed. Real refresh is now a rotating opaque-token flow —
+// see services/auth/tokenIssue.service.ts (refreshTokens) + POST /auth/refresh.
 
 // Get session ID
 export const getSessionIdFromToken = (token: string): string | null => {
@@ -124,9 +125,9 @@ export const getSessionIdFromToken = (token: string): string | null => {
   return payload?.session_id || null;
 };
 
-// Device hash
+// Device hash — sha256 (was MD5; MD5 is a broken hash and must not be used).
 export const createDeviceHash = (userAgent: string, ip: string): string => {
   const crypto = require('crypto');
   const deviceString = `${userAgent}:${ip}`;
-  return crypto.createHash('md5').update(deviceString).digest('hex');
+  return crypto.createHash('sha256').update(deviceString).digest('hex');
 };

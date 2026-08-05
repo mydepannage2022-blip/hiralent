@@ -1,5 +1,5 @@
 // src/services/candidate/documentProcessor.service.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import fs from "fs";
 import axios from "axios";
 
@@ -12,7 +12,6 @@ import {
   CandidateServiceError,
 } from "../../types/candidate.types";
 
-const prisma = new PrismaClient();
 
 // ==================== UPDATED: Now supports both local files and Cloudinary URLs ====================
 export const processDocumentAsync = async (

@@ -263,13 +263,21 @@ async function pickQuestions(seed: TemplateSeed): Promise<string[]> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("Seeding assessment templates...\n");
+  // OPT-IN standalone seed — NOT part of the prod-safe `prisma db seed` bootstrap.
+  // It needs a running backend API (API_BASE_URL), a valid SEED_AUTH_TOKEN, and/or an
+  // existing approved-question bank. When those are absent it degrades gracefully:
+  // templates with no available questions are skipped and the script still exits 0
+  // (it never crashes a bootstrap). Run it deliberately via `pnpm seed:assessment-templates`.
+  console.log("Seeding assessment templates (opt-in)...\n");
 
+  let seeded = 0;
+  let skipped = 0;
   for (const seed of TEMPLATES) {
     const questionIds = await pickQuestions(seed);
 
     if (!questionIds.length) {
       console.warn(`⚠️  No questions available (DB + AI) for template "${seed.template_id}". Skipping.\n`);
+      skipped++;
       continue;
     }
 
@@ -304,9 +312,17 @@ async function main() {
     });
 
     console.log(`✅ Seeded "${seed.template_id}" with ${attachCount} question(s)\n`);
+    seeded++;
   }
 
-  console.log("Done ✅");
+  console.log(`Done ✅ — ${seeded} template(s) seeded, ${skipped} skipped (of ${TEMPLATES.length}).`);
+  if (seeded === 0) {
+    console.log(
+      "ℹ️  Nothing seeded. This is expected without a running API (API_BASE_URL) + valid " +
+      "SEED_AUTH_TOKEN + an approved-question bank. Assessment templates are opt-in, not part " +
+      "of the core bootstrap seed."
+    );
+  }
 }
 
 main()

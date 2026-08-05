@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -173,7 +174,7 @@ export default function CaseDetailPage() {
       setLoading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}`,
+        `${API_V1_BASE}/candidates/cases/${caseId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -250,7 +251,7 @@ export default function CaseDetailPage() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents`,
+        `${API_V1_BASE}/candidates/cases/${caseId}/documents`,
         {
           method: "POST",
           headers: {
@@ -300,7 +301,7 @@ export default function CaseDetailPage() {
       setUploading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents/confirm-replacement`,
+        `${API_V1_BASE}/candidates/cases/${caseId}/documents/confirm-replacement`,
         {
           method: "POST",
           headers: {
@@ -344,7 +345,7 @@ export default function CaseDetailPage() {
       setUploading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents/${newDocumentId}/cancel`,
+        `${API_V1_BASE}/candidates/cases/${caseId}/documents/${newDocumentId}/cancel`,
         {
           method: "DELETE",
           headers: {
@@ -375,7 +376,7 @@ export default function CaseDetailPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/candidates/cases/${caseId}/documents/${documentToDelete}`,
+        `${API_V1_BASE}/candidates/cases/${caseId}/documents/${documentToDelete}`,
         {
           method: "DELETE",
           headers: {

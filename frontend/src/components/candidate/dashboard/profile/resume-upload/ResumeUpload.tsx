@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import Button from "@/src/components/layout/Button";
 import { DropZone } from "./DropZone";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   FileText,
   AlertCircle,
@@ -43,7 +44,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
     if (!rawResumeUrl) return null;
     if (rawResumeUrl.startsWith("http://") || rawResumeUrl.startsWith("https://")) return rawResumeUrl;
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const apiUrl = API_HOST.replace(/\/+$/, "");
     const path = rawResumeUrl.startsWith("/") ? rawResumeUrl : `/${rawResumeUrl}`;
     return `${apiUrl}${path}`;
   }, [rawResumeUrl]);

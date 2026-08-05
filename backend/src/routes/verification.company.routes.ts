@@ -4,7 +4,7 @@ import { checkAuth } from '../middlewares/checkAuth.middleware';
 // Make sure the file exists at ../services/verification.service.ts or adjust the import path accordingly.
 // Update the import path if the file is located elsewhere, for example:
 import { VerificationService } from '../services/verification.service';
-import { PrismaClient } from '@prisma/client'; // Add this import
+import prisma from '../lib/prisma';
 
 // (optional) request body validation
 const SaveDraftSchema = z.object({
@@ -22,7 +22,6 @@ const SubmitSchema = z.object({
 });
 
 const router = Router();
-const prisma = new PrismaClient();
 const service = new VerificationService(prisma);
 
 // All endpoints require auth (same as your file style)

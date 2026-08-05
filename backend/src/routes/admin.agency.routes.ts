@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { adminSecurityStack } from "../middlewares/adminAuth.middleware";
 import {
   getPendingAgencies,
   getAllAgencies,
@@ -9,6 +10,10 @@ import {
 } from "../controller/superadmin/admin.agency.controller";
 
 const router = Router();
+
+// All agency admin routes are superadmin-only (approve/reject agencies). Same admin
+// auth stack as admin.verification.routes — these were previously fully unguarded.
+router.use(adminSecurityStack);
 
 // Admin agency routes
 router.get("/agencies/stats", getAgencyStats);

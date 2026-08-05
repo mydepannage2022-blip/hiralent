@@ -31,9 +31,13 @@ class Settings:
     def GEMINI_ENABLED(self):
         return bool(self.GOOGLE_API_KEY)
 
-    # CORS
+    # CORS — env-driven allowlist (comma-separated), mirroring the ai-service pattern so
+    # prod origins can be reconfigured without a code change. Defaults to the local Node
+    # backend origin for dev. Never a "*" wildcard.
     CORS_ALLOW_ORIGINS = [
-        "http://localhost:5000",  # your Node backend that calls the AI service
+        o.strip()
+        for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5000").split(",")
+        if o.strip()
     ]
 
     # NLP model

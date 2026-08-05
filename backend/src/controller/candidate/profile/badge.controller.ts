@@ -3,8 +3,7 @@
 import { Request, Response } from 'express';
 import { badgeService } from '../../../services/candidate/profile/badge.service';
 import { APIResponse } from '../../../types/candidate.types';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../../lib/prisma';
 
 export const evaluateBadgesController = async (req: Request, res: Response): Promise<void> => {
   try {

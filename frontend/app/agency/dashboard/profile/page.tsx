@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import countryList from "country-list";
 import ISO6391 from "iso-639-1";
 import { Button } from "@/src/components/agency/ui/button";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Building2,
   Mail,
@@ -85,7 +86,7 @@ export default function ProfilePage() {
 
       // Fetch profile
       const profileRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/profile`,
+        `${API_V1_BASE}/agency/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -98,7 +99,7 @@ export default function ProfilePage() {
 
       // Fetch stats
       const statsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/dashboard/stats`,
+        `${API_V1_BASE}/agency/dashboard/stats`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -131,7 +132,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/profile`,
+        `${API_V1_BASE}/agency/profile`,
         {
           method: "PUT",
           headers: {

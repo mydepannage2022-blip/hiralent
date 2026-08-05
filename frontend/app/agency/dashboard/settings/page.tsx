@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   Shield,
   Bell,
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/settings/password`,
+        `${API_V1_BASE}/agency/settings/password`,
         {
           method: "PUT",
           headers: {
@@ -93,7 +94,7 @@ export default function SettingsPage() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/settings/notifications`,
+        `${API_V1_BASE}/agency/settings/notifications`,
         {
           method: "PUT",
           headers: {
@@ -125,7 +126,7 @@ export default function SettingsPage() {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/settings/export-data`,
+        `${API_V1_BASE}/agency/settings/export-data`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

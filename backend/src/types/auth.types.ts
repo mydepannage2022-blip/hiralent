@@ -148,7 +148,7 @@ export interface CandidateProfile {
   languages?: string | null;
   location?: string | null;
   city?: string | null;
-  postal_code?: number | null;
+  postal_code?: string | null;
   preferred_locations?: string | null;
   minimum_salary_amount?: number | null;
   payment_period?: string | null;

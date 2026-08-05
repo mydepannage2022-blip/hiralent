@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { generateAssessmentInsightWithGemini } from "../../utils/gemini.client";
 
-const prisma = new PrismaClient();
 
 function countTelemetry(events: Array<{ type: string }>) {
   const c = (t: string) => events.filter((e) => String(e.type) === t).length;

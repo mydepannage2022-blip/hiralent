@@ -1,9 +1,8 @@
 // services/candidate/profile/event.service.ts
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 import { ProfileEventPayload, ServiceResponse } from '../../../types/profile.types';
 
-const prisma = new PrismaClient();
 
 export class EventService {
   async logEvent(payload: ProfileEventPayload): Promise<ServiceResponse> {

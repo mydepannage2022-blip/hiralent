@@ -1,8 +1,6 @@
 import axios from "axios";
-import { v4 as uuidv4 } from "uuid";
 import prisma from "../../lib/prisma";
-import { generateTokenWithSession } from "../../utils/jwt.util";
-import { createSession } from "./session.service";
+import { issueAuthTokens } from "./tokenIssue.service";
 import { getClientIP } from "../../utils/locationDetector.util";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -109,27 +107,19 @@ export const handleGoogleCallback = async (
   }
 
   // 5 — Generate JWT + session
-  const sessionId = uuidv4();
   const companyId =
     user.role === "company_admin" ? user.user_id : undefined;
 
-  const token = generateTokenWithSession(
-    user.user_id,
-    user.role,
-    sessionId,
-    user.agency_id || undefined,
-    undefined,
-    companyId
-  );
-
-  await createSession({
+  const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId: user.user_id,
-    jwtToken: token,
+    role: user.role,
+    agencyId: user.agency_id || undefined,
+    companyId,
     userAgent: req?.headers?.["user-agent"] || "Google OAuth",
     ipAddress: req ? getClientIP(req) : "127.0.0.1",
   });
 
-  return { token, role: user.role, isNew };
+  return { token, refreshToken, role: user.role, isNew };
 };
 
 /**
@@ -149,17 +139,7 @@ export const completeGoogleOnboarding = async (
   });
 
   // Issue a fresh token that carries the real role
-  const sessionId = uuidv4();
   const companyId = role === "company_admin" ? userId : undefined;
-
-  const token = generateTokenWithSession(
-    user.user_id,
-    role,
-    sessionId,
-    user.agency_id || undefined,
-    undefined,
-    companyId
-  );
 
   // Replace the pending session with a proper one
   await prisma.userSession.updateMany({
@@ -167,12 +147,14 @@ export const completeGoogleOnboarding = async (
     data: { is_active: false },
   });
 
-  await createSession({
+  const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId,
-    jwtToken: token,
+    role,
+    agencyId: user.agency_id || undefined,
+    companyId,
     userAgent: "Google OAuth Onboarding",
     ipAddress: "127.0.0.1",
   });
 
-  return { token, role };
+  return { token, refreshToken, role };
 };

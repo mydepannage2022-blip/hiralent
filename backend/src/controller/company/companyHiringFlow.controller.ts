@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { CompanyHiringFlowService } from "../../services/company/companyHiringFlow.service";
 
-const prisma = new PrismaClient();
 const service = new CompanyHiringFlowService(prisma);
 
 const getAuth = (req: any) => (req as any).user as { user_id: string; role: string } | undefined;

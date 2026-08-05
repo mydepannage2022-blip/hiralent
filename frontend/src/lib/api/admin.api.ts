@@ -1,5 +1,7 @@
 // src/lib/api/admin.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_HOST } from "@/src/lib/config/api";
+
+const API_BASE = API_HOST;
 
 interface LoginResponse {
   ok: boolean;

@@ -6,6 +6,7 @@ import structlog
 
 from app.config import settings
 from app.api.routes import health, validation
+from app.core.security import internal_auth
 
 # Configure structured logging
 structlog.configure(
@@ -72,9 +73,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers — the document endpoints require the internal service token
+# (X-API-Token); health stays open for probes.
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
-app.include_router(validation.router, prefix="/api/v1/documents", tags=["validation"])
+app.include_router(
+    validation.router,
+    prefix="/api/v1/documents",
+    tags=["validation"],
+    dependencies=[internal_auth],
+)
 
 
 @app.get("/")

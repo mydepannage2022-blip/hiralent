@@ -1,7 +1,6 @@
 // src/services/candidate/internal/candidateSnapshot.service.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
 
 /**
  * Snapshot Candidate pour matching.

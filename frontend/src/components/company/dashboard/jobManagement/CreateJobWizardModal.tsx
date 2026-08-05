@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_HOST } from "@/src/lib/config/api";
 import {
   X,
   Plus,
@@ -194,7 +195,7 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
   const step = steps[stepIndex];
   const isLast = step.key === "REVIEW";
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_BASE = API_HOST;
   const API_V1 = `${API_BASE}/api/v1`;
 
   const [aiLanguage, setAiLanguage] = useState<"fr" | "en">("fr");

@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { InternalCandidatesService } from "../../services/company/internalCandidates.service";
 
-const prisma = new PrismaClient();
 const service = new InternalCandidatesService(prisma);
 
 export async function getInternalCandidateDetailsForCompany(req: Request, res: Response) {

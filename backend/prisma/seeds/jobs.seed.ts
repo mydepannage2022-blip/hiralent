@@ -496,24 +496,31 @@ export const seedJobs = async () => {
   }
 
   let created = 0;
-  for (const job of jobsData) {
+  for (let i = 0; i < jobsData.length; i++) {
+    const job = jobsData[i];
     const company_id = companyIds[job.companyIndex];
-    await prisma.companyJob.create({
-      data: {
-        company_id,
-        title:            job.title,
-        location:         job.location,
-        description:      job.description,
-        salary_range:     job.salary_range,
-        // required_skills is empty so any candidate can apply (skills shown in description)
-        required_skills:  [],
-        job_type:         job.job_type,
-        experience_level: job.experience_level,
-        remote_option:    job.remote_option,
-        department:       job.department,
-        urgency_level:    job.urgency_level,
-        status:           'ACTIVE',
-      },
+    // Deterministic job_id keyed by position so re-running the seed upserts in place
+    // instead of appending 31 duplicate jobs each run (idempotent demo seed).
+    const job_id = `seed-job-${i}`;
+    const data = {
+      company_id,
+      title:            job.title,
+      location:         job.location,
+      description:      job.description,
+      salary_range:     job.salary_range,
+      // required_skills is empty so any candidate can apply (skills shown in description)
+      required_skills:  [],
+      job_type:         job.job_type,
+      experience_level: job.experience_level,
+      remote_option:    job.remote_option,
+      department:       job.department,
+      urgency_level:    job.urgency_level,
+      status:           'ACTIVE' as const,
+    };
+    await prisma.companyJob.upsert({
+      where: { job_id },
+      update: data,
+      create: { job_id, ...data },
     });
     created++;
   }

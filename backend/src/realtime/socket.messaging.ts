@@ -1,8 +1,11 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import jwt from 'jsonwebtoken';
+import { verifyTokenWithDetails } from '../utils/jwt.util';
+import * as blacklistService from '../services/auth/blacklist.service';
+import * as sessionService from '../services/auth/session.service';
 import * as messageService from '../services/message.service';
 import { MessageType } from '../validation/message.schema';
+import { getFrontendUrl } from '../config/appUrls';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -16,29 +19,52 @@ interface AuthenticatedSocket extends Socket {
 export const setupSocketIO = (httpServer: HTTPServer) => {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: getFrontendUrl(),
       methods: ["GET", "POST"],
       credentials: true
     }
   });
 
-  // Authentication middleware for Socket.io
+  // Authentication middleware for Socket.io — mirrors checkAuth (Wave 1 / Phase 1.2):
+  // mandatory blacklist check, session_id required, and the session must still be
+  // active + unexpired. Without these, a logged-out / terminated / session-less token
+  // could still open a realtime connection.
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
-      
+
       if (!token) {
         return next(new Error('Authentication token required'));
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-      socket.userId = decoded.user_id;
+      // 1) Revocation check — a logged-out / terminated token is blacklisted.
+      if (await blacklistService.isTokenBlacklisted(token)) {
+        return next(new Error('Session terminated'));
+      }
+
+      // 2) Signature + expiry.
+      const { payload, error } = verifyTokenWithDetails(token);
+      if (error || !payload) {
+        return next(new Error('Invalid token'));
+      }
+
+      // 3) Must carry a session_id (no 'bypass') ...
+      if (!payload.session_id) {
+        return next(new Error('Active session required'));
+      }
+
+      // 4) ... and that session must still be active + unexpired in the DB.
+      if (!(await sessionService.validateSession(payload.session_id, payload.user_id))) {
+        return next(new Error('Session expired or terminated'));
+      }
+
+      socket.userId = payload.user_id;
       socket.userData = {
-        user_id: decoded.user_id,
-        full_name: decoded.full_name,
-        role: decoded.role
+        user_id: payload.user_id,
+        full_name: payload.full_name,
+        role: payload.role
       };
-      
+
       next();
     } catch (error) {
       next(new Error('Invalid token'));
@@ -147,7 +173,7 @@ export const setupSocketIO = (httpServer: HTTPServer) => {
     });
 
     // Mark messages as read
-    socket.on('mark_messages_read', async (data: { message_ids: string[] }) => {
+    socket.on('mark_messages_read', async (data: { message_ids: string[]; conversation_id?: string }) => {
       try {
         if (!authenticatedSocket.userId) {
           socket.emit('error', { message: 'Authentication required' });
@@ -158,13 +184,28 @@ export const setupSocketIO = (httpServer: HTTPServer) => {
           message_ids: data.message_ids
         });
 
-        // Notify sender(s) that their messages were read
-        for (const messageId of data.message_ids) {
-          socket.broadcast.emit('message_read', {
-            message_id: messageId,
-            read_by: authenticatedSocket.userId,
-            read_at: new Date()
-          });
+        // Notify sender(s) that their messages were read. Scope the receipt to the
+        // conversation room (like reactions/deletes) instead of a global broadcast so
+        // only the participants — not every connected client — see the read event.
+        // Only emit when the DB actually flipped something: markMessagesAsRead already
+        // filters to messages the caller RECEIVED in a conversation they belong to, so
+        // updated_count === 0 means a replay / wrong-conversation / non-recipient call —
+        // emitting there would leak foreign message ids and fire false read-receipts.
+        if (result.updated_count > 0) {
+          const readAt = new Date();
+          for (const messageId of data.message_ids) {
+            const payload = {
+              message_id: messageId,
+              read_by: authenticatedSocket.userId,
+              read_at: readAt
+            };
+            if (data.conversation_id) {
+              io.to(`conversation_${data.conversation_id}`).emit('message_read', payload);
+            } else {
+              // Backward-compatible fallback for callers that don't pass a conversation_id.
+              socket.broadcast.emit('message_read', payload);
+            }
+          }
         }
 
         socket.emit('messages_marked_read', result);

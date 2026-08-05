@@ -12,6 +12,8 @@ import {
   Trash2,
   Copy,
   Heart,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
@@ -23,6 +25,7 @@ interface LegacyMessage {
   type: "text" | "voice" | "image" | "video" | "file" | "location";
   fileName?: string;
   timestamp: string;
+  read?: boolean;
   replyTo?: {
     sender: "me" | "them";
     text: string;
@@ -269,9 +272,15 @@ export default function FileMessage({
           </div>
         )}
 
-        {/* Timestamp */}
-        <div className="flex justify-end mt-2">
+        {/* Timestamp + read receipt (own messages only) */}
+        <div className="flex justify-end items-center gap-1 mt-2">
           <span className="text-xs text-gray-500">{msg.timestamp}</span>
+          {isMine &&
+            (msg.read ? (
+              <CheckCheck size={14} className="text-blue-500" aria-label="Read" />
+            ) : (
+              <Check size={14} className="text-gray-400" aria-label="Sent" />
+            ))}
         </div>
       </div>
     </div>

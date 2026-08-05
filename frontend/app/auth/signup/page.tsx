@@ -6,6 +6,7 @@ import { useSignup } from "../../../src/lib/auth/auth.queries";
 import AuthLayout from "../../../src/components/layout/AuthLayout";
 import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
+import { API_HOST } from "@/src/lib/config/api";
 
 // Types (same as before)
 interface FormData {
@@ -433,7 +434,7 @@ const SignupInfoPage = () => {
         {/* Google Sign Up Button */}
         <motion.button
           type="button"
-          onClick={() => { window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/v1/auth/google?role=candidate`; }}
+          onClick={() => { window.location.href = `${API_HOST}/api/v1/auth/google?role=candidate`; }}
           className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer "
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

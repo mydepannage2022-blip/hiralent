@@ -23,8 +23,8 @@ import {
   verifyLogin2FAController,
   verifyRecoveryCodeController,
 } from "../../controller/auth/twoFactor.controller";
+import { refreshController, logoutController } from "../../controller/auth/refresh.controller";
 import { validateBody } from "../../middlewares/validateBody.middleware";
-import { limiter } from "../../middlewares/rateLimiter.middleware";
 import { checkAuth } from "../../middlewares/checkAuth.middleware";
 
 import {
@@ -40,9 +40,11 @@ const router = express.Router();
 router.get("/me", checkAuth, getMeController);
 router.post("/signup", validateBody(SignupSchema), signupController);
 router.post("/login", validateBody(LoginSchema), loginController);
+router.post("/refresh", refreshController);
+router.post("/logout", checkAuth, logoutController);
 router.post("/resend-verification", checkAuth, resendVerificationController);
 router.get("/verify-email", verifyEmailController);
-router.post("/forgot-password", limiter, validateBody(ForgotPasswordSchema), forgotPasswordController);
+router.post("/forgot-password", validateBody(ForgotPasswordSchema), forgotPasswordController);
 router.post("/reset-password", validateBody(ResetPasswordSchema), resetPasswordController);
 
 router.delete("/delete-account", checkAuth, validateBody(DeleteAccountSchema), deleteAccountController);

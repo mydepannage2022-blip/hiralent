@@ -1,12 +1,16 @@
-import { Request, Response } from "express";
-import { PrismaClient, AgencyStatus } from "@prisma/client";
+import { Request, Response, NextFunction } from "express";
+import { AgencyStatus } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import bcrypt from "bcryptjs";
 import { sendEmail } from "../../utils/email.util";
+import { generateTempPassword } from "../../utils/tempPassword";
+import { getFrontendUrl } from "../../config/appUrls";
+import { sendSuccess } from "../../utils/apiResponse";
+import { BadRequestError, NotFoundError } from "../../errors/httpErrors";
 
-const prisma = new PrismaClient();
 
 // GET /api/v1/admin/agencies/pending
-export const getPendingAgencies = async (req: Request, res: Response) => {
+export const getPendingAgencies = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const agencies = await prisma.agency.findMany({
       where: { status: AgencyStatus.PENDING },
@@ -26,22 +30,14 @@ export const getPendingAgencies = async (req: Request, res: Response) => {
       },
     });
 
-    return res.status(200).json({
-      success: true,
-      data: agencies,
-      count: agencies.length,
-    });
+    return sendSuccess(res, agencies);
   } catch (error) {
-    console.error("Get pending agencies error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch pending agencies",
-    });
+    return next(error);
   }
 };
 
 // GET /api/v1/admin/agencies/all
-export const getAllAgencies = async (req: Request, res: Response) => {
+export const getAllAgencies = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status } = req.query;
 
@@ -69,22 +65,14 @@ export const getAllAgencies = async (req: Request, res: Response) => {
       },
     });
 
-    return res.status(200).json({
-      success: true,
-      data: agencies,
-      count: agencies.length,
-    });
+    return sendSuccess(res, agencies);
   } catch (error) {
-    console.error("Get all agencies error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch agencies",
-    });
+    return next(error);
   }
 };
 
 // GET /api/v1/admin/agencies/:id
-export const getAgencyById = async (req: Request, res: Response) => {
+export const getAgencyById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
 
@@ -93,27 +81,17 @@ export const getAgencyById = async (req: Request, res: Response) => {
     });
 
     if (!agency) {
-      return res.status(404).json({
-        success: false,
-        message: "Agency not found",
-      });
+      throw new NotFoundError("Agency not found");
     }
 
-    return res.status(200).json({
-      success: true,
-      data: agency,
-    });
+    return sendSuccess(res, agency);
   } catch (error) {
-    console.error("Get agency by id error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch agency",
-    });
+    return next(error);
   }
 };
 
 // POST /api/v1/admin/agencies/:id/approve
-export const approveAgency = async (req: Request, res: Response) => {
+export const approveAgency = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user?.user_id;
@@ -124,77 +102,105 @@ export const approveAgency = async (req: Request, res: Response) => {
     });
 
     if (!agency) {
-      return res.status(404).json({
-        success: false,
-        message: "Agency not found",
-      });
+      throw new NotFoundError("Agency not found");
     }
 
     if (agency.status !== AgencyStatus.PENDING) {
-      return res.status(400).json({
-        success: false,
-        message: `Agency is already ${agency.status}`,
-      });
+      throw new BadRequestError(`Agency is already ${agency.status}`);
     }
 
-    // Generate random password
-    const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
+    // An agency admin account is provisioned against the agency's email; a missing email
+    // would otherwise blow up user-creation with an opaque 500. Fail with an actionable 400.
+    if (!agency.email) {
+      throw new BadRequestError("Agency has no email on file; cannot provision an admin login.");
+    }
+
+    // Generate random password (CSPRNG — not Math.random). Hash BEFORE the
+    // transaction so the interactive tx below stays short (bcrypt is CPU-bound).
+    const tempPassword = generateTempPassword();
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    // Check if user already exists with this email
-    let newUser = await prisma.user.findUnique({
-      where: { email: agency.email! },
-    });
+    // Provision the admin account + flip the agency to APPROVED ATOMICALLY. Previously
+    // these were three sequential writes with no transaction: if AgencyAdminProfile.create
+    // threw (admin_id is a PK — P2002 when the user already had a profile) AFTER the agency
+    // was already flipped APPROVED, the agency was left APPROVED with a broken/half-provisioned
+    // admin, and the `status !== PENDING` guard above made it impossible to retry. One tx →
+    // all-or-nothing.
+    const { updatedAgency, newUser } = await prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { email: agency.email! },
+      });
 
-    if (newUser) {
-      // User already exists - update their role and link to agency
-      newUser = await prisma.user.update({
-        where: { user_id: newUser.user_id },
+      // SECURITY: do NOT blindly convert an arbitrary existing account. Previously any
+      // user who happened to already own the agency's email (e.g. a candidate who signed
+      // up with it) had their role escalated to agency_admin AND their password reset to
+      // the emailed temp password — a silent account takeover / lockout. Only proceed if
+      // there is no conflicting account, or the existing account is already THIS agency's
+      // admin (idempotent re-link). Otherwise refuse with an actionable error.
+      if (
+        existingUser &&
+        !(existingUser.role === "agency_admin" && existingUser.agency_id === agency.agency_id)
+      ) {
+        throw new BadRequestError(
+          `The email ${agency.email} already belongs to another account and cannot be provisioned as this agency's admin. Resolve the conflicting account first.`
+        );
+      }
+
+      const user = existingUser
+        ? await tx.user.update({
+            where: { user_id: existingUser.user_id },
+            data: {
+              role: "agency_admin",
+              agency_id: agency.agency_id,
+              is_email_verified: true,
+              password_hash: hashedPassword,
+            },
+          })
+        : await tx.user.create({
+            data: {
+              email: agency.email!,
+              password_hash: hashedPassword,
+              full_name: agency.name,
+              role: "agency_admin",
+              is_email_verified: true,
+              agency_id: agency.agency_id,
+            },
+          });
+
+      // Flip to APPROVED atomically AND only if still PENDING. The outer status guard
+      // (line ~108) is a read OUTSIDE this tx, so two concurrent approves could both pass
+      // it, both provision, and double-email / clobber the password. `updateMany` with the
+      // status predicate is the atomic guard: count 0 ⇒ someone else already processed it
+      // ⇒ throw ⇒ the whole tx (incl. the user write above) rolls back.
+      const flip = await tx.agency.updateMany({
+        where: { agency_id: id, status: AgencyStatus.PENDING },
         data: {
-          role: "agency_admin",
-          agency_id: agency.agency_id,
-          is_email_verified: true,
-          password_hash: hashedPassword,
+          status: AgencyStatus.APPROVED,
+          owner_user_id: user.user_id,
+          approved_at: new Date(),
+          approved_by: adminId || "system",
+          billing_contact_email: agency.email,
         },
       });
-    } else {
-      // Create new user for agency admin
-      newUser = await prisma.user.create({
-        data: {
-          email: agency.email!,
-          password_hash: hashedPassword,
-          full_name: agency.name,
-          role: "agency_admin",
-          is_email_verified: true,
-          agency_id: agency.agency_id,
-        },
+      if (flip.count !== 1) {
+        throw new BadRequestError("Agency is no longer pending (already processed).");
+      }
+      const agencyRow = await tx.agency.findUniqueOrThrow({ where: { agency_id: id } });
+
+      // upsert (not create) so a re-link of an existing admin doesn't P2002 on the PK.
+      await tx.agencyAdminProfile.upsert({
+        where: { admin_id: user.user_id },
+        update: { phone_number: agency.phone },
+        create: { admin_id: user.user_id, phone_number: agency.phone },
       });
-    }
 
-    // Update Agency
-    const updatedAgency = await prisma.agency.update({
-      where: { agency_id: id },
-      data: {
-        status: AgencyStatus.APPROVED,
-        owner_user_id: newUser.user_id,
-        approved_at: new Date(),
-        approved_by: adminId || "system",
-        billing_contact_email: agency.email,
-      },
-    });
-
-    // Create AgencyAdminProfile
-    await prisma.agencyAdminProfile.create({
-      data: {
-        admin_id: newUser.user_id,
-        phone_number: agency.phone,
-      },
+      return { updatedAgency: agencyRow, newUser: user };
     });
 
     // ============================
     // 📧 SEND APPROVAL EMAIL (NON-BLOCKING)
     // ============================
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = getFrontendUrl();
 
     console.log("📧 Queuing approval email to:", agency.email);
 
@@ -310,37 +316,26 @@ export const approveAgency = async (req: Request, res: Response) => {
       .then(() => console.log(`Approval email sent to: ${agency.email}`))
       .catch((err) => console.error("❌ Email send error:", err.message));
 
-    return res.status(200).json({
-      success: true,
-      message: "Agency approved successfully. Credentials sent via email.",
-      data: {
-        agency_id: updatedAgency.agency_id,
-        name: updatedAgency.name,
-        status: updatedAgency.status,
-        user_id: newUser.user_id,
-      },
+    return sendSuccess(res, {
+      agency_id: updatedAgency.agency_id,
+      name: updatedAgency.name,
+      status: updatedAgency.status,
+      user_id: newUser.user_id,
     });
   } catch (error) {
-    console.error("Approve agency error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to approve agency",
-    });
+    return next(error);
   }
 };
 
 // POST /api/v1/admin/agencies/:id/reject
-export const rejectAgency = async (req: Request, res: Response) => {
+export const rejectAgency = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
     const adminId = (req as any).user?.user_id;
 
     if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Rejection reason is required",
-      });
+      throw new BadRequestError("Rejection reason is required");
     }
 
     // Find the agency
@@ -349,17 +344,11 @@ export const rejectAgency = async (req: Request, res: Response) => {
     });
 
     if (!agency) {
-      return res.status(404).json({
-        success: false,
-        message: "Agency not found",
-      });
+      throw new NotFoundError("Agency not found");
     }
 
     if (agency.status !== AgencyStatus.PENDING) {
-      return res.status(400).json({
-        success: false,
-        message: `Agency is already ${agency.status}`,
-      });
+      throw new BadRequestError(`Agency is already ${agency.status}`);
     }
 
     // Update Agency
@@ -376,7 +365,7 @@ export const rejectAgency = async (req: Request, res: Response) => {
     // ============================
     // 📧 SEND REJECTION EMAIL (NON-BLOCKING)
     // ============================
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = getFrontendUrl();
 
     console.log("📧 Queuing rejection email to:", agency.email);
 
@@ -477,27 +466,19 @@ export const rejectAgency = async (req: Request, res: Response) => {
       .then(() => console.log(`Rejection email sent to: ${agency.email}`))
       .catch((err) => console.error("❌ Email send error:", err.message));
 
-    return res.status(200).json({
-      success: true,
-      message: "Agency rejected. Notification sent via email.",
-      data: {
-        agency_id: updatedAgency.agency_id,
-        name: updatedAgency.name,
-        status: updatedAgency.status,
-        rejection_reason: updatedAgency.rejection_reason,
-      },
+    return sendSuccess(res, {
+      agency_id: updatedAgency.agency_id,
+      name: updatedAgency.name,
+      status: updatedAgency.status,
+      rejection_reason: updatedAgency.rejection_reason,
     });
   } catch (error) {
-    console.error("Reject agency error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to reject agency",
-    });
+    return next(error);
   }
 };
 
 // GET /api/v1/admin/agencies/stats
-export const getAgencyStats = async (req: Request, res: Response) => {
+export const getAgencyStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Get counts by status
     const [pending, approved, rejected, all] = await Promise.all([
@@ -553,22 +534,15 @@ export const getAgencyStats = async (req: Request, res: Response) => {
         Math.round((totalDays / processedAgencies.length) * 10) / 10;
     }
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        totalPending: pending,
-        totalApproved: approved,
-        totalRejected: rejected,
-        thisWeek,
-        urgent,
-        avgProcessingDays,
-      },
+    return sendSuccess(res, {
+      totalPending: pending,
+      totalApproved: approved,
+      totalRejected: rejected,
+      thisWeek,
+      urgent,
+      avgProcessingDays,
     });
   } catch (error) {
-    console.error("Get agency stats error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch agency stats",
-    });
+    return next(error);
   }
 };

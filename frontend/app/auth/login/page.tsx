@@ -8,6 +8,7 @@ import { getAuthPageConfig } from "../../../config/authPagesConfig";
 import SmartLink from "@/src/components/layout/SmartLink";
 import AuthLayout from "@/src/components/layout/AuthLayout";
 import { ShieldCheck, Loader2, Copy, CheckCheck, Key, Download } from "lucide-react";
+import { API_HOST } from "@/src/lib/config/api";
 import { useRouter } from "next/navigation";
 
 interface FormData { email: string; password: string }
@@ -97,13 +98,16 @@ const LoginPage = () => {
 
   // Watch login mutation result to transition to the right step
   useEffect(() => {
-    const data = loginMutation.data as any;
-    if (!data) return;
+    const raw = loginMutation.data as any;
+    if (!raw) return;
+    // Response envelope (R-36): login payload lives under `data`.
+    const data = raw?.data ?? raw;
 
     if (data.requiresMFASetup && data.tempToken) {
       setTempToken(data.tempToken);
       setupWithTokenMutation.mutate(data.tempToken, {
-        onSuccess: (qr) => {
+        onSuccess: (qrRes: any) => {
+          const qr = qrRes?.data ?? qrRes;
           setQrData({ qrCodeDataUrl: qr.qrCodeDataUrl, manualCode: qr.manualCode });
           setStep("setup-qr");
         },
@@ -116,7 +120,8 @@ const LoginPage = () => {
 
   // Watch verify mutation result for first-time setup recovery codes
   useEffect(() => {
-    const data = verifyMutation.data as any;
+    const raw = verifyMutation.data as any;
+    const data = raw?.data ?? raw;
     if (data?.recoveryCodes?.length > 0) {
       setRecoveryCodes(data.recoveryCodes);
       setStep("setup-recovery");
@@ -289,7 +294,7 @@ const LoginPage = () => {
             <div className="text-center text-gray-500 text-sm">OR</div>
 
             <motion.button type="button"
-              onClick={() => { window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/v1/auth/google?role=candidate`; }}
+              onClick={() => { window.location.href = `${API_HOST}/api/v1/auth/google?role=candidate`; }}
               className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <svg className="w-5 h-5" viewBox="0 0 24 24">

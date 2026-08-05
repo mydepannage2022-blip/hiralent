@@ -115,10 +115,16 @@ async def run_deep_validation(job_id: str, request: DeepValidationRequest):
         if callback_url:
             logger.info(f"Sending webhook to: {callback_url}")
             try:
+                # The backend webhook is guarded by the shared BACKEND_INTERNAL_TOKEN
+                # (constant-time bearer check). Without this header the callback is rejected.
+                headers = {}
+                if settings.BACKEND_INTERNAL_TOKEN:
+                    headers["Authorization"] = f"Bearer {settings.BACKEND_INTERNAL_TOKEN}"
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         callback_url,
                         json=result.model_dump(),
+                        headers=headers,
                         timeout=30
                     )
                     logger.info(f"Webhook sent for job {job_id}: {response.status_code}")

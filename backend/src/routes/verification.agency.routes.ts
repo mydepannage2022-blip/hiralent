@@ -4,7 +4,7 @@ import { checkAuth } from '../middlewares/checkAuth.middleware';
 // Update the import path or filename as needed to match the actual file location and name
 // Update the import path or filename as needed to match the actual file location and name
 import { VerificationService } from '../services/verification.service';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const SaveDraftSchema = z.object({
   documents: z.array(z.object({
@@ -20,7 +20,6 @@ const SubmitSchema = z.object({
   }).optional(),
 });
 
-const prisma = new PrismaClient();
 const service = new VerificationService(prisma);
 
 const router = Router();

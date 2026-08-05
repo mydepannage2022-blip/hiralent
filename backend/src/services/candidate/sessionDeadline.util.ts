@@ -1,8 +1,7 @@
 // backend/src/services/candidate/sessionDeadline.util.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { CandidateAssessmentSubmissionService } from "./candidateAssessmentSubmission.service";
 
-const prisma = new PrismaClient();
 
 /**
  * effective deadline = min(session.expires_at (time limit), invite.expires_at (invite deadline))

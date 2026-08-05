@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import {
   CASE_STATUSES,
   INTEGRATION_SERVICE_STATUSES,
@@ -6,7 +6,6 @@ import {
   isCompletedIntegrationCase,
 } from "../../constants/caseStatuses";
 
-const prisma = new PrismaClient();
 
 export const getUserAgencyInfoForIntegration = async (userId: string) => {
   return prisma.user.findUnique({

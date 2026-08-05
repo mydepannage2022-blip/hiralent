@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Briefcase, Clock, CheckCircle, XCircle, AlertCircle, ArrowRight, FileText } from "lucide-react";
 import SmartLink from "../../../../layout/SmartLink";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
 interface Application {
   application_id: string;
@@ -39,7 +40,7 @@ export default function RecentApplications() {
       try {
         const token = localStorage.getItem("authToken");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/candidate/applications`,
+          `${API_V1_BASE}/candidate/applications`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

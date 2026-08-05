@@ -4,7 +4,11 @@ export const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   full_name: z.string().min(2),
-  role: z.enum(["candidate", "company_admin", "admin", "agency_admin"]),
+  // Public self-registration roles ONLY. 'admin'/'superadmin' are deliberately absent:
+  // they are cross-tenant privileged roles (requireCompanyMember treats 'admin' as god-mode),
+  // created solely via the admin path / createSuperAdmin script — never self-assignable at signup.
+  // (R-44: previously 'admin' was accepted here, letting anyone mint an admin-role session token.)
+  role: z.enum(["candidate", "company_admin", "agency_admin"]),
 });
 
 export const LoginSchema = z.object({

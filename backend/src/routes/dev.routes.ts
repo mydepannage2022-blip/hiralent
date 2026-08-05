@@ -1,13 +1,12 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../utils/jwt.util';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { emitSubmissionEvent } from '../lib/submissionEmitter';
 import { main as runCompanyNotifier } from '../scripts/companyEmailNotifier';
 import * as authService from '../services/auth/auth.service';
 import * as companyService from '../services/company.service';
 
-const prisma = new PrismaClient();
 
 const router = express.Router();
 
@@ -216,4 +215,26 @@ router.post('/dev/echo', (req: Request, res: Response) => {
     return res.status(403).json({ error: 'Not allowed' });
   }
   return res.json({ headers: req.headers, body: req.body });
+});
+
+// Dev-only error probes (Session 1). These deliberately throw so the central
+// errorHandler can be proven to return the standard envelope 500 (no stack leak,
+// no hang) for BOTH the synchronous and the async-rejection path. Gated exactly
+// like every other dev route — never reachable in production.
+router.get('/boom-sync', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+  // Synchronous throw — Express catches this natively and routes it to errorHandler.
+  throw new Error('boom-sync: intentional dev error probe');
+});
+
+router.get('/boom-async', async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+  // Async rejection — relies on Express 5 auto-forwarding a rejected handler
+  // promise to the error pipeline (the whole crash-leak guarantee rests on this).
+  await Promise.resolve();
+  throw new Error('boom-async: intentional dev error probe');
 });

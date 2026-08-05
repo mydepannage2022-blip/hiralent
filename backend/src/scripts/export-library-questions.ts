@@ -1,9 +1,7 @@
 // src/scripts/export-library-questions.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from "../lib/prisma";
 import * as fs from "fs";
 import * as path from "path";
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log("📦 Exporting Library Questions\n");

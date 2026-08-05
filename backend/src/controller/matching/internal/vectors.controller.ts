@@ -1,7 +1,7 @@
-import { PrismaClient, VectorIndexStatus } from "@prisma/client";
+import { VectorIndexStatus } from "@prisma/client";
+import prisma from '../../../lib/prisma';
 import { MatchingVectorsService } from "../../../services/matching/internal/vectors.service";
 
-const prisma = new PrismaClient();
 const service = new MatchingVectorsService(prisma);
 
 export async function upsertCandidateVector(req: any, res: any) {

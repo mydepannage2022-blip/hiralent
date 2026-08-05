@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 import { useAssignInterview } from "@/src/lib/interview/interview.queries";
 import { AssignInterviewRequest } from "@/src/types/interview.types";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE = API_V1_BASE;
 
 interface Job {
   job_id: string;

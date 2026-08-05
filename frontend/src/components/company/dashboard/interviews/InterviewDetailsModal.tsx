@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   X,
   Briefcase,
@@ -534,7 +535,7 @@ const VideoTab: React.FC<{ interviewId: string; interviewDuration?: number }> = 
         const token = localStorage.getItem("authToken");
         if (!token) { setError("Authentication required."); setIsLoading(false); return; }
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/interviews/${interviewId}/video-stream`,
+          `${API_V1_BASE}/interviews/${interviewId}/video-stream`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!response.ok) {

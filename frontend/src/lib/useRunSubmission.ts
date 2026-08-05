@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { fetchStreamTicket } from './streamTicket';
+import { API_V1_BASE } from '@/src/lib/config/api';
 
 type Status = 'idle' | 'pending' | 'running' | 'done' | 'error';
 
@@ -17,14 +19,15 @@ export function useRunSubmission() {
     try {
       setStatus('pending');
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-      // In local dev, allow missing userId by defaulting to 'dev-user' to match backend dev seed.
-      if (!payload.userId && (process.env.NODE_ENV !== 'production')) {
-        payload.userId = process.env.NEXT_PUBLIC_DEV_USER || 'dev-user';
-      }
+      const API_BASE = API_V1_BASE;
+      // The submission owner is derived server-side from the access token — no userId is sent.
+      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
       const res = await fetch(`${API_BASE}/submissions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       }).then((r) => r.json());
 
@@ -34,9 +37,13 @@ export function useRunSubmission() {
       }
 
       setStatus('running');
-      const streamBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-      // Server exposes stream at /submissions/stream/:id
-      eventRef.current = new EventSource(`${streamBase}/submissions/stream/${res.submissionId}`);
+      const streamBase = API_V1_BASE;
+      // EventSource can't send an Authorization header. Rather than putting the real access
+      // token in the URL, mint a short-lived, submission-bound stream ticket (behind
+      // checkAuth + ownership) and pass that as ?ticket=.
+      const ticket = await fetchStreamTicket(streamBase, res.submissionId, token);
+      const qs = ticket ? `?ticket=${encodeURIComponent(ticket)}` : '';
+      eventRef.current = new EventSource(`${streamBase}/submissions/stream/${res.submissionId}${qs}`);
 
       eventRef.current.onmessage = (e) => {
         const msg = JSON.parse(e.data);

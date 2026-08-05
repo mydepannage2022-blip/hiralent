@@ -111,17 +111,17 @@ const BADGES = [
 /**
  * Seed badges into database
  */
-export async function seedBadges() {
+export async function seedBadges(client: PrismaClient = prisma) {
   console.log('🌱 Starting badge seeding...');
 
   try {
     // Clear existing badges (optional - remove in production)
-    // await prisma.badge.deleteMany({});
+    // await client.badge.deleteMany({});
     // console.log('🗑️  Cleared existing badges');
 
     // Upsert badges (create or update)
     for (const badge of BADGES) {
-      await prisma.badge.upsert({
+      await client.badge.upsert({
         where: { rule_id: badge.rule_id },
         update: {
           name: badge.name,
@@ -149,7 +149,7 @@ export async function seedBadges() {
     
     // Display summary
     console.log('\n📊 Badge Summary:');
-    const badges = await prisma.badge.findMany({
+    const badges = await client.badge.findMany({
       where: { is_active: true },
       select: {
         rule_id: true,

@@ -1,7 +1,7 @@
-import { PrismaClient, NotificationAudience } from "@prisma/client";
+import { NotificationAudience } from "@prisma/client";
+import prisma from "../../lib/prisma";
 import { NotificationService } from "../../services/notification.service";
 
-const prisma = new PrismaClient();
 const notifications = new NotificationService(prisma);
 
 export class CandidateNotificationsController {

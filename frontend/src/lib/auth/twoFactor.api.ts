@@ -1,6 +1,7 @@
 import axios from "axios";
+import { API_V1_BASE } from "@/src/lib/config/api";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const BASE_URL = API_V1_BASE;
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
@@ -9,13 +10,17 @@ function authHeaders() {
 
 export const setup2FAAPI = async () => {
   const { data } = await axios.post(`${BASE_URL}/auth/2fa/setup`, {}, { headers: authHeaders() });
-  return data as { success: boolean; qrCodeDataUrl: string; manualCode: string };
+  // Response envelope (R-36): the QR payload lives under `data`, not at the top level.
+  const payload = data?.data ?? data;
+  return payload as { qrCodeDataUrl: string; manualCode: string };
 };
 
 /** Used during forced first-time setup at login — no full auth token needed */
 export const setupWithTokenAPI = async (tempToken: string) => {
   const { data } = await axios.post(`${BASE_URL}/auth/2fa/setup-with-token`, { tempToken });
-  return data as { success: boolean; qrCodeDataUrl: string; manualCode: string };
+  // Response envelope (R-36): unwrap `data`. Login page's `?? qrRes` fallback stays safe.
+  const payload = data?.data ?? data;
+  return payload as { qrCodeDataUrl: string; manualCode: string };
 };
 
 export const enable2FAAPI = async (token: string) => {

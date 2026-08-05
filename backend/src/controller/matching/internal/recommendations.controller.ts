@@ -1,8 +1,8 @@
 // src/controller/matching/internal/recommendations.controller.ts
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import prisma from "../../../lib/prisma";
 import { MatchingRecommendationsService } from "../../../services/matching/internal/recommendations.service";
 
-const prisma = new PrismaClient();
 const service = new MatchingRecommendationsService(prisma);
 
 export async function upsertJobRecommendations(req: any, res: any) {

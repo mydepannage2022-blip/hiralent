@@ -5,6 +5,7 @@ import { setup2FAAPI, setupWithTokenAPI, enable2FAAPI, disable2FAAPI, verifyLogi
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from "next/navigation";
 import { useProfile } from '../../context/ProfileContext';
+import { extractApiError } from '../api/errorMessage';
 
 
 export const useSignup = () => {
@@ -13,29 +14,30 @@ export const useSignup = () => {
 
   return useMutation({
     mutationFn: signup,
-    onSuccess: (data) => {
-      if (data.error === true || data.success === false) {
-        const errorMessage = data.message || 'Login failed';
-        toast.error(errorMessage);
-        console.error('Signup failed:', errorMessage);
+    onSuccess: (data: any) => {
+      // Response envelope (R-36): the payload (user/token/refreshToken) lives under `data`.
+      const d = data?.data ?? data;
+      if (!d?.user || !d?.token) {
+        toast.error(d?.message || 'Signup failed');
+        console.error('Signup failed: malformed response');
         return;
       }
 
       toast.success('Account created successfully!');
-      login(data.user, data.token);
+      login(d.user, d.token, d.refreshToken);
 
-      if (data.user.role === 'company_admin') {
+      if (d.user.role === 'company_admin') {
         router.push('/auth/companyRegister/info');
-      } else if (data.user.role === 'candidate') {
+      } else if (d.user.role === 'candidate') {
         router.push('/auth/signup/location');
-      } else if (data.user.role === 'agency') {
+      } else if (d.user.role === 'agency') {
         router.push('/agency/setup');
       } else {
         router.push('/');
       }
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error.message || 'Signup failed';
+      const errorMessage = extractApiError(error, 'Signup failed');
       console.error('Signup failed:', errorMessage);
       toast.error(errorMessage);
     },
@@ -50,14 +52,15 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: loginapi,
     onSuccess: (data) => {
-      const d = data as any;
+      // Response envelope (R-36): login payload lives under `data`.
+      const d = (data as any)?.data ?? (data as any);
 
       // MFA required — let the login page handle the 2FA step
       if (d.requiresMFA || d.requiresMFASetup) {
         return;
       }
 
-      // Error response (returned as 200 with error flag)
+      // Malformed / unexpected response
       if (d.error || !d.user) {
         const errorMessage = d.message || 'Login failed';
         toast.error(errorMessage);
@@ -70,7 +73,7 @@ export const useLogin = () => {
       }
 
       toast.success('Login successful!');
-      login(d.user, d.token);
+      login(d.user, d.token, d.refreshToken);
       if (d.profile) {
         setProfileData(d.profile);
       }
@@ -104,7 +107,7 @@ export const useLogin = () => {
       }
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error.message || 'Login failed';
+      const errorMessage = extractApiError(error, 'Login failed');
       console.error('Login failed:', errorMessage);
       toast.error(errorMessage);
     },
@@ -115,7 +118,7 @@ export const useSetup2FA = () => {
   return useMutation({
     mutationFn: setup2FAAPI,
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to set up 2FA');
+      toast.error(extractApiError(error, 'Failed to set up 2FA'));
     },
   });
 };
@@ -124,7 +127,7 @@ export const useSetupWithToken = () => {
   return useMutation({
     mutationFn: setupWithTokenAPI,
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to generate QR code');
+      toast.error(extractApiError(error, 'Failed to generate QR code'));
     },
   });
 };
@@ -138,7 +141,7 @@ export const useEnable2FA = () => {
       if (user) updateUser({ ...user, mfa_enabled: true });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Invalid code. Please try again.');
+      toast.error(extractApiError(error, 'Invalid code. Please try again.'));
     },
   });
 };
@@ -152,7 +155,7 @@ export const useDisable2FA = () => {
       if (user) updateUser({ ...user, mfa_enabled: false });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Invalid code. Please try again.');
+      toast.error(extractApiError(error, 'Invalid code. Please try again.'));
     },
   });
 };
@@ -166,19 +169,21 @@ export const useVerifyLogin2FA = () => {
     mutationFn: ({ tempToken, mfaToken }: { tempToken: string; mfaToken: string }) =>
       verifyLogin2FAAPI(tempToken, mfaToken),
     onSuccess: (data: any) => {
-      if (data?.error || !data?.user) {
-        toast.error(data?.message || 'Verification failed');
+      // Response envelope (R-36): verification payload lives under `data`.
+      const d = data?.data ?? data;
+      if (d?.error || !d?.user) {
+        toast.error(d?.message || 'Verification failed');
         return;
       }
       if (typeof window !== 'undefined') {
         localStorage.clear();
         sessionStorage.clear();
       }
-      login(data.user, data.token);
-      if (data.profile) setProfileData(data.profile);
+      login(d.user, d.token, d.refreshToken);
+      if (d.profile) setProfileData(d.profile);
 
       // If recovery codes are present this is first-time setup — let the login page show them
-      if (data.recoveryCodes?.length > 0) return;
+      if (d.recoveryCodes?.length > 0) return;
 
       toast.success('Login successful!');
       const urlParams = new URLSearchParams(window.location.search);
@@ -188,14 +193,14 @@ export const useVerifyLogin2FA = () => {
         return;
       }
 
-      const role = data.user?.role;
+      const role = d.user?.role;
       if (role === 'candidate') router.push('/candidate/dashboard');
       else if (role === 'company_admin') router.push('/company/dashboard');
       else if (role === 'agency_admin') router.push('/agency/dashboard');
       else router.push('/');
     },
     onError: (error: any) => {
-      const msg = error?.response?.data?.message || error.message || 'Verification failed';
+      const msg = extractApiError(error, 'Verification failed');
       toast.error(msg);
     },
   });
@@ -210,8 +215,10 @@ export const useVerifyRecoveryCode = () => {
     mutationFn: ({ tempToken, recoveryCode }: { tempToken: string; recoveryCode: string }) =>
       verifyRecoveryCodeAPI(tempToken, recoveryCode),
     onSuccess: (data: any) => {
-      if (data?.error || !data?.user) {
-        toast.error(data?.message || 'Verification failed');
+      // Response envelope (R-36): verification payload lives under `data`.
+      const d = data?.data ?? data;
+      if (d?.error || !d?.user) {
+        toast.error(d?.message || 'Verification failed');
         return;
       }
       if (typeof window !== 'undefined') {
@@ -219,8 +226,8 @@ export const useVerifyRecoveryCode = () => {
         sessionStorage.clear();
       }
       toast.success('Login successful!');
-      login(data.user, data.token);
-      if (data.profile) setProfileData(data.profile);
+      login(d.user, d.token, d.refreshToken);
+      if (d.profile) setProfileData(d.profile);
 
       const urlParams = new URLSearchParams(window.location.search);
       const callbackUrl = urlParams.get('callbackUrl');
@@ -229,14 +236,14 @@ export const useVerifyRecoveryCode = () => {
         return;
       }
 
-      const role = data.user?.role;
+      const role = d.user?.role;
       if (role === 'candidate') router.push('/candidate/dashboard');
       else if (role === 'company_admin') router.push('/company/dashboard');
       else if (role === 'agency_admin') router.push('/agency/dashboard');
       else router.push('/');
     },
     onError: (error: any) => {
-      const msg = error?.response?.data?.message || error.message || 'Recovery code verification failed';
+      const msg = extractApiError(error, 'Recovery code verification failed');
       toast.error(msg);
     },
   });
@@ -245,10 +252,10 @@ export const useUpdateLocation = () => {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: (data: { location: string; postalCode: number }) => {
+    mutationFn: (data: { location: string; postalCode: string }) => {
       return updateLocation({
         location: data.location,
-        postalCode: Number(data.postalCode),
+        postalCode: data.postalCode,
       });
     },
     onSuccess: () => {
@@ -299,7 +306,6 @@ export const useUploadResume = () => {
 };
 
 export const useVerifyEmail = () => {
-  const { login } = useAuth();
   const router = useRouter();
 
   return useMutation({
@@ -308,8 +314,11 @@ export const useVerifyEmail = () => {
       console.log("Email verified successfully:", data);
       toast.success('Email verified successfully!');
 
-      if (data.success && data.user && data.token) {
-        login(data.user, data.token);
+      // Email is verified server-side; there is no auth token to consume here.
+      // Route through /auth/logout (clears any stale local session) → login, where
+      // the user signs in normally (2FA enforced). Same end-state as before, minus
+      // the pointless session-less token.
+      if (data.success) {
         router.push('/auth/logout');
       }
     },

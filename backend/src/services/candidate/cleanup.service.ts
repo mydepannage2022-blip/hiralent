@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../lib/prisma';
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
-const prisma = new PrismaClient();
 
 cloudinary.config({
   cloudinary_url: process.env.CLOUDINARY_URL,

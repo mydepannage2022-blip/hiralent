@@ -7,8 +7,9 @@ import {
   Building2, ArrowRight, Loader2, Check, Search,
 } from "lucide-react";
 import Image from "next/image";
+import { API_HOST } from "@/src/lib/config/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE = API_HOST;
 
 type Role = "candidate" | "company_admin";
 
@@ -63,18 +64,22 @@ function OnboardingInner() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Setup failed");
+      if (!res.ok) throw new Error(data.error?.message || data.message || "Setup failed");
 
-      localStorage.setItem("authToken", data.token);
+      // Tolerant of both the response envelope ({ data:{ token } }) and legacy top-level.
+      const payload = data?.data ?? data;
+      localStorage.setItem("authToken", payload.token);
+      if (payload.refreshToken) localStorage.setItem("refreshToken", payload.refreshToken);
 
-      // Fetch and store user profile so AuthContext is populated
+      // Fetch and store user profile so AuthContext is populated (/auth/me is enveloped)
       try {
         const meRes = await fetch(`${API_BASE}/api/v1/auth/me`, {
-          headers: { Authorization: `Bearer ${data.token}` },
+          headers: { Authorization: `Bearer ${payload.token}` },
         });
         const meData = await meRes.json();
-        if (meData.user) {
-          localStorage.setItem("authUser", JSON.stringify(meData.user));
+        const meUser = (meData?.data ?? meData)?.user;
+        if (meUser) {
+          localStorage.setItem("authUser", JSON.stringify(meUser));
         }
       } catch {
         // Non-fatal

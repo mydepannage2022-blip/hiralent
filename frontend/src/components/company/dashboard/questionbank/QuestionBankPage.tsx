@@ -11,6 +11,7 @@ import NextLink from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../../context/AuthContext";
 import QuestionEditor from "../questionbank/QuestionEditor";
+import { API_V1_BASE, API_HOST } from "@/src/lib/config/api";
 
 type AssessmentMini = {
   assessment_id: string;
@@ -24,7 +25,7 @@ function getToken() {
 }
 
 async function fetchAssessment(assessmentId: string): Promise<AssessmentMini | null> {
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const base = API_HOST;
   const token = getToken();
 
   const res = await fetch(`${base}/api/v1/employer-assessments/${assessmentId}`, {
@@ -764,7 +765,7 @@ https://www.hackerrank.com/challenges/compare-the-triplets/problem`;
     setTestResult(null);
     
     try {
-      const response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/test", {
+      const response = await fetch(`${API_V1_BASE}/questions/scrape/leetcode/test`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1855,7 +1856,7 @@ const attachSelectedToAssessment = async () => {
   }
 
   try {
-const url = `http://localhost:5000/api/v1/employer-assessments/${attachTo}/questions/attach`;
+const url = `${API_V1_BASE}/employer-assessments/${attachTo}/questions/attach`;
 console.log("ATTACH URL =>", url);
 
 const res = await fetch(url, {
@@ -1898,7 +1899,7 @@ if (!res.ok || !data?.success) {
   useEffect(() => {
     const checkVectorHealth = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/questions/vector/health', {
+        const response = await fetch(`${API_V1_BASE}/questions/vector/health`, {
           headers: authHeaders()
         });
         
@@ -1928,8 +1929,8 @@ if (!res.ok || !data?.success) {
     setLoading(true);
     try {
       const endpoint = questionSource === "library" 
-        ? "http://localhost:5000/api/questions?limit=500&page=1&isLibrary=true&status=approved"
-        : "http://localhost:5000/api/questions?limit=1000&page=1";
+        ? `${API_V1_BASE}/questions?limit=500&page=1&isLibrary=true&status=approved`
+        : `${API_V1_BASE}/questions?limit=1000&page=1`;
         
       const response = await fetch(endpoint, { headers: authHeaders() });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -1995,13 +1996,13 @@ if (!res.ok || !data?.success) {
     try {
       let ok = false;
       if (next === "approved") {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/approve`, { method: "PATCH", headers: authHeaders() });
+        const r = await fetch(`${API_V1_BASE}/questions/${q.id}/approve`, { method: "PATCH", headers: authHeaders() });
         ok = !!(await r.json()).success;
       } else if (next === "rejected") {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}/reject`, { method: "PATCH", headers: authHeaders() });
+        const r = await fetch(`${API_V1_BASE}/questions/${q.id}/reject`, { method: "PATCH", headers: authHeaders() });
         ok = !!(await r.json()).success;
       } else {
-        const r = await fetch(`http://localhost:5000/api/questions/${q.id}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ status: "pending_review" }) });
+        const r = await fetch(`${API_V1_BASE}/questions/${q.id}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ status: "pending_review" }) });
         ok = !!(await r.json()).success;
       }
       if (ok) setQuestions((prev) => prev.map((it) => (it.id === q.id ? { ...it, status: next } : it)));
@@ -2016,7 +2017,7 @@ if (!res.ok || !data?.success) {
     if (!requireAuth()) return;
     if (!window.confirm("Are you sure you want to delete this question?\n\nThis action cannot be undone.")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, { method: "DELETE", headers: authHeaders() });
+      const response = await fetch(`${API_V1_BASE}/questions/${questionId}`, { method: "DELETE", headers: authHeaders() });
       const data = await response.json();
       if (data.success) {
         setQuestions(prev => prev.filter(q => q.id !== questionId));
@@ -2034,7 +2035,7 @@ if (!res.ok || !data?.success) {
   const handleSaveQuestion = async (questionData: Partial<Question>) => {
     if (!requireAuth()) return;
     try {
-      const url = editorMode === "create" ? "http://localhost:5000/api/questions" : `http://localhost:5000/api/questions/${editingQuestion?.id}`;
+      const url = editorMode === "create" ? `${API_V1_BASE}/questions` : `${API_V1_BASE}/questions/${editingQuestion?.id}`;
       const method = editorMode === "create" ? "POST" : "PUT";
       const response = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(questionData) });
       const data = await response.json();
@@ -2069,10 +2070,10 @@ if (!res.ok || !data?.success) {
     setGenerating(true);
     try {
       const endpoint = payload.type === "mcq" 
-        ? "http://localhost:5000/api/questions/generate-mcq"
+        ? `${API_V1_BASE}/questions/generate-mcq`
         : payload.withDiagram
-        ? "http://localhost:5000/api/questions/generate-with-diagram"
-        : "http://localhost:5000/api/questions/generate";
+        ? `${API_V1_BASE}/questions/generate-with-diagram`
+        : `${API_V1_BASE}/questions/generate`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -2141,7 +2142,7 @@ const handleAiBatchGenerate = async (payload: {
   try {
     // ✅ MCQ batch endpoint
     if (payload.type === "mcq") {
-      const res = await fetch("http://localhost:5000/api/questions/generate-mcq-batch", {
+      const res = await fetch(`${API_V1_BASE}/questions/generate-mcq-batch`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({
@@ -2183,7 +2184,7 @@ const handleAiBatchGenerate = async (payload: {
           const hint = payload.uniqueVariants ? VARIANT_HINTS[(i + topic.length) % VARIANT_HINTS.length] : "";
           const specificTopic = hint ? `${topic} (${hint})` : topic;
 
-          const res = await fetch("http://localhost:5000/api/questions/generate-with-diagram", {
+          const res = await fetch(`${API_V1_BASE}/questions/generate-with-diagram`, {
             method: "POST",
             headers: authHeaders(),
             body: JSON.stringify({
@@ -2221,7 +2222,7 @@ const handleAiBatchGenerate = async (payload: {
     }
 
     // ✅ CODING normal batch endpoint
-    const res = await fetch("http://localhost:5000/api/questions/generate-batch", {
+    const res = await fetch(`${API_V1_BASE}/questions/generate-batch`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
@@ -2273,7 +2274,7 @@ const handleAiBatchGenerate = async (payload: {
     setImporting(true);
     setShowSourceSelector(false);
     try {
-      const response = await fetch('http://localhost:5000/api/questions/import-scraped', {
+      const response = await fetch(`${API_V1_BASE}/questions/import-scraped`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ source: source, max_pages: maxPages })
@@ -2301,7 +2302,7 @@ const handleAiBatchGenerate = async (payload: {
       let data;
 
       if (platform === "leetcode") {
-        response = await fetch("http://localhost:5000/api/questions/scrape/leetcode/batch", {
+        response = await fetch(`${API_V1_BASE}/questions/scrape/leetcode/batch`, {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ urls }),
@@ -2325,7 +2326,7 @@ const handleAiBatchGenerate = async (payload: {
           throw new Error(data.error || data.details || "LeetCode scraping failed");
         }
       } else {
-        response = await fetch("http://localhost:5000/api/questions/scrape", {
+        response = await fetch(`${API_V1_BASE}/questions/scrape`, {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ urls, platform }),
@@ -2374,7 +2375,7 @@ const handlePatternScrapeAndGenerate = async (payload: {
   
   try {
     // ✅ Single endpoint call - no more separate scrape + generate
-    const response = await fetch("http://localhost:5000/api/questions/pattern-scrape-and-generate", {
+    const response = await fetch(`${API_V1_BASE}/questions/pattern-scrape-and-generate`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
@@ -2458,7 +2459,7 @@ const handlePatternScrapeAndGenerate = async (payload: {
 
       for (const questionId of selectedIds) {
         try {
-          const response = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+          const response = await fetch(`${API_V1_BASE}/questions/${questionId}`, {
             method: 'DELETE',
             headers: authHeaders()
           });
@@ -2493,7 +2494,7 @@ const handlePatternScrapeAndGenerate = async (payload: {
   useEffect(() => {
     const checkVettingHealth = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/questions/vetting/health', {
+        const response = await fetch(`${API_V1_BASE}/questions/vetting/health`, {
           headers: authHeaders()
         });
         
@@ -2526,7 +2527,7 @@ const handlePatternScrapeAndGenerate = async (payload: {
     
     setVetting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/questions/${currentVettingId}/vet`, {
+      const response = await fetch(`${API_V1_BASE}/questions/${currentVettingId}/vet`, {
         method: 'POST',
         headers: authHeaders()
       });
@@ -2566,7 +2567,7 @@ const handlePatternScrapeAndGenerate = async (payload: {
     
     setVetting(true);
     try {
-      const response = await fetch('http://localhost:5000/api/questions/vetting/batch', {
+      const response = await fetch(`${API_V1_BASE}/questions/vetting/batch`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ ids: batchVettingIds })

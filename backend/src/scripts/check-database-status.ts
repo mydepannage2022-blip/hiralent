@@ -1,7 +1,6 @@
 // src/scripts/check-database-status.ts
-import { PrismaClient } from "@prisma/client";
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 async function main() {
   console.log("🔍 Checking Database Status\n");

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/src/context/AuthContext";
+import { API_V1_BASE } from "@/src/lib/config/api";
 import {
   ArrowLeft,
   Brain,
@@ -75,7 +76,7 @@ export default function AIAnalysisPage() {
   const fetchDocumentData = async () => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agency/cases/${caseId}`,
+        `${API_V1_BASE}/agency/cases/${caseId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

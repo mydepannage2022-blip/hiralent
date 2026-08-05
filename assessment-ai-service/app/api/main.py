@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.security import internal_auth
 from app.api.v1.router import v1_router
 
 def create_app() -> FastAPI:
@@ -47,8 +48,9 @@ def create_app() -> FastAPI:
             "environment": settings.SERVICE_ENV
         }
     
-    # Include API routers
-    app.include_router(v1_router, prefix="/api/v1")
+    # Include API routers — every /api/v1/* endpoint requires the internal service token
+    # (X-API-Token). "/" and "/health" above stay open for liveness probes.
+    app.include_router(v1_router, prefix="/api/v1", dependencies=[internal_auth])
     
     return app
 

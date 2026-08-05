@@ -1,12 +1,12 @@
-import { generateTokenWithSession } from "../../utils/jwt.util";
-import { createSession } from "./session.service";
+import { issueAuthTokens } from "./tokenIssue.service";
 import { getClientIP } from "../../utils/locationDetector.util";
-import { v4 as uuidv4 } from 'uuid';
 import prisma from "../../lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../../utils/email.util";
 import { generateToken } from "../../utils/jwt.util";
+import { ConflictError } from "../../errors/httpErrors";
+import logger from "../../lib/logger";
 import { getWelcomeEmailTemplate, getLegacyCheckEmailTemplate } from "../emailTemplates.service";
 import fs from 'fs/promises';
 import path from 'path';
@@ -23,75 +23,69 @@ import {
 import { DeleteAccountRequest } from "../../validation/auth.schema";
 
 export const signup = async (input: SignupInput, req?: any) => {
-  try {
-    const { email, password, full_name, role } = input;
+  const { email, password, full_name, role } = input;
 
-    const exists = await prisma.user.findUnique({ where: { email } });
-    if (exists) throw new Error("Email already exists");
+  const exists = await prisma.user.findUnique({ where: { email } });
+  // A ConflictError propagates to the central errorHandler → 409 envelope,
+  // instead of the old return-{error:true} that the controller sent back as 201.
+  if (exists) throw new ConflictError("Email already exists");
 
-    const password_hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password_hash,
-        full_name,
-        role,
-        agency_id: null, 
-        is_email_verified: false,
-      },
-    });
+  const password_hash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password_hash,
+      full_name,
+      role,
+      agency_id: null,
+      is_email_verified: false,
+    },
+  });
 
-    const sessionId = uuidv4();
-    const companyId = user.role === "company_admin" ? user.user_id : undefined;
+  const companyId = user.role === "company_admin" ? user.user_id : undefined;
 
-    const token = generateTokenWithSession(
-      user.user_id,
-      user.role,
-      sessionId,
-      user.agency_id || undefined,
-      undefined,
-      companyId
-    );
+  const { accessToken: token, refreshToken } = await issueAuthTokens({
+    userId: user.user_id,
+    role: user.role,
+    agencyId: user.agency_id || undefined,
+    companyId,
+    userAgent: req?.headers['user-agent'] || 'Unknown',
+    ipAddress: req ? getClientIP(req) : '127.0.0.1',
+    screenResolution: req?.body?.screenResolution,
+    timezone: req?.body?.timezone,
+    language: req?.body?.language,
+  });
 
-    await createSession({
-      userId: user.user_id,
-      jwtToken: token,
-      userAgent: req?.headers['user-agent'] || 'Unknown',
-      ipAddress: req ? getClientIP(req) : '127.0.0.1',
-      screenResolution: req?.body?.screenResolution,
-      timezone: req?.body?.timezone,
-      language: req?.body?.language
-    });
+  // Email is best-effort — a delivery failure must NOT fail signup (the account
+  // already exists). But it is no longer swallowed: sendEmail/sendVerificationEmail
+  // return an observable result, so we track whether every message was delivered
+  // and surface it as `emailDelivered` (R-32). The user still gets 201.
+  let emailDelivered = true;
 
-    await sendVerificationEmail(user.email, user.user_id);
+  const verifyResult = await sendVerificationEmail(user.email, user.user_id);
+  if (!verifyResult.delivered) emailDelivered = false;
 
-    try {
-      if (user.role === 'company' || user.role === 'company_admin') {
-        const verificationToken = generateToken({ userId: user.user_id }, '7d');
-        const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
-        const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
-        console.log('[post-signup-email] Sending welcome email to', user.email);
-        await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
-        console.log('[post-signup-email] Welcome email send attempted for', user.email);
+  if (user.role === 'company' || user.role === 'company_admin') {
+    const verificationToken = generateToken({ userId: user.user_id }, '7d');
+    const verificationLink = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
+    const welcomeHtml = getWelcomeEmailTemplate(verificationLink, user.full_name || user.email);
+    const welcomeRes = await sendEmail({ to: user.email, subject: 'Welcome to Hiralent — verify your email', html: welcomeHtml });
+    if (!welcomeRes.delivered) emailDelivered = false;
 
-        const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
-        const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
-        console.log('[post-signup-email] Sending legacy-check (upload) email to', user.email, 'with uploadLink=', uploadLink);
-        await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
-        console.log('[post-signup-email] Legacy-check email send attempted for', user.email);
-      }
-    } catch (err) {
-      console.error('Error sending post-signup company emails:', err);
-    }
-
-    return { user, token };
-  } catch (error: any) {
-    console.error("Signup Error:", error);
-    return {
-      error: true,
-      message: error.message || "Signup failed",
-    };
+    const uploadLink = `${process.env.FRONTEND_URL}${process.env.FRONTEND_UPLOAD_PATH || '/company/upload'}?companyId=${user.user_id}`;
+    const legacyHtml = getLegacyCheckEmailTemplate(uploadLink, user.full_name || user.email);
+    const legacyRes = await sendEmail({ to: user.email, subject: 'Please upload company documents for verification', html: legacyHtml });
+    if (!legacyRes.delivered) emailDelivered = false;
   }
+
+  if (!emailDelivered) {
+    logger.error({ email: user.email, role: user.role }, "signup succeeded but one or more emails failed to deliver");
+  }
+
+  // NEVER return credential/secret columns to the client. prisma.user.create()
+  // hands back the full row (incl. password_hash + any 2FA secret) — strip them.
+  const { password_hash: _ph, mfa_secret: _ms, ...safeUser } = user as any;
+  return { user: safeUser, token, refreshToken, emailDelivered };
 };
 
 
@@ -160,11 +154,16 @@ export const resendVerificationEmail = async (userId: string) => {
       };
     }
 
-    await sendVerificationEmail(user.email, user.user_id);
+    // Observe the delivery result — sendVerificationEmail no longer throws, so a
+    // failure here must be surfaced (R-32), not reported as a blanket success.
+    const sendResult = await sendVerificationEmail(user.email, user.user_id);
 
-    return { 
-      success: true, 
-      message: "Verification email sent successfully" 
+    return {
+      success: true,
+      message: sendResult.delivered
+        ? "Verification email sent successfully"
+        : "Verification email could not be delivered — please try again later.",
+      emailDelivered: sendResult.delivered,
     };
   } catch (error: any) {
     console.error("Resend Verification Email Error:", error);
@@ -176,14 +175,16 @@ export const resendVerificationEmail = async (userId: string) => {
 };
 
 export const sendVerificationEmail = async (email: string, userId: string) => {
-  try {
-    const token = generateToken({ userId }, "15m");
-    const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
+  const token = generateToken({ userId }, "15m");
+  const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
 
-    await sendEmail({
-      to: email,
-      subject: "Verify your email",
-      html: `
+  // Returns the observable EmailResult (delivered/error) instead of throwing.
+  // Callers (signup, resend) decide how to react; a delivery failure never
+  // breaks the surrounding flow — it is logged and surfaced, not swallowed (R-32).
+  const result = await sendEmail({
+    to: email,
+    subject: "Verify your email",
+    html: `
       <div style="font-family: 'Segoe UI', sans-serif; background: #f9fafb; padding: 40px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 32px;">
           <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to <span style="color:#111827;">Hiralent</span></h2>
@@ -205,19 +206,12 @@ export const sendVerificationEmail = async (email: string, userId: string) => {
         </div>
       </div>
       `,
-    });
-  } catch (error: any) {
-      console.error("Send Verification Email Error:", error);
-      // In development we don't want email delivery failures to break signup flows.
-      // When ENABLE_DEV_MINT=1 we log the error and continue so developers can
-      // create accounts without a working SMTP. In production we re-throw.
-      if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_MINT !== '1') {
-        throw new Error("Failed to send verification email");
-      } else {
-        console.warn('DEV MODE: continuing despite email send failure');
-        return;
-      }
+  });
+
+  if (!result.delivered) {
+    logger.error({ email, error: result.error }, "verification email failed to deliver");
   }
+  return result;
 };
 
 export const verifyEmail = async ({ token }: VerifyEmailInput) => {
@@ -228,13 +222,11 @@ export const verifyEmail = async ({ token }: VerifyEmailInput) => {
       data: { is_email_verified: true },
     });
 
-    const authToken = generateToken({
-      user_id: user.user_id,
-      role: user.role,
-      agency_id: user.agency_id,
-    });
-
-    return { user, token: authToken };
+    // NOTE: we intentionally do NOT mint an auth token here. It would be a
+    // session-less JWT that checkAuth rejects anyway (no session_id), and the UI
+    // routes straight to /auth/logout after verifying. The user logs in normally
+    // (which enforces 2FA). Returning a dead 7-day token was pure risk with no use.
+    return { user };
   } catch (error: any) {
     console.error("Verify Email Error:", error);
     return {
