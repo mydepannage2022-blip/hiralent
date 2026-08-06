@@ -8,10 +8,11 @@ from .redis_manager import VettingRedisManager
 class VettingPipelineService:
     """Service principal qui orchestre tout le pipeline"""
     
-    def __init__(self, redis_url: str, sandbox_url: str):
+    def __init__(self, redis_url: str, sandbox_url: str, sandbox_token: str = None):
         self.logger = logging.getLogger(__name__)
         self.redis_manager = VettingRedisManager(redis_url)
-        self.sandbox_client = SandboxClient(sandbox_url)
+        # sandbox_url is the hardened runner-python HTTP base; sandbox_token is the shared X-Runner-Token.
+        self.sandbox_client = SandboxClient(sandbox_url, sandbox_token)
         self.validator = StaticValidator()
         self.quality_scorer = QualityScorer(self.sandbox_client)
     

@@ -28,11 +28,16 @@ export const EvidenceItemSchema = z.object({
   url: z.string().url().nullable().optional(),
 });
 
+// R-34 (Wave 4 S2): plagiarism detection is de-scoped. Scores are NULLABLE and a
+// `status` distinguishes a real result ('computed') from an un-run check
+// ('not_computed'). A null score must never be read as 0 / "clean".
 export const PlagiarismReportSchema = z.object({
-  staticScore: z.number().min(0).max(1),
-  dynamicScore: z.number().min(0).max(1),
-  webScore: z.number().min(0).max(1),
-  finalScore: z.number().min(0).max(1),
+  status: z.enum(['computed', 'not_computed']).optional(),
+  reason: z.string().optional(),
+  staticScore: z.number().min(0).max(1).nullable(),
+  dynamicScore: z.number().min(0).max(1).nullable(),
+  webScore: z.number().min(0).max(1).nullable(),
+  finalScore: z.number().min(0).max(1).nullable(),
   evidence: z.array(EvidenceItemSchema),
 });
 

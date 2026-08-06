@@ -6,12 +6,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from app.core.prompt_guard import sanitize_inline, build_safety_settings
+
+
 class GeminiCorpusGenerator:
     def __init__(self):
         # Configuration Gemini
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel(os.getenv("AI_MODEL", "gemini-pro"))
-    
+        # Safe safety thresholds (R-34) at construction; topic sanitized inline below.
+        self.model = genai.GenerativeModel(
+            os.getenv("AI_MODEL", "gemini-pro"), safety_settings=build_safety_settings()
+        )
+
     def generate_from_topic(self, topic: str, difficulty: str = "medium") -> Dict[str, Any]:
         prompt = self._build_coding_prompt(topic, difficulty)
         
@@ -39,6 +45,9 @@ class GeminiCorpusGenerator:
             }
     
     def _build_coding_prompt(self, topic: str, difficulty: str) -> str:
+        # Neutralize user-supplied topic/difficulty (R-34).
+        topic = sanitize_inline(topic)
+        difficulty = sanitize_inline(difficulty)
         return f"""
         Create a {difficulty} level programming question about: {topic}
         

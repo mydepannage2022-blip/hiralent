@@ -31,7 +31,7 @@
 - [ ] Standardize one of `bcrypt` / `bcryptjs`.
 - [ ] Add missing frontend deps `country-list`, `iso-639-1`; restore `src/lib/queryClient`, `message/message.types`.
 - [ ] One package manager; delete the other lockfiles at root/backend/frontend; fix/remove root `package.json`.
-- [ ] Python: UTF-8 re-encode `assessment-ai-service/requirements.txt`; align `google-generativeai` (0.3.2/0.8.5) and Pydantic (v1 in runner-plagiarism vs v2) versions; pin unpinned deps.
+- [ ] Python: UTF-8 re-encode `assessment-ai-service/requirements.txt` and the **dead** UTF-16 `ai-service/app/question_generator/corpus_generator.py` (OpenAI near-duplicate of `gemini_generator.py`, imported nowhere — candidate for deletion); align `google-generativeai` versions (0.3.2 in doc-validator vs newer in ai-service); pin unpinned deps. _(The `runner-plagiarism` Pydantic-v1 mismatch is gone — that service was retired in Wave 4 / Session 2.)_
 
 ## Dead DB tables (drop via migration) — Wave 2
 - [ ] `QuestionBank` (0 reads/writes), `ChatHistory` (0 reads/writes), `CandidateGlobalScore*` (write-only).
@@ -44,6 +44,6 @@
 
 ## Stubbed logic to implement or de-scope — Wave 4 (also Wave 5 for payments)
 - [ ] Verification signals `whois`/`website`/`linkedin` (hardcoded stubs); `verification/helpers/file.ts` S3 fetch (throws).
-- [ ] `sandbox-service` (real isolation) + `plagiarism-service` (real pipeline) — both placeholder today.
+- [x] `sandbox-service` (real isolation) + `plagiarism-service` (real pipeline) — both were placeholder. **[W4-S1a/S1b]** `sandbox-service` **retired**: folded onto the one hardened runner-python HTTP runner (`docker_runner.py` + hardened `http_service.py`, fail-closed); ai-service vetting repointed off the gRPC stub. **[W4-S2]** `plagiarism-service` **de-scoped & retired** (no real detector was feasible this session): the unwired gRPC `python-services/plagiarism-service/` + the redundant `backend/services/runner-plagiarism/` stub deleted (whole `python-services/` dir removed with them); the live runner `/plagiarism` route + backend client now emit an explicit **`not_computed`** signal (null scores) instead of a fabricated `risk:0.0`/mock `0.92` — no consumer sees a fake "clean" score. A real pipeline (static AST + embeddings + web-corpus) remains explicitly out of scope.
 - [ ] Wafaa/Youssra gRPC clients in `assessment-ai-service` (TODO stubs).
 - [ ] Payments `StripeGateway`/`PayPalGateway` (Wave 5).

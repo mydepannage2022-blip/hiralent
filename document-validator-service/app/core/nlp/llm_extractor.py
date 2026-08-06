@@ -9,6 +9,11 @@ from enum import Enum
 
 from app.models.enums import DocumentType
 from app.config import settings
+from app.core.nlp.prompt_guard import (
+    wrap_untrusted,
+    build_safety_settings,
+    ISOLATION_PREAMBLE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +145,7 @@ Important:
 - Place of birth: look for "Lieu de naissance", "Place of birth"
 - Issuing country: look for "Autorité", "Authority", or derive from passport code (MAR=Morocco, FRA=France)"""
 
-        user_prompt = f"Extract passport data from this OCR text:\n\n{text[:3000]}"
+        user_prompt = f"Extract passport data from this OCR text:\n\n{wrap_untrusted(text, label='OCR_TEXT', max_len=3000)}"
 
         return await self._call_ai(system_prompt, user_prompt)
 
@@ -170,7 +175,7 @@ Important:
 - Account number can be regular account or IBAN format
 - Look for labels in multiple languages (Balance, Solde, etc.)"""
 
-        user_prompt = f"Extract bank statement data from this OCR text:\n\n{text[:3000]}"
+        user_prompt = f"Extract bank statement data from this OCR text:\n\n{wrap_untrusted(text, label='OCR_TEXT', max_len=3000)}"
 
         return await self._call_ai(system_prompt, user_prompt)
 
@@ -201,7 +206,7 @@ Important:
 - Look for French labels like "Salaire", "Poste", "Date d'embauche"
 """
 
-        user_prompt = f"Extract employment letter data from this OCR text:\n\n{text[:3000]}"
+        user_prompt = f"Extract employment letter data from this OCR text:\n\n{wrap_untrusted(text, label='OCR_TEXT', max_len=3000)}"
 
         return await self._call_ai(system_prompt, user_prompt)
 
@@ -225,7 +230,7 @@ Important:
 - purpose_of_travel: brief reason for travel
 - signature_present: true if form mentions signature or signed"""
 
-        user_prompt = f"Extract visa application form data from this OCR text:\n\n{text[:3000]}"
+        user_prompt = f"Extract visa application form data from this OCR text:\n\n{wrap_untrusted(text, label='OCR_TEXT', max_len=3000)}"
 
         return await self._call_ai(system_prompt, user_prompt)
 
@@ -250,7 +255,7 @@ Important:
 - Extract full address including city, country
 - booking_reference: confirmation/reservation number"""
 
-        user_prompt = f"Extract accommodation booking data from this OCR text:\n\n{text[:3000]}"
+        user_prompt = f"Extract accommodation booking data from this OCR text:\n\n{wrap_untrusted(text, label='OCR_TEXT', max_len=3000)}"
 
         return await self._call_ai(system_prompt, user_prompt)
 
@@ -265,6 +270,10 @@ Important:
         Returns:
             Extracted data as dictionary
         """
+        # Instruction-isolation (R-34): tell the model that anything inside the
+        # UNTRUSTED fences in user_prompt is OCR DATA, never instructions. Applied at
+        # this single choke-point so both providers inherit it.
+        system_prompt = f"{ISOLATION_PREAMBLE}\n\n{system_prompt}"
         try:
             if self.provider == AIProvider.GEMINI:
                 return await self._call_gemini(system_prompt, user_prompt)
@@ -282,13 +291,12 @@ Important:
         try:
             import google.generativeai as genai
 
-            # Disable safety filters for document processing (passport PII triggers them)
-            safety_settings = [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-            ]
+            # Safe safety thresholds (R-34): filters are no longer fully disabled.
+            # Passport PII can trip the default filters, so we relax to BLOCK_ONLY_HIGH
+            # (env-tunable via GEMINI_SAFETY_THRESHOLD) — permissive enough for document
+            # PII while still blocking egregiously harmful content. Untrusted OCR text is
+            # additionally fenced (wrap_untrusted) and instruction-isolated (ISOLATION_PREAMBLE).
+            safety_settings = build_safety_settings(settings.GEMINI_SAFETY_THRESHOLD)
 
             model = _gemini_client.GenerativeModel(
                 model_name=settings.GEMINI_MODEL,

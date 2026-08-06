@@ -42,11 +42,11 @@ const Achievements = () => {
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-[#E6ECF8] bg-[#F7FBFF] px-3 py-1 text-xs font-semibold text-[#0b1b3a]">
               <span className="h-2 w-2 rounded-full bg-[#005DDC]" />
-              Outcomes
+              Why Hiralent
             </div>
 
             <motion.h2 className="text-[#0b1b3a] text-3xl md:text-4xl font-semibold tracking-tight leading-[1.12] text-center lg:text-left">
-              Our Achievements in Hiring
+              Built to Hire Smarter
             </motion.h2>
 
             <motion.p
@@ -57,13 +57,13 @@ const Achievements = () => {
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               Whether you're an employer looking for top talent or a job seeker
-              searching for the perfect role, our platform has helped hundreds
-              of professionals find success. Be the next one to achieve your
-              career goals!
+              searching for the perfect role, Hiralent matches real skills to
+              real jobs — validated assessments, auto-extracted skill profiles,
+              and transparent fit scores instead of keyword-stuffed résumés.
             </motion.p>
 
             <div className="mt-1 text-[11px] font-semibold text-[#94A3B8] text-center lg:text-left">
-              Verified performance • Transparent pipeline
+              Skill-first hiring • Transparent by design
             </div>
           </motion.div>
 
@@ -73,8 +73,8 @@ const Achievements = () => {
             {[
               {
                 delay: 0.1,
-                value: "300+",
-                label: "Profile Based",
+                value: "AI-Powered",
+                label: "Skill Matching",
                 media: (
                   <motion.img
                     src="/images/user-achivments.png"
@@ -89,8 +89,8 @@ const Achievements = () => {
               },
               {
                 delay: 0.2,
-                value: "150+",
-                label: "Successful Placements",
+                value: "119+",
+                label: "Skills Auto-Extracted",
                 media: (
                   <motion.div
                     className="h-10 w-10 flex items-center justify-center"
@@ -119,8 +119,8 @@ const Achievements = () => {
               },
               {
                 delay: 0.3,
-                value: "50+",
-                label: "Active Companies",
+                value: "Real",
+                label: "Coding Assessments",
                 media: (
                   <motion.div
                     className="h-10 w-10 flex items-center justify-center"
@@ -156,8 +156,8 @@ const Achievements = () => {
               },
               {
                 delay: 0.4,
-                value: "25+",
-                label: "Job Categories",
+                value: "Verified",
+                label: "Skill Profiles",
                 media: (
                   <motion.div
                     className="h-10 w-10 flex items-center justify-center"
@@ -222,7 +222,7 @@ const Achievements = () => {
 
                   <div className="ml-auto hidden sm:block">
                     <span className="inline-flex items-center rounded-full border border-[#E6ECF8] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0b1b3a]">
-                      Updated
+                      Built-in
                       <span className="ml-2 h-1.5 w-1.5 rounded-full bg-[#005DDC]" />
                     </span>
                   </div>

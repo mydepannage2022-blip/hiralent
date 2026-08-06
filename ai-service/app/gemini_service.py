@@ -50,7 +50,12 @@ class GeminiAIService:
             
             if api_key:
                 genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-2.5-flash')
+                # Safe safety thresholds (R-34) at construction — both generate_content
+                # calls inherit them. User-supplied topic/difficulty are sanitized inline.
+                from app.core.prompt_guard import build_safety_settings
+                self.model = genai.GenerativeModel(
+                    'gemini-2.5-flash', safety_settings=build_safety_settings()
+                )
                 self.is_available = True
                 logger.info("✅ Gemini AI Service initialized with REAL AI")
             else:
@@ -94,7 +99,13 @@ class GeminiAIService:
     def _generate_mcq_with_ai(self, topic: str, difficulty: str) -> Dict[str, Any]:
         """Generate MCQ using REAL Gemini AI - Works for ANY topic"""
         import google.generativeai as genai
-        
+        from app.core.prompt_guard import sanitize_inline
+
+        # Neutralize user-supplied topic/difficulty (R-34): strip newlines/fence tokens,
+        # cap length, so the value can't smuggle a multi-line instruction into the prompt.
+        topic = sanitize_inline(topic)
+        difficulty = sanitize_inline(difficulty)
+
         prompt = f"""
         Create a {difficulty} level multiple-choice question about {topic} for professional assessment.
         This question will be used to assess candidates applying for jobs.
@@ -153,7 +164,11 @@ class GeminiAIService:
     def _generate_coding_with_ai(self, topic: str, difficulty: str) -> Dict[str, Any]:
         """Generate coding question using REAL Gemini AI"""
         import google.generativeai as genai
-        
+        from app.core.prompt_guard import sanitize_inline
+
+        topic = sanitize_inline(topic)
+        difficulty = sanitize_inline(difficulty)
+
         prompt = f"""
         Create a {difficulty} level programming question about {topic}.
         

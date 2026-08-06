@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
+    # Gemini safety threshold (R-34). NOT BLOCK_NONE. One of BLOCK_ONLY_HIGH,
+    # BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE. Read by app.core.nlp.prompt_guard.
+    GEMINI_SAFETY_THRESHOLD: str = "BLOCK_ONLY_HIGH"
 
     class Config:
         env_file = ".env"

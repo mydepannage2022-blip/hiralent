@@ -1,9 +1,9 @@
 import { get_question_test_cases, update_skill_radar } from './externalClients';
-import { check_web_plagiarism } from './plagiarism.service';
 import { dispatch_to_runner } from './runner.dispatcher';
 import axios from 'axios';
 import { TestCaseResult as TestResultType, RunnerResult as RunnerResultType } from '../types/execution.types';
 import { compareOutputs } from '../utils/outputNormalization';
+import { normalizePlagiarism, PlagiarismResult } from './plagiarismNormalize';
 
 function normalizeOneTestCase(tc: any) {
   const input =
@@ -216,8 +216,12 @@ export async function run_submission_and_grade(opts: {
     }
   }
 
-  // 4) Plagiarism check during grading — prefer runner-provided plagiarism endpoint if available
-  let plagiarism: any = null;
+  // 4) Plagiarism check during grading. De-scoped (R-34, Wave 4 S2): the old code
+  // fabricated a passing result — the runner stub returned risk:0.0, and both the error
+  // path and the no-runner path coerced a mocked vector-DB score (finalScore:0, or a
+  // bogus 0.92). normalizePlagiarism() now yields an explicit not_computed (null scores)
+  // whenever nothing real was computed — never coerced to 0.
+  let plagiarism: PlagiarismResult = normalizePlagiarism(null);
   const runnerHttp = process.env.RUNNER_HTTP_URL;
 
   if (runnerHttp) {
@@ -227,99 +231,13 @@ export async function run_submission_and_grade(opts: {
         { code: opts.code },
         { timeout: 5000 }
       );
-
-      const raw = pResp.data || {};
-      const evidenceRaw = Array.isArray(raw.evidence)
-        ? raw.evidence
-        : (Array.isArray(raw.hits)
-            ? raw.hits
-            : (Array.isArray(raw.evidences)
-                ? raw.evidences
-                : []));
-
-      const evidence = evidenceRaw.map((e: any) => ({
-        source: e.source || e.sourceId || e.origin || 'unknown',
-        similarity:
-          typeof e.similarity === 'number'
-            ? e.similarity
-            : (typeof e.similarityScore === 'number'
-                ? e.similarityScore
-                : (typeof e.score === 'number'
-                    ? e.score
-                    : 0)),
-        snippet: e.snippet || e.context || e.snippet || '',
-        url: e.url || null,
-      }));
-
-      const finalScore =
-        typeof raw.finalScore === 'number'
-          ? raw.finalScore
-          : (typeof raw.risk === 'number'
-              ? raw.risk
-              : (typeof raw.score === 'number'
-                  ? raw.score
-                  : 0));
-
-      const rawAny: any = raw;
-      plagiarism = {
-        staticScore: typeof rawAny.staticScore === 'number' ? rawAny.staticScore : finalScore,
-        dynamicScore: typeof rawAny.dynamicScore === 'number' ? rawAny.dynamicScore : finalScore,
-        webScore: typeof rawAny.webScore === 'number' ? rawAny.webScore : finalScore,
-        finalScore,
-        evidence,
-      };
+      plagiarism = normalizePlagiarism(pResp.data || {});
     } catch (e) {
-      console.warn('Runner plagiarism call failed, falling back to vector DB check', e);
-      const raw = await check_web_plagiarism(opts.code, 10);
-      const evidence = Array.isArray((raw as any).evidences)
-        ? (raw as any).evidences.map((e: any) => ({
-            source: e.sourceId || 'web',
-            similarity: e.score ?? 0,
-            snippet: e.snippet || '',
-            url: null,
-          }))
-        : [];
-      const finalScore =
-        typeof (raw as any).finalScore === 'number'
-          ? (raw as any).finalScore
-          : (typeof (raw as any).score === 'number'
-              ? (raw as any).score
-              : 0);
-
-      const rawAny2: any = raw;
-      plagiarism = {
-        staticScore: rawAny2.staticScore ?? finalScore,
-        dynamicScore: rawAny2.dynamicScore ?? finalScore,
-        webScore: rawAny2.webScore ?? finalScore,
-        finalScore,
-        evidence,
-      };
+      // Could NOT compute (runner down / error). Honest not_computed — never a
+      // fabricated fallback number.
+      console.warn('Runner plagiarism call failed; recording not_computed', e);
+      plagiarism = normalizePlagiarism(null);
     }
-  } else {
-    const raw = await check_web_plagiarism(opts.code, 10);
-    const evidence = Array.isArray((raw as any).evidences)
-      ? (raw as any).evidences.map((e: any) => ({
-          source: e.sourceId || 'web',
-          similarity: e.score ?? 0,
-          snippet: e.snippet || '',
-          url: null,
-        }))
-      : [];
-    const finalScore =
-      typeof (raw as any).finalScore === 'number'
-        ? (raw as any).finalScore
-        : (typeof (raw as any).score === 'number'
-            ? (raw as any).score
-            : 0);
-
-    const rawAny3: any = raw;
-    plagiarism = {
-      staticScore: rawAny3.staticScore ?? finalScore,
-      dynamicScore: rawAny3.dynamicScore ?? finalScore,
-      webScore: rawAny3.webScore ?? finalScore,
-      finalScore,
-      evidence,
-    };
   }
 
   // 5) Update skill radar (best-effort)

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import React from "react";
 import { motion } from "framer-motion";
-import { IoLocationOutline, IoCallOutline } from "react-icons/io5";
+import { IoMailOutline, IoCallOutline } from "react-icons/io5";
 
 const Footer = () => {
   return (
@@ -92,19 +92,25 @@ const Footer = () => {
 
             {/* Contact info */}
             <div className="flex flex-col gap-3 text-xs lg:text-sm text-[#64748B]">
-              <div className="flex items-start gap-3">
+              <a
+                href="mailto:Contact@hiralent.com"
+                className="group flex items-start gap-3 hover:text-[#0b1b3a] transition-colors"
+              >
                 <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-[#F7FBFF] text-[#005DDC] shadow-[0_12px_28px_-24px_rgba(2,8,23,0.35)]">
-                  <IoLocationOutline className="text-lg" />
+                  <IoMailOutline className="text-lg" />
                 </span>
-                <p>1234 Street, City, Country</p>
-              </div>
+                <p className="break-all">Contact@hiralent.com</p>
+              </a>
 
-              <div className="flex items-start gap-3">
+              <a
+                href="tel:+212754505060"
+                className="group flex items-start gap-3 hover:text-[#0b1b3a] transition-colors"
+              >
                 <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-[#F7FBFF] text-[#005DDC] shadow-[0_12px_28px_-24px_rgba(2,8,23,0.35)]">
                   <IoCallOutline className="text-lg" />
                 </span>
-                <p>+1 234 567 890</p>
-              </div>
+                <p>+212 754 505 060</p>
+              </a>
             </div>
           </div>
         </div>

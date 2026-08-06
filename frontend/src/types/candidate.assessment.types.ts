@@ -94,7 +94,11 @@ export type RunResultDTO = {
 
     results?: RunResultTestDTO[];
 
+    // R-34: plagiarism detection is de-scoped. `status: 'not_computed'` means the check
+    // did not run — scores are null and must NOT be shown as 0 / "clean".
     plagiarism?: {
+      status?: 'computed' | 'not_computed';
+      reason?: string;
       evidence?: { url?: string | null; source?: string; snippet?: string; similarity?: number }[];
       webScore?: number | null;
       finalScore?: number | null;

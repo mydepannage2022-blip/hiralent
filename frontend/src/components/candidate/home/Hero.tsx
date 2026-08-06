@@ -231,7 +231,7 @@ const Hero = () => {
             <h1 className="text-[2.25rem] md:text-[2.9rem] xl:text-[3.35rem] font-bold tracking-[-0.04em] text-[#0b1b3a] leading-[1.05]">
               Get Hired As A
               <br />
-              <span className="relative inline-block h-[1.05em] overflow-hidden w-full lg:w-auto">
+              <span className="relative mt-1 inline-block h-[1.3em] overflow-hidden w-full align-bottom lg:w-auto">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={roleIndex}
@@ -242,13 +242,13 @@ const Hero = () => {
                       duration: 0.45,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className="block whitespace-nowrap text-[2.9rem] md:text-[2.35rem] xl:text-[2.7rem]"
+                    className="block whitespace-nowrap leading-[1.3]"
                     style={{ color: roles[roleIndex].color }}
                   >
                     {roles[roleIndex].title}
                   </motion.span>
                 </AnimatePresence>
-                <span className="absolute -bottom-1 left-0 h-[3px] w-full rounded-full bg-[#005DDC]/15" />
+                <span className="absolute bottom-0 left-0 h-[3px] w-full rounded-full bg-[#005DDC]/15" />
               </span>
             </h1>
 

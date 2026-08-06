@@ -14,6 +14,8 @@ from typing import Dict, Optional
 
 import google.generativeai as genai
 
+from app.core.prompt_guard import build_safety_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +28,11 @@ class DiagramGenerator:
             raise ValueError("GEMINI_API_KEY not found in environment")
 
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        # Safe safety thresholds (R-34) at construction. Input is second-order (a
+        # model-generated question title), so no untrusted-text fencing is needed here.
+        self.model = genai.GenerativeModel(
+            "gemini-2.0-flash-exp", safety_settings=build_safety_settings()
+        )
 
     async def generate_diagram_code(
         self,

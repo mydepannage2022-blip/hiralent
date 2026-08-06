@@ -1,66 +1,74 @@
 # vetting_pipeline/sandbox_client.py
-import grpc
-from typing import Dict
+#
+# Wave 4 / Session 1 (R-03): the question-vetting sandbox no longer talks to the standalone
+# gRPC sandbox-service (a dead skeleton, now retired). It reuses the SINGLE canonical hardened
+# runner — runner-python's HTTP service (`/run`), which executes every submission inside an
+# isolated `docker run` (non-root, read-only rootfs, cap-drop ALL, no-new-privileges, pids-limit,
+# --network none) and fails closed when Docker is unreachable. Auth: the shared X-Runner-Token.
 import logging
-from grpc._channel import _InactiveRpcError
+from typing import Dict, Optional
 
-# Import generated gRPC code
-from app.grpc import sandbox_pb2, sandbox_pb2_grpc
+import requests
+
 
 class SandboxClient:
-    def __init__(self, sandbox_service_url: str):
-        self.sandbox_service_url = sandbox_service_url
+    """Validates an AI-generated question's canonical solution by executing it in the hardened runner."""
+
+    def __init__(self, runner_url: str, runner_token: Optional[str] = None, timeout: int = 60):
+        # runner_url is the runner-python HTTP base (e.g. http://localhost:8001). Trailing slash safe.
+        self.runner_url = (runner_url or "").rstrip("/")
+        self.runner_token = runner_token or ""
+        self.timeout = timeout
         self.logger = logging.getLogger(__name__)
-        self.channel = None
-        self.stub = None
-    
-    def _ensure_connection(self):
-        """Ensure gRPC connection is established"""
-        if self.channel is None or self.stub is None:
-            self.channel = grpc.insecure_channel(self.sandbox_service_url)
-            self.stub = sandbox_pb2_grpc.SandboxServiceStub(self.channel)
-    
+
     def validate_solution(self, question: Dict) -> Dict:
-        """Send canonical solution to sandbox for validation"""
-        self._ensure_connection()
-        
+        """Run the canonical solution against the question's test cases in the hardened runner.
+
+        Returns the shape the vetting pipeline expects:
+            {all_passed: bool, test_results: [{passed, error_message}], execution_time: float}
+        On any transport/auth failure it fails safe (all_passed=False + error) so a broken or
+        unauthenticated runner can NEVER silently approve a question.
+        """
         try:
-            # Prepare test request
-            test_request = sandbox_pb2.TestRequest(
-                code=question['canonical_solution'],
-                test_cases=[
-                    sandbox_pb2.TestCase(
-                        input=tc['input'],
-                        expected_output=tc['expected_output'],
-                        is_hidden=tc.get('is_hidden', False)
-                    ) for tc in question['test_cases']
-                ],
-                language=question['language']
+            tests = [
+                {"input": tc.get("input", ""), "expected_output": tc.get("expected_output", "")}
+                for tc in question.get("test_cases", [])
+            ]
+            payload = {
+                "code": question.get("canonical_solution", ""),
+                "tests": tests,
+                "language": question.get("language", "python"),
+            }
+            headers = {"X-Runner-Token": self.runner_token} if self.runner_token else {}
+
+            resp = requests.post(
+                f"{self.runner_url}/run", json=payload, headers=headers, timeout=self.timeout
             )
-            
-            # Call sandbox service
-            response = self.stub.RunTests(test_request, timeout=30)
-            
+            if resp.status_code != 200:
+                self.logger.error("Runner /run returned %s: %s", resp.status_code, resp.text[:300])
+                return {"all_passed": False, "test_results": [], "error": f"runner HTTP {resp.status_code}"}
+
+            # A 200 with a non-JSON body raises JSONDecodeError (a ValueError, NOT a
+            # RequestException). It must still fail safe — never let a malformed response bubble
+            # up and either crash vetting or be mistaken for an approval.
+            data = resp.json()
+            summary = data.get("testsSummary", []) or []
             return {
-                'all_passed': response.all_passed,
-                'test_results': [
-                    {
-                        'passed': tr.passed,
-                        'error_message': tr.error_message
-                    } for tr in response.test_results
+                "all_passed": bool(data.get("passed", False)),
+                "test_results": [
+                    {"passed": bool(t.get("pass", False)), "error_message": (t.get("stderr") or "")}
+                    for t in summary
                 ],
-                'execution_time': response.execution_time
+                "execution_time": (data.get("runtimeMs", 0) or 0) / 1000.0,
             }
-            
-        except _InactiveRpcError as e:
-            self.logger.error(f"gRPC call failed: {e}")
-            return {
-                'all_passed': False,
-                'test_results': [],
-                'error': str(e)
-            }
-    
+
+        except requests.RequestException as e:
+            self.logger.error(f"Runner call failed: {e}")
+            return {"all_passed": False, "test_results": [], "error": str(e)}
+        except Exception as e:  # noqa: BLE001 — fail safe on ANY error (bad JSON, unexpected shape)
+            self.logger.error(f"Runner response handling failed: {e}")
+            return {"all_passed": False, "test_results": [], "error": str(e)}
+
     def close(self):
-        """Close gRPC connection"""
-        if self.channel:
-            self.channel.close()
+        # HTTP client is stateless per-request; nothing to close. Kept for call-site compatibility.
+        return None

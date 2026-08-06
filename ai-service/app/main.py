@@ -3542,12 +3542,16 @@ def extract_hackerrank_slug(url: str) -> Optional[str]:
         return None
 
 # Initialiser le service de vetting (avec variables d'environnement)
+# R-03 (Wave 4 S1): vetting reuses the single hardened runner-python HTTP runner instead of the
+# retired gRPC sandbox-service. RUNNER_STUB_TOKEN authenticates the call (X-Runner-Token).
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/1")
-SANDBOX_URL = os.getenv("SANDBOX_SERVICE_URL", "localhost:50054")
+RUNNER_URL = os.getenv("RUNNER_HTTP_URL", "http://localhost:8001")
+RUNNER_TOKEN = os.getenv("RUNNER_STUB_TOKEN", "")
 
 vetting_service = VettingPipelineService(
     redis_url=REDIS_URL,
-    sandbox_url=SANDBOX_URL
+    sandbox_url=RUNNER_URL,
+    sandbox_token=RUNNER_TOKEN
 )
 
 

@@ -20,8 +20,8 @@ An AI-powered recruitment platform (**Hiralent** — brand strings renamed from 
 | talent job-creation-ai | FastAPI (Gemini 2.0-flash) | 8003 | JD generation |
 | talent scraping-candidates | FastAPI (no LLM) | 8010 | GitHub/Greenhouse/Lever sourcing |
 | talent matching-candidate-job | FastAPI + Qdrant + worker | 8011 | **Best-built service** |
-| sandbox-service | gRPC | 50054 | 🔴 placeholder stub |
-| plagiarism-service | gRPC | 50055 | 🔴 placeholder stub |
+| sandbox-service | gRPC | 50054 | ⚪ retired (W4-S1) → folded onto runner-python |
+| plagiarism-service | gRPC | 50055 | ⚪ retired & de-scoped (W4-S2) → `not_computed` signal |
 | runner-python | Docker one-shot executor | — | The **real** code executor |
 | Data/infra | Postgres, MongoDB, Redis, MinIO, Qdrant, Pinecone/Chroma | — | Postgres = source of truth |
 
@@ -62,7 +62,7 @@ What IS genuinely solid: the transactional-outbox workers, the auth module (OAut
 - **H — Internal AI services** bind `0.0.0.0` with no app-layer auth.
 - **H — CVs (PII) served static** from `/uploads` with no auth (GDPR).
 - **M — No security headers** (dep is `@fastify/helmet`, wrong framework; not applied). Rate limiting only on auth routes. MinIO `minioadmin/minioadmin`. 7-day tokens, no rotation; `checkAuth` defaults missing `session_id` to `'bypass'`. Internal bearer token logged in cleartext. `Math.random()` used for a temp password.
-- **M — Prompt-injection surface:** scraped web content → Gemini (ai-service); OCR text → Gemini with safety filters `BLOCK_NONE` (doc-validator).
+- **M — Prompt-injection surface:** scraped web content → Gemini (ai-service); OCR text → Gemini with safety filters `BLOCK_NONE` (doc-validator). _→ **Addressed W4-S2 (R-34):** shared `prompt_guard` fences+isolates untrusted text at every Gemini site; doc-validator `BLOCK_NONE` → `BLOCK_ONLY_HIGH` (env-tunable). Guarded by `verify-ai-content-safety.mjs`._
 - **Prod-reachable mock:** `mockAssessment.routes` ("simulate scoring") mounted unconditionally; dev-only dummy-admin middleware exists.
 
 ## 5. Scalability (🔴 collapses well before target)
@@ -105,7 +105,7 @@ What IS genuinely solid: the transactional-outbox workers, the auth module (OAut
 - **No single orchestration** brings up the full stack. **No Postgres or canonical Redis in any compose**; Redis fragmented across 4 ports (conflicts).
 - **`host.docker.internal` + hardcoded `localhost`** (`http://localhost:8000` ~18×, `127.0.0.1:9000`, `localhost:3000` email links ~12×) in backend source → breaks outside Docker Desktop / on staging.
 - **Secrets baked into images** (`.dockerignore` omits `.env` for backend + ai-service; doc-validator has none).
-- **sandbox-service & plagiarism-service have no Dockerfile at all** (but ai-service depends on the sandbox).
+- ~~**sandbox-service & plagiarism-service have no Dockerfile at all**~~ — moot: both **retired** (sandbox W4-S1 → runner-python; plagiarism W4-S2 → de-scoped `not_computed`). The whole `python-services/` dir is gone; ai-service vetting now uses the hardened runner-python HTTP runner.
 - **CI/CD:** only `build-runner.yml`; no build/test/deploy/migrate pipeline for backend/frontend.
 - **No reverse proxy / TLS / domain routing.** CORS allowlist hardcoded (staging origin rejected).
 - **No migration step** in any container/compose (`Dockerfile.workers` only runs `prisma generate`).

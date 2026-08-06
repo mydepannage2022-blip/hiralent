@@ -12,7 +12,8 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false 
 type RunResult = {
   score?: number;
   runner?: any;
-  plagiarism?: { score: number; evidences: any[] };
+  // R-34: de-scoped. status 'not_computed' => scores null; never render as 0/"clean".
+  plagiarism?: { status?: 'computed' | 'not_computed'; finalScore?: number | null; evidence?: any[] };
   results?: any[];
 };
 

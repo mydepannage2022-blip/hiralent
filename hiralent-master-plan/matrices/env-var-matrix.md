@@ -164,6 +164,8 @@
 | `RUNNER_ALLOW_HOST_EXEC` | Dev-only: allow running candidate code on the host when no container runner is available. **Hard-refused in production** (see `assertSafeRunner`). Off unless `=1`. | — (off) | no (dev-only) |
 | `RUNNER_DOCKER_USER` | Non-root uid:gid the runner container runs as (`--user`) | 1000:1000 | no |
 | `RUNNER_PIDS_LIMIT` | Runner container PID cap (`--pids-limit`) | 128 | no |
+| `RUNNER_DOCKER_RUN_TIMEOUT_S` | Wall-clock ceiling for a single hardened `docker run` in the Python HTTP runner (pull+build+run). | 60 | no |
+| `RUNNER_DISABLE_DOCKER` | Test-only: force the Python runner to treat Docker as unavailable so the fail-closed path can be proven without uninstalling Docker. | — (off) | no (test-only) |
 | `RUNNER_STUB_TOKEN` | Shared secret for the HTTP runner stub (`X-Runner-Token`, constant-time). Required if `RUNNER_HTTP_URL` is set in prod. | — (secret) | if HTTP runner used |
 | `RUNNER_STRICT_COMPARE` | Strict output compare | false | no |
 | `RUNNER_COMPARE_IGNORE_CASE` | Compare ignoring case | false | no |
@@ -225,7 +227,7 @@
 | `LOGO_PATH` | Logo asset path | — | no |
 | `NODE_ENV` | Node environment | development | no |
 
-## ai-service (16 vars)
+## ai-service (17 vars)
 | Var | Purpose | Default (safe) | Required? |
 |---|---|---|---|
 | `AI_MODEL` | AI model name | — | no |
@@ -235,6 +237,7 @@
 | `CLOUDINARY_URL` | Cloudinary media creds | — (secret) | no |
 | `DEBUG` | Debug flag | false | no |
 | `GEMINI_API_KEY` | Gemini API key (⚠️ committed live) | — (secret) | no |
+| `GEMINI_SAFETY_THRESHOLD` | Gemini safety block threshold (R-34; NOT disabled) | `BLOCK_ONLY_HIGH` | no |
 | `GITHUB_TOKEN` | GitHub API token | — (secret) | no |
 | `LEETCODE_CSRF` | LeetCode CSRF token | — (secret) | no |
 | `LEETCODE_SESSION` | LeetCode session cookie | — (secret) | no |
@@ -261,7 +264,7 @@
 | `WAFAA_QGEN_ADDR` | Wafaa QGen gRPC address | — | no |
 | `YOUSSRA_EXEC_ADDR` | Youssra exec gRPC address | — | no |
 
-## document-validator-service (24 vars)
+## document-validator-service (25 vars)
 | Var | Purpose | Default (safe) | Required? |
 |---|---|---|---|
 | `SERVICE_NAME` | Service name | document-validator | no |
@@ -288,8 +291,9 @@
 | `OPENAI_MODEL` | OpenAI model | gpt-4o-mini | no |
 | `GEMINI_API_KEY` | Gemini API key | — (secret) | no |
 | `GEMINI_MODEL` | Gemini model | gemini-1.5-flash | no |
+| `GEMINI_SAFETY_THRESHOLD` | Gemini safety block threshold (R-34; NOT disabled) | `BLOCK_ONLY_HIGH` | no |
 
-## python-services (10 vars)
+## python-services (9 vars)
 | Var | Purpose | Default (safe) | Required? |
 |---|---|---|---|
 | `REDIS_URL` | Redis connection | — | no |
@@ -301,9 +305,8 @@
 | `DOCKER_HOST` | Docker daemon socket | — | no |
 | `SUBMISSION_GRPC_PORT` | Submission gRPC port | — | no |
 | `SANDBOX_GRPC_PORT` | Sandbox gRPC port | — | no |
-| `PLAGIARISM_GRPC_PORT` | Plagiarism gRPC port | — | no |
 
-> Consumed via docker-compose env / gRPC config (no `os.getenv`/`BaseSettings` detected in `.py`).
+> Consumed via docker-compose env / gRPC config (no `os.getenv`/`BaseSettings` detected in `.py`). `PLAGIARISM_GRPC_PORT` removed — the plagiarism-service gRPC orphan was retired in Wave 4 / Session 2 (R-34 de-scope).
 
 ## talent-ai-service (19 vars)
 > No `.env` file — vars come from pydantic `BaseSettings` defaults + deploy env. Uses **Qdrant** as its vector store (⚠️ different from backend's Pinecone — two vector engines in the codebase).
@@ -342,8 +345,10 @@
 ## Vars referenced in code but absent from any `.env` (112) — default-reliant
 These work off in-code defaults today. They must be surfaced in each `.env.example` so deployment doesn't silently rely on localhost/dev defaults. Regenerate anytime with `verify-env-matrix.mjs`. Representative examples (full list = `--report`): `RUNNER_*` image/limit family, `GITHUB_* / HACKERRANK_* / LEETCODE_* / STACKOVERFLOW_*` scraper knobs, `QDRANT_*`, `MINIO_*`, `AI_SERVICE_BASE_URL`, `DOC_VALIDATOR_URL`, `MATCHING_AI_BASE_URL`, `TALENT_AI_BASE_URL`, `GOOGLE_CLIENT_ID/SECRET`, `IHSSANE_*`, `WAFAA_*`, `UNREAL_SPEECH_*`.
 
-## Vars in `.env` but never referenced in code (10) — possibly dead / infra-only
-`DOCKER_HOST`, `JWT_EXPIRES_IN`, `NEXT_PUBLIC_MAX_FILE_SIZE`, `PLAGIARISM_GRPC_PORT`, `RABBITMQ_URL`, `REQUEST_TIMEOUT`, `SANDBOX_GRPC_PORT`, `SHADOW_DATABASE_URL`, `STORAGE_PROVIDER`, `SUBMISSION_GRPC_PORT`.
+## Vars in `.env` but never referenced in code (8) — possibly dead / infra-only
+`ADMIN_JWT_SECRET`, `DIRECT_DATABASE_URL`, `JWT_EXPIRES_IN`, `NEXT_PUBLIC_MAX_FILE_SIZE`, `PINECONE_API_KEY`, `REQUEST_TIMEOUT`, `SANDBOX_SERVICE_URL`, `STORAGE_PROVIDER`.
+
+> Reconciled Wave 4 / Session 2: the `python-services/.env` (which was the only home of `PLAGIARISM_GRPC_PORT`, `SANDBOX_GRPC_PORT`, `SUBMISSION_GRPC_PORT`, `DOCKER_HOST`, `RABBITMQ_URL`) was removed with the retired plagiarism-service. List regenerated from `verify-env-matrix.mjs --report`.
 > Note: several are legitimately consumed outside JS/PY scanning — `DOCKER_HOST`/`*_GRPC_PORT`/`RABBITMQ_URL` via docker-compose & gRPC, `SHADOW_DATABASE_URL` by Prisma CLI, `JWT_EXPIRES_IN`/`STORAGE_PROVIDER` may be genuinely unused. Confirm before deleting (Wave 0 Phase 0.7 / later).
 
 ## Duplicate keys in `.env` (silent override — fix in Phase 0.6)
