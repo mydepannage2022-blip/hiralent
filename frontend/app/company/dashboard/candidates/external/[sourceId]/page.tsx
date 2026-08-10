@@ -354,10 +354,9 @@ export default function ExternalCandidateDetailsPage() {
 
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm hover:bg-gray-50"
-                onClick={() => {
-                  // TODO: invite flow
-                }}
+                disabled
+                title="Assessment invites for sourced candidates are coming soon"
+                className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
               >
                 <UserPlus className="h-4 w-4" />
                 Invite

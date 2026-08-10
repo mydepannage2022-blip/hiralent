@@ -173,8 +173,6 @@ export default function InternalCandidatesPage() {
                         full?.candidateProfile?.profile_picture_url ?? null,
                       applied_count: c.applied_count ?? 0,
                     }}
-                    onInvite={(candidateId) => console.log("Invite", candidateId)}
-                    onChat={(candidateId) => console.log("Chat", candidateId)}
                   />
                 );
               })}

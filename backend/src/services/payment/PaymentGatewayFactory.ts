@@ -33,55 +33,50 @@ export const getPaymentGateway = (gatewayType: PaymentGatewayType): IPaymentGate
   return gateway;
 };
 
+// The "manual" gateway used to fabricate fake sessions/webhooks. It is not reachable
+// from any real flow and has no genuine implementation, so it is honestly disabled:
+// every operation throws and isConfigured() is false. If admin-comped manual
+// subscriptions are ever needed, implement this for real then.
+const MANUAL_UNAVAILABLE = 'Manual payment gateway is not available.';
+
 const createManualGateway = (): IPaymentGateway => {
   return {
     gatewayName: PaymentGatewayType.MANUAL,
-    
-    createCheckoutSession: async (data) => ({
-      session_id: `manual_${Date.now()}`,
-      checkout_url: `${data.success_url}?manual=true`,
-      payment_gateway: PaymentGatewayType.MANUAL
-    }),
 
-    handleWebhook: async (payload) => ({
-      success: true,
-      event_type: 'manual.payment.completed',
-      data: {
-        payment_id: payload.payment_id,
-        status: 'succeeded'
-      }
-    }),
+    createCheckoutSession: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
 
-    verifyWebhookSignature: () => true,
+    handleWebhook: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
 
-    cancelSubscription: async () => ({
-      success: true,
-      message: 'Manual subscription canceled',
-      canceled_at: new Date()
-    }),
+    verifyWebhookSignature: () => false,
 
-    getPaymentStatus: async () => ({
-      status: 'succeeded',
-      amount: 0,
-      currency: 'USD'
-    }),
+    cancelSubscription: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
 
-    refundPayment: async (request) => ({
-      refund_id: `manual_refund_${Date.now()}`,
-      status: 'succeeded',
-      amount: request.amount || 0
-    }),
+    getPaymentStatus: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
 
-    isConfigured: () => true
+    refundPayment: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
+
+    isConfigured: () => false
   };
 };
 
+// Only gateways that are actually configured are "supported" — with just Stripe keys
+// set this returns ['stripe'], so the UI never offers an unavailable gateway.
 export const getSupportedGateways = (): PaymentGatewayType[] => {
   return [
     PaymentGatewayType.STRIPE,
     PaymentGatewayType.PAYPAL,
     PaymentGatewayType.MANUAL
-  ];
+  ].filter(isGatewayConfigured);
 };
 
 export const isGatewayConfigured = (gatewayType: PaymentGatewayType): boolean => {

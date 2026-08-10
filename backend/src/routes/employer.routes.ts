@@ -25,6 +25,7 @@ import {
   checkSlugController,
   getPublicProfileController,
   getPublicJobsController,
+  getPublicCompaniesController,
 } from "../controller/employer.controller";
 
 const router = Router();
@@ -48,6 +49,10 @@ router.get("/health", (req, res) => {
 // ============================================
 // PUBLIC ROUTES (No auth required)
 // ============================================
+
+// Browse / discover public companies (list).
+// MUST be registered before "/public/:slug" — otherwise ":slug" captures "companies".
+router.get("/public/companies", getPublicCompaniesController);
 
 // Get public company profile by slug
 router.get("/public/:slug", getPublicProfileController);

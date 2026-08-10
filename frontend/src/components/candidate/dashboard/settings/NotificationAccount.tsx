@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "@/src/lib/notifications/preferences.api";
 
 // Reusable Toggle Component
 function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
@@ -19,8 +23,6 @@ function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void 
     </button>
   );
 }
-
-const STORAGE_KEY = "hiralent_notification_prefs";
 
 const notificationOptions = [
   {
@@ -58,28 +60,42 @@ function NotificationAccount() {
   const [toggles, setToggles] = useState<Record<NotificationKey, boolean>>(defaultPrefs);
   const [saved, setSaved] = useState(false);
 
-  // Load from localStorage on mount
+  // Load persisted preferences from the server on mount (merge over defaults).
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setToggles((prev) => ({ ...prev, ...parsed }));
+    let active = true;
+    (async () => {
+      try {
+        const prefs = await getNotificationPreferences("CANDIDATE");
+        if (!active) return;
+        setToggles((prev) => {
+          const next = { ...prev };
+          for (const { key } of notificationOptions) {
+            if (typeof prefs[key] === "boolean") next[key] = prefs[key];
+          }
+          return next;
+        });
+      } catch {
+        // Non-fatal: fall back to defaults if prefs can't be loaded.
       }
-    } catch {
-      // ignore parse errors
-    }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Toggle handler - save to localStorage immediately
+  // Toggle handler — optimistic update, then persist the full map to the server.
   const handleToggle = (key: NotificationKey) => {
-    setToggles((prev) => {
-      const updated = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-      return updated;
-    });
+    const updated = { ...toggles, [key]: !toggles[key] };
+    setToggles(updated);
+    updateNotificationPreferences(updated, "CANDIDATE")
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1500);
+      })
+      .catch(() => {
+        // Revert the optimistic flip if the save fails.
+        setToggles((prev) => ({ ...prev, [key]: !updated[key] }));
+      });
   };
 
   return (

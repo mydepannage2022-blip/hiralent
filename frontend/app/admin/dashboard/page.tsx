@@ -227,14 +227,14 @@ export default function AdminDashboard() {
       onClick: () => router.push('/admin/dashboard/analytics'),
     },
     {
-      title: 'Manage Users',
-      description: 'User administration',
+      title: 'Manage Admins',
+      description: 'Superadmin accounts',
       icon: <IconUsers className="w-5 h-5" />,
       iconBg: 'bg-sky-50',
       iconColor: 'text-sky-700',
       hoverBorder: 'hover:border-sky-300',
-      count: '2.4K',
-      onClick: () => router.push('/admin/dashboard/users'),
+      count: '',
+      onClick: () => router.push('/admin/dashboard/admins'),
     },
   ];
 
@@ -268,7 +268,10 @@ export default function AdminDashboard() {
                 <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
 
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-all shadow-md hover:shadow-lg">
+              <button
+                onClick={() => router.push('/admin/dashboard/settings')}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-all shadow-md hover:shadow-lg"
+              >
                 <IconSettings className="w-4 h-4" />
                 <span>Settings</span>
               </button>

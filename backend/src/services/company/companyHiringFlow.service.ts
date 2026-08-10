@@ -254,11 +254,17 @@ export class CompanyHiringFlowService {
         title: true,
         job_id: true,
         company_id: true,
+        status: true,
       },
     });
     if (!assessment) throw new Error("ASSESSMENT_NOT_FOUND");
     if (assessment.company_id !== args.companyId) throw new Error("FORBIDDEN");
     if (assessment.job_id !== app.job_id) throw new Error("ASSESSMENT_NOT_FOR_JOB");
+    // Guard the employer→candidate link: an assessment must be ACTIVE before it can be
+    // invited. Templates (and direct creation) start as DRAFT; inviting a non-ACTIVE
+    // assessment would only surface later as an ASSESSMENT_NOT_ACTIVE dead-end when the
+    // candidate tries to start the session. Fail fast here so the employer activates first.
+    if (assessment.status !== "ACTIVE") throw new Error("ASSESSMENT_NOT_ACTIVE");
 
     const invite = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.candidateAssessmentInvite.findFirst({

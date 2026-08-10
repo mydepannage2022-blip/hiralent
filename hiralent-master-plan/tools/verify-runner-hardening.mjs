@@ -115,6 +115,16 @@ process.env.NODE_ENV = 'production';
 if (m.isHostExecAllowed() !== false) die(12, 'PROD_HOST_EXEC_ALLOWED');
 process.env.NODE_ENV = 'development'; delete process.env.RUNNER_ALLOW_HOST_EXEC;
 if (m.isHostExecAllowed() !== false) die(12, 'DEV_NO_FLAG_ALLOWED');
+// Fail-closed default: an UNSET / non-canonical NODE_ENV must NOT open the host-exec hatch
+// even with the flag, and must make the boot guard fire (Wave 4 review R-03 hardening).
+process.env.RUNNER_ALLOW_HOST_EXEC = '1';
+delete process.env.NODE_ENV;
+if (m.isHostExecAllowed() !== false) die(12, 'UNSET_ENV_HOST_EXEC_ALLOWED');
+if (!threw(m.assertSafeRunner)) die(14, 'RED_UNSET_ENV_HOSTEXEC_DID_NOT_THROW');
+process.env.NODE_ENV = 'staging';
+if (m.isHostExecAllowed() !== false) die(12, 'STAGING_ENV_HOST_EXEC_ALLOWED');
+if (!threw(m.assertSafeRunner)) die(14, 'RED_STAGING_ENV_HOSTEXEC_DID_NOT_THROW');
+delete process.env.RUNNER_ALLOW_HOST_EXEC;
 
 // 3) assertSafeRunner — GREEN outside prod (even with the flag)
 process.env.NODE_ENV = 'development'; process.env.RUNNER_ALLOW_HOST_EXEC = '1';

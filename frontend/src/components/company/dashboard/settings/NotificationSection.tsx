@@ -1,19 +1,54 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import SectionCard2 from "./SectionCard2";
 import Toggle from "./Toggle";
+import {
+    getNotificationPreferences,
+    updateNotificationPreferences,
+} from "@/src/lib/notifications/preferences.api";
+
+const defaultPrefs = {
+    newapplicant: true,
+    meetingbooked: true,
+    messages: false,
+};
 
 const NotificationSection: React.FC = () => {
-    const [toggles, setToggles] = useState({
-        newapplicant: true,
-        meetingbooked: true,
-        messages: false,
-    });
+    const [toggles, setToggles] = useState(defaultPrefs);
 
+    // Load persisted preferences from the server on mount (merge over defaults).
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const prefs = await getNotificationPreferences("COMPANY");
+                if (!active) return;
+                setToggles((prev) => {
+                    const next = { ...prev };
+                    (Object.keys(prev) as (keyof typeof prev)[]).forEach((key) => {
+                        if (typeof prefs[key] === "boolean") next[key] = prefs[key];
+                    });
+                    return next;
+                });
+            } catch {
+                // Non-fatal: fall back to defaults if prefs can't be loaded.
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    // Optimistic update, then persist the full map to the server.
     const handleToggle = (key: keyof typeof toggles) => {
-        setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+        const updated = { ...toggles, [key]: !toggles[key] };
+        setToggles(updated);
+        updateNotificationPreferences(updated, "COMPANY").catch(() => {
+            // Revert the optimistic flip if the save fails.
+            setToggles((prev) => ({ ...prev, [key]: !updated[key] }));
+        });
     };
 
     const items = [

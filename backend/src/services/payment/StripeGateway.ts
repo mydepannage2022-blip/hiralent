@@ -1,44 +1,104 @@
-import { 
-  IPaymentGateway, 
-  WebhookResult, 
-  CancelResult, 
+import Stripe from 'stripe';
+import {
+  IPaymentGateway,
+  WebhookResult,
+  CancelResult,
   PaymentStatusResult,
-  validateGatewayConfig,
-  formatAmountForGateway 
+  formatAmountForGateway
 } from './BaseGateway';
-import { 
-  CreatePaymentSessionData, 
-  PaymentSessionResult, 
-  RefundRequest, 
+import {
+  CreatePaymentSessionData,
+  PaymentSessionResult,
+  RefundRequest,
   RefundResult,
-  PaymentGatewayType 
+  PaymentGatewayType
 } from '../../types/payment.types';
+import { requireEnv } from '../../config/requireEnv';
 
-export const createStripeGateway = (): IPaymentGateway => {
+/**
+ * Stripe gateway. Wave 5 / Session 1 makes `createCheckoutSession` REAL — it opens a
+ * genuine Stripe-hosted Checkout Session (subscription mode, inline price_data sourced
+ * from our own DB so our DB stays the price source of truth). When STRIPE_SECRET_KEY is
+ * absent the gateway is honestly unavailable (throws) — it never fabricates a session.
+ *
+ * The Stripe client is injectable purely so unit tests can drive the code path without a
+ * network call; production/dev always uses the real client built from STRIPE_SECRET_KEY.
+ *
+ * NOTE: webhook verification + subscription activation (handleWebhook /
+ * verifyWebhookSignature) and cancel/refund/status are still the pre-Wave-5 stubs and are
+ * made real in S2 (webhooks) / S3 (lifecycle). They are not wired live as "real" yet.
+ */
+export const createStripeGateway = (injectedClient?: Stripe): IPaymentGateway => {
   const gatewayName = PaymentGatewayType.STRIPE;
 
   const isConfigured = (): boolean => {
-    return validateGatewayConfig(['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']);
+    // Checkout capability needs only the secret key. The webhook secret is validated on
+    // the webhook path (Wave 5 S2), not here.
+    return !!injectedClient || !!process.env.STRIPE_SECRET_KEY;
+  };
+
+  // Lazily build + cache the real client so importing this module never throws when the
+  // key is unset (honest-disable), and so requireEnv reads after dotenv has populated env.
+  let client: Stripe | undefined = injectedClient;
+  const getClient = (): Stripe => {
+    if (!client) {
+      client = new Stripe(requireEnv('STRIPE_SECRET_KEY'));
+    }
+    return client;
   };
 
   const createCheckoutSession = async (data: CreatePaymentSessionData): Promise<PaymentSessionResult> => {
     if (!isConfigured()) {
-      return {
-        session_id: `mock_session_${Date.now()}`,
-        checkout_url: `${data.success_url}?session_id=mock_session_${Date.now()}&mock=true`,
-        payment_gateway: gatewayName
-      };
+      throw new Error('Stripe is not configured (STRIPE_SECRET_KEY missing) — checkout unavailable.');
     }
 
     try {
-      const amount = formatAmountForGateway(data.amount, data.currency);
-      
-      const sessionId = `stripe_session_${Date.now()}`;
-      const checkoutUrl = `https://checkout.stripe.com/pay/${sessionId}`;
+      const stripe = getClient();
+      const unitAmount = formatAmountForGateway(data.amount, data.currency); // integer minor units
+      const interval = data.billing_cycle === 'yearly' ? 'year' : 'month';
+
+      // `{CHECKOUT_SESSION_ID}` is a Stripe placeholder it substitutes on redirect; the
+      // success page (S2) verifies the resulting session with the backend.
+      const successUrl = data.success_url.includes('?')
+        ? `${data.success_url}&session_id={CHECKOUT_SESSION_ID}`
+        : `${data.success_url}?session_id={CHECKOUT_SESSION_ID}`;
+
+      const metadata = {
+        user_id: data.user_id,
+        plan_id: data.plan_id,
+        billing_cycle: data.billing_cycle,
+      };
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        client_reference_id: data.user_id,
+        customer_email: data.customer_email || undefined,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: data.currency.toLowerCase(),
+              unit_amount: unitAmount,
+              recurring: { interval },
+              product_data: {
+                name: String(data.metadata?.plan_name ?? 'Subscription'),
+              },
+            },
+          },
+        ],
+        success_url: successUrl,
+        cancel_url: data.cancel_url,
+        metadata,
+        subscription_data: { metadata },
+      });
+
+      if (!session.url) {
+        throw new Error('Stripe returned a session without a checkout URL.');
+      }
 
       return {
-        session_id: sessionId,
-        checkout_url: checkoutUrl,
+        session_id: session.id,
+        checkout_url: session.url,
         payment_gateway: gatewayName
       };
     } catch (error: any) {

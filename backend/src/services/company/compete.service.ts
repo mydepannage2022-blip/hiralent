@@ -141,13 +141,6 @@ export async function updateLeaderboardWithResults(challengeId: string, result: 
 }
 
 /**
- * Simulate results for a candidate (useful in dev while Youssra not integrated).
- */
-export async function simulateResultsForCandidate(challengeId: string, result: CandidateResultDTO) {
-  return updateLeaderboardWithResults(challengeId, result);
-}
-
-/**
  * Get leaderboard (computed) for the challenge.
  *
  * ⚠️ No leaderboard field in schema -> return empty list safely.

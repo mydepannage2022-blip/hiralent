@@ -26,9 +26,6 @@ import {
   ChatbotApiResponse,
 } from '../../clients/assessment-ai-service.client';
 
-// waffa mock
-//import { generateQuestionsForAssessment } from "../../services/questionService";
-
 import { randomUUID } from 'crypto';
 
 

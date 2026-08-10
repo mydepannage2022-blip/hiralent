@@ -56,9 +56,14 @@ function staticChecks() {
   ok(internalAuth !== '' && !/console\.log/.test(internalAuth),
     '[static] internalAuth.middleware.ts contains no console.log (no plaintext-secret risk).');
 
+  // Wave 4 / S5 removed the compete `/simulate` dev route entirely. The security intent — a
+  // logged-in user must never forge leaderboard results in prod — is satisfied MORE strongly by
+  // its absence than by gating. Guard-teeth preserved: if a simulate route is ever re-introduced
+  // it MUST still be devOnly BEFORE checkAuth, or this fails again.
   const compete = read('src/routes/compete.routes.ts');
-  ok(/simulate["'`]\s*,\s*devOnly\s*,\s*checkAuth/.test(compete),
-    '[static] compete simulate is guarded by devOnly BEFORE checkAuth.');
+  const hasSimulateRoute = /simulate/i.test(compete);
+  ok(!hasSimulateRoute || /simulate["'`]\s*,\s*devOnly\s*,\s*checkAuth/.test(compete),
+    '[static] compete simulate route is absent (W4-S5 removed it), or devOnly-before-checkAuth if present.');
   ok(fs.existsSync(path.join(BACKEND, 'src/middlewares/devOnly.ts')),
     '[static] middlewares/devOnly.ts exists.');
 }

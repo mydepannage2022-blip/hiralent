@@ -6,6 +6,16 @@ import {
   SimpleTestInviteStatus,
 } from "@prisma/client";
 import { enqueueRun } from "../../workers/queue";
+// Per-question scoring math delegated to the pure core (Wave 4 / S5, R-37) — same
+// MCQ/coding rules as the real employer assessment. Only the simple-test lifecycle
+// (attempts, timers, ownership, persistence) stays here.
+import {
+  scoreMcq,
+  resolveCodingScore,
+  extractTestsPassed,
+  extractTestsTotal,
+  weightedTotal,
+} from "../../utils/assessment-scoring-core";
 
 /**
  * ================================
@@ -44,40 +54,6 @@ function assertNonEmptyString(v: any, name: string) {
   }
 }
 
-function extractCodingScorePercentFromResult(result: any): number | null {
-  if (!result) return null;
-
-  // ✅ Your current runner returns percent here:
-  // result.score = 0..100
-  if (typeof result.score === "number" && Number.isFinite(result.score)) {
-    const v = result.score;
-    if (v >= 0 && v <= 100) return clamp0_100(v);
-  }
-
-  // ✅ Your current runner also returns this:
-  // result.runner.totalPassed / result.runner.totalTests
-  const passed = result?.runner?.totalPassed;
-  const total = result?.runner?.totalTests;
-  if (Number.isFinite(passed) && Number.isFinite(total) && Number(total) > 0) {
-    return clamp0_100((Number(passed) / Number(total)) * 100);
-  }
-
-  // legacy shapes (just in case)
-  const tp = result?.testsPassed ?? result?.passed ?? result?.passedCount ?? null;
-  const tt = result?.testsTotal ?? result?.total ?? result?.totalTests ?? null;
-  if (Number.isFinite(tp) && Number.isFinite(tt) && Number(tt) > 0) {
-    return clamp0_100((Number(tp) / Number(tt)) * 100);
-  }
-
-  return null;
-}
-
-/** clamp score 0..100 */
-function clamp0_100(n: number) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
-
 /** Narrow Prisma.JsonValue safely */
 function isJsonObject(v: unknown): v is Prisma.JsonObject {
   return !!v && typeof v === "object" && !Array.isArray(v);
@@ -98,66 +74,6 @@ function getJsonAnyField(
 ): Prisma.JsonValue | null {
   if (!isJsonObject(v)) return null;
   return (v as Prisma.JsonObject)[key] ?? null;
-}
-
-function normalizeOptions(options: any): any[] {
-  if (!options) return [];
-  if (Array.isArray(options?.options)) return options.options;
-  if (Array.isArray(options)) return options;
-  return [];
-}
-
-// normalize ids: trim + uppercase (so "a " == "A")
-function normId(x: unknown) {
-  return String(x ?? "")
-    .trim()
-    .toUpperCase();
-}
-
-// returns array of correct option ids (same logic as real assessment)
-function getCorrectMcqOptionIds(question: {
-  correctAnswer: string | null;
-  options: any;
-}): string[] {
-  const raw = question.correctAnswer;
-
-  if (typeof raw === "string" && raw.trim()) {
-    const t = raw.trim();
-
-    // allow JSON array in string: '["A","B"]'
-    if (t.startsWith("[") && t.endsWith("]")) {
-      try {
-        const arr = JSON.parse(t);
-        if (Array.isArray(arr)) return arr.map((x) => normId(x)).filter(Boolean);
-      } catch {}
-    }
-
-    // handle "A,B" or "A|B"
-    if (t.includes(",") || t.includes("|")) {
-      return t
-        .split(/[,|]/g)
-        .map((s) => normId(s))
-        .filter(Boolean);
-    }
-
-    // single value: "A"
-    return [normId(t)];
-  }
-
-  // fallback: options marked isCorrect
-  const opts = normalizeOptions(question.options);
-  return opts
-    .filter((o: any) => o?.isCorrect === true || o?.correct === true)
-    .map((o: any) => normId(o.id ?? o.option_id ?? o.value ?? o.key))
-    .filter(Boolean);
-}
-
-function sameSet(a: string[], b: string[]) {
-  const A = new Set(a.map(normId));
-  const B = new Set(b.map(normId));
-  if (A.size !== B.size) return false;
-  for (const x of A) if (!B.has(x)) return false;
-  return true;
 }
 
 /**
@@ -743,11 +659,8 @@ export class SimpleTestService {
       subsByQ.set(s.question_id, arr);
     }
 
-    // Scoring (weighted average, points=1 each)
-    let weightedSum = 0;
-    let weightTotal = 0;
-
-    const breakdown: any[] = [];
+    // Scoring (weighted average, points=1 each) — via the canonical core.
+    const breakdown: { score: number; points: number; [k: string]: any }[] = [];
 
     for (const row of testQs) {
       const q = row.question;
@@ -759,80 +672,50 @@ export class SimpleTestService {
       const isMcq =
         typeLower.includes("mcq") || String(row.kind).toUpperCase() === "MCQ";
 
-      let scorePct = 0;
-
       if (isMcq) {
-        const raw = answers?.[q.id] ?? {};
-        const selectedArr = Array.isArray((raw as any)?.selectedOptionIds)
-          ? (raw as any).selectedOptionIds.map((x: any) => normId(x))
-          : (raw as any)?.selectedOptionId
-          ? [normId((raw as any).selectedOptionId)]
-          : [];
-
-        const correct = getCorrectMcqOptionIds({
+        const { score, isCorrect, selected, correct } = scoreMcq(answers?.[q.id], {
           correctAnswer: q.correctAnswer ?? null,
           options: q.options,
         });
-
-        const isCorrect = correct.length > 0 && sameSet(selectedArr, correct);
-        scorePct = isCorrect ? 100 : 0;
 
         breakdown.push({
           questionId: q.id,
           type: "mcq",
           points,
-          score: scorePct,
+          score,
           isCorrect,
-          selected: selectedArr,
+          selected,
           correct,
         });
-} else if (isCoding) {
-  const subs = subsByQ.get(q.id) ?? [];
+      } else if (isCoding) {
+        const subs = subsByQ.get(q.id) ?? [];
 
-  // ✅ ALWAYS use LATEST submission before submit
-  // because you want "latest run score" as source of truth
-  const chosen = subs[0] ?? null; // ordered by created_at desc
+        // ALWAYS use LATEST submission before submit ("latest run score" is truth).
+        const chosen = subs[0] ?? null; // ordered by created_at desc
 
-  // 1) prefer DB column `score` if worker persisted it
-  const fromDbScore = typeof chosen?.score === "number" ? chosen.score : null;
+        const { score, used } = resolveCodingScore({ dbScore: chosen?.score, result: chosen?.result });
 
-  // 2) else use the score stored inside result JSON (YOUR CASE)
-  const fromResultScore = chosen
-    ? extractCodingScorePercentFromResult(chosen.result as any)
-    : null;
-
-  if (fromDbScore !== null) scorePct = clamp0_100(fromDbScore);
-  else if (fromResultScore !== null) scorePct = clamp0_100(fromResultScore);
-  else scorePct = 0;
-
-  const r: any = chosen?.result ?? null;
-
-  breakdown.push({
-    questionId: q.id,
-    type: "coding",
-    points,
-    score: scorePct,
-    submissionId: chosen?.submission_id ?? null,
-    used: fromDbScore !== null ? "codeSubmission.score" : fromResultScore !== null ? "result.score/runner" : "none",
-    runnerPassed: r?.runner?.totalPassed ?? null,
-    runnerTotal: r?.runner?.totalTests ?? null,
-  });
-}else {
+        breakdown.push({
+          questionId: q.id,
+          type: "coding",
+          points,
+          score,
+          submissionId: chosen?.submission_id ?? null,
+          used,
+          runnerPassed: chosen ? extractTestsPassed(chosen.result as any) : null,
+          runnerTotal: chosen ? extractTestsTotal(chosen.result as any) : null,
+        });
+      } else {
         breakdown.push({
           questionId: q.id,
           type: "unknown",
           points,
           score: 0,
         });
-        scorePct = 0;
       }
-
-      weightedSum += (scorePct / 100) * points;
-      weightTotal += points;
     }
 
-    const totalScore =
-      weightTotal > 0 ? clamp0_100((weightedSum / weightTotal) * 100) : 0;
+    const totalScore = weightedTotal(breakdown);
 
     await this.prisma.candidateJobSimpleTestAttempt.update({
       where: { attempt_id: attemptId },

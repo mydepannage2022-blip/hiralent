@@ -14,7 +14,6 @@
  * - POST   /:challenge_id/start -> start challenge (mark active)
  * - POST   /:challenge_id/end   -> end challenge (mark completed)
  * - POST   /:challenge_id/results -> webhook for Youssra to POST results (protected)
- * - POST   /:challenge_id/simulate -> DEV-only simulate results
  * - GET    /:challenge_id/leaderboard -> view leaderboard
  */
 
@@ -26,12 +25,10 @@ import {
   startChallengeHandler,
   endChallengeHandler,
   youssraResultsWebhookHandler,
-  simulateResultsHandler,
   getLeaderboardHandler,
 } from "../controller/company/compete.controller";
 
 import { checkAuth } from "../middlewares/checkAuth.middleware"; // adjust path to your auth middleware
-import { devOnly } from "../middlewares/devOnly";
 
 const router = Router();
 
@@ -44,11 +41,6 @@ router.post("/:challenge_id/end", checkAuth, endChallengeHandler);
 // Webhook: Youssra -> POST results
 // IMPORTANT: protect this endpoint with a service key (see controller).
 router.post("/:challenge_id/results", youssraResultsWebhookHandler);
-
-// Dev-only simulate endpoint (writes leaderboard results, so it must NOT be reachable
-// in prod — checkAuth alone would let any logged-in user forge results). devOnly runs
-// first: outside dev+ENABLE_DEV_MINT it 404s before auth even runs.
-router.post("/:challenge_id/simulate", devOnly, checkAuth, simulateResultsHandler);
 
 // Leaderboard view (employer or candidate may call - we keep auth)
 router.get("/:challenge_id/leaderboard", checkAuth, getLeaderboardHandler);

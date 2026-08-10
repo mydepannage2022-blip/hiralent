@@ -411,6 +411,7 @@ export const getPublicCompanyProfile = async (
   const profile = await prisma.companyProfile.findFirst({
     where: {
       OR: [
+        { slug: slug },
         { company_id: slug },
         { company_name: { equals: slug, mode: "insensitive" } },
         { display_name: { equals: slug, mode: "insensitive" } },
@@ -442,6 +443,125 @@ export const getPublicCompanyProfile = async (
   return profile;
 };
 
+// Get public companies for the discovery / browse directory (no auth).
+// SECURITY: CompanyProfile carries PII (contact_email, contact_number, tax_id,
+// registration_number, full_address). This is a PUBLIC endpoint, so we select
+// ONLY safe, public-facing fields — never spread the whole record.
+export interface PublicCompanyListItem {
+  // NOTE: the internal company_id (= the company User's primary key / ownership key) is
+  // intentionally NOT exposed on this public, unauthenticated list. Navigation uses `slug`
+  // (falling back to company_name), both of which the public resolver accepts. Exposing the
+  // PK let anyone bulk-harvest the exact id used as the ownership key elsewhere (Wave 4 review).
+  company_name: string | null;
+  display_name: string | null;
+  slug: string | null;
+  tagline: string | null;
+  industry: string | null;
+  company_size: string | null;
+  headquarters: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
+  verified: boolean;
+  rating: number | null;
+  active_jobs_count: number;
+}
+
+export const listPublicCompanies = async (params: {
+  search?: string;
+  location?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  companies: PublicCompanyListItem[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}> => {
+  const DEFAULT_LIMIT = 12;
+  const MAX_LIMIT = 50; // pagination cap (Wave 2 S5)
+
+  const page = Math.max(1, Math.floor(params.page || 1));
+  const limit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, Math.floor(params.limit || DEFAULT_LIMIT))
+  );
+  const skip = (page - 1) * limit;
+
+  const search = (params.search || "").trim();
+  const location = (params.location || "").trim();
+
+  // Only profiles with a public-facing name are discoverable.
+  const where: any = { company_name: { not: null } };
+  const and: any[] = [];
+
+  if (search) {
+    and.push({
+      OR: [
+        { company_name: { contains: search, mode: "insensitive" } },
+        { display_name: { contains: search, mode: "insensitive" } },
+        { industry: { contains: search, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (location) {
+    and.push({ headquarters: { contains: location, mode: "insensitive" } });
+  }
+  if (and.length) where.AND = and;
+
+  const [total, rows] = await Promise.all([
+    prisma.companyProfile.count({ where }),
+    prisma.companyProfile.findMany({
+      where,
+      // SAFE FIELDS ONLY — do not add contact/tax/address/User PII here.
+      select: {
+        company_id: true,
+        company_name: true,
+        display_name: true,
+        slug: true,
+        tagline: true,
+        industry: true,
+        company_size: true,
+        headquarters: true,
+        logo_url: true,
+        banner_url: true,
+        verified: true,
+        rating: true,
+      },
+      orderBy: [{ verified: "desc" }, { company_name: "asc" }],
+      skip,
+      take: limit,
+    }),
+  ]);
+
+  // Accurate ACTIVE job counts for just this page (one extra query, no N+1).
+  const companyIds = rows.map((r) => r.company_id);
+  const jobCounts = companyIds.length
+    ? await prisma.companyJob.groupBy({
+        by: ["company_id"],
+        where: { company_id: { in: companyIds }, status: "ACTIVE" },
+        _count: { _all: true },
+      })
+    : [];
+  const countMap = new Map<string, number>();
+  for (const g of jobCounts) countMap.set(g.company_id, g._count._all);
+
+  const companies: PublicCompanyListItem[] = rows.map((r) => ({
+    company_name: r.company_name,
+    display_name: r.display_name,
+    slug: r.slug,
+    tagline: r.tagline,
+    industry: r.industry,
+    company_size: r.company_size,
+    headquarters: r.headquarters,
+    logo_url: r.logo_url,
+    banner_url: r.banner_url,
+    verified: r.verified,
+    rating: r.rating,
+    active_jobs_count: countMap.get(r.company_id) || 0,
+  }));
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  return { companies, pagination: { total, page, limit, totalPages } };
+};
+
 // Get public company jobs
 export const getPublicCompanyJobs = async (
   slug: string,
@@ -451,6 +571,7 @@ export const getPublicCompanyJobs = async (
   const company = await prisma.companyProfile.findFirst({
     where: {
       OR: [
+        { slug: slug },
         { company_id: slug },
         { company_name: { equals: slug, mode: "insensitive" } },
         { display_name: { equals: slug, mode: "insensitive" } },

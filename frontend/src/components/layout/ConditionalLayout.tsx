@@ -32,7 +32,6 @@ const ConditionalLayout = ({ children }: ConditionalLayoutProps) => {
     // Auth & public special flows
     "/auth/",
     "/job/findjob",
-    "/code-run",
 
     // ✅ NEW: Assessment standalone world (HackerRank-like)
     "/assessment",

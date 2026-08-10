@@ -1,20 +1,18 @@
 // backend/src/services/company/internal/assessmentScoring.service.ts
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma";
+// Canonical per-question scoring math lives in the pure core (Wave 4 / S5, R-37).
+// This service keeps only the DB fetch/persist + BEST/LAST selection + evidence filtering.
+import {
+  scoreMcq,
+  resolveCodingScore,
+  extractCodingScore,
+  extractTestsPassed,
+  extractTestsTotal,
+  weightedTotal,
+} from "../../../utils/assessment-scoring-core";
 
 const CODING_SUBMISSION_MODE: "BEST" | "LAST" = "LAST";
-
-function clamp0_100(n: number) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function normalizeOptions(options: any): any[] {
-  if (!options) return [];
-  if (Array.isArray(options?.options)) return options.options;
-  if (Array.isArray(options)) return options;
-  return [];
-}
 
 function asPlainObject(v: unknown): Record<string, any> {
   if (!v || typeof v !== "object") return {};
@@ -30,116 +28,6 @@ function getJsonStringField(v: Prisma.JsonValue | null | undefined, key: string)
   if (!isJsonObject(v)) return null;
   const val = (v as Prisma.JsonObject)[key];
   return typeof val === "string" ? val : null;
-}
-
-function normId(x: unknown) {
-  return String(x ?? "").trim().toUpperCase();
-}
-
-function getCorrectMcqOptionIds(question: { correctAnswer: string | null; options: any }): string[] {
-  const raw = question.correctAnswer;
-
-  if (typeof raw === "string" && raw.trim()) {
-    const t = raw.trim();
-    if (t.startsWith("[") && t.endsWith("]")) {
-      try {
-        const arr = JSON.parse(t);
-        if (Array.isArray(arr)) return arr.map((x) => normId(x)).filter(Boolean);
-      } catch {}
-    }
-    if (t.includes(",") || t.includes("|")) {
-      return t.split(/[,|]/g).map((s) => normId(s)).filter(Boolean);
-    }
-    return [normId(t)];
-  }
-
-  const opts = normalizeOptions(question.options);
-  return opts
-    .filter((o: any) => o?.isCorrect === true || o?.correct === true)
-    .map((o: any) => normId(o.id ?? o.option_id ?? o.value ?? o.key))
-    .filter(Boolean);
-}
-
-function sameSet(a: string[], b: string[]) {
-  const A = new Set(a.map(normId));
-  const B = new Set(b.map(normId));
-  if (A.size !== B.size) return false;
-  for (const x of A) if (!B.has(x)) return false;
-  return true;
-}
-
-/**
- * ✅ FIXED: supports ALL runner shapes:
- *
- * Shape 1 (your assessment runner):
- *   { score: 100, runner: { passed: 5, total: 5 } }
- *
- * Shape 2 (simpleTest runner):
- *   { score: 100, runner: { totalPassed: 5, totalTests: 5 } }
- *
- * Also handles score stored as string "100" instead of number 100
- */
-function extractCodingScore(result: any): number {
-  if (!result) return 0;
-
-  // ✅ FIX 1: parse result if stored as JSON string
-  if (typeof result === "string") {
-    try { result = JSON.parse(result); } catch { return 0; }
-  }
-
-  // ✅ FIX 2: top-level result.score — accept both number and numeric string
-  const rawScore = result?.score;
-  if (rawScore !== null && rawScore !== undefined) {
-    const n = typeof rawScore === "number" ? rawScore : Number(rawScore);
-    if (Number.isFinite(n) && n >= 0 && n <= 100) return clamp0_100(n);
-  }
-
-  // ✅ FIX 3: runner.passed / runner.total  (YOUR assessment runner shape)
-  const passed1 = result?.runner?.passed;
-  const total1 = result?.runner?.total;
-  if (typeof passed1 === "number" && typeof total1 === "number" && total1 > 0) {
-    return clamp0_100((passed1 / total1) * 100);
-  }
-
-  // ✅ FIX 4: runner.totalPassed / runner.totalTests  (simpleTest runner shape)
-  const passed2 = result?.runner?.totalPassed;
-  const total2 = result?.runner?.totalTests;
-  if (typeof passed2 === "number" && typeof total2 === "number" && total2 > 0) {
-    return clamp0_100((passed2 / total2) * 100);
-  }
-
-  // ✅ FIX 5: legacy top-level shapes
-  const pc = result?.passedCount ?? result?.testsPassed ?? result?.passed;
-  const tt = result?.total ?? result?.testsTotal ?? result?.totalTests;
-  if (typeof pc === "number" && typeof tt === "number" && tt > 0) {
-    return clamp0_100((pc / tt) * 100);
-  }
-
-  return 0;
-}
-
-function extractTestsPassed(result: any): number {
-  if (!result) return 0;
-  if (typeof result === "string") { try { result = JSON.parse(result); } catch { return 0; } }
-  return (
-    result?.runner?.passed ??        // ✅ your assessment runner
-    result?.runner?.totalPassed ??   // simpleTest runner
-    result?.passedCount ??
-    result?.testsPassed ??
-    0
-  );
-}
-
-function extractTestsTotal(result: any): number {
-  if (!result) return 0;
-  if (typeof result === "string") { try { result = JSON.parse(result); } catch { return 0; } }
-  return (
-    result?.runner?.total ??         // ✅ your assessment runner
-    result?.runner?.totalTests ??    // simpleTest runner
-    result?.total ??
-    result?.testsTotal ??
-    0
-  );
 }
 
 type BreakdownItem =
@@ -264,8 +152,6 @@ export class AssessmentScoringService {
     }
 
     const breakdown: BreakdownItem[] = [];
-    let weightedSum = 0;
-    let weightTotal = 0;
 
     for (const row of aq) {
       const q = row.question;
@@ -280,19 +166,10 @@ export class AssessmentScoringService {
 
       // ── MCQ ──────────────────────────────────────────────
       if (isMcq) {
-        const selected = Array.isArray((ans?.answer as any)?.selectedOptionIds)
-          ? (ans?.answer as any).selectedOptionIds.map((x: any) => normId(x))
-          : (ans?.answer as any)?.selectedOptionId
-          ? [normId((ans?.answer as any).selectedOptionId)]
-          : [];
-
-        const correct = getCorrectMcqOptionIds({
+        const { score, isCorrect, selected, correct } = scoreMcq(ans?.answer, {
           correctAnswer: q.correctAnswer ?? null,
           options: q.options,
         });
-
-        const isCorrect = correct.length > 0 && sameSet(selected, correct);
-        const score = isCorrect ? 100 : 0;
 
         breakdown.push({
           questionId: row.question_id,
@@ -306,8 +183,6 @@ export class AssessmentScoringService {
           attempts,
         });
 
-        weightedSum += (score / 100) * points;
-        weightTotal += points;
         continue;
       }
 
@@ -327,17 +202,8 @@ export class AssessmentScoringService {
           chosen = best;
         }
 
-        // ✅ FIX: prefer DB score column first, then result JSON
-        const fromDbScore =
-          typeof chosen?.score === "number" && Number.isFinite(chosen.score)
-            ? clamp0_100(chosen.score)
-            : chosen?.score !== null && chosen?.score !== undefined
-            ? (Number.isFinite(Number(chosen.score)) ? clamp0_100(Number(chosen.score)) : null)
-            : null;
-
-        const fromResultScore = chosen ? extractCodingScore(chosen.result as any) : 0;
-
-        const score = fromDbScore !== null ? fromDbScore : fromResultScore;
+        // prefer the persisted DB score column, then the result JSON (core semantics)
+        const { score, used } = resolveCodingScore({ dbScore: chosen?.score, result: chosen?.result });
         const tp = chosen ? extractTestsPassed(chosen.result as any) : null;
         const tt = chosen ? extractTestsTotal(chosen.result as any) : null;
 
@@ -357,11 +223,9 @@ export class AssessmentScoringService {
           attempts,
           submissionId: chosen?.submission_id ?? null,
           error: chosen?.error ?? null,
-          used: fromDbScore !== null ? "codeSubmission.score" : fromResultScore > 0 ? "result.score/runner" : "none",
+          used,
         });
 
-        weightedSum += (score / 100) * points;
-        weightTotal += points;
         continue;
       }
 
@@ -377,10 +241,9 @@ export class AssessmentScoringService {
         timeSpentSec,
         attempts,
       });
-      weightTotal += points;
     }
 
-    const totalScore = weightTotal > 0 ? clamp0_100((weightedSum / weightTotal) * 100) : 0;
+    const totalScore = weightedTotal(breakdown);
     const passing = typeof assessment.passing_score === "number" ? assessment.passing_score : 70;
     const passed = totalScore >= passing;
 

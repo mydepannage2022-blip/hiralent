@@ -6,33 +6,51 @@ import { locationOptions } from "../../../src/constants/groupedLocationOptions";
 import Tabs from "../../../src/components/company/discover/Tabs";
 import Sidebar from '../../../src/components/company/discover/Sidebar';
 import OffCanvasSidebar from '../../../src/components/company/discover/OffCanvasSidebar';
-import { Filter } from "lucide-react";
+import { Filter, Loader2, AlertTriangle, Building2 } from "lucide-react";
 import CompanyCard from '../../../src/components/company/discover/CompanyCard';
 import Pagination from "../../../src/components/company/discover/Pagination";
+import { useDiscoverCompanies } from '@/src/lib/company/employer.queries';
+
+const PAGE_SIZE = 12;
 
 const DiscoverPage = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const [location, setLocation] = useState("");
+    const [page, setPage] = useState(1);
 
-    const handleSearch = (title: string, location: any) => {
-        console.log("Searching for:", title, location?.value);
+    const { data, isLoading, isError, refetch } = useDiscoverCompanies({
+        search,
+        location,
+        page,
+        limit: PAGE_SIZE,
+    });
+
+    const companies = data?.companies ?? [];
+    const pagination = data?.pagination;
+
+    const handleSearch = (title: string, loc: any) => {
+        setSearch((title || "").trim());
+        setLocation((loc?.value || "").trim());
+        setPage(1);
     };
 
     const customStyles = {
         control: (base: any) => ({
             ...base,
-            padding: "0px 8px", // Adjusted to py-2 equivalent (8px vertical), px-2 (8px horizontal)
+            padding: "0px 8px",
             borderRadius: "8px",
             borderColor: "transparent",
             outline: "none",
             boxShadow: "none",
             border: "none",
-            fontSize: "14px", // Slightly smaller font for slim look
+            fontSize: "14px",
         }),
         option: (base: any, state: any) => ({
             ...base,
             backgroundColor: state.isFocused ? "#EFF5FF" : "#fff",
             color: "#111",
-            padding: "8px", // Slimmer options
+            padding: "8px",
             fontWeight: state.isSelected ? "bold" : "normal",
         }),
     };
@@ -55,7 +73,6 @@ const DiscoverPage = () => {
                         {/* Mobile toggle button */}
                         <button
                             className="border border-[#CBCBCB] text-[#515151] py-1.5 px-2 font-medium cursor-pointer rounded-lg lg:hidden hover:border-[#005DDC] hover:bg-[#005DDC] hover:text-white transition-colors duration-200"
-
                             onClick={() => setSidebarOpen(true)}
                         >
                             <Filter size={20} />
@@ -77,64 +94,67 @@ const DiscoverPage = () => {
                     />
 
                     <div className='flex flex-col gap-4 sm:mx-10 md:mx-13 lg:mx-0 mx-2 lg:w-[720px] xl:w-[975px] w-full'>
-                        <CompanyCard
-                            logo="/images/bmw-logo.png"
-                            name="BMW"
-                            location="Los Angeles"
-                            rating={4.5}
-                            badges={[
-                                { label: 'Global', type: 'blue' },
-                                { label: 'Hiring', type: 'green' },
-                            ]}
-                            description="Sandro is a French fashion brand known for its chic, contemporary collections, offering men."
-                            jobs="50"
-                            reviews="103.98K"
-                            salaries="88.1K"
-                        />
-                        <CompanyCard
-                            logo="/images/belle-logo.png"
-                            name="Belle"
-                            location="Canada"
-                            rating={4.5}
-                            badges={[
-                                { label: 'Global', type: 'blue' },
-                                { label: 'Hiring', type: 'green' },
-                            ]}
-                            description="Sandro is a French fashion brand known for its chic, contemporary collections, offering men."
-                            jobs="50"
-                            reviews="103.98K"
-                            salaries="88.1K"
-                        />
-                        <CompanyCard
-                            logo="/images/diminospizza-logo.png"
-                            name="Domino's Pizza"
-                            location="China"
-                            rating={4.5}
-                            badges={[
-                                { label: 'Global', type: 'blue' },
-                                { label: 'Hiring', type: 'green' },
-                            ]}
-                            description="Sandro is a French fashion brand known for its chic, contemporary collections, offering men."
-                            jobs="50"
-                            reviews="103.98K"
-                            salaries="88.1K"
-                        />
-                        <CompanyCard
-                            logo="/images/p&g-logo.png"
-                            name="P & G"
-                            location="Brazil"
-                            rating={4.5}
-                            badges={[
-                                { label: 'Global', type: 'blue' },
-                                { label: 'Hiring', type: 'green' },
-                            ]}
-                            description="Sandro is a French fashion brand known for its chic, contemporary collections, offering men."
-                            jobs="50"
-                            reviews="103.98K"
-                            salaries="88.1K"
-                        />
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-[#515151]">
+                                <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                                <p className="text-sm">Loading companies…</p>
+                            </div>
+                        ) : isError ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <AlertTriangle className="w-8 h-8 text-red-500 mb-3" />
+                                <p className="text-sm text-[#515151] mb-4">Couldn&apos;t load companies.</p>
+                                <button
+                                    onClick={() => refetch()}
+                                    className="px-5 py-2 rounded-lg bg-[#005DDC] text-white text-sm font-medium hover:bg-[#0046B3] transition-colors"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        ) : companies.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <Building2 className="w-10 h-10 text-[#CBCBCB] mb-3" />
+                                <p className="text-lg font-semibold text-black">No companies found</p>
+                                <p className="text-sm text-[#757575] mt-1">
+                                    {search || location
+                                        ? "Try a different search or location."
+                                        : "Check back soon as more companies join."}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {companies.map((c, idx) => {
+                                    const badges: { label: string; type: 'blue' | 'green' }[] = [];
+                                    if (c.verified) badges.push({ label: 'Verified', type: 'blue' });
+                                    if (c.active_jobs_count > 0) badges.push({ label: 'Hiring', type: 'green' });
 
-                        <Pagination totalPages={10} currentPage={1} />
+                                    // Navigate by public slug, falling back to the company
+                                    // name (both are accepted by the public resolver). The
+                                    // internal company_id/PK is no longer exposed by the API.
+                                    const navId = c.slug || c.company_name || undefined;
+                                    return (
+                                        <CompanyCard
+                                            key={c.slug || c.company_name || c.display_name || `company-${idx}`}
+                                            logo={c.logo_url}
+                                            name={c.display_name || c.company_name || 'Company'}
+                                            location={c.headquarters}
+                                            rating={c.rating}
+                                            badges={badges}
+                                            description={c.tagline || c.industry}
+                                            jobs={c.active_jobs_count}
+                                            slug={navId}
+                                        />
+                                    );
+                                })}
+
+                                {pagination && pagination.totalPages > 1 && (
+                                    <Pagination
+                                        totalPages={pagination.totalPages}
+                                        currentPage={page}
+                                        onPageChange={setPage}
+                                    />
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

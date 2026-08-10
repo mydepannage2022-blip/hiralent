@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { QuestionService } from '../../services/question/Question.service';
-import { QuestionGeneratorService } from '../../services/question/QuestionGenerator.service';
 import { aiQuestionGenerationService } from '../../services/ai/ai-question-generation.service';
 import { internalTokenHeader } from '../../config/internalServiceAuth';
 import { 
@@ -33,11 +32,9 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
 export class QuestionController {
   public questionService: QuestionService;
-  private generatorService: QuestionGeneratorService;
 
   constructor() {
     this.questionService = new QuestionService();
-    this.generatorService = new QuestionGeneratorService();
     console.log('🎯 QuestionController initialized');
   }
 
@@ -263,42 +260,6 @@ async createQuestion(req: Request, res: Response) {
       }
     }
   } // ← ACCOLADE FERMANTE AJOUTÉE ICI !
-
-  // POST /api/questions/generate
-  /*
-  async generateQuestion(req: Request, res: Response) {
-    try {
-      const { topic, difficulty = 'medium' } = req.body;
-      
-      if (!topic) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Topic is required' 
-        });
-      }
-
-      // Generate question data using AI
-      const questionData = await this.generatorService.generateCodingQuestion(
-        topic, 
-        difficulty
-      );
-      
-      // Save to database
-      const question = await this.questionService.createQuestion({
-        ...questionData,
-        status: 'pending_review',
-        aiGenerated: true,
-        source: 'ai_generated'
-      });
-
-      res.json({ success: true, question });
-    } catch (error: any) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }*/
 
   // GET /api/questions/stats/overview
   async getStats(req: Request, res: Response) {

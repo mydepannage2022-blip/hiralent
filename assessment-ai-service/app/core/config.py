@@ -17,13 +17,11 @@ class Settings:
     # Redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-    # External services (later: real gRPC calls)
-    WAFAA_QGEN_ADDR = os.getenv("WAFAA_QGEN_ADDR", "question-service:50052")
-    YOUSSRA_EXEC_ADDR = os.getenv("YOUSSRA_EXEC_ADDR", "submission-service:50053")
-
-    # Mock toggles (for dev only)
-    USE_MOCK_WAFAA = os.getenv("USE_MOCK_WAFAA", "true").lower() == "true"
-    USE_MOCK_YOUSSRA = os.getenv("USE_MOCK_YOUSSRA", "true").lower() == "true"
+    # NOTE: the Wafaa/Youssra gRPC client stubs + USE_MOCK_* toggles were removed (Wave 4 /
+    # Session 3). They were orphaned placeholders returning fabricated data and were never
+    # wired to any route; the counterpart services don't exist here. The real cross-service
+    # integration lives in the Node backend over HTTP/webhook (externalClients.ts, compete
+    # webhook) — see hiralent-master-plan/matrices/dead-code-and-cleanup.md.
 
     # Gemini API
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")

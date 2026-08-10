@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 // Create checkout session validation
 export const createCheckoutSessionSchema = z.object({
-  plan_id: z.string().uuid({ message: 'Invalid plan ID format' }),
+  // plan_id is our own SubscriptionPlan identifier. It is NOT a UUID — the seed assigns
+  // deterministic ids ('plan_free'/'plan_standard'/'plan_starter'), so a `.uuid()` check
+  // rejected every real plan and 400'd checkout before it reached the controller.
+  // An unknown id is safely rejected at the DB lookup ("Subscription plan not found").
+  plan_id: z.string().min(1, { message: 'Plan ID is required' }),
   billing_cycle: z.enum(['monthly', 'yearly'], {
     errorMap: () => ({ message: 'Billing cycle must be monthly or yearly' })
   }),
@@ -22,7 +26,7 @@ export const cancelSubscriptionSchema = z.object({
 
 // Update subscription validation
 export const updateSubscriptionSchema = z.object({
-  plan_id: z.string().uuid().optional(),
+  plan_id: z.string().min(1).optional(), // our own plan id, not a UUID (see checkout schema)
   billing_cycle: z.enum(['monthly', 'yearly']).optional(),
   cancel_at_period_end: z.boolean().optional()
 });

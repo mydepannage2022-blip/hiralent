@@ -25,11 +25,17 @@ export const createCheckoutSession = async (
     throw new Error('Subscription plan not found');
   }
 
-  const amount = request.billing_cycle === BillingCycle.MONTHLY 
-    ? Number(plan.price_monthly_usd) 
+  const amount = request.billing_cycle === BillingCycle.MONTHLY
+    ? Number(plan.price_monthly_usd)
     : Number(plan.price_annually_usd);
 
   const gateway = getPaymentGateway(request.payment_gateway as PaymentGatewayType);
+
+  // Pre-fill the gateway checkout with the buyer's email when we have it.
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { email: true }
+  });
 
   const sessionData: CreatePaymentSessionData = {
     user_id: userId,
@@ -39,6 +45,7 @@ export const createCheckoutSession = async (
     currency: 'USD',
     success_url: request.success_url || `${process.env.FRONTEND_URL}/payment/success`,
     cancel_url: request.cancel_url || `${process.env.FRONTEND_URL}/payment/cancel`,
+    customer_email: user?.email,
     metadata: {
       plan_name: plan.name,
       billing_cycle: request.billing_cycle

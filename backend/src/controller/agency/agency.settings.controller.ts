@@ -130,46 +130,9 @@ export const getNotifications = async (req: Request, res: Response) => {
   }
 };
 
-// PUT /api/v1/agency/settings/notifications - Update notification preferences
-export const updateNotifications = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.user_id;
-    const {
-      emailNotifications,
-      caseUpdates,
-      newClients,
-      systemAlerts,
-      weeklyReports,
-    } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    // TODO: Create a UserNotificationPreferences table to store these settings
-
-    return res.status(200).json({
-      success: true,
-      message: "Notification preferences updated successfully",
-      data: {
-        emailNotifications,
-        caseUpdates,
-        newClients,
-        systemAlerts,
-        weeklyReports,
-      },
-    });
-  } catch (error) {
-    console.error("Update notifications error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update notification preferences",
-    });
-  }
-};
+// Notification-preference persistence lives in the role-neutral
+// notificationPreferences controller (PUT /api/v1/notification-preferences).
+// The GET above (getNotifications) returns the notification *inbox*, not prefs.
 
 // GET /api/v1/agency/settings/export-data - Export user data
 export const exportData = async (req: Request, res: Response) => {

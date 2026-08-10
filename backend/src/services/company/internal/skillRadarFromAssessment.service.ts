@@ -1,72 +1,15 @@
 // backend/src/services/company/internal/skillRadarFromAssessment.service.ts
 import prisma from '../../../lib/prisma';
-
-
-function clampScore(x: unknown) {
-  const n = typeof x === "number" ? x : Number(x);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function normalizeOptions(options: any): any[] {
-  if (!options) return [];
-  if (Array.isArray(options?.options)) return options.options;
-  if (Array.isArray(options)) return options;
-  return [];
-}
+// Per-question scoring delegated to the pure core (Wave 4 / S5, R-37) so the radar's
+// per-tag averages are computed from the SAME MCQ/coding math as the authoritative
+// total_score. Only the skillTags grouping/averaging below is radar-specific.
+import { scoreMcq, resolveCodingScore } from '../../../utils/assessment-scoring-core';
 
 // ✅ Fix for TS2698: only spread real objects
 function asPlainObject(v: unknown): Record<string, any> {
   if (!v || typeof v !== "object") return {};
   if (Array.isArray(v)) return {};
   return v as Record<string, any>;
-}
-
-// normalize ids: trim + uppercase
-function normId(x: unknown) {
-  return String(x ?? "")
-    .trim()
-    .toUpperCase();
-}
-
-function getCorrectMcqOptionIds(question: { correctAnswer: string | null; options: any }): string[] {
-  const raw = question.correctAnswer;
-
-  if (typeof raw === "string" && raw.trim()) {
-    const t = raw.trim();
-
-    // allow JSON array in string: '["A","B"]'
-    if (t.startsWith("[") && t.endsWith("]")) {
-      try {
-        const arr = JSON.parse(t);
-        if (Array.isArray(arr)) return arr.map((x) => normId(x)).filter(Boolean);
-      } catch {}
-    }
-
-    // handle "A,B" or "A, B" or "A|B"
-    if (t.includes(",") || t.includes("|")) {
-      return t
-        .split(/[,|]/g)
-        .map((s) => normId(s))
-        .filter(Boolean);
-    }
-
-    return [normId(t)];
-  }
-
-  const opts = normalizeOptions(question.options);
-  return opts
-    .filter((o: any) => o?.isCorrect === true || o?.correct === true)
-    .map((o: any) => normId(o.id ?? o.option_id ?? o.value ?? o.key))
-    .filter(Boolean);
-}
-
-function sameSet(a: string[], b: string[]) {
-  const A = new Set(a.map(normId));
-  const B = new Set(b.map(normId));
-  if (A.size !== B.size) return false;
-  for (const x of A) if (!B.has(x)) return false;
-  return true;
 }
 
 export class SkillRadarFromAssessmentService {
@@ -78,6 +21,7 @@ export class SkillRadarFromAssessmentService {
         assessment_id: true,
         candidate_id: true,
         status: true,
+        submitted_at: true,
       },
     });
 
@@ -96,9 +40,25 @@ export class SkillRadarFromAssessmentService {
     const qIds = answers.map((a) => a.question_id);
 
     if (qIds.length === 0) {
+      // No answer rows (e.g. timeout / auto-submit). The scoring worker has ALREADY written
+      // `questions` / `totalScore` / `passed` into result_summary via computeAndStore; we
+      // must MERGE the empty radar over that object, never replace it — a bare write here
+      // silently wiped the authoritative breakdown the employer results page reads
+      // (Wave 4 review, data-loss fix).
+      const prevEmpty = await prisma.candidateAssessmentSession.findUnique({
+        where: { session_id: sessionId },
+        select: { result_summary: true },
+      });
       await prisma.candidateAssessmentSession.update({
         where: { session_id: sessionId },
-        data: { result_summary: { radar_tag: [], assessmentId: session.assessment_id } as any },
+        data: {
+          result_summary: {
+            ...asPlainObject(prevEmpty?.result_summary),
+            radar_tag: [],
+            assessmentId: session.assessment_id,
+            generatedAt: new Date().toISOString(),
+          } as any,
+        },
       });
       return { ok: true, radarCount: 0, radar_tag: [] };
     }
@@ -110,18 +70,33 @@ export class SkillRadarFromAssessmentService {
 
     const qById = new Map(questions.map((q) => [q.id, q]));
 
+    // Parity with AssessmentScoringService.computeAndStore (the authoritative total): the
+    // radar MUST score the SAME code submission the total does, or per-tag scores diverge
+    // from total_score (Wave 4 review, parity fix). That means (a) cap at submitted_at so a
+    // later retake isn't picked up, and (b) keep only submissions belonging to THIS session
+    // via evidence.session_id.
     const subs = await prisma.codeSubmission.findMany({
       where: {
         candidate_id: session.candidate_id,
         assessment_id: session.assessment_id,
         question_id: { in: qIds },
+        ...(session.submitted_at ? { created_at: { lte: session.submitted_at } } : {}),
       },
       orderBy: { created_at: "desc" },
-      select: { question_id: true, result: true, score: true },
+      select: { question_id: true, result: true, score: true, evidence: true },
     });
+
+    const evSessionOf = (evidence: unknown): string | null => {
+      if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return null;
+      const v = (evidence as Record<string, unknown>).session_id;
+      return typeof v === "string" ? v : null;
+    };
 
     const latestSubByQ = new Map<string, { score: number | null; result: any }>();
     for (const s of subs) {
+      // Skip submissions that explicitly belong to a different session.
+      const evSession = evSessionOf(s.evidence as any);
+      if (evSession && evSession !== sessionId) continue;
       if (!latestSubByQ.has(s.question_id)) {
         latestSubByQ.set(s.question_id, { score: s.score ?? null, result: s.result as any });
       }
@@ -142,27 +117,13 @@ export class SkillRadarFromAssessmentService {
 
       if (isCoding) {
         const sub = latestSubByQ.get(a.question_id);
-        const fromScore = sub?.score;
-        const fromResultScore = sub?.result?.score;
-
-        baseScore = clampScore(
-          typeof fromScore === "number"
-            ? fromScore
-            : typeof fromResultScore === "number"
-            ? fromResultScore
-            : 0
-        );
+        // Full runner-shape resolution (DB score → result JSON), same as the total.
+        baseScore = resolveCodingScore({ dbScore: sub?.score, result: sub?.result }).score;
       } else if (isMcq) {
-        const selected = Array.isArray((a.answer as any)?.selectedOptionIds)
-          ? (a.answer as any).selectedOptionIds.map((x: any) => normId(x))
-          : [];
-
-        const correct = getCorrectMcqOptionIds({
+        baseScore = scoreMcq(a.answer, {
           correctAnswer: q.correctAnswer ?? null,
           options: q.options,
-        });
-
-        baseScore = correct.length > 0 && sameSet(selected, correct) ? 100 : 0;
+        }).score;
       } else {
         baseScore = 0;
       }

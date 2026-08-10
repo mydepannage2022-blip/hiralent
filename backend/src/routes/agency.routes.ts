@@ -4,13 +4,12 @@ import { getDashboardStats, getRecentActivities, getAnalytics } from "../control
 import { checkAuth } from "../middlewares/checkAuth.middleware"; 
 import { createCase, listCases, getCaseById, getClients, updateCase } from "../controller/agency/agency.case.controller";
 import { getProfile, updateProfile } from "../controller/agency/agency.profile.controller";
-import { 
-  changePassword, 
-  toggle2FA, 
-  updateNotifications, 
+import {
+  changePassword,
+  toggle2FA,
   getNotifications,
   exportData,
-  getSettings 
+  getSettings
 } from "../controller/agency/agency.settings.controller";
 import { reviewDocument, getCaseDocuments } from "../controller/agency/agency.document.controller";
 import {
@@ -62,7 +61,8 @@ router.get("/settings", checkAuth, getSettings);
 router.put("/settings/password", checkAuth, changePassword);
 router.put("/settings/2fa", checkAuth, toggle2FA);
 router.get("/settings/notifications", checkAuth, getNotifications);
-router.put("/settings/notifications", checkAuth, updateNotifications);
+// Notification-preference persistence moved to the role-neutral
+// PUT /api/v1/notification-preferences (see notificationPreferences.routes).
 router.get("/settings/export-data", checkAuth, exportData);
 
 // Document Review Routes

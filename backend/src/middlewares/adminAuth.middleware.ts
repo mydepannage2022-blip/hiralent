@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { requireEnv } from '../config/requireEnv';
+import prisma from '../lib/prisma';
 
 // Read lazily at verify time — no publicly-known fallback string, and never
 // evaluates before dotenv has populated process.env.
@@ -21,38 +22,58 @@ declare global {
 }
 
 // Verify admin session token
-export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+export async function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        ok: false, 
-        error: 'No authorization token provided' 
+      return res.status(401).json({
+        ok: false,
+        error: 'No authorization token provided'
       });
     }
-    
+
     const token = authHeader.replace('Bearer ', '');
-    
+
     // Verify JWT
     const decoded = jwt.verify(token, getAdminJwtSecret()) as any;
-    
-    // Check if user is superadmin and authenticated
+
+    // Check if user is superadmin and authenticated (per the token claims)
     if (decoded.role !== 'superadmin' || !decoded.authenticated) {
-      return res.status(403).json({ 
-        ok: false, 
-        error: 'Insufficient permissions. Superadmin access required.' 
+      return res.status(403).json({
+        ok: false,
+        error: 'Insufficient permissions. Superadmin access required.'
       });
     }
-    
-    // Attach admin info to request
+
+    // SECURITY (Wave 4 review, F1): the admin token is a stateless ~8h JWT with no
+    // server-side session. Without a live DB re-check, a deleted or demoted admin keeps
+    // full access until the token expires (and could re-create itself, defeating the
+    // last-admin guard). Re-verify against the DB on every request so delete/demote takes
+    // effect immediately — the same "revocation is authoritative in the DB" guarantee that
+    // checkAuth gives normal users via the session table.
+    if (!decoded.user_id) {
+      return res.status(401).json({ ok: false, error: 'Invalid authentication token' });
+    }
+    const current = await prisma.user.findUnique({
+      where: { user_id: decoded.user_id },
+      select: { user_id: true, role: true, email: true, full_name: true },
+    });
+    if (!current || current.role !== 'superadmin') {
+      return res.status(401).json({
+        ok: false,
+        error: 'Admin account is no longer active. Please login again.',
+      });
+    }
+
+    // Attach admin info to request — trust the DB row, not stale token claims.
     req.admin = {
-      user_id: decoded.user_id,
-      email: decoded.email,
-      role: decoded.role,
-      full_name: decoded.full_name
+      user_id: current.user_id,
+      email: current.email,
+      role: current.role,
+      full_name: current.full_name ?? decoded.full_name,
     };
-    
+
     next();
   } catch (error: any) {
     console.error('[adminAuth] Token verification failed:', error.message);

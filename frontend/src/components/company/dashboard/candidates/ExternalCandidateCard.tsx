@@ -106,11 +106,16 @@ export default function ExternalCandidateCard({
         <div className="shrink-0">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100"
+            disabled={!onInvite}
+            title={
+              onInvite
+                ? "Invite this candidate"
+                : "Assessment invites for sourced candidates are coming soon"
+            }
+            className="inline-flex items-center gap-2 rounded-xl border bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-50"
             onClick={(e) => {
               e.stopPropagation();
-              if (onInvite) return onInvite(sourceId);
-              console.log("Invite external", sourceId);
+              if (onInvite) onInvite(sourceId);
             }}
           >
             <UserPlus className="h-4 w-4" />

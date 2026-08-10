@@ -18,6 +18,7 @@ import {
   getPublicCompanyProfile,
   getPublicCompanyJobs,
 } from "./employer.api";
+import { getDiscoverCompanies, type DiscoverFilters } from "./discover.api";
 import type {
   UpdateCompanyInfoPayload,
   UpdateContactPayload,
@@ -34,6 +35,7 @@ export const employerKeys = {
   completeness: () => [...employerKeys.all, "completeness"] as const,
   public: (slug: string) => [...employerKeys.all, "public", slug] as const,
   publicJobs: (slug: string) => [...employerKeys.all, "public", slug, "jobs"] as const,
+  discover: (filters: DiscoverFilters) => [...employerKeys.all, "discover", filters] as const,
 };
 
 // ==================== QUERIES ====================
@@ -84,6 +86,18 @@ export function usePublicCompanyJobs(
     queryFn: () => getPublicCompanyJobs(slug, params),
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Discover / browse public companies (no auth). Keeps the previous page's
+ * data visible while a new page/search is fetching.
+ */
+export function useDiscoverCompanies(filters: DiscoverFilters) {
+  return useQuery({
+    queryKey: employerKeys.discover(filters),
+    queryFn: () => getDiscoverCompanies(filters),
+    staleTime: 60 * 1000, // 1 minute
   });
 }
 

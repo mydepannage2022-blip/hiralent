@@ -8,11 +8,14 @@
 
 ---
 
+> **Session structure (planned):** S1 checkout foundation · S2 signed webhooks + activation + idempotency · S3 lifecycle (cancel/refund/upgrade/downgrade/dunning) · S4 entitlements + records · S5 agency billing · S6 E2E gate. PayPal = honest-disabled (Stripe-only launch).
+
 ## Phase 5.1 — Gateway integration (server-side)
-- [ ] Add the real SDKs (`stripe`, PayPal SDK); remove all `mock_session_*` / fabricated-URL code paths. (R-05)
-- [ ] Implement real `createCheckoutSession` (Stripe Checkout / PaymentIntents; PayPal orders) returning genuine session URLs.
-- [ ] Implement real `cancel`/`refund` against the SDKs.
-- [ ] Keep gateway secrets in the secret store (P5); never client-side.
+- [x] **[S1]** Add the real `stripe` SDK; remove all `mock_session_*` / fabricated-URL code paths; **PayPal + Manual honest-disabled** (throw, no fake sessions), `getSupportedGateways` dynamic. (R-05)
+- [x] **[S1]** Implement real `createCheckoutSession` (Stripe hosted Checkout, subscription mode, inline `price_data` from our DB) returning genuine `checkout.stripe.com` session URLs.
+- [x] **[S1]** Money precision: `SubscriptionPlan.price_*_usd` → `Decimal(10,2)`; `User.stripe_customer_id` added (populated S2). Frontend card-collection form removed → Stripe hosted redirect.
+- [ ] Implement real `cancel`/`refund` against the SDKs. → **S3**
+- [x] **[S1]** Keep gateway secrets in the secret store (P5) — `STRIPE_SECRET_KEY` via `requireEnv`, server-side only; never client-side.
 
 ## Phase 5.2 — Webhooks & verification (trust the server, not the client)
 - [ ] Implement **real webhook signature verification** (`stripe.webhooks.constructEvent`, PayPal verification) — replace the "starts with `whsec_`" stub.
@@ -22,7 +25,7 @@
 ## Phase 5.3 — Subscription lifecycle
 - [ ] Wire `UserSubscription`/`AgencySubscription`/`PaymentTransaction` to real events; handle upgrade/downgrade/cancel/expiry, proration, and failed-payment/dunning.
 - [ ] Enforce plan entitlements/limits across the app (gate features by active subscription).
-- [ ] Fix money precision: use `Decimal(10,2)` consistently (`SubscriptionPlan` price fields currently unqualified).
+- [x] **[S1]** Fix money precision: use `Decimal(10,2)` consistently (`SubscriptionPlan` price fields were unqualified — now pinned).
 - [ ] Idempotent payment handling (dedupe webhook retries; no double-charge/double-grant).
 
 ## Phase 5.4 — Safety & records

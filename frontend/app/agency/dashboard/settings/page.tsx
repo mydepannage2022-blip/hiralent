@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { API_V1_BASE } from "@/src/lib/config/api";
 import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "@/src/lib/notifications/preferences.api";
+import {
   Shield,
   Bell,
   Eye,
@@ -36,6 +40,27 @@ export default function SettingsPage() {
   const [systemAlerts, setSystemAlerts] = useState(true);
   const [weeklyReports, setWeeklyReports] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
+
+  // Hydrate the toggles from the server so saved preferences survive a reload.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const prefs = await getNotificationPreferences("COMPANY");
+        if (!active) return;
+        if (typeof prefs.emailNotifications === "boolean") setEmailNotifications(prefs.emailNotifications);
+        if (typeof prefs.caseUpdates === "boolean") setCaseUpdates(prefs.caseUpdates);
+        if (typeof prefs.newClients === "boolean") setNewClients(prefs.newClients);
+        if (typeof prefs.systemAlerts === "boolean") setSystemAlerts(prefs.systemAlerts);
+        if (typeof prefs.weeklyReports === "boolean") setWeeklyReports(prefs.weeklyReports);
+      } catch {
+        // Non-fatal: fall back to defaults if prefs can't be loaded.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handlePasswordChange = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -91,28 +116,16 @@ export default function SettingsPage() {
   const handleNotificationSave = async () => {
     try {
       setSavingNotifications(true);
-      const token = localStorage.getItem("authToken");
-
-      const response = await fetch(
-        `${API_V1_BASE}/agency/settings/notifications`,
+      await updateNotificationPreferences(
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            emailNotifications,
-            caseUpdates,
-            newClients,
-            systemAlerts,
-            weeklyReports,
-          }),
-        }
+          emailNotifications,
+          caseUpdates,
+          newClients,
+          systemAlerts,
+          weeklyReports,
+        },
+        "COMPANY"
       );
-
-      if (!response.ok) throw new Error("Failed to save notification settings");
-
       toast.success("Notification preferences updated!");
     } catch (error: any) {
       toast.error(error.message || "Failed to save settings");

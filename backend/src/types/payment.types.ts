@@ -42,6 +42,7 @@ export interface CreatePaymentSessionData {
   currency: string;
   success_url: string;
   cancel_url: string;
+  customer_email?: string; // pre-fills the gateway checkout for the buyer
   metadata?: Record<string, any>;
 }
 

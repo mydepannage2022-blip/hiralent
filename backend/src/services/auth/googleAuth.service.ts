@@ -2,6 +2,7 @@ import axios from "axios";
 import prisma from "../../lib/prisma";
 import { issueAuthTokens } from "./tokenIssue.service";
 import { getClientIP } from "../../utils/locationDetector.util";
+import { ForbiddenError } from "../../errors/httpErrors";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -81,6 +82,14 @@ export const handleGoogleCallback = async (
   let isNew = false;
 
   if (!user) {
+    // Platform kill-switch: same gate as email/password signup (auth.service.signup) — a
+    // superadmin closing registrations must ALSO block brand-new Google OAuth accounts, else
+    // the "no new registrations" setting is trivially bypassed via "Continue with Google".
+    const platformSettings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+    if (platformSettings && platformSettings.allow_new_registrations === false) {
+      throw new ForbiddenError("New registrations are currently disabled");
+    }
+
     // Brand-new user — needs onboarding to pick their role
     user = await prisma.user.create({
       data: {

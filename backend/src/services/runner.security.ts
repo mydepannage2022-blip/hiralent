@@ -78,25 +78,40 @@ export const REQUIRED_DOCKER_FLAGS: readonly string[] = [
 ];
 
 /**
+ * Is the process running in an explicitly-declared local/dev environment?
+ *
+ * SECURITY (fail-closed): only a KNOWN dev/test value counts as non-production. An unset,
+ * empty, misspelled ("prod"), or novel ("staging") NODE_ENV is treated as PRODUCTION so the
+ * host-exec escape hatch can never open by accident on a mis-declared deploy. The old code
+ * did the inverse (`=== 'production'`), which meant any non-canonical NODE_ENV silently
+ * re-enabled host RCE the moment RUNNER_ALLOW_HOST_EXEC=1 leaked in from a copied .env.
+ */
+function isExplicitlyNonProd(): boolean {
+  const env = (process.env.NODE_ENV || '').toLowerCase().trim();
+  return env === 'development' || env === 'dev' || env === 'test' || env === 'local';
+}
+
+/**
  * Is running candidate code directly on the host explicitly permitted?
- * OFF unless `RUNNER_ALLOW_HOST_EXEC=1` is set, and NEVER in production. This is the
- * only gate that lets the local `entrypoint.py` path run — a dev-only escape hatch.
+ * OFF unless BOTH an explicit dev/test NODE_ENV AND `RUNNER_ALLOW_HOST_EXEC=1` are set.
+ * This is the only gate that lets the local `entrypoint.py` path run — a dev-only escape
+ * hatch that fails closed everywhere else.
  */
 export function isHostExecAllowed(): boolean {
-  if ((process.env.NODE_ENV || '').toLowerCase() === 'production') return false;
+  if (!isExplicitlyNonProd()) return false;
   return process.env.RUNNER_ALLOW_HOST_EXEC === '1';
 }
 
 /**
  * Boot-time guard (called from server.ts after dotenv). Refuses to start when the runner
- * config would let candidate code escape the container in production:
- *   - RUNNER_ALLOW_HOST_EXEC=1 in production  → host RCE, or
+ * config would let candidate code escape the container in a production-treated environment:
+ *   - RUNNER_ALLOW_HOST_EXEC=1  → host RCE, or
  *   - RUNNER_HTTP_URL set without RUNNER_STUB_TOKEN → the HTTP runner is callable unauth.
- * No-op outside production. Proven in both directions by verify-runner-hardening.mjs.
+ * No-op ONLY in an explicitly-declared dev/test env. Proven both directions by
+ * verify-runner-hardening.mjs.
  */
 export function assertSafeRunner(): void {
-  const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-  if (!isProd) return;
+  if (isExplicitlyNonProd()) return;
 
   const problems: string[] = [];
   if (process.env.RUNNER_ALLOW_HOST_EXEC === '1') {

@@ -1,17 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { CheckCircle, Clock, Sparkles } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
+import { getAssessmentResults } from '@/src/lib/profile/assessment.api';
+
+// Honest post-submit bridge. The actual completion (AI evaluation + summary) is kicked off
+// by the completeAssessment mutation on the test page. This screen does NOT run a fake
+// countdown — it POLLS the results endpoint and only forwards once results are genuinely
+// ready, so a slow evaluation can't dump the user onto a "not completed yet" results error.
+const POLL_MS = 2500;
+const MAX_POLLS = 48; // ~2 min ceiling; the manual button is always available.
 
 export default function AssessmentCompletePage() {
   const params = useParams();
   const router = useRouter();
   const assessmentId = params?.assessmentId as string;
-  
-  const [timeRemaining, setTimeRemaining] = useState(60); // 60 seconds
-  const [progress, setProgress] = useState(0);
+  const [pollExhausted, setPollExhausted] = useState(false);
+  const navigated = useRef(false);
+
+  const goToResults = () => {
+    if (navigated.current) return;
+    navigated.current = true;
+    router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
+  };
 
   useEffect(() => {
     if (!assessmentId) {
@@ -19,156 +32,79 @@ export default function AssessmentCompletePage() {
       return;
     }
 
-    // Countdown timer
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Redirect after 1 minute
-          router.push(`/candidate/dashboard/skills-assessment/results/${assessmentId}`);
-          return 0;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        await getAssessmentResults(assessmentId); // resolves only once completion has landed
+        if (!cancelled) goToResults();
+        return;
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        // Still processing → keep waiting. Any other error (auth/etc.) → stop polling and
+        // let the user click through; we never fake a "ready" state.
+        if (!msg.toLowerCase().includes('not completed')) {
+          if (!cancelled) setPollExhausted(true);
+          return;
         }
-        return prev - 1;
-      });
+      }
+      if (cancelled) return;
+      if (attempts >= MAX_POLLS) { setPollExhausted(true); return; }
+      timer = setTimeout(poll, POLL_MS);
+    };
 
-      setProgress((prev) => {
-        if (prev >= 100) return 100;
-        return prev + (100 / 60); // Increase by 1.67% per second
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
+    poll();
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [assessmentId, router]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   return (
     <div className="flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
         className="max-w-2xl w-full"
       >
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
-          {/* Success Icon */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            transition={{ delay: 0.15, type: 'spring', stiffness: 200 }}
             className="flex justify-center mb-6"
           >
-            <div className="relative">
-              <CheckCircle className="w-16 h-16 text-green-500" />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                className="absolute -top-2 -right-2"
-              >
-              </motion.div>
-            </div>
+            <CheckCircle className="w-16 h-16 text-green-500" />
           </motion.div>
 
-          {/* Heading */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-3xl md:text-4xl font-bold text-gray-800 mb-4"
-          >
-            Assessment Completed!
-          </motion.h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+            Assessment Submitted!
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-gray-600 text-sm mb-8"
-          >
-            Great job! We're analyzing your responses and generating personalized insights.
-          </motion.p>
-
-          {/* Processing Steps */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-gray-50 rounded-xl p-6 mb-8"
-          >
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Clock className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium text-gray-600">
-                Processing in progress...
-              </span>
-            </div>
-
-            <div className="space-y-3 text-sm text-gray-600 text-left max-w-md mx-auto">
-              <ProcessingStep 
-                text="Evaluating your answers with AI" 
-                delay={0.6}
-              />
-              <ProcessingStep 
-                text="Calculating skill level and performance metrics" 
-                delay={0.8}
-              />
-              <ProcessingStep 
-                text="Generating personalized recommendations" 
-                delay={1.0}
-              />
-              <ProcessingStep 
-                text="Creating detailed performance report" 
-                delay={1.2}
-              />
-            </div>
-          </motion.div>
-
-          {/* Timer Display */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="mb-6"
-          >
-            <div className="inline-flex items-center gap-2 ring ring-1 ring-blue-500 text-blue-500 px-6 py-3 rounded-full font-semibold text-lg">
-              <Clock className="w-5 h-5" />
-              <span className='text-xs'>Results ready in {formatTime(timeRemaining)}</span>
-            </div>
-          </motion.div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full"
-            />
-          </div>
-
-          <p className="text-xs text-gray-500 mt-4">
-            You'll be automatically redirected to your results
+          <p className="text-gray-600 text-sm mb-8">
+            {pollExhausted
+              ? 'Your responses are recorded. Your results are taking a little longer than usual to prepare.'
+              : "Your responses have been recorded. We're preparing your results."}
           </p>
+
+          {!pollExhausted && (
+            <div className="inline-flex items-center gap-2 text-blue-600">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm font-medium">Preparing your results…</span>
+            </div>
+          )}
+
+          <div className="mt-8">
+            <button
+              onClick={goToResults}
+              className="text-sm text-blue-600 hover:text-blue-700 underline"
+            >
+              View results now
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
-  );
-}
-
-// Processing Step Component
-function ProcessingStep({ text, delay }: { text: string; delay: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay }}
-      className="flex items-center gap-3"
-    >
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-      <span>{text}</span>
-    </motion.div>
   );
 }

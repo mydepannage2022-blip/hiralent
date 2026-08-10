@@ -256,7 +256,7 @@ const JobDetailsPage = ({ params }: JobDetailsPageProps) => {
 
                 {/* View Company Profile Button */}
                 <button
-                  onClick={() => router.push(`/company/public-profile/${job.company_id}`)}
+                  onClick={() => router.push(`/company/${job.company_id}`)}
                   className="w-full mt-6 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-sm transition-colors"
                 >
                   View Company Profile

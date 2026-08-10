@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 
 export type InternalCandidateItem = {
   candidate_id: string;
@@ -17,7 +17,9 @@ export type InternalCandidateItem = {
 
 type Props = {
   item: InternalCandidateItem;
-  onInvite?: (id: string) => void;
+  // NOTE: no `onInvite` — inviting an internal candidate from the directory is not wired yet.
+  // Rather than ship a dead/absent affordance, the card exposes only what works: full-card
+  // navigation to the candidate detail + an honest-disabled Chat (Wave 4 review).
   onChat?: (id: string) => void;
 };
 
@@ -41,7 +43,7 @@ function fitTone(fit: number | null) {
   return "bg-gray-50 text-gray-700 border-gray-200";
 }
 
-export default function InternalCandidateCard({ item, onInvite, onChat }: Props) {
+export default function InternalCandidateCard({ item, onChat }: Props) {
   const router = useRouter();
   if (!item) return null;
 
@@ -115,11 +117,16 @@ export default function InternalCandidateCard({ item, onInvite, onChat }: Props)
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
+          {/* Honest-disabled when no real handler is wired (matches ExternalCandidateCard) — never a
+              silent console.log dead-end. The whole card already navigates to the candidate detail. */}
           <button
-            className="inline-flex items-center gap-2 rounded-xl border bg-gray-50 px-3 py-2 text-sm hover:bg-gray-100"
+            type="button"
+            disabled={!onChat}
+            title={onChat ? "Message this candidate" : "Direct messaging from here is coming soon"}
+            className="inline-flex items-center gap-2 rounded-xl border bg-gray-50 px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-50"
             onClick={(e) => {
               e.stopPropagation();
-              onChat?.(id);
+              if (onChat) onChat(id);
             }}
           >
             <MessageSquare className="h-4 w-4" />

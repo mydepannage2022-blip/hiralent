@@ -472,6 +472,32 @@ export const getPublicProfileController = async (req: Request, res: Response) =>
   }
 };
 
+// Get public companies for discovery / browse directory (no auth required)
+export const getPublicCompaniesController = async (req: Request, res: Response) => {
+  try {
+    const search = typeof req.query.search === "string" ? req.query.search : undefined;
+    const location = typeof req.query.location === "string" ? req.query.location : undefined;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 12;
+
+    const result = await employerService.listPublicCompanies({
+      search,
+      location,
+      page,
+      limit,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Get public companies error:", error);
+    const message = error.message || "Failed to get companies";
+    res.status(400).json({ error: true, message });
+  }
+};
+
 // Get public company jobs (no auth required)
 export const getPublicJobsController = async (req: Request, res: Response) => {
   try {

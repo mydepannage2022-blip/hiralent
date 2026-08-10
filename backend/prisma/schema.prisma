@@ -109,6 +109,11 @@ model User {
   mfa_enabled        Boolean @default(false)
   mfa_recovery_codes String? // JSON array of SHA-256 hashed recovery codes
 
+  // Payments (Wave 5) — external gateway customer handle. Populated from the
+  // verified checkout/subscription webhook (Wave 5 S2); added here (nullable) so
+  // one migration covers it. Never a secret.
+  stripe_customer_id String? @unique
+
   // Relations
   agency             Agency?             @relation(fields: [agency_id], references: [agency_id], onDelete: SetNull)
   candidateProfile   CandidateProfile?
@@ -133,6 +138,7 @@ model User {
   companyInvites            CompanyAgencyInvitation[] @relation("CompanyInvites")
   jobRecommendations        JobRecommendation[]       @relation("JobRecommendations")
   notifications             Notification[]            @relation("UserNotifications")
+  notificationPreferences   UserNotificationPreferences? @relation("UserNotificationPreferences")
   candidateDocuments        CandidateDocument[]       @relation("CandidateDocuments")
   candidateSkills           CandidateSkill[]          @relation("CandidateSkills")
   skillExtractions          SkillExtraction[]         @relation("SkillExtractions")
@@ -998,13 +1004,17 @@ model CandidateProfile {
 
 model AdminAuditLog {
   log_id       String   @id @default(uuid())
-  admin_id     String
+  // Nullable + SetNull (was required + Cascade): an audit log is a security record and must
+  // OUTLIVE the admin it references. Cascade deleted an admin's own past actions when that admin
+  // was removed — destroying exactly the trail the Security Log page exists to preserve. On admin
+  // delete, admin_id is now nulled and the row survives; the API/UI already render admin=null as "—".
+  admin_id     String?
   action_type  String
   target_table String
   target_id    String
   description  String?
   created_at   DateTime @default(now())
-  admin        User     @relation(fields: [admin_id], references: [user_id], onDelete: Cascade)
+  admin        User?    @relation(fields: [admin_id], references: [user_id], onDelete: SetNull)
 
   @@index([admin_id, created_at])
   @@index([target_table, target_id])
@@ -1070,12 +1080,37 @@ model Notification {
   @@index([created_at])
 }
 
+// Per-user notification toggle preferences (role-neutral).
+// Key-sets differ per role (agency/company/candidate), so preferences are
+// stored as a JSON object rather than typed columns.
+model UserNotificationPreferences {
+  id          String   @id @default(uuid())
+  user_id     String   @unique
+  preferences Json     @default("{}")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user User @relation("UserNotificationPreferences", fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// Platform-wide settings a superadmin configures from the admin dashboard (Settings page).
+// Single-row table: the app always reads/writes the row keyed by the fixed id "global"
+// (get-or-create), so there is exactly one settings record. `allow_new_registrations` is
+// enforced in auth.service.signup; the others are advisory (surfaced in the dashboard).
+model PlatformSettings {
+  id                       String   @id @default("global")
+  allow_new_registrations  Boolean  @default(true)
+  maintenance_mode         Boolean  @default(false)
+  support_email            String?
+  updated_by               String?
+  updated_at               DateTime @updatedAt
+}
 
 model SubscriptionPlan {
   plan_id                  String               @id @default(uuid())
   name                     String
-  price_monthly_usd        Decimal
-  price_annually_usd       Decimal
+  price_monthly_usd        Decimal              @db.Decimal(10, 2)
+  price_annually_usd       Decimal              @db.Decimal(10, 2)
   job_post_limit           Int
   ai_interview_limit       Int
   features_included        String

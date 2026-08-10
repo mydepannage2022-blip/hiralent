@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../../utils/email.util";
 import { generateToken } from "../../utils/jwt.util";
-import { ConflictError } from "../../errors/httpErrors";
+import { ConflictError, ForbiddenError } from "../../errors/httpErrors";
 import logger from "../../lib/logger";
 import { getWelcomeEmailTemplate, getLegacyCheckEmailTemplate } from "../emailTemplates.service";
 import fs from 'fs/promises';
@@ -24,6 +24,14 @@ import { DeleteAccountRequest } from "../../validation/auth.schema";
 
 export const signup = async (input: SignupInput, req?: any) => {
   const { email, password, full_name, role } = input;
+
+  // Platform kill-switch: a superadmin can close public sign-ups from the admin dashboard
+  // (Settings → Platform). Read the singleton settings row (absent row ⇒ registrations open).
+  // superadmin accounts are never created through this public path, so this never locks admins out.
+  const platformSettings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+  if (platformSettings && platformSettings.allow_new_registrations === false) {
+    throw new ForbiddenError("New registrations are currently disabled");
+  }
 
   const exists = await prisma.user.findUnique({ where: { email } });
   // A ConflictError propagates to the central errorHandler → 409 envelope,

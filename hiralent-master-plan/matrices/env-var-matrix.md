@@ -166,6 +166,7 @@
 | `RUNNER_PIDS_LIMIT` | Runner container PID cap (`--pids-limit`) | 128 | no |
 | `RUNNER_DOCKER_RUN_TIMEOUT_S` | Wall-clock ceiling for a single hardened `docker run` in the Python HTTP runner (pull+build+run). | 60 | no |
 | `RUNNER_DISABLE_DOCKER` | Test-only: force the Python runner to treat Docker as unavailable so the fail-closed path can be proven without uninstalling Docker. | — (off) | no (test-only) |
+| `COUNT_THEN_DELETE` | Test-only: fail-prove switch for `admin-delete-race.probe.ts` — forces the naive, non-atomic count-then-delete so the last-admin lockout race can be demonstrated (probe then asserts survivors=0). Never set in app code. | — (off) | no (test-only) |
 | `RUNNER_STUB_TOKEN` | Shared secret for the HTTP runner stub (`X-Runner-Token`, constant-time). Required if `RUNNER_HTTP_URL` is set in prod. | — (secret) | if HTTP runner used |
 | `RUNNER_STRICT_COMPARE` | Strict output compare | false | no |
 | `RUNNER_COMPARE_IGNORE_CASE` | Compare ignoring case | false | no |
@@ -178,10 +179,16 @@
 | `S3_FORCE_PATH_STYLE` | S3 path-style addressing | false (code: `=== "true"`, so unset → false) | no |
 | `SCRAPING_SCHEDULER_ENABLED` | Enable scraping scheduler | false | no |
 | `SCRAPING_SECRET` | Scraping endpoint secret | — (secret) | no |
+| `SIGNALS_SCRAPE_ENABLED` | Enable real website scrape for company signals (W4-S3) | true | no |
+| `SIGNALS_RDAP_BASE` | RDAP base for keyless domain-age (whois) lookup (W4-S3) | `https://rdap.org` | no |
+| `SIGNALS_HTTP_TIMEOUT_MS` | Per-request timeout for RDAP + website fetch (W4-S3) | 8000 | no |
+| `SIGNALS_MAX_BYTES` | Response byte cap for website fetch, SSRF-guarded (W4-S3) | 2000000 | no |
 | `SHADOW_DATABASE_URL` | Prisma shadow DB | `=${DATABASE_URL}` (R-07 danger) | no |
 | `SIGNED_URL_TTL_SECONDS` | Signed URL TTL | — | no |
 | `SMTP_FROM` | Email "from" address | — | no |
 | `SMTP_HOST` | SMTP host | — | no |
+| `STRIPE_SECRET_KEY` | Stripe secret API key (test/live). Gates real Stripe Checkout; when unset the gateway is honestly disabled — no fabricated sessions (Wave 5 S1). Server-side only, never client. | — (secret) | no (payments) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) for `constructEvent` signature verification (Wave 5 S2). Server-side only. | — (secret) | no (payments; required for webhooks) |
 | `SMTP_PORT` | SMTP port | 587 | no |
 | `SMTP_USER` | SMTP username | — | no |
 | `SMTP_PASS` | SMTP password | — (secret) | no |
@@ -204,6 +211,7 @@
 | `UPLOAD_DIR` | Local upload directory | uploads | no |
 | `USE_IN_MEMORY_QUEUE` | Use in-memory queue | false | no |
 | `VECTOR_ENGINE_ENABLED` | Enable vector engine | false | no |
+| `VERIFICATION_LOCAL_ROOT` | Root dir for local-provider verification-doc reads; uploads are contained under it (traversal-guarded, W4-S3). Absolute-path deployments must set it. | `<cwd>/uploads` | no |
 | `WAFAA_API_KEY` | Wafaa microservice key | — (secret) | no |
 | `WAFAA_BASE_URL` | Wafaa service base URL | — | no |
 | `YOUSSRRA_WEBHOOK_KEY` | Youssra webhook key (⚠️ triple-R typo) | — (secret) | no |
@@ -259,10 +267,10 @@
 | `SERVICE_NAME` | Service name | assessment-ai | no |
 | `SERVICE_PORT` | Service port | — | no |
 | `SPACY_MODEL` | spaCy model name | — | no |
-| `USE_MOCK_WAFAA` | Mock Wafaa QGen | false | no |
-| `USE_MOCK_YOUSSRA` | Mock Youssra exec | false | no |
-| `WAFAA_QGEN_ADDR` | Wafaa QGen gRPC address | — | no |
-| `YOUSSRA_EXEC_ADDR` | Youssra exec gRPC address | — | no |
+| `USE_MOCK_WAFAA` | **DEAD (W4-S3)** — code + `.env.example` removed; may linger in a local `.env`. Orphaned gRPC toggle | false | no |
+| `USE_MOCK_YOUSSRA` | **DEAD (W4-S3)** — code + `.env.example` removed; may linger in a local `.env`. Orphaned gRPC toggle | false | no |
+| `WAFAA_QGEN_ADDR` | **DEAD (W4-S3)** — orphaned Wafaa QGen gRPC address; client stub deleted | — | no |
+| `YOUSSRA_EXEC_ADDR` | **DEAD (W4-S3)** — orphaned Youssra exec gRPC address; client stub deleted | — | no |
 
 ## document-validator-service (25 vars)
 | Var | Purpose | Default (safe) | Required? |

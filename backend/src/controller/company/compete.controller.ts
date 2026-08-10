@@ -118,22 +118,6 @@ export async function youssraResultsWebhookHandler(req: Request, res: Response) 
   }
 }
 
-/**
- * Dev-only: simulate results for a candidate (you can call this from your frontend to test)
- */
-export async function simulateResultsHandler(req: Request, res: Response) {
-  try {
-    const challengeId = req.params.challenge_id;
-    const payload = req.body as CandidateResultDTO;
-    if (!payload || !payload.candidate_id) return res.status(400).json({ error: "invalid_payload" });
-    const updated = await service.simulateResultsForCandidate(challengeId, payload);
-    return res.json({ ok: true, challenge: updated });
-  } catch (err: any) {
-    console.error("simulateResultsHandler error:", err);
-    return res.status(500).json({ error: err.message || "internal_error" });
-  }
-}
-
 export async function getLeaderboardHandler(req: Request, res: Response) {
   try {
     const challengeId = req.params.challenge_id;

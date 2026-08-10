@@ -95,8 +95,10 @@ import filesRoutes from './routes/files.routes';
 import verificationRunRoutes from './routes/verification.run.routes';
 import adminAuthRoutes from './routes/admin.auth.routes';
 import adminVerificationRoutes from './routes/admin.verification.routes';
+import adminManagementRoutes from './routes/admin.management.routes';
 import questionRoutes from './routes/questions/question.routes';
 import messageRoutes from './routes/message.routes';
+import notificationPreferencesRoutes from './routes/notificationPreferences.routes';
 import submissionsRoutes from './routes/submissions';
 import executionRoutes from './routes/execution.routes';
 import insightsRoutes from './routes/insights.routes';
@@ -153,6 +155,10 @@ app.use("/api/v1/agency", agencyRoutes);
 app.use('/api/v1/admin', authLimiter, adminAuthRoutes);
 app.use('/api/v1/admin', adminAgencyRoutes);
 app.use('/api/v1/admin', adminVerificationRoutes);
+// Superadmin self-service + platform management (Admins / Settings / Analytics / Security Log).
+// Guarded router; paths disjoint from /auth/*, /agencies/*, /verifications/* — mounted here so it
+// stays BEFORE the /api/v1 jobRoutes catch-all (otherwise its routes 404-shadow).
+app.use('/api/v1/admin', adminManagementRoutes);
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/company/team', teamRoutes);
@@ -174,6 +180,10 @@ app.use('/api/v1/auth/sessions', sessionRoutes);
 
 
 app.use('/api/v1/messages', messageRoutes);
+
+// Role-neutral notification toggle preferences (agency/company/candidate).
+// Mounted before the jobRoutes '/api/v1/' catch-all so its paths aren't shadowed.
+app.use('/api/v1/notification-preferences', notificationPreferencesRoutes);
 
 //Question Bank
 app.use('/api/questions', questionRoutes);

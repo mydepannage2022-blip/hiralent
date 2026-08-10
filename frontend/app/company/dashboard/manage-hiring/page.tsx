@@ -1,14 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import React from "react";
-
-const Page = () => {
-
-  return (
-    <div className="max-w-3xl 2xl:max-w-6xl p-2 sm:p-4 bg-white rounded-xl space-y-6">
-      <p>Comming Soon!</p>
-    </div>
-  );
-};
-
-export default Page;
+// The "manage hiring" pipeline is delivered by the canonical "My Jobs" flow
+// (jobManagement → JobApplicantsModal), which lists applicants and supports
+// reject / invite-to-assessment against the real backend. This placeholder
+// route now redirects there so no dead-end remains.
+export default function ManageHiringPage() {
+  redirect("/company/dashboard/jobManagement");
+}
