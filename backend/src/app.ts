@@ -73,6 +73,12 @@ app.use(cors({
 // parsing so flood traffic is rejected before we spend cycles parsing it.
 app.use(globalLimiter);
 
+// Stripe webhooks must be verified against the RAW request body (constructEvent computes
+// an HMAC over the exact bytes Stripe signed). This path-scoped raw parser MUST run before
+// the global express.json() below — it consumes the stream and sets req._body, so the JSON
+// parser skips this one request while every other route keeps normal JSON parsing.
+app.use('/api/v1/subscription/webhook', express.raw({ type: 'application/json' }));
+
 // Bounded JSON body — an unbounded parser is a trivial memory-DoS. Oversized bodies
 // raise a 413 (see the JSON error handler below). Override the cap with JSON_BODY_LIMIT.
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '1mb' })); // parse JSON body

@@ -22,6 +22,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '../../errors/httpErrors';
+import { refundTransaction } from '../../services/subscription/subscription.service';
 
 const SUPERADMIN_ROLE = 'superadmin';
 const PLATFORM_SETTINGS_ID = 'global';
@@ -439,6 +440,44 @@ export const getAuditLogs = async (req: Request, res: Response, next: NextFuncti
     }));
 
     return sendSuccess(res, { items, total, limit, offset });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ── Billing: refund a transaction ─────────────────────────────────────────────
+
+// POST /api/v1/admin/transactions/:id/refund   { amount?, reason? }
+// Refunds a succeeded Stripe transaction (full or partial) and records it in the audit trail.
+export const refundPayment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const actor = requireAdmin(req);
+    const transactionId = String(req.params.id ?? '').trim();
+    if (!transactionId) {
+      throw new BadRequestError('transaction id is required');
+    }
+
+    const amount = req.body?.amount as number | undefined;
+    const reason = req.body?.reason as string | undefined;
+
+    let result: { refund_id: string; amount: number };
+    try {
+      result = await refundTransaction(transactionId, amount, reason);
+    } catch (err: any) {
+      // The service throws plain Errors for domain failures (not found, not refundable,
+      // gateway error) — surface them as a 400 rather than a generic 500.
+      throw new BadRequestError(err?.message || 'Refund failed');
+    }
+
+    await writeAudit(
+      actor.user_id,
+      'REFUND_PAYMENT',
+      'PaymentTransaction',
+      transactionId,
+      `Refunded ${result.amount} (minor units)${reason ? ` — ${reason}` : ''}. Refund id: ${result.refund_id}`
+    );
+
+    return sendSuccess(res, result);
   } catch (error) {
     return next(error);
   }

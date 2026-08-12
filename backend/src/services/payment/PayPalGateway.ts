@@ -2,6 +2,8 @@ import {
   IPaymentGateway,
   WebhookResult,
   CancelResult,
+  ChangePlanRequest,
+  ChangePlanResult,
   PaymentStatusResult
 } from './BaseGateway';
 import {
@@ -40,6 +42,10 @@ export const createPayPalGateway = (): IPaymentGateway => {
     throw new Error(UNAVAILABLE);
   };
 
+  const changeSubscriptionPlan = async (_subscriptionId: string, _request: ChangePlanRequest): Promise<ChangePlanResult> => {
+    throw new Error(UNAVAILABLE);
+  };
+
   const getPaymentStatus = async (_paymentId: string): Promise<PaymentStatusResult> => {
     throw new Error(UNAVAILABLE);
   };
@@ -54,6 +60,7 @@ export const createPayPalGateway = (): IPaymentGateway => {
     handleWebhook,
     verifyWebhookSignature,
     cancelSubscription,
+    changeSubscriptionPlan,
     getPaymentStatus,
     refundPayment,
     isConfigured

@@ -31,6 +31,20 @@ export const updateSubscriptionSchema = z.object({
   cancel_at_period_end: z.boolean().optional()
 });
 
+// Change plan (upgrade/downgrade) validation. plan_id is required here (unlike the generic
+// update above) and is our own non-UUID plan id — see the checkout schema note.
+export const changePlanSchema = z.object({
+  plan_id: z.string().min(1, { message: 'Plan ID is required' }),
+  billing_cycle: z.enum(['monthly', 'yearly']).optional()
+});
+
+// Admin refund validation. transaction_id is our own PaymentTransaction UUID; amount (when
+// given) is a partial refund in the transaction's currency (dollars, not minor units).
+export const refundTransactionSchema = z.object({
+  amount: z.number().positive().optional(),
+  reason: z.string().max(500).optional()
+});
+
 // Webhook validation (generic)
 export const webhookSchema = z.object({
   gateway: z.enum(['stripe', 'paypal', 'razorpay', 'paytabs']),
@@ -47,5 +61,7 @@ export const checkFeatureAccessSchema = z.object({
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>;
 export type CancelSubscriptionInput = z.infer<typeof cancelSubscriptionSchema>;
 export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;
+export type ChangePlanInput = z.infer<typeof changePlanSchema>;
+export type RefundTransactionInput = z.infer<typeof refundTransactionSchema>;
 export type WebhookInput = z.infer<typeof webhookSchema>;
 export type CheckFeatureAccessInput = z.infer<typeof checkFeatureAccessSchema>;

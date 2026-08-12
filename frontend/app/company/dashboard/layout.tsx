@@ -17,6 +17,7 @@ import {
   Users,
   UsersRound,
   Video,       // add for AI Interviews
+  CreditCard,  // add for Billing
 } from "lucide-react";
 
 import ProtectedRoute from "@/src/components/layout/ProtectedRoute";
@@ -39,6 +40,7 @@ const MENU_ITEMS = [
   { name: "Review Queue",     icon: Clock,             href: "/company/dashboard/review-queue" },
   { name: "Team",             icon: UsersRound,        href: "/company/dashboard/team" },
   { name: "Messages",         icon: MessageSquareText, href: "/company/dashboard/messages" },
+  { name: "Billing",          icon: CreditCard,        href: "/company/dashboard/billing" },
   { name: "Account Setting",  icon: Settings,         href: "/company/dashboard/settings" },
 ];
 

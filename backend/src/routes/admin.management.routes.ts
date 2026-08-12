@@ -11,7 +11,10 @@ import {
   updatePlatformSettings,
   getAnalyticsOverview,
   getAuditLogs,
+  refundPayment,
 } from '../controller/superadmin/admin.management.controller';
+import { validateBody } from '../middlewares/validateBody.middleware';
+import { refundTransactionSchema } from '../validation/subscription.schema';
 
 const router = Router();
 
@@ -40,5 +43,9 @@ router.get('/analytics/overview', getAnalyticsOverview);
 
 // Security Log / audit trail (Security Log page)
 router.get('/audit-logs', getAuditLogs);
+
+// Billing: refund a transaction. Path is disjoint from the other admin routers, so the shared
+// mount order stays safe (see note above).
+router.post('/transactions/:id/refund', validateBody(refundTransactionSchema), refundPayment);
 
 export default router;

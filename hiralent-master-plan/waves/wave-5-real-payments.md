@@ -14,19 +14,19 @@
 - [x] **[S1]** Add the real `stripe` SDK; remove all `mock_session_*` / fabricated-URL code paths; **PayPal + Manual honest-disabled** (throw, no fake sessions), `getSupportedGateways` dynamic. (R-05)
 - [x] **[S1]** Implement real `createCheckoutSession` (Stripe hosted Checkout, subscription mode, inline `price_data` from our DB) returning genuine `checkout.stripe.com` session URLs.
 - [x] **[S1]** Money precision: `SubscriptionPlan.price_*_usd` → `Decimal(10,2)`; `User.stripe_customer_id` added (populated S2). Frontend card-collection form removed → Stripe hosted redirect.
-- [ ] Implement real `cancel`/`refund` against the SDKs. → **S3**
+- [x] **[S3]** Implement real `cancel`/`refund` against the SDKs — cancel (`subscriptions.cancel` / `subscriptions.update({cancel_at_period_end})`), refund (`refunds.create` via a guarded admin endpoint; `mock_refund_` gone), `getPaymentStatus` resolves a real PaymentIntent.
 - [x] **[S1]** Keep gateway secrets in the secret store (P5) — `STRIPE_SECRET_KEY` via `requireEnv`, server-side only; never client-side.
 
 ## Phase 5.2 — Webhooks & verification (trust the server, not the client)
-- [ ] Implement **real webhook signature verification** (`stripe.webhooks.constructEvent`, PayPal verification) — replace the "starts with `whsec_`" stub.
-- [ ] Drive subscription state from **verified webhook events only** (checkout completed, payment succeeded/failed, subscription updated/cancelled).
-- [ ] Make frontend `payment/success` confirm status **with the backend** before showing "active" (currently trusts the URL). 
+- [x] **[S2]** Implement **real webhook signature verification** (`stripe.webhooks.constructEvent` via a raw-body carve-out mounted before `express.json`) — the "starts with `whsec_`" stub is gone; forged/tampered events are rejected (400). PayPal verification N/A (honest-disabled).
+- [x] **[S2]** Drive subscription state from **verified webhook events only**: `checkout.session.completed` → activate; `invoice.paid` → renew; `invoice.payment_failed` → past_due; `customer.subscription.deleted` → canceled. `User.stripe_customer_id` populated here.
+- [x] **[S2]** Make frontend `payment/success` confirm status **with the backend** (`useMySubscription` poll) before showing "Payment Successful" — otherwise Confirming… / Payment Received (no false success).
 
 ## Phase 5.3 — Subscription lifecycle
-- [ ] Wire `UserSubscription`/`AgencySubscription`/`PaymentTransaction` to real events; handle upgrade/downgrade/cancel/expiry, proration, and failed-payment/dunning.
-- [ ] Enforce plan entitlements/limits across the app (gate features by active subscription).
+- [x] **[S3]** Wire `UserSubscription`/`PaymentTransaction` to real ops; handle upgrade/downgrade (on-the-fly Price + `proration_behavior:create_prorations`), cancel (immediate vs at-period-end, distinct DB state), expiry (lazy-check on read + `sweepExpiredSubscriptions`), and failed-payment/dunning (past_due via S2 webhook branch; grace → canceled). *(`AgencySubscription` = S5.)*
+- [ ] Enforce plan entitlements/limits across the app (gate features by active subscription). → **S4**
 - [x] **[S1]** Fix money precision: use `Decimal(10,2)` consistently (`SubscriptionPlan` price fields were unqualified — now pinned).
-- [ ] Idempotent payment handling (dedupe webhook retries; no double-charge/double-grant).
+- [x] **[S2]** Idempotent payment handling (dedupe webhook retries; no double-grant) — `ProcessedWebhookEvent` (`event_id @unique`) ledger; replay of the same event id is a no-op.
 
 ## Phase 5.4 — Safety & records
 - [ ] Reconcile transactions (gateway ↔ our DB); store immutable payment records/receipts.

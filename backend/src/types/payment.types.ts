@@ -67,8 +67,11 @@ export interface WebhookPayload {
 
 export interface RefundRequest {
   transaction_id: string;
-  amount?: number; // Partial refund if specified
+  amount?: number; // Partial refund (integer minor units) if specified
   reason?: string;
+  // The Stripe PaymentIntent to refund, resolved by the service from the stored checkout
+  // session id (a checkout session cannot be refunded directly). Required for a real refund.
+  payment_intent?: string;
 }
 
 export interface RefundResult {

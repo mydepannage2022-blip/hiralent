@@ -105,6 +105,16 @@ export const cancelSubscription = async (data: {
   return response.data;
 };
 
+// Change plan (upgrade/downgrade). Proration is handled by the gateway; the response carries
+// the updated subscription.
+export const changePlan = async (data: {
+  plan_id: string;
+  billing_cycle?: 'monthly' | 'yearly';
+}): Promise<{ success: boolean; data: Subscription }> => {
+  const response = await subscriptionApi.post('/subscription/change-plan', data);
+  return response.data;
+};
+
 // Get user's plan features
 export const getMyFeatures = async () => {
   const response = await subscriptionApi.get('/subscription/my-features');

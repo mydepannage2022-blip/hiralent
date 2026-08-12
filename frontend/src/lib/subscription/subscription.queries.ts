@@ -7,6 +7,7 @@ import {
   createCheckoutSession,
   getMySubscription,
   cancelSubscription,
+  changePlan,
   getMyFeatures,
   checkFeatureAccess,
   CreateCheckoutData,
@@ -39,11 +40,19 @@ export const usePlan = (planId: string) => {
   });
 };
 
-// Get user's subscription
-export const useMySubscription = () => {
+// Get user's subscription. Accepts a narrow set of react-query options so callers such as
+// the post-checkout success page can poll (refetchInterval) while the Stripe webhook
+// activates the subscription asynchronously. Non-breaking: existing call sites pass nothing.
+type MySubscriptionOptions = {
+  refetchInterval?: number | false | ((query: any) => number | false);
+  enabled?: boolean;
+};
+
+export const useMySubscription = (options?: MySubscriptionOptions) => {
   return useQuery({
     queryKey: subscriptionKeys.mySubscription(),
     queryFn: getMySubscription,
+    ...options,
   });
 };
 
@@ -109,6 +118,36 @@ export const useCancelSubscription = () => {
         error.message ||
         'Failed to cancel subscription';
       console.error('Cancel subscription error:', errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+};
+
+// Change plan (upgrade/downgrade)
+export const useChangePlan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: changePlan,
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Plan updated successfully');
+        queryClient.invalidateQueries({
+          queryKey: subscriptionKeys.mySubscription(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: subscriptionKeys.myFeatures(),
+        });
+      } else {
+        toast.error('Failed to update plan');
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error.message ||
+        'Failed to update plan';
+      console.error('Change plan error:', errorMessage);
       toast.error(errorMessage);
     },
   });

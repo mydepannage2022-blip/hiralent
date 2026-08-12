@@ -2182,6 +2182,19 @@ model PaymentTransaction {
   @@index([gateway_payment_id])
 }
 
+// Idempotency ledger for inbound payment-gateway webhooks. Stripe retries an event until it
+// gets a 2xx, so the same event can arrive several times; we record each processed event id
+// and treat a duplicate as a no-op, guaranteeing exactly-once subscription activation.
+model ProcessedWebhookEvent {
+  id           String   @id @default(uuid())
+  event_id     String   @unique // Gateway event id (Stripe `evt_...`) — the dedup key
+  gateway      String   // stripe
+  event_type   String   // checkout.session.completed, invoice.paid, ...
+  processed_at DateTime @default(now())
+
+  @@index([gateway])
+}
+
 model EmbassySubmission {
   submission_id       String    @id @default(uuid())
   case_id             String    @unique

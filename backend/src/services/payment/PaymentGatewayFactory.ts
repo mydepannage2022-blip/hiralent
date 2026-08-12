@@ -57,6 +57,10 @@ const createManualGateway = (): IPaymentGateway => {
       throw new Error(MANUAL_UNAVAILABLE);
     },
 
+    changeSubscriptionPlan: async () => {
+      throw new Error(MANUAL_UNAVAILABLE);
+    },
+
     getPaymentStatus: async () => {
       throw new Error(MANUAL_UNAVAILABLE);
     },
@@ -86,4 +90,15 @@ export const isGatewayConfigured = (gatewayType: PaymentGatewayType): boolean =>
   } catch {
     return false;
   }
+};
+
+// Test seam (analogous to createStripeGateway's injectable client): let service-level tests
+// drive the lifecycle with a fake Stripe client instead of hitting the network. Never called
+// by production code.
+export const __setGatewayForTest = (gatewayType: PaymentGatewayType, gateway: IPaymentGateway): void => {
+  gatewayCache.set(gatewayType, gateway);
+};
+
+export const __clearGatewayForTest = (gatewayType: PaymentGatewayType): void => {
+  gatewayCache.delete(gatewayType);
 };

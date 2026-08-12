@@ -1,19 +1,21 @@
 import { Request, Response } from 'express';
-import { 
-  createCheckoutSession, 
-  getUserSubscription, 
-  cancelUserSubscription, 
-  getAllPlans, 
-  getPlanById 
+import {
+  createCheckoutSession,
+  getUserSubscription,
+  cancelUserSubscription,
+  changeUserPlan,
+  getAllPlans,
+  getPlanById,
+  processStripeSubscriptionEvent
 } from '../../services/subscription/subscription.service';
-import { 
-  checkFeatureAccess, 
-  checkFeatureLimit, 
-  getUserPlanFeatures 
+import { BillingCycle } from '../../types/subscription.types';
+import {
+  checkFeatureAccess,
+  checkFeatureLimit,
+  getUserPlanFeatures
 } from '../../services/subscription/feature-access.service';
 import { getPaymentGateway } from '../../services/payment/PaymentGatewayFactory';
 import { PaymentGatewayType } from '../../types/payment.types';
-import prisma from '../../lib/prisma';
 
 export const createCheckout = async (req: Request, res: Response) => {
   try {
@@ -87,6 +89,30 @@ export const cancelSubscription = async (req: Request, res: Response) => {
     res.status(400).json({ 
       success: false, 
       error: error.message 
+    });
+  }
+};
+
+export const changePlan = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { plan_id, billing_cycle } = req.body;
+
+    const result = await changeUserPlan(userId, plan_id, billing_cycle as BillingCycle | undefined);
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
     });
   }
 };
@@ -182,27 +208,24 @@ export const handleWebhook = async (req: Request, res: Response) => {
   try {
     const { gateway } = req.params;
     const signature = req.headers['stripe-signature'] || req.headers['paypal-auth-algo'];
-    
-    const paymentGateway = getPaymentGateway(gateway as PaymentGatewayType);
-    
-    const result = await paymentGateway.handleWebhook(req.body, signature as string);
-    
-    if (result.success && result.data.payment_id) {
-      await prisma.paymentTransaction.updateMany({
-        where: { gateway_payment_id: result.data.payment_id },
-        data: { 
-          status: result.data.status || 'succeeded',
-          updated_at: new Date()
-        }
-      });
-    }
 
-    res.status(200).json({ received: true });
+    // `req.body` here is the RAW Buffer (express.raw is mounted for this path before the
+    // global express.json — see app.ts), which is what signature verification needs.
+    const paymentGateway = getPaymentGateway(gateway as PaymentGatewayType);
+    const result = await paymentGateway.handleWebhook(req.body, signature as string);
+
+    // Signature is verified inside handleWebhook; the router applies the state change
+    // idempotently (a Stripe retry of the same event id is a no-op).
+    const { duplicate } = await processStripeSubscriptionEvent(result);
+
+    res.status(200).json({ received: true, duplicate });
   } catch (error: any) {
+    // A bad/forged signature or an unconfigured gateway throws above → 400, so Stripe
+    // does not treat the delivery as accepted.
     console.error('Webhook error:', error);
-    res.status(400).json({ 
-      success: false, 
-      error: error.message 
+    res.status(400).json({
+      success: false,
+      error: error.message
     });
   }
 };

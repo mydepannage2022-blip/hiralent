@@ -3,6 +3,7 @@ import {
   createCheckout,
   getMySubscription,
   cancelSubscription,
+  changePlan,
   getPlans,
   getPlan,
   checkFeature,
@@ -11,10 +12,11 @@ import {
 } from '../controller/company/subscription.controller';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
 import { validateBody } from '../middlewares/validateBody.middleware';
-import { 
-  createCheckoutSessionSchema, 
+import {
+  createCheckoutSessionSchema,
   cancelSubscriptionSchema,
-  checkFeatureAccessSchema 
+  changePlanSchema,
+  checkFeatureAccessSchema
 } from '../validation/subscription.schema';
 
 const router = Router();
@@ -33,6 +35,13 @@ router.post(
   checkAuth,
   validateBody(cancelSubscriptionSchema),
   cancelSubscription
+);
+
+router.post(
+  '/change-plan',
+  checkAuth,
+  validateBody(changePlanSchema),
+  changePlan
 );
 
 router.get('/plans', getPlans);
