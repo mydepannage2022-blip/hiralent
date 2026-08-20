@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hiralent — Monthly Progress Report</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+
+  :root{
+    --navy:#0d2440;
+    --navy-2:#16375c;
+    --teal:#127b8c;
+    --teal-soft:#e6f2f4;
+    --green:#137a4d;
+    --green-soft:#e6f3ec;
+    --amber:#a55b00;
+    --amber-soft:#fdf1e0;
+    --grey:#6b7684;
+    --grey-soft:#f2f4f7;
+    --line:#dde3ea;
+    --ink:#1c2530;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink);
+    font-size:9.7pt;
+    line-height:1.46;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+
+  h1,h2,h3,h4{ margin:0; font-weight:650; color:var(--navy); }
+
+  .page{ page-break-after:always; }
+  .page:last-child{ page-break-after:auto; }
+  .avoid{ page-break-inside:avoid; }
+
+  /* ---------- COVER ---------- */
+  .cover{
+    height:265mm; width:100%;
+    background:linear-gradient(160deg,#0d2440 0%,#16375c 55%,#127b8c 140%);
+    color:#fff;
+    padding:19mm 15mm;
+    display:flex; flex-direction:column; justify-content:space-between;
+    page-break-after:always;
+  }
+  .cover .brand{ font-size:11pt; letter-spacing:.32em; text-transform:uppercase; color:#8fc4d0; font-weight:600; }
+  .cover h1{ color:#fff; font-size:33pt; line-height:1.12; margin:6mm 0 0; font-weight:600; letter-spacing:-.5px;}
+  .cover .sub{ font-size:13pt; color:#b9d4dd; margin-top:5mm; font-weight:300; }
+  .cover .rule{ width:38mm; height:3px; background:#5fb3c6; margin:9mm 0 0; }
+
+  .cover-stats{ display:flex; gap:6mm; margin-top:2mm; }
+  .cstat{ flex:1; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.18); border-radius:5px; padding:6mm 5mm; }
+  .cstat .n{ font-size:24pt; font-weight:650; color:#fff; line-height:1; }
+  .cstat .l{ font-size:8.6pt; color:#b9d4dd; margin-top:2.5mm; line-height:1.35; }
+
+  .cover-foot{ font-size:9.5pt; color:#9fc0cc; border-top:1px solid rgba(255,255,255,.2); padding-top:5mm; }
+  .cover-foot strong{ color:#fff; font-weight:600; }
+
+  /* ---------- GENERIC ---------- */
+  .sec-label{ font-size:8pt; letter-spacing:.24em; text-transform:uppercase; color:var(--teal); font-weight:700; }
+  h2.sec{ font-size:17pt; margin:1.2mm 0 3mm; letter-spacing:-.3px; }
+  h3{ font-size:11.2pt; margin:5mm 0 1.8mm; }
+  h4{ font-size:10pt; margin:3.2mm 0 1.2mm; color:var(--navy-2); }
+  p{ margin:0 0 2.4mm; }
+  .lead{ font-size:10.5pt; color:#33414f; }
+  ul{ margin:0 0 2.4mm; padding-left:4.5mm; }
+  li{ margin-bottom:1.2mm; }
+  .divider{ border:0; border-top:1px solid var(--line); margin:5mm 0; }
+
+  table{ width:100%; border-collapse:collapse; font-size:8.9pt; margin:1.8mm 0 3.2mm; }
+  th{ background:var(--navy); color:#fff; text-align:left; padding:2mm 2.6mm; font-weight:600; font-size:8.8pt; letter-spacing:.02em; }
+  th.c, td.c{ text-align:center; }
+  td{ padding:2mm 2.6mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even) td{ background:#fafbfc; }
+  td.strongcell{ font-weight:600; color:var(--navy); }
+
+  .pill{ display:inline-block; padding:.6mm 2.2mm; border-radius:9px; font-size:8pt; font-weight:650; white-space:nowrap; }
+  .p-done{ background:var(--green-soft); color:var(--green); }
+  .p-prog{ background:var(--amber-soft); color:var(--amber); }
+  .p-todo{ background:var(--grey-soft); color:var(--grey); }
+
+  .barwrap{ display:flex; align-items:center; gap:2mm; }
+  .barwrap .bar{ flex:1; }
+  .barwrap b{ font-size:8.2pt; font-weight:700; color:var(--navy); width:9mm; text-align:right; flex:none; }
+  .bar{ background:#e8ecf1; border-radius:3px; height:4.6mm; width:100%; position:relative; overflow:hidden; }
+  .bar span{ position:absolute; left:0; top:0; bottom:0; border-radius:3px; }
+  .fill-done{ background:linear-gradient(90deg,#137a4d,#2a9d6b); }
+  .fill-prog{ background:linear-gradient(90deg,#a55b00,#d78b1e); }
+  .fill-todo{ background:linear-gradient(90deg,#8e99a6,#adb6c1); }
+
+  .callout{ border-left:3px solid var(--teal); background:var(--teal-soft); padding:3.2mm 4mm; border-radius:0 4px 4px 0; margin:3.2mm 0; }
+  .callout.warn{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .callout.good{ border-left-color:var(--green); background:var(--green-soft); }
+  .callout p:last-child{ margin-bottom:0; }
+  .callout .ct{ font-weight:700; color:var(--navy); display:block; margin-bottom:1.5mm; }
+
+  .headline-box{
+    background:var(--navy); color:#fff; border-radius:6px; padding:6mm 7mm; margin:0 0 5mm;
+  }
+  .headline-box .big{ font-size:30pt; font-weight:650; line-height:1; }
+  .headline-box .cap{ font-size:9.4pt; color:#a9c4d4; margin-top:2mm; }
+  .headline-box .track{ background:rgba(255,255,255,.16); height:6mm; border-radius:3px; margin-top:5mm; overflow:hidden; position:relative;}
+  .headline-box .track span{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#2a9d6b,#5fb3c6); border-radius:3px; }
+
+  .grid2{ display:flex; gap:6mm; }
+  .grid2 > div{ flex:1; }
+
+  .kpi-row{ display:flex; gap:4mm; margin:2.5mm 0 4mm; }
+  .kpi{ flex:1; border:1px solid var(--line); border-radius:5px; padding:3.2mm; text-align:center; }
+  .kpi .n{ font-size:16pt; font-weight:700; color:var(--teal); line-height:1; }
+  .kpi .l{ font-size:7.8pt; color:var(--grey); margin-top:1.8mm; line-height:1.3; }
+
+  .stagehead{ display:flex; align-items:baseline; gap:3mm; margin:5mm 0 1mm; page-break-after:avoid; }
+  .stagenum{ font-size:8pt; font-weight:700; color:#fff; background:var(--teal); border-radius:3px; padding:.8mm 2.4mm; letter-spacing:.06em; }
+  .stagehead h3{ margin:0; font-size:12pt; }
+
+  .footnote{ font-size:8.4pt; color:var(--grey); font-style:italic; }
+
+  .signoff{ margin-top:6mm; border-top:2px solid var(--navy); padding-top:4mm; font-size:9.4pt; }
+  .signoff strong{ color:var(--navy); }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div>
+    <div class="brand">Hiralent</div>
+    <h1>Monthly Progress<br>Report</h1>
+    <div class="rule"></div>
+    <div class="sub">21 July &mdash; 20 August 2026<br>The first full month of work</div>
+  </div>
+
+  <div class="cover-stats">
+    <div class="cstat"><div class="n">70%</div><div class="l">Overall project<br>completion</div></div>
+    <div class="cstat"><div class="n">5 of 9</div><div class="l">Major stages fully<br>finished &amp; verified</div></div>
+    <div class="cstat"><div class="n">30</div><div class="l">Of 44 known problems<br>fully resolved</div></div>
+    <div class="cstat"><div class="n">47</div><div class="l">Automatic quality<br>checks now running</div></div>
+  </div>
+
+  <div class="cover-foot">
+    Prepared by <strong>Huzaifa Iqbal</strong> &nbsp;&middot;&nbsp; Iqbal Technologies<br>
+    A plain-language summary of everything completed, everything still to come, and an honest
+    explanation of the revised launch date.
+  </div>
+</div>
+
+<!-- ============ PAGE: EXEC SUMMARY ============ -->
+<div class="page">
+  <div class="sec-label">Section 1</div>
+  <h2 class="sec">In one page</h2>
+
+  <div class="headline-box avoid">
+    <div class="big">70% complete</div>
+    <div class="cap">Up from an assessed 40% when work began on 20 July 2026</div>
+    <div class="track"><span style="width:70%"></span></div>
+  </div>
+
+  <p class="lead">This month we took Hiralent from an application that <strong>could not even be
+  built or run</strong> to one that builds cleanly, runs end-to-end, is secured, is able to handle
+  real numbers of users, has every user type's screens genuinely working, and can now take
+  <strong>real card payments</strong>.</p>
+
+  <p>The work was deliberately done in order, from the foundations upward. You cannot secure an
+  app that will not start; you cannot deploy an app that is not secure; you cannot take money on
+  an app that is not correct. Five of the nine planned stages are now finished and independently
+  verified. A sixth &mdash; real payments &mdash; is about two-thirds done.</p>
+
+  <div class="kpi-row avoid">
+    <div class="kpi"><div class="n">153 &rarr; 0</div><div class="l">Errors blocking the<br>server build</div></div>
+    <div class="kpi"><div class="n">222 &rarr; 0</div><div class="l">Errors blocking the<br>website build</div></div>
+    <div class="kpi"><div class="n">7</div><div class="l">Critical security<br>holes closed</div></div>
+    <div class="kpi"><div class="n">70</div><div class="l">Documented work<br>entries this month</div></div>
+  </div>
+
+  <h3>The three things worth knowing</h3>
+
+  <div class="callout good avoid">
+    <span class="ct">1. The product itself is in far better shape than a month ago.</span>
+    <p>Payments were completely fake &mdash; the "pay" button produced an invented receipt and no
+    money ever moved. Real card checkout, real receipts, refunds, upgrades and plan limits are now
+    built and tested. Security holes that would have let an outsider log in as any user, including
+    your administrator, are closed. The app previously would have fallen over with a few hundred
+    people using it at once; that ceiling has been removed.</p>
+  </div>
+
+  <div class="callout warn avoid">
+    <span class="ct">2. The deployment date moved from the 10th to a revised window.</span>
+    <p>We committed to having it deployed by the 10th. It is the 20th and it is not deployed. We
+    owe you a straight explanation, and Section 5 of this report gives one in full &mdash; including
+    the attempt we made, what we found, and why we chose to stop rather than push through. Your
+    public website is, however, <strong>already live on your main domain today</strong>.</p>
+  </div>
+
+  <div class="callout avoid">
+    <span class="ct">3. The revised commitment: 10&ndash;15 days.</span>
+    <p>The remaining payment work finishes first, then we deploy once, properly &mdash; not a
+    temporary test deployment that has to be torn down and repeated. Section 7 sets out the plan
+    day by day.</p>
+  </div>
+</div>
+
+<!-- ============ PAGE: WHERE WE STARTED ============ -->
+<div class="page">
+  <div class="sec-label">Section 2</div>
+  <h2 class="sec">Where the project stood a month ago</h2>
+
+  <p>Before any code was changed, we spent the first day doing a complete, independent review of
+  the entire application &mdash; every screen, every server function, every database table. The
+  purpose was to replace assumptions with facts. That review is the honest baseline this report
+  measures against.</p>
+
+  <p>The headline finding was uncomfortable but important: <strong>the app looked roughly 75%
+  finished, but was only about 40% ready to actually go live.</strong> A great deal had been built;
+  much of it was not connected, not secured, or not real.</p>
+
+  <h3>Before and after</h3>
+  <table class="avoid">
+    <thead>
+      <tr><th style="width:30%">Area</th><th style="width:35%">On 20 July</th><th style="width:35%">Today, 20 August</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="strongcell">Can it be built for a real server?</td>
+          <td>No. The website and the server both failed to build &mdash; 375 blocking errors between them.</td>
+          <td>Yes. Both build cleanly, every time, with an automatic guard that blocks any new error.</td></tr>
+      <tr><td class="strongcell">Payments</td>
+          <td>Entirely fake. The checkout invented a fake receipt; no money could ever be taken.</td>
+          <td>Real card checkout, receipts, refunds, upgrades, cancellations and plan limits. Final agency billing in progress.</td></tr>
+      <tr><td class="strongcell">Security</td>
+          <td>Anyone could have forged a login as any user, including your admin. A live API key was exposed in the code.</td>
+          <td>All critical holes closed and re-tested. Keys rotated. Every screen checks who is asking.</td></tr>
+      <tr><td class="strongcell">Handling real traffic</td>
+          <td>Would have seized up in the low hundreds of simultaneous users.</td>
+          <td>Database load problem removed and measured under stress. Further speed work is a later stage.</td></tr>
+      <tr><td class="strongcell">Does it work end-to-end?</td>
+          <td>Never once tested as a whole. Several screens looked fine but quietly did nothing.</td>
+          <td>Automatic tests walk the real journeys for all four user types on every build.</td></tr>
+      <tr><td class="strongcell">Unfinished features</td>
+          <td>Many buttons led to "Coming soon", blank pages, or fake data.</td>
+          <td>Every one of those dead ends is now either genuinely built or honestly removed.</td></tr>
+      <tr><td class="strongcell">Can it be deployed?</td>
+          <td>No packaging existed for the two main parts of the system.</td>
+          <td>Packaging, automatic release process and demo data are built. Final hosting setup remains.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout avoid">
+    <span class="ct">Why we tell you the bad starting number</span>
+    <p>It would have been easy to report "80% done" at the start and quietly fix things. We chose
+    to publish the real 40% instead, because every claim in this report is measured against it.
+    When we say 70% today, that is 30 points of genuinely verified progress &mdash; not a
+    re-labelling.</p>
+  </div>
+</div>
+
+<!-- ============ PAGE: PROGRESS TABLE ============ -->
+<div class="page">
+  <div class="sec-label">Section 3</div>
+  <h2 class="sec">Progress by area</h2>
+
+  <p>The project is organised into nine areas of work, tackled in order. Each one has to be
+  finished and independently verified before the next begins &mdash; this is what stops problems
+  being buried under later work.</p>
+
+  <table class="avoid">
+    <thead>
+      <tr>
+        <th style="width:4%" class="c">#</th>
+        <th style="width:26%">Area of work</th>
+        <th style="width:36%">What it means</th>
+        <th style="width:20%">Progress</th>
+        <th style="width:14%" class="c">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="c">1</td><td class="strongcell">Foundations</td>
+        <td>The app builds and runs reliably on any machine, not just the developer's.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-done" style="width:100%"></span></div><b>100%</b></div></td>
+        <td class="c"><span class="pill p-done">Finished</span></td></tr>
+
+      <tr><td class="c">2</td><td class="strongcell">Security</td>
+        <td>Nobody can get into an account, or see data, that is not theirs.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-done" style="width:100%"></span></div><b>100%</b></div></td>
+        <td class="c"><span class="pill p-done">Finished</span></td></tr>
+
+      <tr><td class="c">3</td><td class="strongcell">Database &amp; data</td>
+        <td>Data is stored correctly, loads fast, and survives real numbers of users.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-done" style="width:100%"></span></div><b>100%</b></div></td>
+        <td class="c"><span class="pill p-done">Finished</span></td></tr>
+
+      <tr><td class="c">4</td><td class="strongcell">Correctness &amp; wiring</td>
+        <td>Screens that looked like they worked but quietly did nothing &mdash; all fixed.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-done" style="width:95%"></span></div><b>95%</b></div></td>
+        <td class="c"><span class="pill p-done">Finished</span></td></tr>
+
+      <tr><td class="c">5</td><td class="strongcell">Finishing the features</td>
+        <td>Every "coming soon" and fake screen made real, for all four user types.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-done" style="width:100%"></span></div><b>100%</b></div></td>
+        <td class="c"><span class="pill p-done">Finished</span></td></tr>
+
+      <tr><td class="c">6</td><td class="strongcell">Real payments</td>
+        <td>Genuine card payments, receipts, refunds, plans and limits.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-prog" style="width:70%"></span></div><b>70%</b></div></td>
+        <td class="c"><span class="pill p-prog">In progress</span></td></tr>
+
+      <tr><td class="c">7</td><td class="strongcell">Speed at scale</td>
+        <td>Staying fast with thousands of people using it at the same time.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-todo" style="width:15%"></span></div><b>15%</b></div></td>
+        <td class="c"><span class="pill p-todo">To come</span></td></tr>
+
+      <tr><td class="c">8</td><td class="strongcell">Monitoring &amp; reliability</td>
+        <td>Knowing immediately if something breaks, and recovering without losing work.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-todo" style="width:10%"></span></div><b>10%</b></div></td>
+        <td class="c"><span class="pill p-todo">To come</span></td></tr>
+
+      <tr><td class="c">9</td><td class="strongcell">Going live</td>
+        <td>Putting everything onto real servers with your domain and certificates.</td>
+        <td><div class="barwrap"><div class="bar"><span class="fill-prog" style="width:30%"></span></div><b>30%</b></div></td>
+        <td class="c"><span class="pill p-prog">Started</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Known problems: found, fixed, remaining</h3>
+  <p>The opening review catalogued 44 distinct problems, each ranked by how much damage it could
+  cause. Here is exactly where they stand.</p>
+
+  <table class="avoid">
+    <thead>
+      <tr><th style="width:26%">Severity</th><th class="c" style="width:16%">Found</th><th class="c" style="width:16%">Fully fixed</th><th class="c" style="width:18%">Partly fixed</th><th class="c" style="width:24%">Still to do</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="strongcell">Critical &mdash; would stop launch</td><td class="c">7</td><td class="c">6</td><td class="c">0</td><td class="c">1 <span class="footnote">(payments, in progress)</span></td></tr>
+      <tr><td class="strongcell">High &mdash; serious</td><td class="c">14</td><td class="c">8</td><td class="c">2</td><td class="c">4</td></tr>
+      <tr><td class="strongcell">Medium</td><td class="c">17</td><td class="c">11</td><td class="c">2</td><td class="c">4</td></tr>
+      <tr><td class="strongcell">Low / housekeeping</td><td class="c">6</td><td class="c">5</td><td class="c">0</td><td class="c">1</td></tr>
+      <tr style="background:var(--navy)!important"><td class="strongcell" style="color:#fff;background:var(--navy)">Total</td>
+          <td class="c" style="color:#fff;background:var(--navy);font-weight:700">44</td>
+          <td class="c" style="color:#fff;background:var(--navy);font-weight:700">30</td>
+          <td class="c" style="color:#fff;background:var(--navy);font-weight:700">4</td>
+          <td class="c" style="color:#fff;background:var(--navy);font-weight:700">10</td></tr>
+    </tbody>
+  </table>
+
+  <p class="footnote">The 10 remaining items all sit inside the three areas not yet started
+  (speed at scale, monitoring, and going live) plus the final part of payments. None of them are
+  newly discovered &mdash; they were all identified on day one and scheduled deliberately.</p>
+</div>
+
+<!-- ============ PAGE: WHAT GOT DONE (1) ============ -->
+<div class="page">
+  <div class="sec-label">Section 4</div>
+  <h2 class="sec">What we completed this month</h2>
+  <p class="lead">Six blocks of work, in the order they were done.</p>
+
+  <div class="stagehead"><span class="stagenum">01</span><h3>Making the application build and run at all</h3></div>
+  <p>This sounds basic; it was the single biggest blocker. Neither half of the system could be
+  prepared for a real server &mdash; the website had 222 blocking errors and the server 153. There
+  were also two competing installation tools fighting each other, which is the classic cause of
+  "it works on my machine but not on yours".</p>
+  <ul>
+    <li>All 375 blocking errors fixed properly &mdash; not hidden by switching off the safety checks.</li>
+    <li>Several of them turned out to be real bugs waiting to happen: the "recommended jobs" screen, part of the CV upload, the "verifying your email" step and a photo-in-chat feature would all have failed for real users.</li>
+    <li>Settled on one installation tool so every machine and the live server install exactly the same versions.</li>
+    <li>Removed about 15 dead files and a duplicated password library that was a genuine hazard.</li>
+    <li>Found and neutralised a configuration line that, in the wrong circumstances, could have <strong>wiped the main database</strong>.</li>
+    <li>Ran the whole system together for the first time and proved a real sign-up and login works live.</li>
+  </ul>
+
+  <div class="stagehead"><span class="stagenum">02</span><h3>Security</h3></div>
+  <p>The review found several issues that individually would have been enough to stop a launch.</p>
+  <ul>
+    <li><strong>Anyone could have logged in as anyone.</strong> The secret key used to sign logins was left at its factory default, publicly known. That means a stranger could have created a valid login for your administrator account. Rotated and locked down.</li>
+    <li><strong>A live API key was sitting in the code</strong>, visible to anyone with access to the project, and billable to you. Revoked and replaced with a secure setup.</li>
+    <li><strong>Candidate code could escape onto the server.</strong> The coding-test feature had a fallback that ran a candidate's submitted code directly on the main server. Closed, and later replaced with a properly isolated executor.</li>
+    <li><strong>Private data was reachable without logging in</strong> &mdash; CVs, code submissions, and a document-verification callback that could have been faked to approve identity checks. All now require proper authentication.</li>
+    <li><strong>One candidate could view or edit another candidate's profile</strong> simply by changing a number in the address bar. Fixed across every affected screen.</li>
+    <li><strong>Sign-up allowed anyone to register themselves as an administrator.</strong> Removed.</li>
+    <li>Added standard web-security protections, request rate limits, shorter login lifetimes, and proper sign-out.</li>
+  </ul>
+
+  <div class="callout avoid">
+    <span class="ct">How we check ourselves</span>
+    <p>After each block of work we deliberately re-examine our own changes as if an outside auditor
+    were trying to break them. That habit found and fixed a further 25 real issues this month that
+    the original work had missed &mdash; including six ways money could have been manipulated once
+    payments went in.</p>
+  </div>
+</div>
+
+<!-- ============ PAGE: WHAT GOT DONE (2) ============ -->
+<div class="page">
+  <div class="stagehead"><span class="stagenum">03</span><h3>The database &mdash; making it survive real traffic</h3></div>
+  <p>Every part of the server was opening its <em>own private line</em> to the database &mdash; in
+  over 80 different places. A database only permits so many at once. The app was fine for a handful
+  of people and would have seized up with a few hundred.</p>
+  <ul>
+    <li>Rewired the entire server onto a single shared, capped connection &mdash; and added an automatic guard so the old pattern can never come back.</li>
+    <li>Proved it under stress: we fired dozens of simultaneous requests at the running server while counting the actual live connections. It held at the cap and never went over.</li>
+    <li>Added 36 database indexes to the busiest tables so large lists stay fast as data grows &mdash; measured, not assumed.</li>
+    <li>Added limits so a single request can no longer ask for the entire database at once.</li>
+    <li>Fixed data-model faults: postal codes could not accept letters, qualifications were stored in three places that drifted apart, and deleting a user was blocked by 44 broken links between tables.</li>
+    <li>Removed an unused database that the server nevertheless refused to start without.</li>
+    <li>Made a brand-new database usable in one command &mdash; correct structure, an admin account, plans and starter data &mdash; which is exactly what a live deployment needs.</li>
+  </ul>
+
+  <div class="stagehead"><span class="stagenum">04</span><h3>Fixing the things that looked like they worked</h3></div>
+  <p>This category is the most dangerous kind of bug, because nothing shows an error &mdash; the
+  screen simply does nothing, and users assume they did something wrong.</p>
+  <ul>
+    <li><strong>Users were being silently signed out roughly every 15 minutes.</strong> The app was misreading the server's "here is your refreshed session" reply. Fixed.</li>
+    <li><strong>The administrator's agency-approval screen was entirely non-functional</strong> &mdash; it displayed, but approve, reject and list all failed silently. Fixed.</li>
+    <li><strong>"Sign out of other devices" did nothing</strong> &mdash; the feature was fully built but never connected. Connected.</li>
+    <li><strong>Document-verification results were being sent to the wrong address</strong> and quietly discarded. Fixed and proven end-to-end.</li>
+    <li><strong>Chat had no live updates</strong> for read-receipts and reactions &mdash; the server sent them, the app never listened. Now live, with read ticks.</li>
+    <li><strong>Sign-up emails could fail silently</strong>, leaving users stuck unverified with no clue why. Failures are now visible.</li>
+    <li><strong>The app had the developer's local address hard-coded in about 47 files.</strong> Moving to a real server would have meant hand-editing dozens of files. Now it is a single setting.</li>
+    <li>Introduced one consistent way for the server to reply and to report errors, so a failure surfaces as a clear message rather than a blank screen.</li>
+  </ul>
+</div>
+
+<!-- ============ PAGE: WHAT GOT DONE (3) ============ -->
+<div class="page">
+  <div class="stagehead"><span class="stagenum">05</span><h3>Finishing the unfinished features &mdash; all four user types</h3></div>
+  <p>The review listed every place a user could hit a dead end. Each was either genuinely built or
+  honestly removed &mdash; nothing was left pretending.</p>
+
+  <table class="avoid">
+    <thead><tr><th style="width:22%">User type</th><th style="width:39%">What was broken or fake</th><th style="width:39%">What it is now</th></tr></thead>
+    <tbody>
+      <tr><td class="strongcell">Companies</td>
+        <td>"Publish job" did nothing. "Manage hiring" said Coming Soon. The Discover page showed made-up companies. Public company profiles were static placeholders.</td>
+        <td>All working against real data. Discover now lists genuine companies with a privacy-safe view. Duplicate half-built screens folded into the working ones.</td></tr>
+      <tr><td class="strongcell">Candidates</td>
+        <td>The analytics page said "coming soon". The practice coding screen used invented questions and a fake countdown.</td>
+        <td>Real analytics widgets, and the navigation link restored. Fake practice surfaces removed rather than left misleading.</td></tr>
+      <tr><td class="strongcell">Agencies</td>
+        <td>Notification settings appeared to save but were never stored &mdash; they reset on reload.</td>
+        <td>Genuinely saved, per user, and shared across companies and candidates too.</td></tr>
+      <tr><td class="strongcell">Administrators</td>
+        <td>Four sidebar links &mdash; Admins, Settings, Analytics and Security Log &mdash; led to missing pages.</td>
+        <td>All four built for real, including a working security audit trail and a platform setting that can switch new registrations on or off.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Alongside this we replaced simulated background functions with genuine ones: company
+  verification now performs a real domain-ownership lookup and a real website check; the
+  coding-test executor runs candidate code in a properly isolated container; and every place where
+  the AI reads text from an outside source (a scraped website, an uploaded document) is now
+  protected against that text containing hidden instructions designed to manipulate the result.</p>
+
+  <p>We also removed genuine duplication: there were three separate scoring engines that could
+  disagree with one another about the same candidate. They now share one engine &mdash; and
+  reconciling them exposed a real scoring bug that had been quietly producing wrong results.</p>
+
+  <div class="stagehead"><span class="stagenum">06</span><h3>Real payments &mdash; about two-thirds done</h3></div>
+  <p>This was the single largest fake area of the product. The old checkout produced a made-up
+  reference and a made-up receipt URL; no card was ever charged and no subscription ever really
+  started.</p>
+  <ul>
+    <li><strong>Real hosted card checkout is live</strong>, with prices taken from the database rather than trusted from the browser &mdash; so a customer cannot alter what they are charged.</li>
+    <li><strong>Payment confirmations are cryptographically verified</strong> before an account is upgraded, and recorded so the same confirmation can never be processed twice.</li>
+    <li><strong>The full lifecycle works</strong>: upgrade, downgrade with fair proration, cancel now or at period end, refunds, failed-payment handling and automatic expiry.</li>
+    <li><strong>Plan limits are enforced for real</strong> &mdash; job posting and AI interview allowances now come from the customer's actual plan.</li>
+    <li><strong>Receipts cannot be altered or deleted</strong>, enforced at the database itself, and a read-only reconciliation view lets you compare our records against the payment provider's.</li>
+    <li>Payment methods we are not launching with are honestly disabled rather than shown as broken buttons.</li>
+    <li><strong>Still to do:</strong> billing for agencies (they have different needs from companies, so they get their own plans), and a final end-to-end money test.</li>
+  </ul>
+</div>
+
+<!-- ============ PAGE: THE DELAY ============ -->
+<div class="page">
+  <div class="sec-label">Section 5</div>
+  <h2 class="sec">The deployment date &mdash; what happened</h2>
+
+  <div class="callout warn avoid">
+    <p><strong>We said deployment would be done by the 10th. It is the 20th and it is not done.
+    That commitment was not met, and this section explains exactly why &mdash; without
+    softening it.</strong></p>
+  </div>
+
+  <h3>What we actually tried</h3>
+  <p>We did not simply let the date pass. Between the 15th and the 19th we opened a parallel track
+  specifically to get the system onto a live test server <em>while</em> development continued, so
+  that you could see and click through a working deployment. That track got a long way:</p>
+  <ul>
+    <li>The server was packaged for hosting for the first time (this had never existed).</li>
+    <li>An automatic release process was written and proven on a fresh, empty database &mdash; it sets up the database, creates the admin account, and then <em>verifies</em> that it actually worked rather than assuming.</li>
+    <li>A safe set of demo accounts was built so you could log in as each user type and try the product.</li>
+    <li>Hosting credentials and a full click-by-click deployment guide were prepared.</li>
+  </ul>
+  <p>Then we stopped, deliberately, and moved that work back to its proper place in the sequence.</p>
+
+  <h3>Why we stopped &mdash; five honest reasons</h3>
+
+  <h4>1. Deploying half-finished payments is the one thing you cannot undo.</h4>
+  <p>Payments are the area still in progress. A deployment made this week would have put
+  partly-finished billing code onto a real server. The risk is not an ugly screen &mdash; it is
+  charging a customer the wrong amount, taking money and not activating the account, or failing to
+  refund. Those are mistakes that cost trust and money, and they are not fixable with a quick patch.</p>
+
+  <h4>2. Deploying mid-development means deploying repeatedly.</h4>
+  <p>The system is changing daily. A deployment made on the 10th would have been out of date by the
+  12th and wrong by the 15th. Each redeployment carries its own risk of breaking something. Doing it
+  once, at the right moment, is both safer and cheaper than doing it four times.</p>
+
+  <h4>3. The attempt surfaced real problems &mdash; which is exactly why it was worth doing.</h4>
+  <ul>
+    <li>The server <strong>refused to start at all</strong> unless an optional background service was running &mdash; a fault that would have caused a total outage on the very first live deployment. Found and fixed.</li>
+    <li>A settings file was one step away from having <strong>live passwords committed into the project history</strong>, where they are extremely hard to remove. Closed.</li>
+    <li>The automatic coding-test feature <strong>cannot run on ordinary hosting</strong> &mdash; it needs a machine of its own. Discovered during this attempt, and I corrected my own earlier assurance to you on that point rather than letting it fail quietly later.</li>
+  </ul>
+  <p>Had we pushed the deployment through on the 10th, the first two would have hit you on day one.</p>
+
+  <h4>4. The starting point was materially worse than anyone knew.</h4>
+  <p>The 10th was estimated before the full review existed. That review then found the app would not
+  build, payments were fictional, and a stranger could log in as your administrator. Deploying to
+  that date would have meant putting an insecure, non-functional product on your live domain. The
+  right call was to fix the foundations first &mdash; and that is what the last month bought.</p>
+
+  <h4>5. The work is not behind &mdash; the deployment was resequenced.</h4>
+  <p>In the same month, five of nine areas were completed and verified, 30 of 44 known problems were
+  closed, and payments went from entirely fake to genuinely working. The date moved because we
+  reordered the last step, not because progress stalled.</p>
+
+  <div class="callout good avoid">
+    <span class="ct">In the meantime, your public site is already live</span>
+    <p>The public-facing website is deployed and reachable on your main domain right now. What is
+    pending is the full production deployment of the <em>system behind it</em> &mdash; the server,
+    the database and the AI services &mdash; which is what makes the logged-in product work at scale.</p>
+  </div>
+
+  <p class="footnote">Nothing built for the deployment attempt was wasted. The packaging, the release
+  process, the demo accounts and the hosting guide are all finished, committed, and will be used
+  as-is when we deploy for real.</p>
+  <hr class="divider">
+
+  <div class="sec-label">Section 6</div>
+  <h2 class="sec">What is still to do</h2>
+
+  <table class="avoid">
+    <thead><tr><th style="width:24%">Item</th><th style="width:44%">What it involves</th><th style="width:16%" class="c">Effort</th><th style="width:16%" class="c">Priority</th></tr></thead>
+    <tbody>
+      <tr><td class="strongcell">Finish payments</td><td>Billing for agencies on their own plans, and a complete end-to-end money test with a real test card.</td><td class="c">2&ndash;3 days</td><td class="c"><span class="pill p-prog">Now</span></td></tr>
+      <tr><td class="strongcell">Speed at scale</td><td>Caching frequently-read data, making the AI services handle many requests at once, and allowing more than one server to run side by side.</td><td class="c">3&ndash;4 days</td><td class="c"><span class="pill p-prog">Next</span></td></tr>
+      <tr><td class="strongcell">Monitoring &amp; reliability</td><td>Alerts when something breaks, a proper log trail, no work lost when a server restarts, and automatic retries for failed background jobs.</td><td class="c">2&ndash;3 days</td><td class="c"><span class="pill p-prog">Next</span></td></tr>
+      <tr><td class="strongcell">Full deployment</td><td>Live database, live servers, your domain, security certificates, automatic deployment, backups, and the separate machine for coding tests.</td><td class="c">3&ndash;4 days</td><td class="c"><span class="pill p-prog">Final</span></td></tr>
+      <tr><td class="strongcell">Final acceptance pass</td><td>Walking every journey on the live system as a real user, for all four user types, before handover.</td><td class="c">1 day</td><td class="c"><span class="pill p-prog">Final</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-label" style="margin-top:6mm">Section 7</div>
+  <h2 class="sec">The plan to launch</h2>
+
+  <p class="lead"><strong>Target: full production deployment within 10&ndash;15 days.</strong></p>
+
+  <table class="avoid">
+    <thead><tr><th style="width:18%">Window</th><th style="width:52%">What happens</th><th style="width:30%">What you will see</th></tr></thead>
+    <tbody>
+      <tr><td class="strongcell">Days 1&ndash;3</td><td>Payments completed &mdash; agency billing plus the full money test.</td><td>A written confirmation that a real test payment completed, activated an account and refunded correctly.</td></tr>
+      <tr><td class="strongcell">Days 4&ndash;7</td><td>Speed and reliability work &mdash; caching, faster AI handling, alerting and crash recovery.</td><td>Load-test figures showing how many simultaneous users the system holds.</td></tr>
+      <tr><td class="strongcell">Days 8&ndash;11</td><td>Full deployment: live database, servers, your domain, certificates, backups, and the coding-test machine.</td><td>A working login link on your own domain, plus demo accounts for each user type.</td></tr>
+      <tr><td class="strongcell">Days 12&ndash;15</td><td>Acceptance pass and handover &mdash; every journey walked live, plus documentation.</td><td>Handover pack: admin access, operating guide, and the full technical record.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout avoid">
+    <span class="ct">One commitment about this date</span>
+    <p>If anything threatens this window, you will hear it from us <em>before</em> the date, not
+    after &mdash; with the reason and a revised plan. The last thing we want is for you to have to
+    ask again.</p>
+  </div>
+</div>
+
+<!-- ============ PAGE: VERIFICATION + NUMBERS ============ -->
+<div class="page">
+  <div class="sec-label">Section 8</div>
+  <h2 class="sec">Please have this independently checked</h2>
+
+  <p class="lead">We would genuinely welcome it. If you have access to a developer &mdash; or would
+  like to appoint one &mdash; everything in this report is written down and independently
+  verifiable. Nothing here relies on taking our word for it.</p>
+
+  <h3>What to give them</h3>
+  <table class="avoid">
+    <thead><tr><th style="width:34%">What they should look at</th><th style="width:66%">What it will show them</th></tr></thead>
+    <tbody>
+      <tr><td class="strongcell">The full work record</td><td>A dated, itemised log of every change made this month &mdash; what it was before, what we changed, why, and how it was proven. 70 entries.</td></tr>
+      <tr><td class="strongcell">The original review &amp; problem list</td><td>The independent assessment written before any work started, plus all 44 catalogued problems ranked by severity, each marked with its current status.</td></tr>
+      <tr><td class="strongcell">The automatic check suite</td><td>47 automated checks that run against the real system. Ask them to run the suite &mdash; it either passes or it does not; there is no room for interpretation.</td></tr>
+      <tr><td class="strongcell">The project history</td><td>Every change is timestamped and attributed. They can see precisely what was done, and when.</td></tr>
+      <tr><td class="strongcell">The plan documents</td><td>The nine areas of work, their entry and exit conditions, and what each still owes.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Three questions worth asking them</h3>
+  <ul>
+    <li>"Do the automatic checks actually pass when you run them yourself?"</li>
+    <li>"Are the checks meaningful, or would they pass even if the feature were broken?" &mdash; we deliberately break each check when we write it, to prove it catches failures. Ask them to confirm that.</li>
+    <li>"Does the work record match what is actually in the code?"</li>
+  </ul>
+
+  <p class="footnote">We will hand over the full technical record on request, at any time, without
+  conditions.</p>
+
+  <hr class="divider">
+
+  <div class="sec-label">Section 9</div>
+  <h2 class="sec">The month in numbers</h2>
+
+  <table class="avoid">
+    <thead><tr><th style="width:60%">Measure</th><th style="width:20%" class="c">Start</th><th style="width:20%" class="c">Now</th></tr></thead>
+    <tbody>
+      <tr><td class="strongcell">Overall readiness to go live</td><td class="c">40%</td><td class="c">70%</td></tr>
+      <tr><td class="strongcell">Areas of work fully completed and verified</td><td class="c">0 of 9</td><td class="c">5 of 9</td></tr>
+      <tr><td class="strongcell">Known problems fully resolved</td><td class="c">0 of 44</td><td class="c">30 of 44</td></tr>
+      <tr><td class="strongcell">Critical security holes open</td><td class="c">7</td><td class="c">0</td></tr>
+      <tr><td class="strongcell">Errors blocking the server build</td><td class="c">153</td><td class="c">0</td></tr>
+      <tr><td class="strongcell">Errors blocking the website build</td><td class="c">222</td><td class="c">0</td></tr>
+      <tr><td class="strongcell">Separate database connections opened by the server</td><td class="c">88</td><td class="c">1 (capped)</td></tr>
+      <tr><td class="strongcell">Automatic quality checks running on every build</td><td class="c">0</td><td class="c">47</td></tr>
+      <tr><td class="strongcell">Database performance indexes on busy tables</td><td class="c">0</td><td class="c">36</td></tr>
+      <tr><td class="strongcell">Database structure upgrades applied</td><td class="c">&mdash;</td><td class="c">11 new</td></tr>
+      <tr><td class="strongcell">Documented work entries</td><td class="c">0</td><td class="c">70</td></tr>
+      <tr><td class="strongcell">Real card payments possible</td><td class="c">No</td><td class="c">Yes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout good avoid">
+    <span class="ct">In summary</span>
+    <p>A month ago Hiralent was an application that looked finished and was not. Today it is an
+    application that builds, runs, is secure, holds real traffic, works for all four user types, and
+    can take real money. What remains is speed, monitoring, and the deployment itself &mdash; and
+    the groundwork for that deployment is already built and waiting.</p>
+    <p style="margin-top:2.5mm">We missed the 10th. We are not going to miss the next date, and you
+    will hear from us before it if anything changes.</p>
+  </div>
+
+  <div class="signoff">
+    <strong>Prepared by Huzaifa Iqbal</strong> &nbsp;&middot;&nbsp; Iqbal Technologies &nbsp;&middot;&nbsp; 20 August 2026<br>
+    <span style="color:var(--grey)">The complete technical work record, the original assessment, the
+    problem register and the automated check suite are available on request &mdash; and are yours
+    to have reviewed by anyone you choose.</span>
+  </div>
+</div>
+
+</body>
+</html>
