@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAssessmentSkillRadarHandler } from "../controller/company/skillRadar.controller";
 import { checkAuth } from "../middlewares/checkAuth.middleware"; // your auth middleware
+import { requireActiveSubscription } from "../middlewares/checkSubscription.middleware";
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const router = Router();
 router.get(
   "/employer/assessments/:assessmentId/skill-radar",
   checkAuth, // sets req.user
+  requireActiveSubscription,
   getAssessmentSkillRadarHandler
 );
 

@@ -176,8 +176,10 @@ async function main() {
     try {
       await prisma.subscriptionPlan.createMany({
         data: [
-          { plan_id: planA, name: 'Probe A', price_monthly_usd: 69.99, price_annually_usd: 699.99, job_post_limit: 10, ai_interview_limit: 10, features_included: 'a', is_publicly_available: false, stripe_price_id_monthly: '', stripe_price_id_annually: '' },
-          { plan_id: planB, name: 'Probe B', price_monthly_usd: 20.00, price_annually_usd: 200.00, job_post_limit: 5, ai_interview_limit: 5, features_included: 'b', is_publicly_available: false, stripe_price_id_monthly: '', stripe_price_id_annually: '' },
+          // Both plans must be publicly available: buying/switching to a plan the catalogue
+          // does not publish is rejected by design (see subscription-money-safety.probe).
+          { plan_id: planA, name: 'Probe A', price_monthly_usd: 69.99, price_annually_usd: 699.99, job_post_limit: 10, ai_interview_limit: 10, features_included: 'a', is_publicly_available: true, stripe_price_id_monthly: '', stripe_price_id_annually: '' },
+          { plan_id: planB, name: 'Probe B', price_monthly_usd: 20.00, price_annually_usd: 200.00, job_post_limit: 5, ai_interview_limit: 5, features_included: 'b', is_publicly_available: true, stripe_price_id_monthly: '', stripe_price_id_annually: '' },
         ],
       });
       await prisma.user.createMany({

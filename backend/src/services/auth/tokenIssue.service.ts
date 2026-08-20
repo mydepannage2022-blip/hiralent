@@ -46,7 +46,7 @@ const newRefreshToken = (): string => crypto.randomBytes(48).toString('hex');
  * Resolve the company_id claim for a user (role-specific), mirroring the login
  * flow so refreshed tokens keep the same company scope.
  */
-async function resolveCompanyId(user: {
+export async function resolveCompanyId(user: {
   user_id: string;
   role: string;
   companyProfile?: { company_id: string } | null;
@@ -54,7 +54,11 @@ async function resolveCompanyId(user: {
   if (user.role === 'company' || user.role === 'company_admin') {
     return user.companyProfile?.company_id ?? user.user_id;
   }
-  if (user.role === 'company_member') {
+  // `recruiter` is resolved the same way as `company_member`: both are team users whose company
+  // comes from CompanyTeamMember, not from a CompanyProfile of their own. Without this a
+  // recruiter got no company_id at all, so every company-scoped check (job create, and now the
+  // billing/quota checks) failed for them even though they are allowed to run those flows.
+  if (user.role === 'company_member' || user.role === 'recruiter') {
     const membership = await prisma.companyTeamMember.findFirst({
       where: { user_id: user.user_id, is_active: true },
       select: { company_id: true },

@@ -1,158 +1,114 @@
-import prisma from '../../lib/prisma';
-import { FeatureAccess, SubscriptionStatus } from '../../types/subscription.types';
+import { FeatureAccess } from '../../types/subscription.types';
+import {
+  QuotaKey,
+  UNLIMITED,
+  checkQuota,
+  getEntitlementSummary,
+  getEntitlements,
+  getUsage,
+} from './entitlements.service';
 
+/**
+ * Thin compatibility layer over `entitlements.service`.
+ *
+ * This module used to *be* the entitlement rules, as three hardcoded maps keyed by
+ * `'FREE' | 'PRO' | 'ENTERPRISE'`. The seeded catalogue is named `Free` / `Starter` / `Standard`,
+ * so every lookup missed: `getFeatureLimit('Standard', 'job_posts')` returned `0` via `?? 0`, and
+ * `getPlanFeatures('Standard')` returned the free feature list. The plan columns that hold the
+ * real numbers — `job_post_limit`, `ai_interview_limit` — were never read at all.
+ *
+ * All of that now comes from the DB. What is left here is the shape the subscription controller
+ * already returns to the frontend.
+ *
+ * `accountId` is a **billing account** (a company), not a user id — see billingAccount.ts.
+ */
+
+/** Feature names the API accepts, mapped to the metered quota behind them. */
+const QUOTA_ALIASES: Record<string, QuotaKey> = {
+  job_posts: 'job_posts',
+  job_post: 'job_posts',
+  jobs: 'job_posts',
+  ai_interviews: 'ai_interviews',
+  ai_interview: 'ai_interviews',
+  interviews: 'ai_interviews',
+};
+
+const resolveQuotaKey = (featureName: string): QuotaKey | null =>
+  QUOTA_ALIASES[String(featureName || '').trim().toLowerCase()] ?? null;
+
+/**
+ * Is this feature available to the account?
+ *
+ * For a metered feature the answer is its quota. For anything else the answer is whether the
+ * account is on a paid plan — deliberately coarse: `features_included` is marketing copy
+ * ("3 active job slots, editable"), not a machine-readable flag set, so it is never used to
+ * make an access decision.
+ */
 export const checkFeatureAccess = async (
-  userId: string, 
+  accountId: string,
   featureName: string
 ): Promise<FeatureAccess> => {
-  const subscription = await prisma.userSubscription.findUnique({
-    where: { user_id: userId },
-    include: { plan: true }
-  });
+  const quotaKey = resolveQuotaKey(featureName);
 
-  if (!subscription || subscription.status !== SubscriptionStatus.ACTIVE) {
-    const freeFeatures = getFreeFeatures();
-    const isFreeFeature = freeFeatures.includes(featureName);
-
+  if (quotaKey) {
+    const quota = await checkQuota(accountId, quotaKey);
     return {
       feature_name: featureName,
-      is_allowed: isFreeFeature,
-      plan_required: isFreeFeature ? 'FREE' : 'PRO'
+      is_allowed: quota.allowed,
+      current_usage: quota.usage,
+      limit: quota.limit === UNLIMITED ? undefined : quota.limit,
+      plan_required: quota.allowed ? quota.plan_name : 'upgrade',
     };
   }
 
-  if (new Date() > subscription.current_period_end) {
-    return {
-      feature_name: featureName,
-      is_allowed: false,
-      plan_required: 'ACTIVE_SUBSCRIPTION'
-    };
-  }
-
-  const planFeatures = getPlanFeatures(subscription.plan.name);
-  const isAllowed = planFeatures.includes(featureName) || planFeatures.includes('*');
+  const entitlements = await getEntitlements(accountId);
+  const onPaidPlan = entitlements.source === 'subscription';
 
   return {
     feature_name: featureName,
-    is_allowed: isAllowed,
-    plan_required: isAllowed ? subscription.plan.name : 'PRO'
+    is_allowed: onPaidPlan,
+    plan_required: onPaidPlan ? entitlements.plan_name : 'upgrade',
   };
 };
 
+/**
+ * Quota answer for a caller that has already counted usage itself.
+ * Kept for callers that measure usage in their own terms; the limit still comes from the plan.
+ */
 export const checkFeatureLimit = async (
-  userId: string,
+  accountId: string,
   featureName: string,
   currentUsage: number
 ): Promise<FeatureAccess> => {
-  const subscription = await prisma.userSubscription.findUnique({
-    where: { user_id: userId },
-    include: { plan: true }
-  });
+  const entitlements = await getEntitlements(accountId);
+  const quotaKey = resolveQuotaKey(featureName);
+  const limit = quotaKey ? entitlements.limits[quotaKey] : 0;
 
-  if (!subscription) {
-    const freeLimit = getFeatureLimit('FREE', featureName);
-    return {
-      feature_name: featureName,
-      is_allowed: currentUsage < freeLimit,
-      current_usage: currentUsage,
-      limit: freeLimit,
-      plan_required: currentUsage >= freeLimit ? 'PRO' : 'FREE'
-    };
-  }
-
-  const limit = getFeatureLimit(subscription.plan.name, featureName);
-  
   return {
     feature_name: featureName,
-    is_allowed: limit === -1 || currentUsage < limit,
+    is_allowed: limit === UNLIMITED || currentUsage < limit,
     current_usage: currentUsage,
-    limit: limit === -1 ? undefined : limit,
-    plan_required: subscription.plan.name
+    limit: limit === UNLIMITED ? undefined : limit,
+    plan_required: entitlements.plan_name,
   };
 };
 
-const getFreeFeatures = (): string[] => {
-  return [
-    'basic_profile',
-    'job_search',
-    'apply_to_jobs',
-    'basic_assessments',
-    'view_jobs'
-  ];
-};
-
-const getPlanFeatures = (planName: string): string[] => {
-  const featureMap: Record<string, string[]> = {
-    'FREE': getFreeFeatures(),
-    'PRO': [
-      ...getFreeFeatures(),
-      'unlimited_assessments',
-      'advanced_analytics',
-      'priority_support',
-      'ai_interviews',
-      'custom_branding',
-      'api_access'
-    ],
-    'ENTERPRISE': ['*']
-  };
-
-  return featureMap[planName] || getFreeFeatures();
-};
-
-const getFeatureLimit = (planName: string, featureName: string): number => {
-  const limitMap: Record<string, Record<string, number>> = {
-    'FREE': {
-      'assessments': 5,
-      'job_posts': 2,
-      'ai_interviews': 0,
-      'candidates_view': 10
-    },
-    'PRO': {
-      'assessments': -1,
-      'job_posts': -1,
-      'ai_interviews': 100,
-      'candidates_view': -1
-    },
-    'ENTERPRISE': {
-      'assessments': -1,
-      'job_posts': -1,
-      'ai_interviews': -1,
-      'candidates_view': -1
-    }
-  };
-
-  return limitMap[planName]?.[featureName] ?? 0;
-};
-
-export const getUserPlanFeatures = async (userId: string) => {
-  const subscription = await prisma.userSubscription.findUnique({
-    where: { user_id: userId },
-    include: { plan: true }
-  });
-
-  if (!subscription) {
-    return {
-      plan_name: 'FREE',
-      features: getFreeFeatures(),
-      limits: {
-        assessments: 5,
-        job_posts: 2,
-        ai_interviews: 0,
-        candidates_view: 10
-      }
-    };
-  }
+/** Plan + limits + live usage, as the billing screens consume it. */
+export const getUserPlanFeatures = async (accountId: string) => {
+  const entitlements = await getEntitlements(accountId);
+  const usage = await getUsage(accountId, entitlements);
 
   return {
-    plan_name: subscription.plan.name,
-    features: getPlanFeatures(subscription.plan.name),
-    limits: {
-      assessments: getFeatureLimit(subscription.plan.name, 'assessments'),
-      job_posts: getFeatureLimit(subscription.plan.name, 'job_posts'),
-      ai_interviews: getFeatureLimit(subscription.plan.name, 'ai_interviews'),
-      candidates_view: getFeatureLimit(subscription.plan.name, 'candidates_view')
-    },
-    subscription_status: subscription.status,
-    current_period_end: subscription.current_period_end
+    plan_name: entitlements.plan_name,
+    plan_id: entitlements.plan_id,
+    source: entitlements.source,
+    // Display copy straight from the plan row, not a code-side list.
+    features: entitlements.features,
+    limits: entitlements.limits,
+    usage,
+    subscription_status: entitlements.status,
+    current_period_end: entitlements.period_end,
   };
 };
+
+export { getEntitlementSummary };

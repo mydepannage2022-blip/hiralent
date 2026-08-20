@@ -398,3 +398,8 @@ Opt-in reaper for append-only/firehose tables. Code-referenced in `server.ts` + 
 |---|---|---|---|
 | `RETENTION_ENABLED` | backend | Opt-in switch for the firehose retention reaper (batched deleteMany of aged rows). Reaper runs only when set to `true`. | `false` |
 | `RETENTION_CRON` | backend | Cron expression for the retention reaper (low-traffic window). | `15 3 * * *` |
+| `SUBSCRIPTION_EXPIRY_ENABLED` | backend | Kill-switch for the subscription expiry sweep (lapsed → canceled/expired). Runs unless set to `false`; deletes nothing. | `true` |
+| `SUBSCRIPTION_EXPIRY_CRON` | backend | Cron expression for the subscription expiry sweep. | `30 * * * *` |
+| `PAYMENT_RECONCILIATION_ENABLED` | backend | Kill-switch for the gateway-vs-DB payment reconciliation job. Runs unless set to `false`; read-only (reports mismatches, never repairs them). | `true` |
+| `PAYMENT_RECONCILIATION_CRON` | backend | Cron expression for the payment reconciliation job. | `15 3 * * *` |
+| `RECONCILE_LOOKBACK_DAYS` | backend | How many days back a reconciliation run inspects when no explicit window is given. | `30` |

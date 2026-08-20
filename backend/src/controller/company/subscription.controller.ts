@@ -11,21 +11,25 @@ import {
 import { BillingCycle } from '../../types/subscription.types';
 import {
   checkFeatureAccess,
-  checkFeatureLimit,
   getUserPlanFeatures
 } from '../../services/subscription/feature-access.service';
+import { getEntitlementSummary } from '../../services/subscription/entitlements.service';
+import { resolveBillingAccountId, billingAccountError } from '../../services/subscription/billingAccount';
 import { getPaymentGateway } from '../../services/payment/PaymentGatewayFactory';
 import { PaymentGatewayType } from '../../types/payment.types';
 
 export const createCheckout = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
-    const result = await createCheckoutSession(userId, req.body);
+    const result = await createCheckoutSession(accountId, req.body);
     
     res.status(200).json({
       success: true,
@@ -41,13 +45,16 @@ export const createCheckout = async (req: Request, res: Response) => {
 
 export const getMySubscription = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
-    const subscription = await getUserSubscription(userId);
+    const subscription = await getUserSubscription(accountId);
     
     if (!subscription) {
       return res.status(200).json({
@@ -71,15 +78,18 @@ export const getMySubscription = async (req: Request, res: Response) => {
 
 export const cancelSubscription = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
     const { cancel_immediately } = req.body;
     
-    const result = await cancelUserSubscription(userId, cancel_immediately);
+    const result = await cancelUserSubscription(accountId, cancel_immediately);
     
     res.status(200).json({
       success: true,
@@ -95,15 +105,18 @@ export const cancelSubscription = async (req: Request, res: Response) => {
 
 export const changePlan = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
+    const accountId = resolveBillingAccountId(req.user);
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
     const { plan_id, billing_cycle } = req.body;
 
-    const result = await changeUserPlan(userId, plan_id, billing_cycle as BillingCycle | undefined);
+    const result = await changeUserPlan(accountId, plan_id, billing_cycle as BillingCycle | undefined);
 
     res.status(200).json({
       success: true,
@@ -160,15 +173,18 @@ export const getPlan = async (req: Request, res: Response) => {
 
 export const checkFeature = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
     const { feature_name } = req.body;
     
-    const access = await checkFeatureAccess(userId, feature_name);
+    const access = await checkFeatureAccess(accountId, feature_name);
     
     res.status(200).json({
       success: true,
@@ -182,15 +198,46 @@ export const checkFeature = async (req: Request, res: Response) => {
   }
 };
 
-export const getMyFeatures = async (req: Request, res: Response) => {
+// GET /api/v1/subscription/usage
+// Plan limits alongside what the company has actually consumed, so the billing screen and the
+// job/interview forms can warn before the server refuses the action.
+export const getUsageSummary = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.user_id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
     }
 
-    const features = await getUserPlanFeatures(userId);
+    const summary = await getEntitlementSummary(accountId);
+
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+export const getMyFeatures = async (req: Request, res: Response) => {
+  try {
+    const accountId = resolveBillingAccountId(req.user);
+
+    if (!accountId) {
+      return res.status(req.user ? 400 : 401).json({
+        success: false,
+        error: billingAccountError(req.user)
+      });
+    }
+
+    const features = await getUserPlanFeatures(accountId);
     
     res.status(200).json({
       success: true,

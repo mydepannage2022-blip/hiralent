@@ -9,6 +9,7 @@ import {
   FileWarning,
   Users,
   Settings,
+  CreditCard,
 } from 'lucide-react';
 
 import ProtectedRoute from '@/src/components/layout/ProtectedRoute'; // or your admin guard
@@ -28,6 +29,7 @@ export default function AdminDashboardLayout({ children }: AdminDashboardLayoutP
     { name: 'Dashboard',     icon: LayoutDashboard, href: '/admin/dashboard' },
     { name: 'Verifications', icon: BadgeCheck,      href: '/admin/dashboard/verifications' },
     { name: 'Analytics',     icon: BarChart3,       href: '/admin/dashboard/analytics' },
+    { name: 'Billing',       icon: CreditCard,      href: '/admin/dashboard/billing' },
     { name: 'Security Log',  icon: FileWarning,     href: '/admin/dashboard/security-log' },
     { name: 'Admins',        icon: Users,           href: '/admin/dashboard/admins' },
     { name: 'Settings',      icon: Settings,        href: '/admin/dashboard/settings' },

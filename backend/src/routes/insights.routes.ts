@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { requireAuth, requireCompanyMember } from '../middlewares/authz.middleware';
+import { requireActiveSubscription } from '../middlewares/checkSubscription.middleware';
 import { enqueueAiCompanySetupRecompute } from '../queues/aiCompanySetup.queue';
 
 const router = Router();
 
 // GET /companies/:companyId/insights?latest=1
-router.get('/companies/:companyId/insights', requireAuth, requireCompanyMember, async (req: Request, res: Response) => {
+router.get('/companies/:companyId/insights', requireAuth, requireCompanyMember, requireActiveSubscription, async (req: Request, res: Response) => {
   const { companyId } = req.params;
   const latestOnly = ['1', 'true', 'yes'].includes(String(req.query.latest ?? '').toLowerCase());
 
@@ -30,7 +31,7 @@ router.get('/companies/:companyId/insights', requireAuth, requireCompanyMember, 
 });
 
 // (optional) POST /companies/:companyId/insights/recompute
-router.post('/companies/:companyId/insights/recompute', requireAuth, requireCompanyMember, async (req, res) => {
+router.post('/companies/:companyId/insights/recompute', requireAuth, requireCompanyMember, requireActiveSubscription, async (req, res) => {
   const { companyId } = req.params;
   await enqueueAiCompanySetupRecompute(companyId);
   res.status(202).json({ ok: true, enqueued: true });

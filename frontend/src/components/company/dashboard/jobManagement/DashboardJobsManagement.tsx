@@ -871,7 +871,17 @@ const jobService = {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      const error: any = new Error(`HTTP ${response.status}: ${errorText}`);
+      // Keep the parsed body on the error. A 403 from the plan-quota gate carries the code and
+      // the real usage numbers, and the caller needs them to offer an upgrade instead of a
+      // generic "failed to create job".
+      error.status = response.status;
+      try {
+        error.data = JSON.parse(errorText);
+      } catch {
+        error.data = null;
+      }
+      throw error;
     }
 
     return response.json();
@@ -1006,8 +1016,10 @@ const JobsManagement: React.FC = () => {
       closeModal();
       setCreateWizardOpen(false);
     } catch (err) {
-      setError(modalMode === "edit" ? "Failed to update job" : "Failed to create job");
       console.error("Error submitting job:", err);
+      // Rethrow: both modals catch their own submit failures, and the create wizard needs the
+      // error object itself to tell a plan-limit refusal apart from a real failure.
+      throw err;
     }
   };
 

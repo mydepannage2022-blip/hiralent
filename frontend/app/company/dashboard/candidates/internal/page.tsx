@@ -8,6 +8,8 @@ import {
   useInternalRanking,
 } from "@/src/lib/company/candidates.queries";
 import InternalCandidateCard from "@/src/components/company/dashboard/candidates/InternalCandidateCard";
+import { parseEntitlementError } from "@/src/lib/subscription/entitlementError";
+import UpgradePrompt from "@/src/components/subscription/UpgradePrompt";
 
 function normalizeFit(score?: number | null) {
   if (score == null) return null;
@@ -36,6 +38,10 @@ export default function InternalCandidatesPage() {
   });
 
   const ranking = rankingQuery.data?.items ?? [];
+
+  // AI ranking is part of the paid product. A 403 from the subscription gate is an answer, not
+  // an outage — render the upgrade path rather than a failed-to-load state.
+  const entitlementBlock = parseEntitlementError(rankingQuery.error);
 
   const candidateIds = useMemo(
     () => ranking.map((c) => String(c.candidate_id)).filter(Boolean),
@@ -131,6 +137,8 @@ export default function InternalCandidatesPage() {
         {/* Content */}
         {rankingQuery.isLoading ? (
           <div className="text-sm text-muted-foreground">Loading ranking...</div>
+        ) : entitlementBlock ? (
+          <UpgradePrompt block={entitlementBlock} action="candidate ranking" />
         ) : rankingQuery.isError ? (
           <div className="text-sm text-red-600">
             {String((rankingQuery.error as any)?.message ?? "Failed to load")}

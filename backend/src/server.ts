@@ -6,6 +6,8 @@ import { setupSocketIO } from "./realtime/socket.messaging";
 import { getScheduler } from "./services/scraping/scraping-scheduler";
 import { getInterviewScheduler } from "./scheduler/interview.scheduler";
 import { getRetentionScheduler } from "./scheduler/retention.scheduler";
+import { getSubscriptionExpiryScheduler } from "./scheduler/subscriptionExpiry.scheduler";
+import { getPaymentReconciliationScheduler } from "./scheduler/paymentReconciliation.scheduler";
 import { assertCoreSecrets, assertDbPoolConfig } from "./config/requireEnv";
 import { assertSafeRunner } from "./services/runner.security";
 import { connectDB, disconnectDB } from "./lib/prisma";
@@ -81,6 +83,22 @@ async function connectWithRetry(attempts = 5, delayMs = 2000): Promise<void> {
       console.log("🧹 Retention scheduler ENABLED");
     } else {
       console.log("⏸️ Retention scheduler DISABLED (set RETENTION_ENABLED=true)");
+    }
+
+    // Subscription expiry sweep — ON by default (it deletes nothing, it only stops a lapsed
+    // subscription from reading as still-paying for a user who never logs back in). (R-05)
+    if (process.env.SUBSCRIPTION_EXPIRY_ENABLED !== "false") {
+      getSubscriptionExpiryScheduler().start();
+    } else {
+      console.log("⏸️ Subscription expiry scheduler DISABLED (SUBSCRIPTION_EXPIRY_ENABLED=false)");
+    }
+
+    // Gateway ↔ DB payment reconciliation — ON by default. Read-only: it reports transactions
+    // whose status disagrees with Stripe (a missed webhook) and never repairs them itself. (R-05)
+    if (process.env.PAYMENT_RECONCILIATION_ENABLED !== "false") {
+      getPaymentReconciliationScheduler().start();
+    } else {
+      console.log("⏸️ Payment reconciliation scheduler DISABLED (PAYMENT_RECONCILIATION_ENABLED=false)");
     }
 
     const server = http.createServer(app);

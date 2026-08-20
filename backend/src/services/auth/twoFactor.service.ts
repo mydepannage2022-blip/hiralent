@@ -3,7 +3,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
-import { issueAuthTokens } from "./tokenIssue.service";
+import { issueAuthTokens, resolveCompanyId } from "./tokenIssue.service";
 import { getClientIP } from "../../utils/locationDetector.util";
 import {
   UserWithProfiles,
@@ -199,16 +199,9 @@ export async function verifyLogin2FA(tempToken: string, mfaToken: string, req?: 
     data: { mfa_enabled: true },
   });
 
-  let companyId: string | undefined;
-  if (user.role === "company" || user.role === "company_admin") {
-    companyId = user.companyProfile?.company_id ?? user.user_id;
-  } else if (user.role === "company_member") {
-    const membership = await prisma.companyTeamMember.findFirst({
-      where: { user_id: user.user_id, is_active: true },
-      select: { company_id: true },
-    });
-    companyId = membership?.company_id;
-  }
+  // Single source of truth with the non-MFA login/refresh paths — this used to be copied
+  // inline in three places and drifted (recruiter was missing from all of them).
+  const companyId = await resolveCompanyId(user);
 
   const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId: user.user_id,
@@ -319,16 +312,9 @@ export async function verifyLoginWithRecoveryCode(tempToken: string, recoveryCod
     data: { mfa_recovery_codes: JSON.stringify(remaining) },
   });
 
-  let companyId: string | undefined;
-  if (user.role === "company" || user.role === "company_admin") {
-    companyId = user.companyProfile?.company_id ?? user.user_id;
-  } else if (user.role === "company_member") {
-    const membership = await prisma.companyTeamMember.findFirst({
-      where: { user_id: user.user_id, is_active: true },
-      select: { company_id: true },
-    });
-    companyId = membership?.company_id;
-  }
+  // Single source of truth with the non-MFA login/refresh paths — this used to be copied
+  // inline in three places and drifted (recruiter was missing from all of them).
+  const companyId = await resolveCompanyId(user);
 
   const { accessToken: token, refreshToken } = await issueAuthTokens({
     userId: user.user_id,

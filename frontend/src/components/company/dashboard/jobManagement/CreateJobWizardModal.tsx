@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { parseEntitlementError, type EntitlementBlock } from "@/src/lib/subscription/entitlementError";
+import UpgradePrompt from "@/src/components/subscription/UpgradePrompt";
 import { API_HOST } from "@/src/lib/config/api";
 import {
   X,
@@ -185,6 +187,8 @@ const CreateJobWizardModal: React.FC<CreateJobWizardModalProps> = ({
   const [newQuestion, setNewQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // A plan-limit refusal is not an error the user can retry away — it gets its own panel.
+  const [quotaBlock, setQuotaBlock] = useState<EntitlementBlock | null>(null);
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
@@ -339,10 +343,10 @@ const titleDisplayCount =
   }, [open]);
 
   useEffect(() => {
-    if (errorMsg && bodyRef.current) {
+    if ((errorMsg || quotaBlock) && bodyRef.current) {
       bodyRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [errorMsg]);
+  }, [errorMsg, quotaBlock]);
 
   const progress = useMemo(() => {
     const pct = ((stepIndex + 1) / steps.length) * 100;
@@ -438,6 +442,7 @@ const titleDisplayCount =
 
     setLoading(true);
     setErrorMsg(null);
+    setQuotaBlock(null);
 
     try {
       const payload = {
@@ -465,7 +470,13 @@ const titleDisplayCount =
       onClose();
     } catch (e) {
       console.error(e);
-      setErrorMsg("Failed to create job. Please try again.");
+      const block = parseEntitlementError(e);
+      if (block) {
+        // The plan is full (or absent). Show the upgrade path, not a retry prompt.
+        setQuotaBlock(block);
+      } else {
+        setErrorMsg("Failed to create job. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -593,6 +604,10 @@ const titleDisplayCount =
               ref={bodyRef}
               className="flex-1 min-h-0 overflow-y-auto px-6 pb-5 pt-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 custom-scrollbar"
             >
+              {quotaBlock && (
+                <UpgradePrompt block={quotaBlock} action="job post" className="mb-4" />
+              )}
+
               <AnimatePresence>
                 {errorMsg && (
                   <motion.div

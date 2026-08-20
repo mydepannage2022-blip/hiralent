@@ -13,6 +13,8 @@ import {
   Check,
 } from "lucide-react";
 import { useAssignInterview } from "@/src/lib/interview/interview.queries";
+import { parseEntitlementError, type EntitlementBlock } from "@/src/lib/subscription/entitlementError";
+import UpgradePrompt from "@/src/components/subscription/UpgradePrompt";
 import { AssignInterviewRequest } from "@/src/types/interview.types";
 import { API_V1_BASE } from "@/src/lib/config/api";
 
@@ -55,6 +57,8 @@ export default function AssignInterviewModal({
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // AI interviews are metered by the plan; a quota refusal gets an upgrade panel, not a retry.
+  const [quotaBlock, setQuotaBlock] = useState<EntitlementBlock | null>(null);
 
   // Mutation
   const { mutate: assignInterview, isLoading: isAssigning, error: assignError } = useAssignInterview();
@@ -174,6 +178,8 @@ export default function AssignInterviewModal({
     }
 
     try {
+      setQuotaBlock(null);
+
       const payload: AssignInterviewRequest = {
         candidateId: selectedApplicant.candidate_id,
         applicationId: selectedApplicant.application_id,
@@ -186,6 +192,12 @@ export default function AssignInterviewModal({
       onSuccess?.();
       onClose();
     } catch (err: any) {
+      const block = parseEntitlementError(err);
+      if (block) {
+        setQuotaBlock(block);
+        return;
+      }
+
       const status = err?.response?.status;
       const message = err?.response?.data?.error || err?.message || '';
       if (status === 409 || message.includes('already assigned')) {
@@ -266,8 +278,10 @@ export default function AssignInterviewModal({
 
             {/* Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {quotaBlock && <UpgradePrompt block={quotaBlock} action="AI interview" compact />}
+
               {/* Error */}
-              {(error || assignError) && (
+              {!quotaBlock && (error || assignError) && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{error || assignError?.message || "An error occurred"}</span>

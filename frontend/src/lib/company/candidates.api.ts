@@ -75,7 +75,16 @@ async function apiGet<T>(path: string): Promise<T> {
 
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(txt || `HTTP ${res.status}`);
+    const error: any = new Error(txt || `HTTP ${res.status}`);
+    // Keep the parsed body: candidate ranking is a paid feature, and a 403 from the
+    // subscription gate carries the code the UI needs to offer an upgrade instead of an error.
+    error.status = res.status;
+    try {
+      error.data = JSON.parse(txt);
+    } catch {
+      error.data = null;
+    }
+    throw error;
   }
 
   return res.json();

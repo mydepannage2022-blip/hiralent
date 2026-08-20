@@ -24,14 +24,14 @@
 
 ## Phase 5.3 — Subscription lifecycle
 - [x] **[S3]** Wire `UserSubscription`/`PaymentTransaction` to real ops; handle upgrade/downgrade (on-the-fly Price + `proration_behavior:create_prorations`), cancel (immediate vs at-period-end, distinct DB state), expiry (lazy-check on read + `sweepExpiredSubscriptions`), and failed-payment/dunning (past_due via S2 webhook branch; grace → canceled). *(`AgencySubscription` = S5.)*
-- [ ] Enforce plan entitlements/limits across the app (gate features by active subscription). → **S4**
+- [x] **[S4]** Enforce plan entitlements/limits across the app — `entitlements.service` drives everything off the plan rows (`job_post_limit` = concurrent slots, `ai_interview_limit` = per-period); `requireQuota` mounted on job-create + interview-assign, `requireActiveSubscription` on ranking/skill-radar/insights/`GET /subscription/usage`; no-subscription falls back to the seeded `plan_free` row, fail-closed if absent. Billing subject normalised to the **company** (was the calling user).
 - [x] **[S1]** Fix money precision: use `Decimal(10,2)` consistently (`SubscriptionPlan` price fields were unqualified — now pinned).
 - [x] **[S2]** Idempotent payment handling (dedupe webhook retries; no double-grant) — `ProcessedWebhookEvent` (`event_id @unique`) ledger; replay of the same event id is a no-op.
 
 ## Phase 5.4 — Safety & records
-- [ ] Reconcile transactions (gateway ↔ our DB); store immutable payment records/receipts.
-- [ ] Use Stripe/PayPal **test mode** for all pre-prod testing; never real cards in staging.
-- [ ] Log payment events (without card data) for support/audit.
+- [x] **[S4]** Reconcile transactions (gateway ↔ our DB) — `reconciliation.service` + nightly scheduler + `tools/reconcile.mjs` + admin `POST /admin/reconciliation/run`; **read-only, reports never repairs**. Immutable records: `PaymentReceipt` with a Postgres `BEFORE UPDATE OR DELETE` trigger (raw SQL UPDATE/DELETE both rejected, probe-proven), issued once per settled transaction.
+- [ ] Use Stripe/PayPal **test mode** for all pre-prod testing; never real cards in staging. *(Still open: no Stripe key is configured in this environment, so no live-mode path has ever run. Reconciliation and refunds are probe-proven with an injected client only.)*
+- [x] **[S4]** Log payment events (without card data) — `PaymentEventLog` written from checkout, all four webhook branches, refunds and reconciliation; `detail` is built from an allow-list that drops `pan|number|cvc|exp_*|last4` and redacts PAN-shaped values; best-effort so it never blocks the money path.
 
 ---
 

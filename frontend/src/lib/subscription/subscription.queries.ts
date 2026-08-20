@@ -9,6 +9,7 @@ import {
   cancelSubscription,
   changePlan,
   getMyFeatures,
+  getUsage,
   checkFeatureAccess,
   CreateCheckoutData,
 } from './subscription.api';
@@ -20,6 +21,7 @@ export const subscriptionKeys = {
   plan: (id: string) => [...subscriptionKeys.all, 'plan', id] as const,
   mySubscription: () => [...subscriptionKeys.all, 'my-subscription'] as const,
   myFeatures: () => [...subscriptionKeys.all, 'my-features'] as const,
+  usage: () => [...subscriptionKeys.all, 'usage'] as const,
 };
 
 // Get all plans
@@ -61,6 +63,19 @@ export const useMyFeatures = () => {
   return useQuery({
     queryKey: subscriptionKeys.myFeatures(),
     queryFn: getMyFeatures,
+  });
+};
+
+// Plan limits + live usage. Returns 403 when the account has no live subscription (the
+// endpoint is part of the paid product), so callers should treat an error as "not subscribed"
+// rather than "broken".
+export const useUsage = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: subscriptionKeys.usage(),
+    queryFn: getUsage,
+    retry: false,
+    staleTime: 30 * 1000,
+    ...options,
   });
 };
 

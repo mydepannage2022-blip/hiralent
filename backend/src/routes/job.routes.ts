@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
+import { requireQuota } from '../middlewares/entitlements.middleware';
 
 // Import function-based controllers
 import {
@@ -27,7 +28,8 @@ router.use(checkAuth);
 // ============================
 // 🔹 CRUD Job Routes
 // ============================
-router.post('/jobs', createJob);
+// Quota is enforced here, not in the controller, so the count is checked before any write.
+router.post('/jobs', requireQuota('job_posts'), createJob);
 router.get('/jobs', listJobs);
 router.get('/jobs/:id', getJobById);
 router.put('/jobs/:id', updateJob);

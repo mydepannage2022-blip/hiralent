@@ -121,6 +121,23 @@ export const getMyFeatures = async () => {
   return response.data.data;
 };
 
+// Plan limits alongside what the company has actually consumed.
+// `limit: -1` means unlimited. `source` says where the entitlement came from:
+// 'subscription' (a live paid plan), 'free_fallback' (the seeded Free tier), or 'none'.
+export interface UsageSummary {
+  plan: { plan_id: string | null; name: string; features: string[] };
+  source: 'subscription' | 'free_fallback' | 'none';
+  status: string | null;
+  limits: { job_posts: number; ai_interviews: number };
+  usage: { job_posts: number; ai_interviews: number };
+  period: { start: string; end: string | null };
+}
+
+export const getUsage = async (): Promise<UsageSummary> => {
+  const response = await subscriptionApi.get('/subscription/usage');
+  return response.data.data;
+};
+
 // Check specific feature access
 export const checkFeatureAccess = async (featureName: string) => {
   const response = await subscriptionApi.post('/subscription/check-feature', {

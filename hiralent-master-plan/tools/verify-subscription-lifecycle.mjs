@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
@@ -110,6 +111,92 @@ function offlineSmoke() {
 }
 
 offlineSmoke();
+
+// ── 7) Money-safety guards (S3 audit) ─────────────────────────────────────────
+// The checks above prove the lifecycle CALLS the real SDK. They say nothing about whether the
+// money paths can be abused — six exploits passed this gate before the audit. These assert the
+// guards structurally; the live proof is subscription-money-safety.probe.ts below.
+const svcSrcGuards = read(path.join(backend, 'src', 'services', 'subscription', 'subscription.service.ts'));
+
+check('checkout only sells a publicly-available plan',
+  /findFirst\(\{\s*where:\s*\{\s*plan_id:\s*request\.plan_id,\s*is_publicly_available:\s*true/s.test(svcSrcGuards));
+check('change-plan only switches to a publicly-available plan',
+  /findFirst\(\{\s*where:\s*\{\s*plan_id:\s*newPlanId,\s*is_publicly_available:\s*true/s.test(svcSrcGuards));
+check('change-plan fails closed when there is no gateway subscription id',
+  svcSrcGuards.includes('if (!subscription.gateway_subscription_id)'));
+check('change-plan no longer coerces a missing gateway id to an empty string',
+  !svcSrcGuards.includes("subscription.gateway_subscription_id ?? ''"));
+check('refund claims the transaction atomically before calling the gateway',
+  /updateMany\(\{\s*where:\s*\{\s*transaction_id:\s*transactionId,\s*status:\s*PaymentStatus\.SUCCEEDED\s*\},\s*data:\s*\{\s*status:\s*PaymentStatus\.PROCESSING/s.test(svcSrcGuards)
+  && svcSrcGuards.includes('claim.count !== 1'));
+check('refund caps the amount at the refundable balance',
+  svcSrcGuards.includes('exceeds the refundable balance'));
+check('refund accumulates partial refunds instead of flipping straight to refunded',
+  svcSrcGuards.includes('refunded_amount') && svcSrcGuards.includes('fullyRefunded'));
+check('refund sends a Stripe idempotency key',
+  svcSrcGuards.includes('idempotency_key:') && stripeSrc.includes('idempotencyKey'));
+
+const subRoutesGuards = read(path.join(backend, 'src', 'routes', 'subscription.routes.ts'));
+check('money-moving subscription routes carry a role guard',
+  subRoutesGuards.includes('checkRole') &&
+  (subRoutesGuards.match(/requireBillingRole/g) || []).length >= 3);
+
+// Admin billing slice: the refund endpoint is only usable if an admin can DISCOVER a
+// transaction id, and only complete if there is a UI to trigger it from. Both halves must exist.
+const adminCtrlSrc = read(path.join(backend, 'src', 'controller', 'superadmin', 'admin.management.controller.ts'));
+check('admin can list transactions (refund ids are discoverable)',
+  adminCtrlSrc.includes('export const listTransactions') &&
+  adminRoutes.includes("router.get('/transactions'"));
+check('transaction list reports the refundable balance, not the raw amount',
+  adminCtrlSrc.includes('refundable_amount') && adminCtrlSrc.includes('refunded_amount'));
+
+const adminBillingPage = path.join(repoRoot, 'frontend', 'app', 'admin', 'dashboard', 'billing', 'page.tsx');
+check('admin billing page exists', fs.existsSync(adminBillingPage));
+if (fs.existsSync(adminBillingPage)) {
+  const src = read(adminBillingPage);
+  check('admin billing page calls the list + refund endpoints',
+    src.includes('/admin/transactions') && src.includes('/refund'));
+  check('admin billing page caps the refund input at the refundable balance',
+    src.includes('refundable_amount') && src.includes('amountInvalid'));
+}
+check('admin nav exposes Billing (both nav definitions)',
+  read(path.join(repoRoot, 'frontend', 'app', 'admin', 'dashboard', 'layout.tsx')).includes('/admin/dashboard/billing') &&
+  read(path.join(repoRoot, 'frontend', 'src', 'components', 'admin', 'SuperAdminSidebar.tsx')).includes('/admin/dashboard/billing'));
+
+check('expiry sweep is actually scheduled (not a dead export)',
+  fs.existsSync(path.join(backend, 'src', 'scheduler', 'subscriptionExpiry.scheduler.ts')) &&
+  read(path.join(backend, 'src', 'server.ts')).includes('getSubscriptionExpiryScheduler'));
+
+// ── 8) LIVE money-safety probe — the attacks, actually attempted ──────────────
+// Self-skipping: needs Postgres. Without it the structural checks above still run.
+function moneySafetyProbe() {
+  const probe = path.join(backend, 'src', '__tests__', 'subscription-money-safety.probe.ts');
+  if (!fs.existsSync(probe)) {
+    failures++;
+    console.error('  FAIL: subscription-money-safety.probe.ts is missing');
+    return;
+  }
+  // Relative path on purpose: the repo path contains a space, and an absolute path through a
+  // shell-spawned npx would be split on it.
+  const res = spawnSync('npx', ['tsx', 'src/__tests__/subscription-money-safety.probe.ts'], {
+    cwd: backend,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+    env: { ...process.env, FORCE_INMEMORY: '1' },
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  const out = `${res.stdout || ''}${res.stderr || ''}`;
+  if (/Postgres not reachable|Can't reach database server|ECONNREFUSED/i.test(out)) {
+    console.log('  skip: live money-safety probe (Postgres not reachable)');
+    return;
+  }
+  check('live: all six money attacks blocked (money-safety probe)', res.status === 0);
+  if (res.status !== 0) {
+    console.error(out.split(/\r?\n/).filter((l) => /EXPLOITED/.test(l)).join('\n'));
+  }
+}
+
+moneySafetyProbe();
 
 if (failures) {
   console.error(`\nverify-subscription-lifecycle: ${failures} FAILURE(S)`);

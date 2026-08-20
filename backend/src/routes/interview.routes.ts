@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../middlewares/checkAuth.middleware';
+import { requireQuota } from '../middlewares/entitlements.middleware';
 import { uploadVideo } from '../middlewares/uploadVideo.middleware';
 import {
   createInterviewController,
@@ -36,7 +37,7 @@ router.post('/tts/fallback', synthesizeTTSFallbackController);
 
 // Assign an interview to a candidate (recruiter only)
 // POST /api/v1/interviews/assign
-router.post('/assign', assignInterviewController);
+router.post('/assign', requireQuota('ai_interviews'), assignInterviewController);
 
 // Get all interviews for the company (recruiter view)
 // GET /api/v1/interviews/company
@@ -50,6 +51,9 @@ router.get('/my', getMyInterviewsController);
 
 // Create a new AI interview (internal/legacy - prefer /assign for recruiter flow)
 // POST /api/v1/interviews
+// Deliberately NOT quota-gated: `createInterviewController` treats the CALLER as the candidate
+// (`candidateId = req.user.user_id`), so the company allowance is not this caller's to spend and
+// a candidate has no billing account to charge it to. The metered recruiter action is /assign.
 router.post('/', createInterviewController);
 
 // Start an interview (generates questions, returns first question)

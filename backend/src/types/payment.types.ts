@@ -72,6 +72,9 @@ export interface RefundRequest {
   // The Stripe PaymentIntent to refund, resolved by the service from the stored checkout
   // session id (a checkout session cannot be refunded directly). Required for a real refund.
   payment_intent?: string;
+  // Passed to the gateway as an idempotency key so a retried refund step is replayed rather
+  // than paid out twice. The service derives it from the transaction + amount already refunded.
+  idempotency_key?: string;
 }
 
 export interface RefundResult {

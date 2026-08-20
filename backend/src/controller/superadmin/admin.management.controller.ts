@@ -23,6 +23,9 @@ import {
   UnauthorizedError,
 } from '../../errors/httpErrors';
 import { refundTransaction } from '../../services/subscription/subscription.service';
+import { reconcilePayments } from '../../services/payment/reconciliation.service';
+import { listPaymentEvents } from '../../services/payment/paymentEvents.service';
+import { listReceiptsForUser, getReceipt, getReceiptByTransaction } from '../../services/payment/receipts.service';
 
 const SUPERADMIN_ROLE = 'superadmin';
 const PLATFORM_SETTINGS_ID = 'global';
@@ -445,6 +448,92 @@ export const getAuditLogs = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// ── Billing: transactions ─────────────────────────────────────────────────────
+
+// How much of a transaction has already been returned. Partial refunds accumulate in
+// metadata.refunded_amount (see subscription.service.refundTransaction), so the refundable
+// balance — not the raw amount — is what the admin UI must offer.
+function refundAccounting(txn: { amount: any; metadata: any; status: string }) {
+  const meta = (txn.metadata ?? {}) as Record<string, any>;
+  const total = Number(txn.amount);
+  const refunded = Number(meta.refunded_amount ?? 0);
+  const refundable = Math.round((total - refunded) * 100) / 100;
+  return {
+    refunded_amount: refunded,
+    // Only a succeeded transaction is refundable at all — the service enforces the same rule,
+    // this just keeps the button from being offered when it would always 400.
+    refundable_amount: txn.status === 'succeeded' && refundable > 0 ? refundable : 0,
+    refunds: Array.isArray(meta.refunds) ? meta.refunds : [],
+  };
+}
+
+// GET /api/v1/admin/transactions?limit=&offset=&status=&q=
+// Paginated payment history across all users. This is what makes the refund endpoint usable —
+// without it an admin has no way to discover a transaction_id.
+export const listTransactions = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const status = typeof req.query.status === 'string' ? req.query.status.trim() : '';
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+
+    const where: any = {};
+    if (status && status !== 'all') where.status = status;
+    if (q) {
+      where.user = {
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { full_name: { contains: q, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [rows, total] = await Promise.all([
+      prisma.paymentTransaction.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limit,
+        select: {
+          transaction_id: true,
+          amount: true,
+          currency: true,
+          payment_gateway: true,
+          gateway_payment_id: true,
+          status: true,
+          metadata: true,
+          created_at: true,
+          user: { select: { user_id: true, full_name: true, email: true } },
+        },
+      }),
+      prisma.paymentTransaction.count({ where }),
+    ]);
+
+    const items = rows.map((r) => {
+      const meta = (r.metadata ?? {}) as Record<string, any>;
+      return {
+        transaction_id: r.transaction_id,
+        amount: Number(r.amount),
+        currency: r.currency,
+        payment_gateway: r.payment_gateway,
+        // The gateway handle is needed for support/reconciliation, but it is an opaque id —
+        // no card data has ever touched our DB.
+        gateway_payment_id: r.gateway_payment_id,
+        status: r.status,
+        plan_id: meta.plan_id ?? null,
+        billing_cycle: meta.billing_cycle ?? null,
+        created_at: r.created_at,
+        user: r.user,
+        ...refundAccounting(r as any),
+      };
+    });
+
+    return sendSuccess(res, { items, total, limit, offset });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 // ── Billing: refund a transaction ─────────────────────────────────────────────
 
 // POST /api/v1/admin/transactions/:id/refund   { amount?, reason? }
@@ -478,6 +567,118 @@ export const refundPayment = async (req: Request, res: Response, next: NextFunct
     );
 
     return sendSuccess(res, result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ── Billing: gateway ↔ DB reconciliation ──────────────────────────────────────
+
+// POST /api/v1/admin/reconciliation/run   { since_days?, limit? }
+// Asks Stripe what it thinks of our recent transactions and reports the disagreements.
+// Read-only by design: a missed webhook is settled by a human, never by an unattended writer.
+export const runReconciliation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const actor = requireAdmin(req);
+
+    const sinceDays = Number(req.body?.since_days ?? 30);
+    const limit = Number(req.body?.limit ?? 200);
+    if (!Number.isFinite(sinceDays) || sinceDays <= 0 || sinceDays > 365) {
+      throw new BadRequestError('since_days must be between 1 and 365');
+    }
+
+    const report = await reconcilePayments({
+      since: new Date(Date.now() - sinceDays * 86400_000),
+      limit: Number.isFinite(limit) ? limit : 200,
+    });
+
+    await writeAudit(
+      actor.user_id,
+      'RUN_RECONCILIATION',
+      'PaymentTransaction',
+      'reconciliation',
+      `Checked ${report.checked}, found ${report.mismatches.length} mismatch(es) over ${sinceDays}d`
+    );
+
+    return sendSuccess(res, report);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ── Billing: payment event log ────────────────────────────────────────────────
+
+// GET /api/v1/admin/payment-events?user_id=&event_type=&source=&limit=&offset=
+export const getPaymentEvents = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    requireAdmin(req);
+
+    const result = await listPaymentEvents({
+      user_id: req.query.user_id ? String(req.query.user_id) : undefined,
+      event_type: req.query.event_type ? String(req.query.event_type) : undefined,
+      source: req.query.source ? String(req.query.source) : undefined,
+      take: req.query.limit ? Number(req.query.limit) : undefined,
+      skip: req.query.offset ? Number(req.query.offset) : undefined,
+    });
+
+    return sendSuccess(res, {
+      items: result.items.map((e) => ({ ...e, amount: e.amount === null ? null : Number(e.amount) })),
+      total: result.total,
+      limit: result.take,
+      offset: result.skip,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ── Billing: receipts ─────────────────────────────────────────────────────────
+
+// GET /api/v1/admin/receipts?user_id=&transaction_id=&limit=&offset=
+export const getReceipts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    requireAdmin(req);
+
+    const transactionId = req.query.transaction_id ? String(req.query.transaction_id) : null;
+    if (transactionId) {
+      const receipt = await getReceiptByTransaction(transactionId);
+      return sendSuccess(res, {
+        items: receipt ? [{ ...receipt, amount: Number(receipt.amount) }] : [],
+        total: receipt ? 1 : 0,
+      });
+    }
+
+    const userId = req.query.user_id ? String(req.query.user_id) : null;
+    if (!userId) {
+      throw new BadRequestError('user_id or transaction_id is required');
+    }
+
+    const result = await listReceiptsForUser(
+      userId,
+      req.query.limit ? Number(req.query.limit) : undefined,
+      req.query.offset ? Number(req.query.offset) : undefined
+    );
+
+    return sendSuccess(res, {
+      items: result.items.map((r) => ({ ...r, amount: Number(r.amount) })),
+      total: result.total,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// GET /api/v1/admin/receipts/:id
+export const getReceiptById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    requireAdmin(req);
+
+    const receipt = await getReceipt(String(req.params.id ?? '').trim());
+    if (!receipt) {
+      throw new BadRequestError('Receipt not found');
+    }
+
+    return sendSuccess(res, { ...receipt, amount: Number(receipt.amount) });
   } catch (error) {
     return next(error);
   }

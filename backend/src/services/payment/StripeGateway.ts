@@ -326,13 +326,18 @@ export const createStripeGateway = (injectedClient?: Stripe): IPaymentGateway =>
 
     try {
       const stripe = getClient();
-      const refund = await stripe.refunds.create({
-        payment_intent: request.payment_intent,
-        // Partial refund when an amount (minor units) is given; otherwise a full refund.
-        ...(request.amount ? { amount: request.amount } : {}),
-        // Stripe's `reason` is a fixed enum, so keep our free-text reason in metadata.
-        ...(request.reason ? { metadata: { reason: request.reason } } : {})
-      });
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: request.payment_intent,
+          // Partial refund when an amount (minor units) is given; otherwise a full refund.
+          ...(request.amount ? { amount: request.amount } : {}),
+          // Stripe's `reason` is a fixed enum, so keep our free-text reason in metadata.
+          ...(request.reason ? { metadata: { reason: request.reason } } : {})
+        },
+        // Replay-safe: if the same logical refund is retried (network blip, double submit),
+        // Stripe returns the original refund instead of issuing a second payout.
+        request.idempotency_key ? { idempotencyKey: request.idempotency_key } : undefined
+      );
 
       const failed = refund.status === 'failed' || refund.status === 'canceled';
       return {

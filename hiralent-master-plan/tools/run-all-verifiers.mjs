@@ -38,7 +38,7 @@ let files = fs
 // Push the slow, infra-dependent checks (need a running Postgres) to the very
 // end, and exclude them under --skip-local. verify-auth-session boots the backend
 // like verify-local-run, so it belongs in the same bucket.
-const INFRA = ['verify-error-envelope.mjs', 'verify-authz-matrix.mjs', 'verify-auth-session.mjs', 'verify-session-realtime.mjs', 'verify-default-deny-authz.mjs', 'verify-api-config.mjs', 'verify-transport-security.mjs', 'verify-connection-pool.mjs', 'verify-migration-safety.mjs', 'verify-index-coverage.mjs', 'verify-pagination.mjs', 'verify-agency-dashboard-stats.mjs', 'verify-data-model.mjs', 'verify-seed-safety.mjs', 'verify-sandbox-isolation.mjs', 'verify-ai-content-safety.mjs', 'verify-external-integrations.mjs', 'verify-subsystem-consolidation.mjs', 'verify-e2e-fullpath.mjs', 'verify-wave3-e2e.mjs', 'verify-wave4-e2e.mjs', 'verify-wave4-final-e2e.mjs', 'verify-local-run.mjs'];
+const INFRA = ['verify-error-envelope.mjs', 'verify-authz-matrix.mjs', 'verify-auth-session.mjs', 'verify-session-realtime.mjs', 'verify-default-deny-authz.mjs', 'verify-api-config.mjs', 'verify-transport-security.mjs', 'verify-connection-pool.mjs', 'verify-migration-safety.mjs', 'verify-index-coverage.mjs', 'verify-pagination.mjs', 'verify-agency-dashboard-stats.mjs', 'verify-data-model.mjs', 'verify-seed-safety.mjs', 'verify-sandbox-isolation.mjs', 'verify-ai-content-safety.mjs', 'verify-external-integrations.mjs', 'verify-subsystem-consolidation.mjs', 'verify-e2e-fullpath.mjs', 'verify-wave3-e2e.mjs', 'verify-wave4-e2e.mjs', 'verify-wave4-final-e2e.mjs', 'verify-entitlements-records.mjs', 'verify-local-run.mjs'];
 files = files.filter((f) => !INFRA.includes(f));
 if (!skipLocal) {
   for (const f of INFRA) {

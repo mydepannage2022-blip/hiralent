@@ -14,13 +14,18 @@ import {
   PaymentStatus,
   CreatePaymentSessionData
 } from '../../types/payment.types';
+import { logPaymentEvent } from '../payment/paymentEvents.service';
+import { issueReceiptForCheckoutSession, issueReceiptsForSubscription } from '../payment/receipts.service';
 
 export const createCheckoutSession = async (
   userId: string, 
   request: CreateCheckoutSessionRequest
 ): Promise<CheckoutSessionResponse> => {
-  const plan = await prisma.subscriptionPlan.findUnique({
-    where: { plan_id: request.plan_id }
+  // Only a publicly-available plan may be bought. `getAllPlans` filters on this, but the UI
+  // filter is not a control: a hand-crafted request could otherwise name an internal/comped
+  // plan (is_publicly_available=false) and buy unlimited limits at its — often $0 — price.
+  const plan = await prisma.subscriptionPlan.findFirst({
+    where: { plan_id: request.plan_id, is_publicly_available: true }
   });
 
   if (!plan) {
@@ -56,7 +61,7 @@ export const createCheckoutSession = async (
 
   const result = await gateway.createCheckoutSession(sessionData);
 
-  await prisma.paymentTransaction.create({
+  const transaction = await prisma.paymentTransaction.create({
     data: {
       user_id: userId,
       amount,
@@ -68,6 +73,22 @@ export const createCheckoutSession = async (
         plan_id: request.plan_id,
         billing_cycle: request.billing_cycle
       }
+    }
+  });
+
+  await logPaymentEvent({
+    source: 'checkout',
+    event_type: 'checkout.created',
+    user_id: userId,
+    transaction_id: transaction.transaction_id,
+    amount,
+    currency: 'USD',
+    status: PaymentStatus.PENDING,
+    detail: {
+      plan_id: request.plan_id,
+      plan_name: plan.name,
+      billing_cycle: request.billing_cycle,
+      gateway: request.payment_gateway
     }
   });
 
@@ -277,7 +298,25 @@ export const processStripeSubscriptionEvent = async (
             where: { gateway_payment_id: data.checkout_session_id },
             data: { status: PaymentStatus.SUCCEEDED, updated_at: new Date() }
           });
+
+          // Money has settled — seal the immutable record for it. Idempotent, so Stripe's
+          // retries of the same event never produce a second receipt.
+          await issueReceiptForCheckoutSession(data.checkout_session_id).catch((err) =>
+            console.error('[webhook] receipt issue failed:', (err as Error).message)
+          );
         }
+
+        await logPaymentEvent({
+          source: 'stripe_webhook',
+          event_type,
+          gateway_event_id: event_id,
+          user_id: data.user_id,
+          subscription_id: data.subscription_id,
+          amount: data.amount,
+          currency: data.currency,
+          status: PaymentStatus.SUCCEEDED,
+          detail: { plan_id: data.plan_id, billing_cycle: data.billing_cycle }
+        });
       } else {
         // A verified checkout.session.completed that we CANNOT activate (missing the metadata
         // we set at checkout, or no subscription attached yet). We still record it below so
@@ -295,6 +334,27 @@ export const processStripeSubscriptionEvent = async (
     case 'invoice.paid': {
       if (data.subscription_id) {
         await renewSubscriptionByGatewayId(data.subscription_id);
+
+        const renewed = await prisma.userSubscription.findFirst({
+          where: { gateway_subscription_id: data.subscription_id },
+          select: { subscription_id: true, user_id: true }
+        });
+        if (renewed) {
+          await issueReceiptsForSubscription(renewed.subscription_id).catch((err) =>
+            console.error('[webhook] renewal receipt issue failed:', (err as Error).message)
+          );
+        }
+
+        await logPaymentEvent({
+          source: 'stripe_webhook',
+          event_type,
+          gateway_event_id: event_id,
+          user_id: renewed?.user_id,
+          subscription_id: data.subscription_id,
+          amount: data.amount,
+          currency: data.currency,
+          status: PaymentStatus.SUCCEEDED
+        });
       }
       break;
     }
@@ -304,6 +364,16 @@ export const processStripeSubscriptionEvent = async (
         await prisma.userSubscription.updateMany({
           where: { gateway_subscription_id: data.subscription_id },
           data: { status: SubscriptionStatus.PAST_DUE }
+        });
+
+        await logPaymentEvent({
+          source: 'stripe_webhook',
+          event_type,
+          gateway_event_id: event_id,
+          subscription_id: data.subscription_id,
+          amount: data.amount,
+          currency: data.currency,
+          status: SubscriptionStatus.PAST_DUE
         });
       }
       break;
@@ -318,6 +388,14 @@ export const processStripeSubscriptionEvent = async (
             canceled_at: new Date(),
             cancel_at_period_end: false
           }
+        });
+
+        await logPaymentEvent({
+          source: 'stripe_webhook',
+          event_type,
+          gateway_event_id: event_id,
+          subscription_id: data.subscription_id,
+          status: SubscriptionStatus.CANCELED
         });
       }
       break;
@@ -357,7 +435,11 @@ export const cancelUserSubscription = async (
     throw new Error('No active subscription found');
   }
 
-  if (subscription.status !== SubscriptionStatus.ACTIVE) {
+  // Trialing counts as live: a user on a trial must be able to cancel before being charged.
+  if (
+    subscription.status !== SubscriptionStatus.ACTIVE &&
+    subscription.status !== SubscriptionStatus.TRIALING
+  ) {
     throw new Error('Subscription is not active');
   }
 
@@ -366,6 +448,14 @@ export const cancelUserSubscription = async (
     const gateway = getPaymentGateway(subscription.payment_gateway as PaymentGatewayType);
     const result = await gateway.cancelSubscription(subscription.gateway_subscription_id, cancelImmediately);
     gatewayPeriodEnd = result.current_period_end;
+  } else {
+    // Unlike a plan change, cancelling locally is user-protective (it never grants access), so
+    // we proceed — but a subscription with no gateway link means billing may continue at the
+    // gateway, which needs manual reconciliation.
+    console.warn(
+      `[subscription] cancel for user ${userId} has no gateway_subscription_id — ` +
+      `cancelled locally only; verify at the gateway that billing has stopped.`
+    );
   }
 
   if (cancelImmediately) {
@@ -417,12 +507,18 @@ export const changeUserPlan = async (
   if (!subscription) {
     throw new Error('No active subscription found');
   }
-  if (subscription.status !== SubscriptionStatus.ACTIVE) {
+  // A trialing subscription is a live subscription — it must be able to switch plans too
+  // (the billing UI offers the action for it, so rejecting it here is a guaranteed dead-end).
+  if (
+    subscription.status !== SubscriptionStatus.ACTIVE &&
+    subscription.status !== SubscriptionStatus.TRIALING
+  ) {
     throw new Error('Only an active subscription can change plan');
   }
 
-  const newPlan = await prisma.subscriptionPlan.findUnique({
-    where: { plan_id: newPlanId }
+  // Same rule as checkout: a plan the catalogue does not publish cannot be switched to.
+  const newPlan = await prisma.subscriptionPlan.findFirst({
+    where: { plan_id: newPlanId, is_publicly_available: true }
   });
   if (!newPlan) {
     throw new Error('Subscription plan not found');
@@ -439,10 +535,20 @@ export const changeUserPlan = async (
   const unitAmount = formatAmountForGateway(priceUsd, 'USD');
   const interval = billingCycle === BillingCycle.YEARLY ? 'year' : 'month';
 
+  // A plan change moves money (proration), so it MUST go through the gateway. Without a
+  // gateway subscription id there is nothing to prorate against — proceeding would hand the
+  // user the new plan for free and, worse, persist an empty id so every later switch is free
+  // too. Fail closed instead; a row in this state is a data defect to reconcile, not a sale.
+  if (!subscription.gateway_subscription_id) {
+    throw new Error(
+      'This subscription is not linked to a payment gateway, so its plan cannot be changed. Please contact support.'
+    );
+  }
+
   let gatewayPeriodStart: Date | undefined;
   let gatewayPeriodEnd: Date | undefined;
 
-  if (subscription.gateway_subscription_id) {
+  {
     const gateway = getPaymentGateway(subscription.payment_gateway as PaymentGatewayType);
     const result = await gateway.changeSubscriptionPlan(subscription.gateway_subscription_id, {
       unitAmount,
@@ -460,7 +566,7 @@ export const changeUserPlan = async (
   return createOrUpdateSubscription(
     userId,
     newPlanId,
-    subscription.gateway_subscription_id ?? '',
+    subscription.gateway_subscription_id,
     subscription.payment_gateway,
     billingCycle,
     gatewayPeriodStart,
@@ -468,9 +574,24 @@ export const changeUserPlan = async (
   );
 };
 
-// Admin-triggered refund of a succeeded Stripe transaction. Resolves the PaymentIntent from
-// the stored checkout session (a session id cannot be refunded directly), issues the refund,
-// and marks the transaction refunded. Returns refund details for the audit trail.
+// Money amounts are Decimal(10,2); keep arithmetic on them free of float drift.
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Admin-triggered refund of a succeeded Stripe transaction. Resolves the PaymentIntent from
+ * the stored checkout session (a session id cannot be refunded directly), issues the refund,
+ * and records it on the transaction. Returns refund details for the audit trail.
+ *
+ * Money-safety rules enforced here (all three were exploitable before):
+ *  1. **Cap** — the requested amount can never exceed what is still refundable on this
+ *     transaction, so a typo (or a hostile body) cannot push a $5,000 refund on a $5 charge.
+ *  2. **Single-flight** — the row is claimed atomically (`succeeded → processing`) before any
+ *     gateway call, so two concurrent refund requests cannot both reach Stripe and pay out twice.
+ *     A Stripe idempotency key backs this up at the gateway.
+ *  3. **Partial accounting** — refunds accumulate in `metadata.refunded_amount`; the status only
+ *     becomes `refunded` once the full amount is returned, so a $1 refund on a $100 charge no
+ *     longer strands the other $99 behind a terminal status.
+ */
 export const refundTransaction = async (
   transactionId: string,
   amount?: number,
@@ -493,30 +614,123 @@ export const refundTransaction = async (
     throw new Error('Transaction has no gateway payment id');
   }
 
-  const gateway = getPaymentGateway(PaymentGatewayType.STRIPE);
-  const status = await gateway.getPaymentStatus(txn.gateway_payment_id);
-  const paymentIntent = status.metadata?.payment_intent as string | undefined;
-  if (!paymentIntent) {
-    throw new Error('Could not resolve a PaymentIntent to refund');
+  // ── Rule 1: cap the refund at the balance still outstanding on this transaction ──────────
+  const meta = (txn.metadata ?? {}) as Record<string, any>;
+  const alreadyRefunded = Number(meta.refunded_amount ?? 0);
+  const total = Number(txn.amount);
+  const refundable = round2(total - alreadyRefunded);
+  if (refundable <= 0) {
+    throw new Error('Transaction is already fully refunded');
   }
 
-  const amountMinor = amount ? formatAmountForGateway(amount, txn.currency) : undefined;
-  const refund = await gateway.refundPayment({
-    transaction_id: transactionId,
-    payment_intent: paymentIntent,
-    amount: amountMinor,
-    reason
-  });
-  if (refund.status !== 'succeeded') {
-    throw new Error('Refund did not succeed');
+  const requested = round2(amount ?? refundable);
+  if (!(requested > 0)) {
+    throw new Error('Refund amount must be greater than zero');
+  }
+  if (requested > refundable) {
+    throw new Error(
+      `Refund amount ${requested} exceeds the refundable balance of ${refundable} ${txn.currency}`
+    );
   }
 
-  await prisma.paymentTransaction.update({
-    where: { transaction_id: transactionId },
-    data: { status: PaymentStatus.REFUNDED, updated_at: new Date() }
+  // ── Rule 2: claim the row before touching the gateway. updateMany's WHERE re-checks the
+  // status inside the write, so exactly one concurrent caller can transition it. ───────────
+  const claim = await prisma.paymentTransaction.updateMany({
+    where: { transaction_id: transactionId, status: PaymentStatus.SUCCEEDED },
+    data: { status: PaymentStatus.PROCESSING, updated_at: new Date() }
   });
+  if (claim.count !== 1) {
+    throw new Error('A refund is already in progress for this transaction');
+  }
 
-  return { refund_id: refund.refund_id, amount: refund.amount };
+  try {
+    const gateway = getPaymentGateway(PaymentGatewayType.STRIPE);
+    const status = await gateway.getPaymentStatus(txn.gateway_payment_id);
+    const paymentIntent = status.metadata?.payment_intent as string | undefined;
+    if (!paymentIntent) {
+      throw new Error('Could not resolve a PaymentIntent to refund');
+    }
+
+    const refund = await gateway.refundPayment({
+      transaction_id: transactionId,
+      payment_intent: paymentIntent,
+      amount: formatAmountForGateway(requested, txn.currency),
+      reason,
+      // Deterministic per logical refund: a retry of the same step is a no-op at Stripe
+      // rather than a second payout.
+      idempotency_key: `refund:${transactionId}:${alreadyRefunded}:${requested}`
+    });
+    if (refund.status !== 'succeeded') {
+      throw new Error('Refund did not succeed');
+    }
+
+    // ── Rule 3: accumulate; only a fully-returned charge becomes terminal ──────────────────
+    const refundedTotal = round2(alreadyRefunded + requested);
+    const fullyRefunded = refundedTotal >= total;
+
+    await prisma.paymentTransaction.update({
+      where: { transaction_id: transactionId },
+      data: {
+        status: fullyRefunded ? PaymentStatus.REFUNDED : PaymentStatus.SUCCEEDED,
+        metadata: {
+          ...meta,
+          refunded_amount: refundedTotal,
+          refunds: [
+            ...(Array.isArray(meta.refunds) ? meta.refunds : []),
+            {
+              refund_id: refund.refund_id,
+              amount: requested,
+              reason: reason ?? null,
+              at: new Date().toISOString()
+            }
+          ]
+        },
+        updated_at: new Date()
+      }
+    });
+
+    await logPaymentEvent({
+      source: 'admin_refund',
+      event_type: fullyRefunded ? 'refund.full' : 'refund.partial',
+      user_id: txn.user_id,
+      transaction_id: transactionId,
+      subscription_id: txn.subscription_id,
+      amount: requested,
+      currency: txn.currency,
+      status: fullyRefunded ? PaymentStatus.REFUNDED : PaymentStatus.SUCCEEDED,
+      detail: {
+        refund_id: refund.refund_id,
+        refunded_total: refundedTotal,
+        transaction_total: total,
+        reason: reason ?? null
+      }
+    });
+
+    return { refund_id: refund.refund_id, amount: refund.amount };
+  } catch (error) {
+    // Release the claim so a legitimate retry is possible. Best-effort: never mask the
+    // original failure with a bookkeeping error.
+    await prisma.paymentTransaction
+      .updateMany({
+        where: { transaction_id: transactionId, status: PaymentStatus.PROCESSING },
+        data: { status: PaymentStatus.SUCCEEDED, updated_at: new Date() }
+      })
+      .catch(() => undefined);
+
+    await logPaymentEvent({
+      source: 'admin_refund',
+      event_type: 'refund.failed',
+      user_id: txn.user_id,
+      transaction_id: transactionId,
+      subscription_id: txn.subscription_id,
+      amount: requested,
+      currency: txn.currency,
+      status: PaymentStatus.FAILED,
+      detail: { reason: reason ?? null, error: (error as Error).message }
+    });
+
+    throw error;
+  }
 };
 
 export const getAllPlans = async () => {

@@ -9,13 +9,17 @@ import {
     CreditCard,
     Loader2,
     XCircle,
+    Briefcase,
+    Bot,
 } from "lucide-react";
 import {
     useMySubscription,
     usePlans,
     useCancelSubscription,
     useChangePlan,
+    useUsage,
 } from "@/src/lib/subscription/subscription.queries";
+import { formatLimit } from "@/src/lib/subscription/entitlementError";
 
 type Status = "active" | "canceled" | "expired" | "past_due" | "trialing";
 
@@ -36,10 +40,62 @@ const formatDate = (value?: string) =>
           })
         : "—";
 
+/**
+ * One quota bar. An unlimited plan (`limit === -1`) shows the count without a bar — a progress
+ * bar against infinity is meaningless, and drawing one at 0% would read as "unused".
+ */
+const UsageMeter = ({
+    icon,
+    label,
+    used,
+    limit,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    used: number;
+    limit: number;
+}) => {
+    const unlimited = limit === -1;
+    const pct = unlimited || limit <= 0 ? 0 : Math.min(100, Math.round((used / limit) * 100));
+    const atLimit = !unlimited && used >= limit;
+
+    return (
+        <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+                {icon}
+                <span>{label}</span>
+            </div>
+
+            <p className="mt-2 text-2xl font-semibold text-gray-900">
+                {used}
+                <span className="text-base font-normal text-gray-500"> / {formatLimit(limit)}</span>
+            </p>
+
+            {!unlimited && (
+                <div className="mt-3 h-1.5 w-full rounded-full bg-gray-100">
+                    <div
+                        className={`h-1.5 rounded-full transition-all ${atLimit ? "bg-red-500" : "bg-black"}`}
+                        style={{ width: `${pct}%` }}
+                    />
+                </div>
+            )}
+
+            {atLimit && (
+                <p className="mt-2 text-xs font-medium text-red-600">
+                    Limit reached — upgrade to add more.
+                </p>
+            )}
+        </div>
+    );
+};
+
 const BillingPage = () => {
     const router = useRouter();
     const { data: subscription, isLoading } = useMySubscription();
     const { data: plans } = usePlans();
+    // 403s when there is no live plan — that is an answer, not a failure, so it is rendered
+    // as "no usage to show" rather than surfaced as an error.
+    const { data: usage } = useUsage();
 
     const cancelMutation = useCancelSubscription();
     const changePlanMutation = useChangePlan();
@@ -102,7 +158,10 @@ const BillingPage = () => {
         );
     }
 
-    const scheduledToCancel = subscription.cancel_at_period_end && status === "active";
+    // A trial is a live subscription: it can be cancelled and switched just like an active one
+    // (the backend allows both), so treat the two the same everywhere on this page.
+    const isLive = status === "active" || status === "trialing";
+    const scheduledToCancel = subscription.cancel_at_period_end && isLive;
 
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col gap-5">
@@ -193,7 +252,7 @@ const BillingPage = () => {
                 </div>
 
                 {/* Cancel action (only for a live subscription not already scheduled to end) */}
-                {status === "active" && !scheduledToCancel && (
+                {isLive && !scheduledToCancel && (
                     <button
                         onClick={() => setShowCancelModal(true)}
                         className="mt-6 border border-gray-300 text-gray-800 py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-50 transition"
@@ -203,8 +262,35 @@ const BillingPage = () => {
                 )}
             </div>
 
+            {/* Plan usage */}
+            {usage && (
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Plan usage</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                        {usage.period.end
+                            ? `Resets on ${formatDate(usage.period.end)}.`
+                            : "Job slots free up when you close or archive a job."}
+                    </p>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <UsageMeter
+                            icon={<Briefcase className="h-4 w-4" />}
+                            label="Active job posts"
+                            used={usage.usage.job_posts}
+                            limit={usage.limits.job_posts}
+                        />
+                        <UsageMeter
+                            icon={<Bot className="h-4 w-4" />}
+                            label="AI interviews"
+                            used={usage.usage.ai_interviews}
+                            limit={usage.limits.ai_interviews}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Upgrade / downgrade */}
-            {(status === "active" || status === "trialing") && switchablePlans.length > 0 && (
+            {isLive && switchablePlans.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Change plan</h3>
                     <p className="text-sm text-gray-500 mb-4">

@@ -11,7 +11,12 @@ import {
   updatePlatformSettings,
   getAnalyticsOverview,
   getAuditLogs,
+  listTransactions,
   refundPayment,
+  runReconciliation,
+  getPaymentEvents,
+  getReceipts,
+  getReceiptById,
 } from '../controller/superadmin/admin.management.controller';
 import { validateBody } from '../middlewares/validateBody.middleware';
 import { refundTransactionSchema } from '../validation/subscription.schema';
@@ -44,8 +49,16 @@ router.get('/analytics/overview', getAnalyticsOverview);
 // Security Log / audit trail (Security Log page)
 router.get('/audit-logs', getAuditLogs);
 
-// Billing: refund a transaction. Path is disjoint from the other admin routers, so the shared
-// mount order stays safe (see note above).
+// Billing (Billing page). Paths are disjoint from the other admin routers, so the shared mount
+// order stays safe (see note above). The list is what surfaces a transaction_id to refund.
+router.get('/transactions', listTransactions);
 router.post('/transactions/:id/refund', validateBody(refundTransactionSchema), refundPayment);
+
+// Records & reconciliation (Billing page — Phase 5.4). Reconciliation is an explicit POST
+// rather than a GET side effect because it calls out to Stripe on every run.
+router.post('/reconciliation/run', runReconciliation);
+router.get('/payment-events', getPaymentEvents);
+router.get('/receipts', getReceipts);
+router.get('/receipts/:id', getReceiptById);
 
 export default router;
