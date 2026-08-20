@@ -1,6 +1,12 @@
 node_modules/
 .env
 
+# Wave 8-lite / W-4 — only bare `.env` was ignored, so a per-environment file such as
+# `.env.staging` or `.env.production` would have been COMMITTED WITH ITS SECRETS. The
+# .dockerignore files already excluded `.env.*`; git did not. `.env.example` stays tracked.
+.env.*
+!.env.example
+
 # Wave 0 / Session 1 — secure snapshot of live .env files (never commit; holds creds)
 .env-snapshots/
 

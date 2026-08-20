@@ -1,0 +1,39 @@
+# backend/railway.toml — Railway config-as-code for the Hiralent API.
+# Wave 8-lite / W-3. See hiralent-master-plan/waves/wave-8-lite-staging.md
+#
+# Service root must be set to `backend/` in the Railway service settings, so that this file,
+# the Dockerfile and package.json are all at the service root.
+
+[build]
+# Do NOT let Nixpacks autodetect this service. `canvas` has no musl prebuilds and compiles from
+# source; the Dockerfile installs the cairo/pango/pixman headers it needs (W-1).
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Runs BEFORE the new version starts taking traffic: prisma migrate deploy → seed → verify.
+# It fails the deploy when the database is not actually usable (no plan_free, no superadmin) —
+# see src/scripts/release.ts for why a bare `migrate && seed` is not sufficient.
+#
+# ⚠️ VERIFY THIS KEY against Railway's current config-as-code schema before relying on it. If
+# Railway ignores an unknown key, the release step silently never runs and the app boots against
+# an UNMIGRATED database — which looks like a thousand unrelated errors. The same command can be
+# set in the dashboard under Service → Settings → Deploy → Pre-Deploy Command. After the first
+# deploy, confirm the release output ("[release] ✅ release complete") appears in the logs.
+preDeployCommand = ["node dist/src/scripts/release.js"]
+
+# Single-process entry: API + in-process pollers (W-2). Booting dist/src/server.js instead would
+# accept background jobs and drain none of them.
+startCommand = "node dist/src/staging-entry.js"
+
+# GET /health reports db:down as 503, so Railway will hold traffic until Postgres is reachable.
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# ⚠️ MUST STAY 1. In-memory queues, in-process cron and the MemoryStore rate limiter are all
+# per-process (shortcut S-1). Two replicas double-fire every cron job and split the queue, so
+# jobs enqueued by one instance are invisible to the other.
+numReplicas = 1
