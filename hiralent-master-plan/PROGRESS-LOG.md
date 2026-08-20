@@ -17,6 +17,21 @@
 
 ---
 
+## 2026-08-19 — Wave 8-lite PARKED; deployment returns to Wave 8, Wave 5 resumed  [Wave 8-lite → Wave 5]
+- **Decision (user's, after the sequencing was made explicit):** stop the Wave 8-lite staging track and go back to finishing **Wave 5**, then Waves 6 and 7, and do deployment properly in **Wave 8**.
+- **Why the reversal was right:** the lite track jumped from the *middle of Wave 5* straight to the last wave, skipping Waves 6 and 7 entirely. The staging environment it produced would have demoed a product with **no agency billing** (S5 unbuilt — agency users still pass company quota gates), **no observability** (Wave 7 unstarted — every problem debugged by reading Railway logs), and **no load headroom** (Wave 6 unstarted — AI calls still inline in the request path, no caching, no retries/circuit breakers). Every shortcut recorded as S-1…S-9 would have had to be redone in Wave 8 regardless. This context was not stated sharply enough when the track was proposed; once it was, the user reversed it.
+- **Git housekeeping:** the work was on `wave-8-lite/staging-deploy` (2 commits, pushed). Merged fast-forward into `main` rather than left on a branch, deliberately — **the deployment artefacts are inert** (a Dockerfile and a release script do nothing until a platform is pointed at them), while two of the changes are **not deployment work at all** and belong on `main` immediately:
+  - **W-9** — `aiCompanySetup.queue` built its BullMQ connection at module scope; `insights.routes` imports it and `app.ts` mounts that router, so an unset `REDIS_URL` crashed the whole API at boot. A latent defect independent of any deploy.
+  - **W-4 (`.gitignore`)** — only bare `.env` was ignored, so a `.env.staging`/`.env.production` would have been committed with its secrets. A security gap independent of any deploy.
+  Leaving these parked on a branch would have left `main` carrying both problems for however long Waves 5–7 take.
+- **What survives for Wave 8, reusable verbatim:** `backend/Dockerfile` (W-1), `staging-entry.ts` + `bootstrap/*` (W-2), `scripts/release.ts` + `railway.toml` (W-3), `prisma/seeds/staging-demo.seed.ts` (W-7), the generated secret set (W-4, git-ignored), the plan, and both runbooks. Wave 8 will replace the free-tier hosts and the S-1…S-9 shortcuts with production choices; none of the code needs rewriting.
+- **What was never started:** W-5 (SMTP provider) and W-6 (Supabase project + Railway service + Vercel rebuild) — account wiring, no code.
+- **Files:** `hiralent-master-plan/waves/wave-8-lite-staging.md` (PARKED banner at the top), this log.
+- **Result:** `main` is at `43d7b70b`; the plan file now opens with a PARKED banner stating the decision, the reasoning, what survives, and how to resume. The `wave-8-lite/staging-deploy` branch is now identical to `main` and can be deleted.
+- **Next:** resume **Wave 5 S5 (agency billing / `AgencySubscription`)**, then S6 (E2E gate). Carried-forward S4 gaps are listed in the S4 entries below and must be picked up as part of closing the wave — they are not "done".
+
+---
+
 ## 2026-08-19 — Wave 8-lite W-4: staging secret set generated + `.gitignore` secret-leak gap closed  [Wave 8-lite / W-4]  (R-01, R-14, R-21)
 - **Before:** no secret set had ever been generated for a real environment. `backend/.env.example` still carries `CHANGE_ME_*` placeholders for every self-minted secret, and the live `.env` holds dev-grade values.
 - **🔴 Found while choosing where to write them — the root `.gitignore` ignored only bare `.env`.** A per-environment file such as `.env.staging` or `.env.production` **would have been committed with its secrets**. Every `.dockerignore` in the repo already excluded `.env.*` (the R-14 fix), so image builds were safe while **git was not** — the inconsistency is exactly what made it easy to miss. **Fixed:** root `.gitignore` now ignores `.env.*` with `!.env.example`. **Verified both directions:** `git check-ignore` reports `backend/.env.staging`, `backend/.env.production` and `frontend/.env.local` as IGNORED, while `backend/.env.example` and `frontend/.env.example` are NOT ignored — and `git ls-files` confirms all **nine** tracked `.env.example` files remain tracked.

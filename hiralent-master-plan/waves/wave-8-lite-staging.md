@@ -4,8 +4,35 @@
 > **~$0/month** infrastructure cost (only the AI provider key is paid), *without* doing the full
 > Wave 8 production programme.
 >
-> **Status:** PLAN ONLY — nothing implemented yet. Written 2026-08-19, after Wave 5 S4 was closed
-> and Wave 5 was **paused at the user's request** (S5 agency billing + S6 E2E gate deferred).
+> ## 🅿️ PARKED — 2026-08-19. Do not continue this track.
+>
+> **Decision:** deployment goes back to **Wave 8, in wave order** (finish Wave 5 → Wave 6 → Wave 7 →
+> Wave 8). Wave 5 is being resumed instead.
+>
+> **Why:** this track jumped from the middle of Wave 5 straight to the last wave, skipping Waves 6
+> and 7 entirely. That would have demoed a product with **no agency billing** (S5 unbuilt, so agency
+> users pass company quota gates), **no observability** (Wave 7 — every problem debugged by reading
+> Railway logs), and **no load headroom** (Wave 6 — AI calls still inline in the request path). Every
+> shortcut recorded in §9 (S-1…S-9) would then have had to be redone in Wave 8 anyway.
+>
+> **What survives and is already on `main`:** the Dockerfile (W-1), the single-process entry (W-2),
+> the release step (W-3), the demo fixture (W-7), the generated secret set (W-4), this plan and both
+> runbooks. All of it is reusable **verbatim** in Wave 8 — nothing here needs rewriting, only
+> re-deciding (Wave 8 replaces the free-tier hosts and the S-1…S-9 shortcuts with real ones).
+>
+> **Two fixes from this track are NOT deployment work and stay live on `main`:** the
+> `aiCompanySetup.queue` module-scope Redis boot blocker (**W-9**) and the `.gitignore` secret-leak
+> gap (**W-4**). Both were latent defects independent of any deployment.
+>
+> **To resume:** the code is done through Phase 1. What was never started is the account wiring —
+> W-5 (SMTP) and W-6 (Supabase project + Railway service + Vercel rebuild). Follow
+> [`runbooks/staging-deploy-supabase-railway.md`](../runbooks/staging-deploy-supabase-railway.md).
+>
+> ---
+>
+> **Original status line:** written 2026-08-19, after Wave 5 S4 was closed and Wave 5 was paused at
+> the user's request. Phase 1 code was then built (W-1, W-2, W-3, W-4, W-7, W-9) before the
+> direction was reconsidered.
 >
 > **This is NOT Wave 8.** Wave 8 (`wave-8-deployment-staging-to-production.md`) stays the canonical
 > production plan — CI/CD, TLS, image scanning, PgBouncer, rollback, prod launch. This file is the
